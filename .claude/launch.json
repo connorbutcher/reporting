@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "reporting-app",
+      "runtimeExecutable": "app\\dev-serve.cmd",
+      "runtimeArgs": [],
+      "port": 4200
+    }
+  ]
+}

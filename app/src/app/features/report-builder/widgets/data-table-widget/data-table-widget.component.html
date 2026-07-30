@@ -1,0 +1,24 @@
+@if (loading()) {
+  <div class="data-table-widget__status">Loading…</div>
+} @else if (error()) {
+  <div class="data-table-widget__status data-table-widget__status--error">Failed to load dataset.</div>
+} @else {
+  <table class="data-table-widget__table">
+    <thead>
+      <tr>
+        @for (column of columns(); track column) {
+          <th scope="col">{{ column }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (record of dataset()?.records ?? []; track record.id) {
+        <tr>
+          @for (column of columns(); track column) {
+            <td>{{ valueFor(record, column) }}</td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+}

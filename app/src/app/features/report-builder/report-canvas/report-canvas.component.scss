@@ -1,0 +1,98 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.report-canvas {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.report-canvas__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.report-canvas__title {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.report-canvas__add-button {
+  padding: 8px 14px;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #1d4ed8;
+  }
+}
+
+.report-canvas__status {
+  color: #6b7280;
+}
+
+.report-canvas__grid {
+  display: grid;
+  align-content: start;
+  overflow: auto;
+  flex: 1;
+}
+
+.report-canvas__picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.report-canvas__picker {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 280px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.report-canvas__picker-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  button {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d8dee6;
+    border-radius: 6px;
+    background: #f9fafb;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: #eef2ff;
+    }
+  }
+}
+
+.report-canvas__picker-cancel {
+  padding: 6px 12px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}

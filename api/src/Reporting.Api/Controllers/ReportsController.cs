@@ -1,0 +1,67 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Reporting.Api.Contracts;
+using Reporting.Api.Data;
+using Reporting.Api.Domain;
+
+namespace Reporting.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ReportsController : ControllerBase
+{
+    private readonly ReportingDbContext _db;
+
+    public ReportsController(ReportingDbContext db) => _db = db;
+
+    [HttpGet]
+    public async Task<ActionResult<List<ReportDto>>> GetAll()
+    {
+        var reports = await _db.Reports.Include(r => r.Widgets).ToListAsync();
+        return reports.Select(r => r.ToDto()).ToList();
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ReportDto>> GetById(Guid id)
+    {
+        var report = await _db.Reports.Include(r => r.Widgets).FirstOrDefaultAsync(r => r.Id == id);
+        if (report is null) return NotFound();
+        return report.ToDto();
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ReportDto>> Create(CreateReportDto dto)
+    {
+        var report = new Report { Id = Guid.NewGuid(), Name = dto.Name };
+        _db.Reports.Add(report);
+        await _db.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = report.Id }, report.ToDto());
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ReportDto>> Update(Guid id, ReportDto dto)
+    {
+        var report = await _db.Reports.Include(r => r.Widgets).FirstOrDefaultAsync(r => r.Id == id);
+        if (report is null) return NotFound();
+
+        report.Name = dto.Name;
+
+        var incomingIds = dto.Widgets.Select(w => w.Id).ToHashSet();
+        report.Widgets.RemoveAll(w => !incomingIds.Contains(w.Id));
+
+        foreach (var widgetDto in dto.Widgets)
+        {
+            var widget = report.Widgets.FirstOrDefault(w => w.Id == widgetDto.Id);
+            if (widget is null)
+            {
+                widget = new Widget { ReportId = report.Id };
+                report.Widgets.Add(widget);
+            }
+
+            widgetDto.ApplyTo(widget);
+        }
+
+        await _db.SaveChangesAsync();
+        return report.ToDto();
+    }
+}

@@ -1,0 +1,28 @@
+<div
+  class="widget-host__surface"
+  cdkDrag
+  [class.widget-host__surface--invalid]="dragInvalid()"
+  [style.width.px]="resizePreviewSize()?.width ?? null"
+  [style.height.px]="resizePreviewSize()?.height ?? null"
+  (cdkDragStarted)="onDragStarted()"
+  (cdkDragMoved)="onDragMoved($event)"
+  (cdkDragEnded)="onDragEnded($event)"
+>
+  <div class="widget-host__header" cdkDragHandle>
+    <span class="widget-host__title">{{ title() }}</span>
+  </div>
+  <div class="widget-host__body">
+    @switch (widget().type) {
+      @case ('dataTable') {
+        <app-data-table-widget [datasetId]="widget().config.datasetId" />
+      }
+    }
+  </div>
+  <button
+    type="button"
+    class="widget-host__resize-handle"
+    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
+    (pointerdown)="onResizeStart($event)"
+    aria-label="Resize widget"
+  ></button>
+</div>

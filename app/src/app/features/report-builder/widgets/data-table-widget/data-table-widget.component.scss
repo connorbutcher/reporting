@@ -1,0 +1,36 @@
+:host {
+  display: block;
+  height: 100%;
+  overflow: auto;
+}
+
+.data-table-widget__status {
+  padding: 12px;
+  color: #6b7280;
+  font-size: 0.85rem;
+
+  &--error {
+    color: #e5484d;
+  }
+}
+
+.data-table-widget__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th,
+  td {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eef0f2;
+    white-space: nowrap;
+  }
+
+  th {
+    background: #f9fafb;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+}
