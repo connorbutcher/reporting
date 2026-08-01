@@ -45,6 +45,8 @@ public class ReportsController : ControllerBase
         if (report is null) return NotFound();
 
         report.Name = dto.Name;
+        report.Columns = Math.Max(1, dto.Columns);
+        report.Rows = Math.Max(1, dto.Rows);
 
         var incomingIds = dto.Widgets.Select(w => w.Id).ToHashSet();
         report.Widgets.RemoveAll(w => !incomingIds.Contains(w.Id));

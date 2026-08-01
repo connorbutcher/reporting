@@ -20,5 +20,7 @@ export interface Widget {
 export interface Report {
   id: string;
   name: string;
+  columns: number;
+  rows: number;
   widgets: Widget[];
 }

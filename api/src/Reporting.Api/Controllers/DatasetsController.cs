@@ -24,7 +24,7 @@ public class DatasetsController : ControllerBase
     public async Task<ActionResult<DatasetSchemaDto>> GetSchema(Guid id)
     {
         var dataset = await _db.Datasets
-            .Include(d => d.Records).ThenInclude(r => r.Fields)
+            .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return NotFound();
         return dataset.ToSchemaDto();
@@ -34,7 +34,7 @@ public class DatasetsController : ControllerBase
     public async Task<ActionResult<DatasetDataDto>> GetData(Guid id)
     {
         var dataset = await _db.Datasets
-            .Include(d => d.Records).ThenInclude(r => r.Fields)
+            .Include(d => d.Rows)
             .FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return NotFound();
         return dataset.ToDataDto();

@@ -1,4 +1,3 @@
-export const GRID_COLUMNS = 12;
 export const CELL_SIZE = 80;
 export const GRID_GAP = 8;
 
@@ -7,6 +6,10 @@ export interface GridRect {
   y: number;
   w: number;
   h: number;
+}
+
+export interface GridPreview extends GridRect {
+  invalid: boolean;
 }
 
 export function rectsOverlap(a: GridRect, b: GridRect): boolean {

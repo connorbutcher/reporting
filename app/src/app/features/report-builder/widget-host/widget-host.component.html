@@ -1,28 +1,42 @@
 <div
   class="widget-host__surface"
-  cdkDrag
   [class.widget-host__surface--invalid]="dragInvalid()"
+  [class.widget-host__surface--dragging]="dragging()"
   [style.width.px]="resizePreviewSize()?.width ?? null"
   [style.height.px]="resizePreviewSize()?.height ?? null"
-  (cdkDragStarted)="onDragStarted()"
-  (cdkDragMoved)="onDragMoved($event)"
-  (cdkDragEnded)="onDragEnded($event)"
+  [style.transform]="dragTransform()"
 >
-  <div class="widget-host__header" cdkDragHandle>
-    <span class="widget-host__title">{{ title() }}</span>
-  </div>
-  <div class="widget-host__body">
-    @switch (widget().type) {
-      @case ('dataTable') {
-        <app-data-table-widget [datasetId]="widget().config.datasetId" />
+  <div class="widget-host__content">
+    <div class="widget-host__header" (pointerdown)="onDragStart($event)">
+      <span class="widget-host__title">{{ title() }}</span>
+    </div>
+    <div class="widget-host__body">
+      @switch (widget().type) {
+        @case ('dataTable') {
+          <app-data-table-widget [datasetId]="widget().config.datasetId" />
+        }
       }
-    }
+    </div>
   </div>
   <button
     type="button"
-    class="widget-host__resize-handle"
+    class="widget-host__resize-handle widget-host__resize-handle--right"
     [class.widget-host__resize-handle--invalid]="resizeInvalid()"
-    (pointerdown)="onResizeStart($event)"
+    (pointerdown)="onResizeStart($event, 'right')"
+    aria-label="Resize widget width"
+  ></button>
+  <button
+    type="button"
+    class="widget-host__resize-handle widget-host__resize-handle--bottom"
+    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
+    (pointerdown)="onResizeStart($event, 'bottom')"
+    aria-label="Resize widget height"
+  ></button>
+  <button
+    type="button"
+    class="widget-host__resize-handle widget-host__resize-handle--corner"
+    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
+    (pointerdown)="onResizeStart($event, 'corner')"
     aria-label="Resize widget"
   ></button>
 </div>

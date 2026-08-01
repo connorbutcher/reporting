@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reporting.Api.Data;
 
@@ -10,9 +11,11 @@ using Reporting.Api.Data;
 namespace Reporting.Api.Migrations
 {
     [DbContext(typeof(ReportingDbContext))]
-    partial class ReportingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260730195101_AddReportGridSize")]
+    partial class AddReportGridSize
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -32,38 +35,44 @@ namespace Reporting.Api.Migrations
                     b.ToTable("Datasets");
                 });
 
-            modelBuilder.Entity("Reporting.Api.Domain.DatasetColumn", b =>
+            modelBuilder.Entity("Reporting.Api.Domain.DatasetFieldValue", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ConfigurationJson")
+                    b.Property<string>("DataType")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("DatasetId")
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasMaxLength(21)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Name")
+                    b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Order")
-                        .HasColumnType("INTEGER");
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("TEXT");
 
-                    b.Property<string>("Type")
+                    b.Property<string>("ValueJson")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DatasetId");
+                    b.HasIndex("RecordId");
 
-                    b.ToTable("DatasetColumns");
+                    b.ToTable("DatasetFieldValues");
+
+                    b.HasDiscriminator<string>("Discriminator").HasValue("DatasetFieldValue");
+
+                    b.UseTphMappingStrategy();
                 });
 
-            modelBuilder.Entity("Reporting.Api.Domain.DatasetRow", b =>
+            modelBuilder.Entity("Reporting.Api.Domain.DatasetRecord", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -72,15 +81,11 @@ namespace Reporting.Api.Migrations
                     b.Property<Guid>("DatasetId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ValuesJson")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("DatasetId");
 
-                    b.ToTable("DatasetRows");
+                    b.ToTable("DatasetRecords");
                 });
 
             modelBuilder.Entity("Reporting.Api.Domain.Report", b =>
@@ -144,21 +149,56 @@ namespace Reporting.Api.Migrations
                     b.ToTable("Widgets");
                 });
 
-            modelBuilder.Entity("Reporting.Api.Domain.DatasetColumn", b =>
+            modelBuilder.Entity("Reporting.Api.Domain.BoolFieldValue", b =>
                 {
-                    b.HasOne("Reporting.Api.Domain.Dataset", "Dataset")
-                        .WithMany("Columns")
-                        .HasForeignKey("DatasetId")
+                    b.HasBaseType("Reporting.Api.Domain.DatasetFieldValue");
+
+                    b.HasDiscriminator().HasValue("BoolFieldValue");
+                });
+
+            modelBuilder.Entity("Reporting.Api.Domain.DateTimeFieldValue", b =>
+                {
+                    b.HasBaseType("Reporting.Api.Domain.DatasetFieldValue");
+
+                    b.HasDiscriminator().HasValue("DateTimeFieldValue");
+                });
+
+            modelBuilder.Entity("Reporting.Api.Domain.DoubleFieldValue", b =>
+                {
+                    b.HasBaseType("Reporting.Api.Domain.DatasetFieldValue");
+
+                    b.HasDiscriminator().HasValue("DoubleFieldValue");
+                });
+
+            modelBuilder.Entity("Reporting.Api.Domain.IntFieldValue", b =>
+                {
+                    b.HasBaseType("Reporting.Api.Domain.DatasetFieldValue");
+
+                    b.HasDiscriminator().HasValue("IntFieldValue");
+                });
+
+            modelBuilder.Entity("Reporting.Api.Domain.StringFieldValue", b =>
+                {
+                    b.HasBaseType("Reporting.Api.Domain.DatasetFieldValue");
+
+                    b.HasDiscriminator().HasValue("StringFieldValue");
+                });
+
+            modelBuilder.Entity("Reporting.Api.Domain.DatasetFieldValue", b =>
+                {
+                    b.HasOne("Reporting.Api.Domain.DatasetRecord", "Record")
+                        .WithMany("Fields")
+                        .HasForeignKey("RecordId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Dataset");
+                    b.Navigation("Record");
                 });
 
-            modelBuilder.Entity("Reporting.Api.Domain.DatasetRow", b =>
+            modelBuilder.Entity("Reporting.Api.Domain.DatasetRecord", b =>
                 {
                     b.HasOne("Reporting.Api.Domain.Dataset", "Dataset")
-                        .WithMany("Rows")
+                        .WithMany("Records")
                         .HasForeignKey("DatasetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -179,9 +219,12 @@ namespace Reporting.Api.Migrations
 
             modelBuilder.Entity("Reporting.Api.Domain.Dataset", b =>
                 {
-                    b.Navigation("Columns");
+                    b.Navigation("Records");
+                });
 
-                    b.Navigation("Rows");
+            modelBuilder.Entity("Reporting.Api.Domain.DatasetRecord", b =>
+                {
+                    b.Navigation("Fields");
                 });
 
             modelBuilder.Entity("Reporting.Api.Domain.Report", b =>

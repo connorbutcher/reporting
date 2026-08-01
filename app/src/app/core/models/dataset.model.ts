@@ -1,35 +1,32 @@
-export type FieldDataType = 'string' | 'int' | 'double' | 'bool' | 'dateTime';
+export type DatasetColumnType = 'string' | 'int' | 'double' | 'bool' | 'dateTime';
 
 export interface DatasetSummary {
   id: string;
   name: string;
 }
 
-export interface DatasetFieldSchema {
-  displayName: string;
-  dataType: FieldDataType;
+export interface DatasetColumn {
+  id: string;
+  name: string;
+  type: DatasetColumnType;
+  order: number;
+  configuration: Record<string, unknown> | null;
 }
 
 export interface DatasetSchema {
   id: string;
   name: string;
-  fields: DatasetFieldSchema[];
+  columns: DatasetColumn[];
 }
 
-export interface DatasetField {
+export interface DatasetRow {
   id: string;
-  displayName: string;
-  dataType: FieldDataType;
-  value: string | number | boolean | null;
-}
-
-export interface DatasetRecord {
-  id: string;
-  fields: DatasetField[];
+  /** Keyed by column id; every value is stored as a string. */
+  values: Record<string, string>;
 }
 
 export interface DatasetData {
   id: string;
   name: string;
-  records: DatasetRecord[];
+  rows: DatasetRow[];
 }

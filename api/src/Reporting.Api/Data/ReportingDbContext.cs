@@ -12,11 +12,19 @@ public class ReportingDbContext : DbContext
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<Widget> Widgets => Set<Widget>();
     public DbSet<Dataset> Datasets => Set<Dataset>();
-    public DbSet<DatasetRecord> DatasetRecords => Set<DatasetRecord>();
-    public DbSet<DatasetFieldValue> DatasetFieldValues => Set<DatasetFieldValue>();
+    public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
+    public DbSet<DatasetRow> DatasetRows => Set<DatasetRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Report>()
+            .Property(r => r.Columns)
+            .HasDefaultValue(12);
+
+        modelBuilder.Entity<Report>()
+            .Property(r => r.Rows)
+            .HasDefaultValue(10);
+
         modelBuilder.Entity<Report>()
             .HasMany(r => r.Widgets)
             .WithOne(w => w.Report)
@@ -28,29 +36,19 @@ public class ReportingDbContext : DbContext
             .HasConversion<string>();
 
         modelBuilder.Entity<Dataset>()
-            .HasMany(d => d.Records)
+            .HasMany(d => d.Columns)
+            .WithOne(c => c.Dataset)
+            .HasForeignKey(c => c.DatasetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Dataset>()
+            .HasMany(d => d.Rows)
             .WithOne(r => r.Dataset)
             .HasForeignKey(r => r.DatasetId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<DatasetRecord>()
-            .HasMany(r => r.Fields)
-            .WithOne(f => f.Record)
-            .HasForeignKey(f => f.RecordId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<DatasetFieldValue>()
-            .Property(f => f.DataType)
+        modelBuilder.Entity<DatasetColumn>()
+            .Property(c => c.Type)
             .HasConversion<string>();
-
-        // Real TPH discriminator column, kept separate from the domain-facing DataType
-        // enum so DataType stays a plain data column set by each derived type's constructor.
-        modelBuilder.Entity<DatasetFieldValue>()
-            .HasDiscriminator<string>("Discriminator")
-            .HasValue<StringFieldValue>(nameof(StringFieldValue))
-            .HasValue<IntFieldValue>(nameof(IntFieldValue))
-            .HasValue<DoubleFieldValue>(nameof(DoubleFieldValue))
-            .HasValue<BoolFieldValue>(nameof(BoolFieldValue))
-            .HasValue<DateTimeFieldValue>(nameof(DateTimeFieldValue));
     }
 }

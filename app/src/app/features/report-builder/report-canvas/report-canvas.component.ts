@@ -3,11 +3,13 @@ import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { ReportApiService } from '../../../core/api/report-api.service';
 import { DatasetSummary } from '../../../core/models/dataset.model';
 import { Report, Widget } from '../../../core/models/report.model';
-import { CELL_SIZE, GRID_COLUMNS, GRID_GAP } from '../grid.util';
+import { CELL_SIZE, GRID_GAP, GridPreview, clamp } from '../grid.util';
 import { WidgetHostComponent } from '../widget-host/widget-host.component';
 
 const DEFAULT_WIDGET_W = 4;
 const DEFAULT_WIDGET_H = 3;
+const MIN_GRID_SIZE = 1;
+const MAX_GRID_SIZE = 48;
 
 @Component({
   selector: 'app-report-canvas',
@@ -25,9 +27,11 @@ export class ReportCanvasComponent implements OnInit {
   protected readonly pickerOpen = signal(false);
   protected readonly loading = signal(true);
 
-  protected readonly gridColumns = GRID_COLUMNS;
+  protected readonly gridColumns = computed(() => this.report()?.columns ?? 12);
+  protected readonly gridRows = computed(() => this.report()?.rows ?? 10);
   protected readonly cellSize = CELL_SIZE;
   protected readonly gridGap = GRID_GAP;
+  protected readonly dropPreview = signal<GridPreview | null>(null);
 
   ngOnInit(): void {
     this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
@@ -82,6 +86,22 @@ export class ReportCanvasComponent implements OnInit {
 
   protected otherWidgets(widget: Widget): Widget[] {
     return this.widgets().filter((w) => w.id !== widget.id);
+  }
+
+  protected onDropPreview(preview: GridPreview | null): void {
+    this.dropPreview.set(preview);
+  }
+
+  protected setColumns(value: number): void {
+    const report = this.report();
+    if (!report) return;
+    this.persist({ ...report, columns: clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE) });
+  }
+
+  protected setRows(value: number): void {
+    const report = this.report();
+    if (!report) return;
+    this.persist({ ...report, rows: clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE) });
   }
 
   private persist(report: Report): void {

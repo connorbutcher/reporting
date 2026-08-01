@@ -14,13 +14,35 @@
 .report-canvas__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
 .report-canvas__title {
-  margin: 0;
+  margin: 0 auto 0 0;
   font-size: 1.25rem;
+}
+
+.report-canvas__grid-size {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #4b5563;
+  }
+
+  input {
+    width: 56px;
+    padding: 4px 6px;
+    border: 1px solid #d8dee6;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
 }
 
 .report-canvas__add-button {
@@ -41,11 +63,45 @@
   color: #6b7280;
 }
 
+.report-canvas__grid-viewport {
+  flex: 1;
+  overflow: auto;
+}
+
 .report-canvas__grid {
   display: grid;
-  align-content: start;
-  overflow: auto;
-  flex: 1;
+  width: fit-content;
+  height: fit-content;
+  position: relative;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      rgba(15, 23, 42, 0.1) 0,
+      rgba(15, 23, 42, 0.1) 1px,
+      transparent 1px,
+      transparent var(--grid-step, 88px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0.1) 0,
+      rgba(15, 23, 42, 0.1) 1px,
+      transparent 1px,
+      transparent var(--grid-step, 88px)
+    );
+}
+
+.report-canvas__drop-preview {
+  pointer-events: none;
+  border: 2px dashed #2563eb;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.15);
+  z-index: 5;
+
+  &--invalid {
+    border-color: #e5484d;
+    background: rgba(229, 72, 77, 0.15);
+  }
 }
 
 .report-canvas__picker-backdrop {

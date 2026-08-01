@@ -6,19 +6,34 @@
 
 .widget-host__surface {
   position: relative;
-  display: flex;
-  flex-direction: column;
   height: 100%;
   background: #fff;
   border: 1px solid #d8dee6;
   border-radius: 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
 
   &--invalid {
     border-color: #e5484d;
     box-shadow: 0 0 0 2px rgba(229, 72, 77, 0.3);
   }
+
+  &--dragging {
+    z-index: 10;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    opacity: 0.9;
+
+    .widget-host__header {
+      cursor: grabbing;
+    }
+  }
+}
+
+.widget-host__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: 5px;
+  overflow: hidden;
 }
 
 .widget-host__header {
@@ -32,6 +47,7 @@
   font-weight: 600;
   color: #333;
   user-select: none;
+  touch-action: none;
 }
 
 .widget-host__body {
@@ -42,28 +58,64 @@
 
 .widget-host__resize-handle {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 16px;
-  height: 16px;
   padding: 0;
   border: none;
   background: transparent;
-  cursor: nwse-resize;
   touch-action: none;
 
-  &::after {
-    content: '';
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid #9aa5b1;
-    border-bottom: 2px solid #9aa5b1;
+  &:hover {
+    background: rgba(37, 99, 235, 0.12);
   }
 
-  &--invalid::after {
-    border-color: #e5484d;
+  &--right {
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: ew-resize;
+  }
+
+  &--bottom {
+    left: 0;
+    bottom: -3px;
+    width: 100%;
+    height: 6px;
+    cursor: ns-resize;
+  }
+
+  &--corner {
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    background: transparent;
+
+    &:hover {
+      background: transparent;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      right: 3px;
+      bottom: 3px;
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid #9aa5b1;
+      border-bottom: 2px solid #9aa5b1;
+    }
+  }
+
+  &--invalid {
+    background: rgba(229, 72, 77, 0.15);
+
+    &.widget-host__resize-handle--corner {
+      background: transparent;
+
+      &::after {
+        border-color: #e5484d;
+      }
+    }
   }
 }

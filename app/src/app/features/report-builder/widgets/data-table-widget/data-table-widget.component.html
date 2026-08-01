@@ -6,16 +6,16 @@
   <table class="data-table-widget__table">
     <thead>
       <tr>
-        @for (column of columns(); track column) {
-          <th scope="col">{{ column }}</th>
+        @for (column of columns(); track column.id) {
+          <th scope="col">{{ column.name }}</th>
         }
       </tr>
     </thead>
     <tbody>
-      @for (record of dataset()?.records ?? []; track record.id) {
+      @for (row of rows(); track row.id) {
         <tr>
-          @for (column of columns(); track column) {
-            <td>{{ valueFor(record, column) }}</td>
+          @for (column of columns(); track column.id) {
+            <td>{{ valueFor(row, column) }}</td>
           }
         </tr>
       }

@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetData, DatasetRecord } from '../../../../core/models/dataset.model';
+import { DatasetColumn, DatasetData, DatasetRow } from '../../../../core/models/dataset.model';
 
 @Component({
   selector: 'app-data-table-widget',
@@ -13,26 +14,12 @@ export class DataTableWidgetComponent {
 
   private readonly datasetApi = inject(DatasetApiService);
 
-  protected readonly dataset = signal<DatasetData | null>(null);
+  protected readonly columns = signal<DatasetColumn[]>([]);
+  protected readonly data = signal<DatasetData | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
-  protected readonly columns = computed(() => {
-    const dataset = this.dataset();
-    if (!dataset) return [];
-
-    const seen = new Set<string>();
-    const columns: string[] = [];
-    for (const record of dataset.records) {
-      for (const field of record.fields) {
-        if (!seen.has(field.displayName)) {
-          seen.add(field.displayName);
-          columns.push(field.displayName);
-        }
-      }
-    }
-    return columns;
-  });
+  protected readonly rows = computed(() => this.data()?.rows ?? []);
 
   constructor() {
     effect((onCleanup) => {
@@ -40,9 +27,15 @@ export class DataTableWidgetComponent {
       this.loading.set(true);
       this.error.set(false);
 
-      const subscription = this.datasetApi.getData(datasetId).subscribe({
-        next: (data) => {
-          this.dataset.set(data);
+      // Schema and row data are separate endpoints: columns describe the table,
+      // rows carry the values keyed by column id.
+      const subscription = forkJoin({
+        schema: this.datasetApi.getSchema(datasetId),
+        data: this.datasetApi.getData(datasetId),
+      }).subscribe({
+        next: ({ schema, data }) => {
+          this.columns.set(schema.columns);
+          this.data.set(data);
           this.loading.set(false);
         },
         error: () => {
@@ -55,11 +48,19 @@ export class DataTableWidgetComponent {
     });
   }
 
-  protected valueFor(record: DatasetRecord, displayName: string): string {
-    const field = record.fields.find((f) => f.displayName === displayName);
-    if (!field || field.value === null || field.value === undefined) return '';
-    if (field.dataType === 'bool') return field.value ? 'Yes' : 'No';
-    if (field.dataType === 'dateTime') return new Date(field.value as string).toLocaleDateString();
-    return String(field.value);
+  protected valueFor(row: DatasetRow, column: DatasetColumn): string {
+    const raw = row.values[column.id];
+    if (raw === undefined || raw === null || raw === '') return '';
+
+    switch (column.type) {
+      case 'bool':
+        return raw.toLowerCase() === 'true' ? 'Yes' : 'No';
+      case 'dateTime': {
+        const parsed = new Date(raw);
+        return Number.isNaN(parsed.getTime()) ? raw : parsed.toLocaleDateString();
+      }
+      default:
+        return raw;
+    }
   }
 }

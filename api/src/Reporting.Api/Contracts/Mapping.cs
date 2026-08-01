@@ -16,6 +16,8 @@ public static class Mapping
     {
         Id = report.Id,
         Name = report.Name,
+        Columns = report.Columns,
+        Rows = report.Rows,
         Widgets = report.Widgets.Select(w => w.ToDto()).ToList()
     };
 
@@ -51,27 +53,26 @@ public static class Mapping
     {
         Id = dataset.Id,
         Name = dataset.Name,
-        Fields = dataset.Records
-            .SelectMany(r => r.Fields)
-            .Select(f => new DatasetFieldSchemaDto { DisplayName = f.DisplayName, DataType = f.DataType })
-            .DistinctBy(f => (f.DisplayName, f.DataType))
-            .ToList()
+        Columns = dataset.Columns
+            .OrderBy(c => c.Order)
+            .Select(c => new DatasetColumnDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Type = c.Type,
+                Order = c.Order,
+                Configuration = JsonSerializer.Deserialize<JsonElement>(c.ConfigurationJson)
+            }).ToList()
     };
 
     public static DatasetDataDto ToDataDto(this Dataset dataset) => new()
     {
         Id = dataset.Id,
         Name = dataset.Name,
-        Records = dataset.Records.Select(r => new DatasetRecordDto
+        Rows = dataset.Rows.Select(r => new DatasetRowDto
         {
             Id = r.Id,
-            Fields = r.Fields.Select(f => new DatasetFieldDto
-            {
-                Id = f.Id,
-                DisplayName = f.DisplayName,
-                DataType = f.DataType,
-                Value = f.GetValue()
-            }).ToList()
+            Values = r.GetValues()
         }).ToList()
     };
 }

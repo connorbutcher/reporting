@@ -1,3 +1,4 @@
+using System.Globalization;
 using Reporting.Api.Domain;
 
 namespace Reporting.Api.Data;
@@ -10,6 +11,13 @@ public static class DbSeeder
 
         var dataset = new Dataset { Id = Guid.NewGuid(), Name = "Employees" };
 
+        var name = NewColumn(dataset.Id, "Name", DatasetColumnType.String, 0);
+        var age = NewColumn(dataset.Id, "Age", DatasetColumnType.Int, 1);
+        var salary = NewColumn(dataset.Id, "Salary", DatasetColumnType.Double, 2);
+        var isActive = NewColumn(dataset.Id, "Is Active", DatasetColumnType.Bool, 3);
+        var hireDate = NewColumn(dataset.Id, "Hire Date", DatasetColumnType.DateTime, 4);
+        dataset.Columns.AddRange([name, age, salary, isActive, hireDate]);
+
         var employees = new (string Name, int Age, double Salary, bool IsActive, DateTime HireDate)[]
         {
             ("Alice Johnson", 34, 82000.50, true, new DateTime(2019, 3, 14)),
@@ -20,13 +28,16 @@ public static class DbSeeder
 
         foreach (var e in employees)
         {
-            var record = new DatasetRecord { Id = Guid.NewGuid(), DatasetId = dataset.Id };
-            record.Fields.Add(new StringFieldValue { Id = Guid.NewGuid(), RecordId = record.Id, DisplayName = "Name", Value = e.Name });
-            record.Fields.Add(new IntFieldValue { Id = Guid.NewGuid(), RecordId = record.Id, DisplayName = "Age", Value = e.Age });
-            record.Fields.Add(new DoubleFieldValue { Id = Guid.NewGuid(), RecordId = record.Id, DisplayName = "Salary", Value = e.Salary });
-            record.Fields.Add(new BoolFieldValue { Id = Guid.NewGuid(), RecordId = record.Id, DisplayName = "Is Active", Value = e.IsActive });
-            record.Fields.Add(new DateTimeFieldValue { Id = Guid.NewGuid(), RecordId = record.Id, DisplayName = "Hire Date", Value = e.HireDate });
-            dataset.Records.Add(record);
+            var row = new DatasetRow { Id = Guid.NewGuid(), DatasetId = dataset.Id };
+            row.SetValues(new Dictionary<Guid, string>
+            {
+                [name.Id] = e.Name,
+                [age.Id] = e.Age.ToString(CultureInfo.InvariantCulture),
+                [salary.Id] = e.Salary.ToString(CultureInfo.InvariantCulture),
+                [isActive.Id] = e.IsActive.ToString(CultureInfo.InvariantCulture),
+                [hireDate.Id] = e.HireDate.ToString("O", CultureInfo.InvariantCulture),
+            });
+            dataset.Rows.Add(row);
         }
 
         db.Datasets.Add(dataset);
@@ -47,4 +58,13 @@ public static class DbSeeder
 
         db.SaveChanges();
     }
+
+    private static DatasetColumn NewColumn(Guid datasetId, string name, DatasetColumnType type, int order) => new()
+    {
+        Id = Guid.NewGuid(),
+        DatasetId = datasetId,
+        Name = name,
+        Type = type,
+        Order = order
+    };
 }

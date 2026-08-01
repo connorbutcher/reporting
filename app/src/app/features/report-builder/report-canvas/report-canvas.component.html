@@ -1,27 +1,75 @@
 <div class="report-canvas">
   <div class="report-canvas__toolbar">
     <h1 class="report-canvas__title">{{ report()?.name ?? 'Report' }}</h1>
-    <button type="button" class="report-canvas__add-button" (click)="openPicker()">+ Add data table</button>
+    <div class="report-canvas__grid-size">
+      <label>
+        Columns
+        <input
+          type="number"
+          min="1"
+          max="48"
+          [value]="gridColumns()"
+          (change)="setColumns($any($event.target).valueAsNumber)"
+        />
+      </label>
+      <label>
+        Rows
+        <input
+          type="number"
+          min="1"
+          max="48"
+          [value]="gridRows()"
+          (change)="setRows($any($event.target).valueAsNumber)"
+        />
+      </label>
+    </div>
+    <button type="button" class="report-canvas__add-button" (click)="openPicker()">
+      + Add data table
+    </button>
   </div>
 
   @if (loading()) {
     <p class="report-canvas__status">Loading report…</p>
   } @else {
-    <div
-      class="report-canvas__grid"
-      [style.grid-template-columns]="'repeat(' + gridColumns + ', ' + cellSize + 'px)'"
-      [style.grid-auto-rows.px]="cellSize"
-      [style.gap.px]="gridGap"
-    >
-      @for (widget of widgets(); track widget.id) {
-        <app-widget-host [widget]="widget" [otherWidgets]="otherWidgets(widget)" (widgetChange)="onWidgetChange($event)" />
-      }
+    <div class="report-canvas__grid-viewport">
+      <div
+        class="report-canvas__grid"
+        [style.grid-template-columns]="'repeat(' + gridColumns() + ', ' + cellSize + 'px)'"
+        [style.grid-template-rows]="'repeat(' + gridRows() + ', ' + cellSize + 'px)'"
+        [style.gap.px]="gridGap"
+        [style.--grid-step.px]="cellSize + gridGap"
+      >
+        @for (widget of widgets(); track widget.id) {
+          <app-widget-host
+            [widget]="widget"
+            [otherWidgets]="otherWidgets(widget)"
+            [columns]="gridColumns()"
+            [rows]="gridRows()"
+            (widgetChange)="onWidgetChange($event)"
+            (gridPreview)="onDropPreview($event)"
+          />
+        }
+        @if (dropPreview(); as preview) {
+          <div
+            class="report-canvas__drop-preview"
+            [class.report-canvas__drop-preview--invalid]="preview.invalid"
+            [style.grid-column]="preview.x + 1 + ' / span ' + preview.w"
+            [style.grid-row]="preview.y + 1 + ' / span ' + preview.h"
+          ></div>
+        }
+      </div>
     </div>
   }
 
   @if (pickerOpen()) {
     <div class="report-canvas__picker-backdrop" (click)="closePicker()">
-      <div class="report-canvas__picker" role="dialog" aria-modal="true" aria-labelledby="picker-heading" (click)="$event.stopPropagation()">
+      <div
+        class="report-canvas__picker"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="picker-heading"
+        (click)="$event.stopPropagation()"
+      >
         <h2 id="picker-heading">Choose a dataset</h2>
         @if (datasets().length === 0) {
           <p>No datasets available.</p>
@@ -34,7 +82,9 @@
             }
           </ul>
         }
-        <button type="button" class="report-canvas__picker-cancel" (click)="closePicker()">Cancel</button>
+        <button type="button" class="report-canvas__picker-cancel" (click)="closePicker()">
+          Cancel
+        </button>
       </div>
     </div>
   }
