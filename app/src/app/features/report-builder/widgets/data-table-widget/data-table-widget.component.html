@@ -1,24 +1,70 @@
-@if (loading()) {
+@if (!config().datasetId) {
+  <div class="data-table-widget__status">
+    <i class="pi pi-database" aria-hidden="true"></i>
+    Choose a dataset for this table in the side panel.
+  </div>
+} @else if (loading()) {
   <div class="data-table-widget__status">Loading…</div>
 } @else if (error()) {
   <div class="data-table-widget__status data-table-widget__status--error">Failed to load dataset.</div>
+} @else if (displayColumns().length === 0) {
+  <div class="data-table-widget__status">
+    <i class="pi pi-list" aria-hidden="true"></i>
+    Add the columns you want from the side panel.
+  </div>
 } @else {
-  <table class="data-table-widget__table">
-    <thead>
+  <p-table
+    [value]="tableRows()"
+    [sortField]="sortField()"
+    [sortOrder]="sortOrder()"
+    [scrollable]="true"
+    scrollHeight="flex"
+    [size]="density()"
+    [stripedRows]="config().stripedRows"
+    [showGridlines]="config().showGridlines"
+    [rowHover]="config().rowHover"
+    [resizableColumns]="config().resizableColumns"
+    columnResizeMode="expand"
+    [paginator]="config().paginator"
+    [rows]="config().rowsPerPage"
+    (onSort)="onSort($event)"
+    (onColResize)="onColResize()"
+  >
+    <ng-template #header>
       <tr>
-        @for (column of columns(); track column.id) {
-          <th scope="col">{{ column.name }}</th>
+        <!-- The resize handle is attached when the cell is created, so the
+             resizable flag is part of the key to force a rebuild on toggle. -->
+        @for (col of displayColumns(); track col.column.id + resizeKey()) {
+          <th
+            [attr.data-column-id]="col.column.id"
+            [pSortableColumn]="col.column.id"
+            [pSortableColumnDisabled]="!col.sortable"
+            pResizableColumn
+            [pResizableColumnDisabled]="!config().resizableColumns"
+            [style.width.px]="col.width ?? null"
+            [style.text-align]="col.align"
+          >
+            {{ col.header }}
+            @if (col.sortable) {
+              <p-sort-icon [field]="col.column.id" />
+            }
+          </th>
         }
       </tr>
-    </thead>
-    <tbody>
-      @for (row of rows(); track row.id) {
-        <tr>
-          @for (column of columns(); track column.id) {
-            <td>{{ valueFor(row, column) }}</td>
-          }
-        </tr>
-      }
-    </tbody>
-  </table>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr>
+        @for (col of displayColumns(); track col.column.id) {
+          <td [style.text-align]="col.align">{{ format(row[col.column.id], col.column) }}</td>
+        }
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td [attr.colspan]="displayColumns().length" class="data-table-widget__empty">
+          {{ config().emptyMessage }}
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
 }

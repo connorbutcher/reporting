@@ -1,111 +1,107 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { ReportApiService } from '../../../core/api/report-api.service';
-import { DatasetSummary } from '../../../core/models/dataset.model';
-import { Report, Widget } from '../../../core/models/report.model';
-import { CELL_SIZE, GRID_GAP, GridPreview, clamp } from '../grid.util';
+import { CELL_SIZE, GRID_GAP, GridPreview } from '../grid.util';
+import { ReportBuilderStore } from '../report-builder.store';
+import { ReportSidePanelComponent } from '../side-panel/report-side-panel.component';
 import { WidgetHostComponent } from '../widget-host/widget-host.component';
 
-const DEFAULT_WIDGET_W = 4;
-const DEFAULT_WIDGET_H = 3;
-const MIN_GRID_SIZE = 1;
-const MAX_GRID_SIZE = 48;
+/** Nudging by a whole cell keeps widgets on the grid. */
+const NUDGE = 1;
 
 @Component({
   selector: 'app-report-canvas',
-  imports: [WidgetHostComponent],
+  imports: [WidgetHostComponent, ReportSidePanelComponent],
   templateUrl: './report-canvas.component.html',
   styleUrl: './report-canvas.component.scss',
+  providers: [ReportBuilderStore],
+  host: {
+    '(document:keydown)': 'onKeyDown($event)',
+  },
 })
 export class ReportCanvasComponent implements OnInit {
-  private readonly reportApi = inject(ReportApiService);
-  private readonly datasetApi = inject(DatasetApiService);
+  protected readonly store = inject(ReportBuilderStore);
 
-  protected readonly report = signal<Report | null>(null);
-  protected readonly widgets = computed(() => this.report()?.widgets ?? []);
-  protected readonly datasets = signal<DatasetSummary[]>([]);
-  protected readonly pickerOpen = signal(false);
-  protected readonly loading = signal(true);
-
-  protected readonly gridColumns = computed(() => this.report()?.columns ?? 12);
-  protected readonly gridRows = computed(() => this.report()?.rows ?? 10);
   protected readonly cellSize = CELL_SIZE;
   protected readonly gridGap = GRID_GAP;
   protected readonly dropPreview = signal<GridPreview | null>(null);
 
+  protected readonly statusLabel = computed(() => {
+    if (this.store.saveBlocked()) return 'Not saving — fix errors';
+
+    const errors = this.store.errors().length;
+    const warnings = this.store.warnings().length;
+    if (errors) return `${errors} error${errors > 1 ? 's' : ''}`;
+    if (warnings) return `${warnings} warning${warnings > 1 ? 's' : ''}`;
+    return 'No issues';
+  });
+
   ngOnInit(): void {
-    this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
-
-    this.reportApi.list().subscribe((reports) => {
-      if (reports.length > 0) {
-        this.report.set(reports[0]);
-        this.loading.set(false);
-      } else {
-        this.reportApi.create('Demo Report').subscribe((report) => {
-          this.report.set(report);
-          this.loading.set(false);
-        });
-      }
-    });
-  }
-
-  protected openPicker(): void {
-    this.pickerOpen.set(true);
-  }
-
-  protected closePicker(): void {
-    this.pickerOpen.set(false);
-  }
-
-  protected addWidget(datasetId: string): void {
-    const report = this.report();
-    if (!report) return;
-
-    const nextY = report.widgets.reduce((max, w) => Math.max(max, w.y + w.h), 0);
-    const widget: Widget = {
-      id: crypto.randomUUID(),
-      type: 'dataTable',
-      x: 0,
-      y: nextY,
-      w: DEFAULT_WIDGET_W,
-      h: DEFAULT_WIDGET_H,
-      config: { type: 'dataTable', datasetId },
-    };
-
-    this.persist({ ...report, widgets: [...report.widgets, widget] });
-    this.closePicker();
-  }
-
-  protected onWidgetChange(updated: Widget): void {
-    const report = this.report();
-    if (!report) return;
-
-    const widgets = report.widgets.map((w) => (w.id === updated.id ? updated : w));
-    this.persist({ ...report, widgets });
-  }
-
-  protected otherWidgets(widget: Widget): Widget[] {
-    return this.widgets().filter((w) => w.id !== widget.id);
+    this.store.load();
   }
 
   protected onDropPreview(preview: GridPreview | null): void {
     this.dropPreview.set(preview);
   }
 
-  protected setColumns(value: number): void {
-    const report = this.report();
-    if (!report) return;
-    this.persist({ ...report, columns: clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE) });
+  /** Clicking empty canvas drops the selection. */
+  protected onCanvasPointerDown(event: PointerEvent): void {
+    if (event.target === event.currentTarget) this.store.clearSelection();
   }
 
-  protected setRows(value: number): void {
-    const report = this.report();
-    if (!report) return;
-    this.persist({ ...report, rows: clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE) });
-  }
+  protected onKeyDown(event: KeyboardEvent): void {
+    // Never steal keys from a field the user is typing in.
+    if (isTextEntry(event.target)) return;
 
-  private persist(report: Report): void {
-    this.report.set(report);
-    this.reportApi.update(report).subscribe();
+    const ctrl = event.ctrlKey || event.metaKey;
+
+    if (ctrl && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) this.store.redo();
+      else this.store.undo();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === 'y') {
+      event.preventDefault();
+      this.store.redo();
+      return;
+    }
+
+    if (ctrl && event.key.toLowerCase() === 'd') {
+      event.preventDefault();
+      this.store.duplicateSelection();
+      return;
+    }
+
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const ids = this.store.selectedWidgetIds();
+      if (ids.length === 0) return;
+      event.preventDefault();
+      this.store.removeWidgets(ids);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      this.store.clearSelection();
+      return;
+    }
+
+    const nudge = NUDGE_KEYS[event.key];
+    if (nudge && this.store.selectedWidgetIds().length > 0) {
+      event.preventDefault();
+      this.store.nudgeSelection(nudge.dx, nudge.dy);
+    }
   }
+}
+
+const NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
+  ArrowLeft: { dx: -NUDGE, dy: 0 },
+  ArrowRight: { dx: NUDGE, dy: 0 },
+  ArrowUp: { dx: 0, dy: -NUDGE },
+  ArrowDown: { dx: 0, dy: NUDGE },
+};
+
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }

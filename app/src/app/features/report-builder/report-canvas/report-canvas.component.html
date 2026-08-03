@@ -1,91 +1,82 @@
-<div class="report-canvas">
-  <div class="report-canvas__toolbar">
-    <h1 class="report-canvas__title">{{ report()?.name ?? 'Report' }}</h1>
-    <div class="report-canvas__grid-size">
-      <label>
-        Columns
-        <input
-          type="number"
-          min="1"
-          max="48"
-          [value]="gridColumns()"
-          (change)="setColumns($any($event.target).valueAsNumber)"
-        />
-      </label>
-      <label>
-        Rows
-        <input
-          type="number"
-          min="1"
-          max="48"
-          [value]="gridRows()"
-          (change)="setRows($any($event.target).valueAsNumber)"
-        />
-      </label>
-    </div>
-    <button type="button" class="report-canvas__add-button" (click)="openPicker()">
-      + Add data table
-    </button>
-  </div>
+<div class="report-builder">
+  <section class="report-builder__canvas app-card">
+    <header class="report-builder__canvas-header">
+      <h1 class="report-builder__title">{{ store.model()?.name() ?? 'Report' }}</h1>
+      <span class="report-builder__meta">
+        {{ store.gridColumns() }} × {{ store.gridRows() }} grid · {{ store.widgets().length }} widgets
+        @if (store.hasMultiSelection()) {
+          · {{ store.selectedWidgetIds().length }} selected
+        }
+      </span>
 
-  @if (loading()) {
-    <p class="report-canvas__status">Loading report…</p>
-  } @else {
-    <div class="report-canvas__grid-viewport">
-      <div
-        class="report-canvas__grid"
-        [style.grid-template-columns]="'repeat(' + gridColumns() + ', ' + cellSize + 'px)'"
-        [style.grid-template-rows]="'repeat(' + gridRows() + ', ' + cellSize + 'px)'"
-        [style.gap.px]="gridGap"
-        [style.--grid-step.px]="cellSize + gridGap"
-      >
-        @for (widget of widgets(); track widget.id) {
-          <app-widget-host
-            [widget]="widget"
-            [otherWidgets]="otherWidgets(widget)"
-            [columns]="gridColumns()"
-            [rows]="gridRows()"
-            (widgetChange)="onWidgetChange($event)"
-            (gridPreview)="onDropPreview($event)"
-          />
-        }
-        @if (dropPreview(); as preview) {
-          <div
-            class="report-canvas__drop-preview"
-            [class.report-canvas__drop-preview--invalid]="preview.invalid"
-            [style.grid-column]="preview.x + 1 + ' / span ' + preview.w"
-            [style.grid-row]="preview.y + 1 + ' / span ' + preview.h"
-          ></div>
-        }
-      </div>
-    </div>
-  }
-
-  @if (pickerOpen()) {
-    <div class="report-canvas__picker-backdrop" (click)="closePicker()">
-      <div
-        class="report-canvas__picker"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="picker-heading"
-        (click)="$event.stopPropagation()"
-      >
-        <h2 id="picker-heading">Choose a dataset</h2>
-        @if (datasets().length === 0) {
-          <p>No datasets available.</p>
-        } @else {
-          <ul class="report-canvas__picker-list">
-            @for (dataset of datasets(); track dataset.id) {
-              <li>
-                <button type="button" (click)="addWidget(dataset.id)">{{ dataset.name }}</button>
-              </li>
-            }
-          </ul>
-        }
-        <button type="button" class="report-canvas__picker-cancel" (click)="closePicker()">
-          Cancel
+      <div class="report-builder__history">
+        <button
+          type="button"
+          class="report-builder__icon-button"
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+          [disabled]="!store.canUndo()"
+          (click)="store.undo()"
+        >
+          <i class="pi pi-undo" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="report-builder__icon-button"
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo"
+          [disabled]="!store.canRedo()"
+          (click)="store.redo()"
+        >
+          <i class="pi pi-refresh" aria-hidden="true"></i>
         </button>
       </div>
+
+      <button
+        type="button"
+        class="report-builder__status"
+        [class.report-builder__status--error]="store.errors().length > 0"
+        [class.report-builder__status--warning]="store.errors().length === 0 && store.warnings().length > 0"
+        (click)="store.navigate({ kind: 'issues' })"
+      >
+        <i
+          class="pi"
+          [class.pi-check-circle]="store.issues().length === 0"
+          [class.pi-exclamation-triangle]="store.issues().length > 0"
+          aria-hidden="true"
+        ></i>
+        {{ statusLabel() }}
+      </button>
+    </header>
+
+    <div class="report-builder__canvas-body">
+      @if (store.loading()) {
+        <p class="report-builder__status-text">Loading report…</p>
+      } @else {
+        <div class="report-builder__grid-viewport" (pointerdown)="onCanvasPointerDown($event)">
+          <div
+            class="report-builder__grid"
+            [style.grid-template-columns]="'repeat(' + store.gridColumns() + ', ' + cellSize + 'px)'"
+            [style.grid-template-rows]="'repeat(' + store.gridRows() + ', ' + cellSize + 'px)'"
+            [style.gap.px]="gridGap"
+            [style.--grid-step.px]="cellSize + gridGap"
+          >
+            @for (widget of store.widgets(); track widget.id) {
+              <app-widget-host [widget]="widget" (gridPreview)="onDropPreview($event)" />
+            }
+            @if (dropPreview(); as preview) {
+              <div
+                class="report-builder__drop-preview"
+                [class.report-builder__drop-preview--invalid]="preview.invalid"
+                [style.grid-column]="preview.x + 1 + ' / span ' + preview.w"
+                [style.grid-row]="preview.y + 1 + ' / span ' + preview.h"
+              ></div>
+            }
+          </div>
+        </div>
+      }
     </div>
-  }
+  </section>
+
+  <app-report-side-panel />
 </div>

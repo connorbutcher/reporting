@@ -2,19 +2,57 @@
   class="widget-host__surface"
   [class.widget-host__surface--invalid]="dragInvalid()"
   [class.widget-host__surface--dragging]="dragging()"
+  [class.widget-host__surface--selected]="selected()"
+  [class.widget-host__surface--primary]="primary() && selected()"
+  [class.widget-host__surface--has-error]="hasError()"
+  [class.widget-host__surface--has-warning]="!hasError() && issues().length > 0"
   [style.width.px]="resizePreviewSize()?.width ?? null"
   [style.height.px]="resizePreviewSize()?.height ?? null"
   [style.transform]="dragTransform()"
+  (pointerdown)="select($event)"
 >
   <div class="widget-host__content">
-    <div class="widget-host__header" (pointerdown)="onDragStart($event)">
-      <span class="widget-host__title">{{ title() }}</span>
+    <div
+      class="widget-host__header"
+      [class.widget-host__header--bare]="!showTitle()"
+      (pointerdown)="onDragStart($event)"
+    >
+      @if (showTitle()) {
+        <span class="widget-host__title">{{ title() }}</span>
+      } @else {
+        <span class="widget-host__grip" aria-hidden="true"><i class="pi pi-ellipsis-h"></i></span>
+      }
+      @if (issues().length > 0) {
+        <button
+          type="button"
+          class="widget-host__issues"
+          [class.widget-host__issues--error]="hasError()"
+          [attr.aria-label]="issueLabel()"
+          [title]="issueLabel()"
+          (pointerdown)="$event.stopPropagation()"
+          (click)="showIssues()"
+        >
+          <i
+            class="pi"
+            [class.pi-times-circle]="hasError()"
+            [class.pi-exclamation-circle]="!hasError()"
+            aria-hidden="true"
+          ></i>
+          {{ issues().length }}
+        </button>
+      }
     </div>
     <div class="widget-host__body">
-      @switch (widget().type) {
-        @case ('dataTable') {
-          <app-data-table-widget [datasetId]="widget().config.datasetId" />
-        }
+      @if (tableConfig(); as config) {
+        <app-data-table-widget
+          [config]="config"
+          [datasetVersion]="datasetVersion()"
+          (sortChange)="onSortChange($event)"
+          (columnResize)="onColumnResize($event)"
+        />
+      }
+      @if (textConfig(); as config) {
+        <app-static-text-widget [config]="config" />
       }
     </div>
   </div>

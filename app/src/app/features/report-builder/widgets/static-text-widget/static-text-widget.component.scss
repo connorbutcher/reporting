@@ -1,0 +1,33 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.static-text-widget {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+
+  &--empty {
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.static-text-widget__content {
+  min-width: 0;
+}
+
+.static-text-widget__placeholder {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 12px;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  text-align: center;
+}

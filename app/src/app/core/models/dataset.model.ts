@@ -5,12 +5,31 @@ export interface DatasetSummary {
   name: string;
 }
 
+/**
+ * Free-form per-column display settings persisted on the dataset column.
+ * Every key is optional; only the ones meaningful for the column's type apply.
+ */
+export interface DatasetColumnConfiguration {
+  /** Numeric: fixed number of decimal places. */
+  decimals?: number;
+  /** Numeric: thousands separators, on by default. */
+  useGrouping?: boolean;
+  /** Numeric: text placed before/after the formatted number. */
+  prefix?: string;
+  suffix?: string;
+  /** Date: Angular date pattern, e.g. "dd/MM/yyyy". */
+  dateFormat?: string;
+  /** Bool: labels used instead of Yes/No. */
+  trueLabel?: string;
+  falseLabel?: string;
+}
+
 export interface DatasetColumn {
   id: string;
   name: string;
   type: DatasetColumnType;
   order: number;
-  configuration: Record<string, unknown> | null;
+  configuration: DatasetColumnConfiguration | null;
 }
 
 export interface DatasetSchema {

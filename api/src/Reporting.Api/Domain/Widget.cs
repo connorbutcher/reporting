@@ -2,7 +2,8 @@ namespace Reporting.Api.Domain;
 
 public enum WidgetType
 {
-    DataTable
+    DataTable,
+    StaticText
 }
 
 public class Widget

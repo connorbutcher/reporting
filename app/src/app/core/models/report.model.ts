@@ -1,21 +1,106 @@
-export type WidgetType = 'dataTable';
+export type WidgetType = 'dataTable' | 'staticText';
 
-export interface DataTableWidgetConfig {
-  type: 'dataTable';
-  datasetId: string;
+export type SortDirection = 'asc' | 'desc';
+export type ColumnAlign = 'left' | 'center' | 'right';
+export type TableDensity = 'compact' | 'normal' | 'comfortable';
+
+export type TextFontWeight = 'normal' | 'medium' | 'semibold' | 'bold';
+export type TextAlign = 'left' | 'center' | 'right' | 'justify';
+export type TextVerticalAlign = 'top' | 'middle' | 'bottom';
+
+/** A column placed on the table, in display order. */
+export interface DataTableColumnSetting {
+  columnId: string;
+  /** Overrides the dataset column's name in the header. */
+  header?: string;
+  /** Pixel width kept after the user resizes the column. */
+  width?: number;
+  /** Omitted falls back to right for numbers, left otherwise. */
+  align?: ColumnAlign;
+  sortable?: boolean;
 }
 
-export type WidgetConfig = DataTableWidgetConfig;
+/** Fields every widget config carries, regardless of type. */
+interface WidgetConfigBase {
+  title: string;
+  showTitle: boolean;
+}
 
-export interface Widget {
+export interface DataTableWidgetConfig extends WidgetConfigBase {
+  type: 'dataTable';
+  /** Null until the user binds the table to a dataset. */
+  datasetId: string | null;
+
+  showColumnHeaders: boolean;
+
+  resizableColumns: boolean;
+  stripedRows: boolean;
+  showGridlines: boolean;
+  rowHover: boolean;
+  density: TableDensity;
+
+  paginator: boolean;
+  rowsPerPage: number;
+
+  emptyMessage: string;
+
+  /** Columns on the table. Empty means "every dataset column, in dataset order". */
+  columns: DataTableColumnSetting[];
+
+  sortColumnId: string | null;
+  sortDirection: SortDirection;
+}
+
+export interface StaticTextWidgetConfig extends WidgetConfigBase {
+  type: 'staticText';
+
+  /** Plain text; line breaks are preserved, never rendered as HTML. */
+  content: string;
+
+  fontSize: number;
+  fontWeight: TextFontWeight;
+  italic: boolean;
+  underline: boolean;
+  strikethrough: boolean;
+  lineHeight: number;
+
+  color: string;
+  /** Null means transparent. */
+  backgroundColor: string | null;
+
+  textAlign: TextAlign;
+  verticalAlign: TextVerticalAlign;
+  /** False lets long lines overflow with a scrollbar instead of wrapping. */
+  wrap: boolean;
+  padding: number;
+}
+
+export type WidgetConfig = DataTableWidgetConfig | StaticTextWidgetConfig;
+
+interface WidgetBase {
   id: string;
-  type: WidgetType;
   x: number;
   y: number;
   w: number;
   h: number;
-  config: WidgetConfig;
 }
+
+/**
+ * A discriminated union on `type`, so narrowing `type` also narrows `config`
+ * to the matching shape (e.g. inside a `switch (widget.type)` or after a
+ * `widget.type === 'dataTable'` check).
+ */
+export interface DataTableWidget extends WidgetBase {
+  type: 'dataTable';
+  config: DataTableWidgetConfig;
+}
+
+export interface StaticTextWidget extends WidgetBase {
+  type: 'staticText';
+  config: StaticTextWidgetConfig;
+}
+
+export type Widget = DataTableWidget | StaticTextWidget;
 
 export interface Report {
   id: string;
@@ -24,3 +109,41 @@ export interface Report {
   rows: number;
   widgets: Widget[];
 }
+
+export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
+  datasetId: null,
+  title: 'Table',
+  showTitle: true,
+  showColumnHeaders: true,
+  resizableColumns: false,
+  stripedRows: false,
+  showGridlines: false,
+  rowHover: true,
+  density: 'compact',
+  paginator: false,
+  rowsPerPage: 10,
+  emptyMessage: 'No rows to display.',
+  columns: [],
+  sortColumnId: null,
+  sortDirection: 'asc',
+};
+
+export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {
+  title: 'Text',
+  // The text itself is usually the whole point of the widget, so the extra
+  // chrome bar stays off until the user asks for it.
+  showTitle: false,
+  content: '',
+  fontSize: 16,
+  fontWeight: 'normal',
+  italic: false,
+  underline: false,
+  strikethrough: false,
+  lineHeight: 1.4,
+  color: '#1f2937',
+  backgroundColor: null,
+  textAlign: 'left',
+  verticalAlign: 'top',
+  wrap: true,
+  padding: 12,
+};

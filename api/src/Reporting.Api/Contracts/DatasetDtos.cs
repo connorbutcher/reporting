@@ -39,3 +39,28 @@ public class DatasetDataDto
     public string Name { get; set; } = string.Empty;
     public List<DatasetRowDto> Rows { get; set; } = new();
 }
+
+// --- write models ----------------------------------------------------------
+
+public class SaveDatasetDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public class SaveDatasetColumnDto
+{
+    public string Name { get; set; } = string.Empty;
+    public DatasetColumnType Type { get; set; } = DatasetColumnType.String;
+}
+
+public class SaveDatasetRowDto
+{
+    /// <summary>Keyed by column id; unknown columns are ignored.</summary>
+    public Dictionary<Guid, string> Values { get; set; } = new();
+}
+
+/// <summary>The new left-to-right order, given as column ids.</summary>
+public class ReorderColumnsDto
+{
+    public List<Guid> ColumnIds { get; set; } = new();
+}

@@ -1,0 +1,49 @@
+:host {
+  display: block;
+  width: 320px;
+  flex: 0 0 320px;
+  min-height: 0;
+}
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.side-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.side-panel__nav {
+  display: flex;
+  gap: 2px;
+}
+
+.side-panel__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:host ::ng-deep .side-panel__rule {
+  margin: 0;
+}
+
+.side-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

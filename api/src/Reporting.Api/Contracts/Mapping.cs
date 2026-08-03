@@ -9,6 +9,8 @@ public static class Mapping
     private static readonly JsonSerializerOptions ConfigJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        // The stored blob is written by us, but stay tolerant of discriminator order.
+        AllowOutOfOrderMetadataProperties = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
@@ -53,16 +55,16 @@ public static class Mapping
     {
         Id = dataset.Id,
         Name = dataset.Name,
-        Columns = dataset.Columns
-            .OrderBy(c => c.Order)
-            .Select(c => new DatasetColumnDto
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Type = c.Type,
-                Order = c.Order,
-                Configuration = JsonSerializer.Deserialize<JsonElement>(c.ConfigurationJson)
-            }).ToList()
+        Columns = dataset.Columns.OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
+    };
+
+    public static DatasetColumnDto ToDto(this DatasetColumn column) => new()
+    {
+        Id = column.Id,
+        Name = column.Name,
+        Type = column.Type,
+        Order = column.Order,
+        Configuration = JsonSerializer.Deserialize<JsonElement>(column.ConfigurationJson)
     };
 
     public static DatasetDataDto ToDataDto(this Dataset dataset) => new()

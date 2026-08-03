@@ -1,0 +1,17 @@
+<header class="app-header">
+  <div class="app-header__brand">
+    <span class="app-header__mark" aria-hidden="true">
+      <i class="pi pi-chart-bar"></i>
+    </span>
+    <span class="app-header__name">{{ title() }}</span>
+  </div>
+
+  <nav class="app-header__nav" aria-label="Sections">
+    <a class="app-header__link" routerLink="/" routerLinkActive="app-header__link--active" [routerLinkActiveOptions]="{ exact: true }">
+      Report Builder
+    </a>
+    <a class="app-header__link" routerLink="/datasets" routerLinkActive="app-header__link--active">
+      Datasets
+    </a>
+  </nav>
+</header>

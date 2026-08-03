@@ -1,0 +1,67 @@
+<aside class="side-panel app-card">
+  <div class="side-panel__header">
+    <div class="side-panel__nav">
+      <p-button
+        icon="pi pi-chevron-left"
+        severity="secondary"
+        text
+        rounded
+        size="small"
+        ariaLabel="Back"
+        [disabled]="!store.canGoBack()"
+        (onClick)="store.back()"
+      />
+      <p-button
+        icon="pi pi-chevron-right"
+        severity="secondary"
+        text
+        rounded
+        size="small"
+        ariaLabel="Forward"
+        [disabled]="!store.canGoForward()"
+        (onClick)="store.forward()"
+      />
+    </div>
+    <h2 class="side-panel__title">{{ title() }}</h2>
+  </div>
+
+  <p-divider styleClass="side-panel__rule" />
+
+  <div class="side-panel__body">
+    @switch (store.view().kind) {
+      @case ('root') {
+        <app-panel-root />
+      }
+      @case ('report') {
+        <app-panel-report-settings />
+      }
+      @case ('widgets') {
+        <app-panel-widget-list />
+      }
+      @case ('widget') {
+        <app-panel-widget-detail />
+      }
+      @case ('addWidget') {
+        <app-panel-add-widget />
+      }
+      @case ('widgetColumns') {
+        <app-panel-column-list />
+      }
+      @case ('addColumn') {
+        <app-panel-add-column />
+      }
+      @case ('columnSettings') {
+        <app-panel-column-settings />
+      }
+      @case ('tableAppearance') {
+        <app-panel-table-appearance />
+      }
+      @case ('textStyle') {
+        <app-panel-text-style />
+      }
+      @case ('issues') {
+        <app-panel-issues />
+      }
+    }
+  </div>
+</aside>

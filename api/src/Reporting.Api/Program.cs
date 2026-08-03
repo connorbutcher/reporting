@@ -11,6 +11,11 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+
+        // Widget configs are polymorphic. Without this the "type" discriminator
+        // would have to be the first property in the payload, which is a trap
+        // for any client that builds the object by spreading defaults.
+        options.JsonSerializerOptions.AllowOutOfOrderMetadataProperties = true;
     });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
