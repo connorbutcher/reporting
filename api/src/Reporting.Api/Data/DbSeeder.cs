@@ -135,7 +135,15 @@ public static class DbSeeder
     /// <summary>A starter report showing the build sheet columns an engineer cares about first.</summary>
     private static Report BuildDemoReport(Dataset builds)
     {
-        var report = new Report { Id = Guid.NewGuid(), Name = "Engine Build Report" };
+        var report = new Report { Id = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = DateTime.UtcNow };
+
+        var revision = new ReportRevision
+        {
+            Id = Guid.NewGuid(),
+            ReportId = report.Id,
+            Kind = RevisionKind.Draft,
+            CreatedAt = DateTime.UtcNow,
+        };
 
         var wanted = new[]
         {
@@ -146,10 +154,10 @@ public static class DbSeeder
             .Select(name => builds.Columns.First(c => c.Name == name).Id)
             .Select(id => $"{{\"columnId\":\"{id}\",\"sortable\":true}}");
 
-        report.Widgets.Add(new Widget
+        revision.Widgets.Add(new Widget
         {
             Id = Guid.NewGuid(),
-            ReportId = report.Id,
+            ReportRevisionId = revision.Id,
             Type = WidgetType.StaticText,
             X = 0,
             Y = 0,
@@ -164,10 +172,10 @@ public static class DbSeeder
                 """,
         });
 
-        report.Widgets.Add(new Widget
+        revision.Widgets.Add(new Widget
         {
             Id = Guid.NewGuid(),
-            ReportId = report.Id,
+            ReportRevisionId = revision.Id,
             Type = WidgetType.DataTable,
             X = 0,
             Y = 1,
@@ -182,6 +190,7 @@ public static class DbSeeder
                 """,
         });
 
+        report.Revisions.Add(revision);
         return report;
     }
 

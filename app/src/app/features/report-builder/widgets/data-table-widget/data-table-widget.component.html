@@ -6,7 +6,9 @@
 } @else if (loading()) {
   <div class="data-table-widget__status">Loading…</div>
 } @else if (error()) {
-  <div class="data-table-widget__status data-table-widget__status--error">Failed to load dataset.</div>
+  <div class="data-table-widget__status data-table-widget__status--error">
+    Failed to load dataset.
+  </div>
 } @else if (displayColumns().length === 0) {
   <div class="data-table-widget__status">
     <i class="pi pi-list" aria-hidden="true"></i>

@@ -1,0 +1,29 @@
+<div class="readonly-grid-viewport">
+  <div
+    class="readonly-grid"
+    [style.grid-template-columns]="'repeat(' + content().columns + ', ' + cellSize + 'px)'"
+    [style.grid-template-rows]="'repeat(' + content().rows + ', ' + cellSize + 'px)'"
+    [style.gap.px]="gridGap"
+  >
+    @for (widget of content().widgets; track widget.id) {
+      <div
+        class="readonly-grid__item"
+        [style.grid-column]="widget.x + 1 + ' / span ' + widget.w"
+        [style.grid-row]="widget.y + 1 + ' / span ' + widget.h"
+      >
+        @if (widget.config.showTitle) {
+          <div class="readonly-grid__header">
+            <span class="readonly-grid__title">{{ widget.config.title }}</span>
+          </div>
+        }
+        <div class="readonly-grid__body">
+          @if (widget.type === 'dataTable') {
+            <app-data-table-widget [config]="widget.config" />
+          } @else {
+            <app-static-text-widget [config]="widget.config" />
+          }
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,192 @@
+:host {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.report-viewer {
+  display: flex;
+  gap: 16px;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.report-viewer__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.report-viewer__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--app-card-border);
+}
+
+.report-viewer__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.report-viewer__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-viewer__badge {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f0f4fb;
+  color: var(--app-navy);
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &--muted {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+}
+
+.report-viewer__link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--app-navy);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.report-viewer__status {
+  margin: auto;
+  padding: 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+.report-viewer__notes {
+  margin: 14px 18px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.report-viewer__notes-heading {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.report-viewer__notes-content {
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+// The notes are rendered via [innerHTML], so their <p> tags never get this
+// component's content attribute — ::ng-deep is needed to reach them.
+:host ::ng-deep .report-viewer__notes-content p:first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .report-viewer__notes-content p:last-child {
+  margin-bottom: 0;
+}
+
+.report-viewer__history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 220px;
+  flex: 0 0 220px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.report-viewer__history-heading {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
+.report-viewer__versions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-viewer__version {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 0.8rem;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &--active {
+    background: var(--p-primary-50, #eef3fa);
+    border-color: var(--p-primary-200, #adc3e5);
+    font-weight: 600;
+    color: var(--app-navy);
+  }
+}
+
+.report-viewer__version-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-viewer__version-date {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.report-viewer__version-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 400;
+}

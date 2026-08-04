@@ -9,8 +9,8 @@ public enum WidgetType
 public class Widget
 {
     public Guid Id { get; set; }
-    public Guid ReportId { get; set; }
-    public Report? Report { get; set; }
+    public Guid ReportRevisionId { get; set; }
+    public ReportRevision? ReportRevision { get; set; }
     public WidgetType Type { get; set; }
     public int X { get; set; }
     public int Y { get; set; }

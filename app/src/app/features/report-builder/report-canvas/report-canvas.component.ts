@@ -1,5 +1,8 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { Dialog } from '@angular/cdk/dialog';
 import { CELL_SIZE, GRID_GAP, GridPreview } from '../grid.util';
+import { PublishDialogComponent } from '../publish-dialog/publish-dialog.component';
 import { ReportBuilderStore } from '../report-builder.store';
 import { ReportSidePanelComponent } from '../side-panel/report-side-panel.component';
 import { WidgetHostComponent } from '../widget-host/widget-host.component';
@@ -19,6 +22,8 @@ const NUDGE = 1;
 })
 export class ReportCanvasComponent implements OnInit {
   protected readonly store = inject(ReportBuilderStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(Dialog);
 
   protected readonly cellSize = CELL_SIZE;
   protected readonly gridGap = GRID_GAP;
@@ -35,7 +40,17 @@ export class ReportCanvasComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.store.load();
+    const reportId = this.route.snapshot.paramMap.get('reportId');
+    if (reportId) this.store.load(reportId);
+  }
+
+  protected publish(): void {
+    const ref = this.dialog.open<string | null>(PublishDialogComponent);
+    ref.closed.subscribe((notes) => {
+      // undefined means the dialog was cancelled or dismissed.
+      if (notes === undefined) return;
+      this.store.publish(notes);
+    });
   }
 
   protected onDropPreview(preview: GridPreview | null): void {

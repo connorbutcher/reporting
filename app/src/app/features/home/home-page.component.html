@@ -1,0 +1,85 @@
+<div class="home">
+  <aside class="home__tree app-card">
+    <header class="home__tree-header">
+      <h1 class="home__heading">Reports</h1>
+    </header>
+
+    <p-tree
+      class="home__tree-widget"
+      [value]="treeNodes()"
+      selectionMode="single"
+      [selectionKeys]="treeSelectionKeys()"
+      (onNodeSelect)="onNodeSelect($event)"
+    />
+  </aside>
+
+  <section class="home__contents app-card">
+    <p-breadcrumb class="home__breadcrumb" [model]="breadcrumbItems()" [home]="homeItem" />
+
+    <div class="home__toolbar">
+      <input
+        pInputText
+        [ngModel]="newFolderName()"
+        (ngModelChange)="newFolderName.set($event)"
+        (keyup.enter)="createFolder()"
+        placeholder="New folder name"
+        aria-label="New folder name"
+      />
+      <p-button
+        icon="pi pi-folder-plus"
+        label="New folder"
+        severity="secondary"
+        outlined
+        [disabled]="!newFolderName().trim()"
+        (onClick)="createFolder()"
+      />
+
+      <input
+        pInputText
+        [ngModel]="newReportName()"
+        (ngModelChange)="newReportName.set($event)"
+        (keyup.enter)="createReport()"
+        placeholder="New report name"
+        aria-label="New report name"
+      />
+      <p-button
+        icon="pi pi-plus"
+        label="New report"
+        [disabled]="!newReportName().trim()"
+        (onClick)="createReport()"
+      />
+    </div>
+
+    @if (loading()) {
+      <p class="home__empty">Loading…</p>
+    } @else if (childFolders().length === 0 && childReports().length === 0) {
+      <p class="home__empty">This folder is empty.</p>
+    } @else {
+      <ul class="home__items">
+        @for (folder of childFolders(); track folder.id) {
+          <li>
+            <button type="button" class="home__item" (click)="selectFolder(folder.id)">
+              <i class="pi pi-folder" aria-hidden="true"></i>
+              <span class="home__item-name">{{ folder.name }}</span>
+            </button>
+          </li>
+        }
+        @for (report of childReports(); track report.id) {
+          <li>
+            <button type="button" class="home__item" (click)="openReport(report)">
+              <i class="pi pi-file" aria-hidden="true"></i>
+              <span class="home__item-name">R-{{ report.number }} · {{ report.name }}</span>
+              @if (report.hasDraft) {
+                <span class="home__item-badge home__item-badge--draft">Draft</span>
+              } @else if (report.latestVersionNumber) {
+                <span class="home__item-badge">v{{ report.latestVersionNumber }}</span>
+              } @else {
+                <span class="home__item-badge home__item-badge--empty">No versions</span>
+              }
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

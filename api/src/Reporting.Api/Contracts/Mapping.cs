@@ -14,13 +14,43 @@ public static class Mapping
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
-    public static ReportDto ToDto(this Report report) => new()
+    public static FolderDto ToDto(this Folder folder) => new()
+    {
+        Id = folder.Id,
+        Name = folder.Name,
+        ParentFolderId = folder.ParentFolderId
+    };
+
+    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
+    public static ReportSummaryDto ToSummaryDto(this Report report) => new()
     {
         Id = report.Id,
+        Number = report.Number,
         Name = report.Name,
-        Columns = report.Columns,
-        Rows = report.Rows,
-        Widgets = report.Widgets.Select(w => w.ToDto()).ToList()
+        FolderId = report.FolderId,
+        HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+        LatestVersionNumber = report.Revisions
+            .Where(r => r.Kind == RevisionKind.Published)
+            .Select(r => r.VersionNumber)
+            .DefaultIfEmpty(null)
+            .Max()
+    };
+
+    public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()
+    {
+        ReportId = report.Id,
+        Name = report.Name,
+        Columns = revision.Columns,
+        Rows = revision.Rows,
+        Widgets = revision.Widgets.Select(w => w.ToDto()).ToList(),
+        Notes = revision.Notes
+    };
+
+    public static ReportVersionSummaryDto ToVersionSummaryDto(this ReportRevision revision) => new()
+    {
+        VersionNumber = revision.VersionNumber!.Value,
+        PublishedAt = revision.PublishedAt!.Value,
+        Notes = revision.Notes
     };
 
     public static WidgetDto ToDto(this Widget widget) => new()

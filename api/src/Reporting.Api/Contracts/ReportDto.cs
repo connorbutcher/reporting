@@ -2,13 +2,57 @@ using Reporting.Api.Domain;
 
 namespace Reporting.Api.Contracts;
 
-public class ReportDto
+public class ReportSummaryDto
 {
     public Guid Id { get; set; }
+    public int Number { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Guid? FolderId { get; set; }
+    public bool HasDraft { get; set; }
+    public int? LatestVersionNumber { get; set; }
+}
+
+public class CreateReportDto
+{
+    public string Name { get; set; } = string.Empty;
+    public Guid? FolderId { get; set; }
+}
+
+public class SaveReportDto
+{
+    public string Name { get; set; } = string.Empty;
+    public Guid? FolderId { get; set; }
+}
+
+/// <summary>The content of one revision (draft or a specific published version) of a report.</summary>
+public class ReportRevisionDto
+{
+    public Guid ReportId { get; set; }
     public string Name { get; set; } = string.Empty;
     public int Columns { get; set; } = 12;
     public int Rows { get; set; } = 10;
     public List<WidgetDto> Widgets { get; set; } = new();
+
+    /// <summary>Rich-text (HTML) description of what changed. Null for drafts and unpublished content.</summary>
+    public string? Notes { get; set; }
+}
+
+public class ReportVersionSummaryDto
+{
+    public int VersionNumber { get; set; }
+    public DateTime PublishedAt { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CheckoutDraftDto
+{
+    public int? FromVersionNumber { get; set; }
+}
+
+public class PublishDraftDto
+{
+    /// <summary>Rich-text (HTML) description of what changed, from the publish dialog's editor.</summary>
+    public string? Notes { get; set; }
 }
 
 public class WidgetDto
@@ -20,9 +64,4 @@ public class WidgetDto
     public int W { get; set; }
     public int H { get; set; }
     public WidgetConfig Config { get; set; } = null!;
-}
-
-public class CreateReportDto
-{
-    public string Name { get; set; } = string.Empty;
 }

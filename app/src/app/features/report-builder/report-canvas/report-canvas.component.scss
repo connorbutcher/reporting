@@ -101,6 +101,30 @@
   }
 }
 
+.report-builder__publish {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--app-navy);
+  border-radius: 999px;
+  background: var(--app-navy);
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
 .report-builder__canvas-body {
   flex: 1;
   min-height: 0;

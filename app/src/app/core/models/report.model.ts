@@ -102,12 +102,32 @@ export interface StaticTextWidget extends WidgetBase {
 
 export type Widget = DataTableWidget | StaticTextWidget;
 
-export interface Report {
+/** A report's identity and folder placement — everything except its content. */
+export interface ReportSummary {
   id: string;
+  number: number;
+  name: string;
+  folderId: string | null;
+  hasDraft: boolean;
+  latestVersionNumber: number | null;
+}
+
+/** The content of one revision of a report — either the checked-out draft or one published version. */
+export interface ReportRevisionContent {
+  reportId: string;
   name: string;
   columns: number;
   rows: number;
   widgets: Widget[];
+  /** Rich-text (HTML) description of what changed. Null for drafts. */
+  notes: string | null;
+}
+
+export interface ReportVersionSummary {
+  versionNumber: number;
+  publishedAt: string;
+  /** Rich-text (HTML) description of what changed in this version, entered when publishing. */
+  notes: string | null;
 }
 
 export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {

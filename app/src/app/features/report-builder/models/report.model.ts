@@ -2,7 +2,7 @@ import { Signal, computed, signal } from '@angular/core';
 import {
   DEFAULT_TABLE_CONFIG,
   DEFAULT_TEXT_CONFIG,
-  Report,
+  ReportRevisionContent,
   Widget,
   WidgetType,
 } from '../../../core/models/report.model';
@@ -22,7 +22,7 @@ const DEFAULT_WIDGET_H = 3;
  * them collide. Everything widget-specific is validated by the widget itself.
  */
 export class ReportModel extends EditorNode {
-  readonly id: string;
+  readonly reportId: string;
   readonly name = signal('');
   readonly gridColumns = signal(12);
   readonly gridRows = signal(10);
@@ -32,11 +32,11 @@ export class ReportModel extends EditorNode {
   readonly issuesByWidget: Signal<Map<string, ValidationIssue[]>>;
 
   constructor(
-    report: Report,
+    report: ReportRevisionContent,
     private readonly schemas: SchemaSource,
   ) {
     super();
-    this.id = report.id;
+    this.reportId = report.reportId;
     this.name.set(report.name);
     this.gridColumns.set(report.columns);
     this.gridRows.set(report.rows);
@@ -54,7 +54,7 @@ export class ReportModel extends EditorNode {
     });
   }
 
-  static fromDto(report: Report, schemas: SchemaSource): ReportModel {
+  static fromDto(report: ReportRevisionContent, schemas: SchemaSource): ReportModel {
     const model = new ReportModel(report, schemas);
     // Freshly loaded state is by definition the saved state.
     model.markPristine();
@@ -154,13 +154,15 @@ export class ReportModel extends EditorNode {
     return this.widgets().filter((w) => w.id !== widgetId);
   }
 
-  toDto(): Report {
+  toDto(): ReportRevisionContent {
     return {
-      id: this.id,
+      reportId: this.reportId,
       name: this.name(),
       columns: this.gridColumns(),
       rows: this.gridRows(),
       widgets: this.widgets().map((w) => w.toDto()),
+      // Notes only ever exist on published versions; a draft's autosave payload never carries one.
+      notes: null,
     };
   }
 

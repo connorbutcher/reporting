@@ -1,5 +1,6 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
@@ -8,7 +9,7 @@ import {
   DatasetSchema,
   DatasetSummary,
 } from '../../core/models/dataset.model';
-import { Report, WidgetType } from '../../core/models/report.model';
+import { ReportRevisionContent, WidgetType } from '../../core/models/report.model';
 import { rectsOverlap } from './grid.util';
 import { ReportModel } from './models/report.model';
 import { UndoHistory } from './models/undo-history';
@@ -32,6 +33,7 @@ const HISTORY_DEBOUNCE_MS = 400;
 export class ReportBuilderStore {
   private readonly reportApi = inject(ReportApiService);
   private readonly datasetApi = inject(DatasetApiService);
+  private readonly router = inject(Router);
 
   private readonly saveQueue = new Subject<void>();
   private readonly historyQueue = new Subject<void>();
@@ -161,7 +163,7 @@ export class ReportBuilderStore {
           const model = this.model();
           if (!model) return EMPTY;
 
-          return this.reportApi.update(model.toDto()).pipe(
+          return this.reportApi.updateDraft(model.reportId, model.toDto()).pipe(
             map(() => model),
             // Catch inside the switchMap: an error reaching the outer stream
             // would tear down the subscription and silently stop all saving.
@@ -182,15 +184,29 @@ export class ReportBuilderStore {
       });
   }
 
-  load(): void {
+  /**
+   * Loads the draft checked out for the given report. The report viewer is
+   * responsible for checking a draft out before routing here; if none exists
+   * (e.g. a direct navigation or a page refresh mid-edit) one is checked out
+   * on the fly so the canvas still has something to edit.
+   */
+  load(reportId: string): void {
+    this.loading.set(true);
     this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
 
-    this.reportApi.list().subscribe((reports) => {
-      if (reports.length > 0) {
-        this.setLoadedReport(reports[0]);
-      } else {
-        this.reportApi.create('Demo Report').subscribe((report) => this.setLoadedReport(report));
-      }
+    this.reportApi.getDraft(reportId).subscribe({
+      next: (content) => this.setLoadedReport(content),
+      error: () => this.reportApi.checkout(reportId).subscribe((content) => this.setLoadedReport(content)),
+    });
+  }
+
+  /** Publishes the checked-out draft as a new version, then returns to the viewer. */
+  publish(notes: string | null): void {
+    const model = this.model();
+    if (!model) return;
+
+    this.reportApi.publish(model.reportId, notes).subscribe(() => {
+      this.router.navigate(['/reports', model.reportId]);
     });
   }
 
@@ -344,7 +360,7 @@ export class ReportBuilderStore {
    * than `fromDto` so the restored state counts as unsaved and gets written
    * back — an undo the server never hears about would be lost on reload.
    */
-  private restore(report: Report | null): void {
+  private restore(report: ReportRevisionContent | null): void {
     if (!report) return;
     this.model.set(new ReportModel(report, this.schemaCache.asReadonly()));
 
@@ -352,7 +368,7 @@ export class ReportBuilderStore {
     this.selectedWidgetIds.update((ids) => ids.filter((id) => present.has(id)));
   }
 
-  private setLoadedReport(report: Report): void {
+  private setLoadedReport(report: ReportRevisionContent): void {
     const model = ReportModel.fromDto(report, this.schemaCache.asReadonly());
     this.model.set(model);
     // Seeded from the model, not the server payload: the model normalises

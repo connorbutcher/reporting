@@ -47,6 +47,17 @@
         ></i>
         {{ statusLabel() }}
       </button>
+
+      <button
+        type="button"
+        class="report-builder__publish"
+        [disabled]="store.errors().length > 0"
+        title="Publish this draft as a new version"
+        (click)="publish()"
+      >
+        <i class="pi pi-cloud-upload" aria-hidden="true"></i>
+        Publish
+      </button>
     </header>
 
     <div class="report-builder__canvas-body">

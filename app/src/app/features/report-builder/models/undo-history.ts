@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import { Report } from '../../../core/models/report.model';
+import { ReportRevisionContent } from '../../../core/models/report.model';
 
 /** Plenty for a working session without holding on to unbounded memory. */
 const MAX_ENTRIES = 60;
@@ -20,7 +20,7 @@ export class UndoHistory {
   readonly canRedo = computed(() => this.index() < this.entries().length - 1);
 
   /** Starts a fresh timeline from the given state. */
-  reset(report: Report): void {
+  reset(report: ReportRevisionContent): void {
     this.entries.set([JSON.stringify(report)]);
     this.index.set(0);
   }
@@ -29,7 +29,7 @@ export class UndoHistory {
    * Records a new state. Restoring produces a snapshot identical to the entry
    * we just moved to, so that case is ignored and undo doesn't get stuck.
    */
-  capture(report: Report): void {
+  capture(report: ReportRevisionContent): void {
     const json = JSON.stringify(report);
     const entries = this.entries();
     const index = this.index();
@@ -42,20 +42,20 @@ export class UndoHistory {
     this.index.set(trimmed.length - 1);
   }
 
-  undo(): Report | null {
+  undo(): ReportRevisionContent | null {
     if (!this.canUndo()) return null;
     this.index.update((i) => i - 1);
     return this.current();
   }
 
-  redo(): Report | null {
+  redo(): ReportRevisionContent | null {
     if (!this.canRedo()) return null;
     this.index.update((i) => i + 1);
     return this.current();
   }
 
-  private current(): Report | null {
+  private current(): ReportRevisionContent | null {
     const json = this.entries()[this.index()];
-    return json ? (JSON.parse(json) as Report) : null;
+    return json ? (JSON.parse(json) as ReportRevisionContent) : null;
   }
 }

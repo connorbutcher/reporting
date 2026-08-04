@@ -164,9 +164,14 @@ export class DatasetsPageComponent implements OnInit {
 
     [columns[index], columns[target]] = [columns[target], columns[index]];
     this.columns.set(columns);
-    this.api.reorderColumns(id, columns.map((c) => c.id)).subscribe((schema) => {
-      this.columns.set(schema.columns);
-    });
+    this.api
+      .reorderColumns(
+        id,
+        columns.map((c) => c.id),
+      )
+      .subscribe((schema) => {
+        this.columns.set(schema.columns);
+      });
   }
 
   // --- rows -----------------------------------------------------------------

@@ -1,0 +1,81 @@
+<div class="report-viewer">
+  @if (loading()) {
+    <p class="report-viewer__status">Loading…</p>
+  } @else if (notFound()) {
+    <p class="report-viewer__status">Report not found.</p>
+  } @else if (report(); as report) {
+    <section class="report-viewer__main app-card">
+      <header class="report-viewer__header">
+        <div class="report-viewer__heading">
+          <h1 class="report-viewer__title">R-{{ report.number }} · {{ report.name }}</h1>
+          @if (viewingVersion()) {
+            <span class="report-viewer__badge">Viewing v{{ viewingVersion() }}</span>
+            <button type="button" class="report-viewer__link" (click)="viewLatest()">Back to latest</button>
+          } @else if (report.latestVersionNumber) {
+            <span class="report-viewer__badge">Latest: v{{ report.latestVersionNumber }}</span>
+          } @else {
+            <span class="report-viewer__badge report-viewer__badge--muted">No published versions yet</span>
+          }
+        </div>
+
+        @if (report.hasDraft) {
+          <p-button label="Continue editing" icon="pi pi-pencil" (onClick)="edit()" />
+        } @else if (viewingVersion()) {
+          <p-button
+            [label]="'Restore v' + viewingVersion() + ' into a draft'"
+            icon="pi pi-history"
+            (onClick)="edit(viewingVersion()!)"
+          />
+        } @else {
+          <p-button label="Check out to edit" icon="pi pi-pencil" (onClick)="edit()" />
+        }
+      </header>
+
+      @if (currentVersionNotes(); as notes) {
+        <div class="report-viewer__notes">
+          <h2 class="report-viewer__notes-heading">What changed</h2>
+          <div class="report-viewer__notes-content" [innerHTML]="notes"></div>
+        </div>
+      }
+
+      @if (content(); as content) {
+        <app-readonly-report-grid [content]="content" />
+      } @else {
+        <p class="report-viewer__status">
+          This report has no published version yet. Check it out to start building it.
+        </p>
+      }
+    </section>
+
+    <aside class="report-viewer__history app-card">
+      <h2 class="report-viewer__history-heading">Version history</h2>
+      @if (versions().length === 0) {
+        <p class="report-viewer__status">No published versions yet.</p>
+      } @else {
+        <ul class="report-viewer__versions">
+          @for (version of versions(); track version.versionNumber) {
+            <li>
+              <button
+                type="button"
+                class="report-viewer__version"
+                [class.report-viewer__version--active]="
+                  viewingVersion() === version.versionNumber ||
+                  (!viewingVersion() && version.versionNumber === report.latestVersionNumber)
+                "
+                (click)="viewVersion(version.versionNumber)"
+              >
+                <span class="report-viewer__version-row">
+                  <span>v{{ version.versionNumber }}</span>
+                  <span class="report-viewer__version-date">{{ version.publishedAt | date: 'short' }}</span>
+                </span>
+                @if (version.notes; as notes) {
+                  <span class="report-viewer__version-notes">{{ previewText(notes) }}</span>
+                }
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+  }
+</div>
