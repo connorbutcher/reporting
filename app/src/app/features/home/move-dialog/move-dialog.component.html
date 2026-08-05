@@ -1,0 +1,29 @@
+<div class="move-dialog">
+  <header class="move-dialog__header">
+    <h2 class="move-dialog__title">Move {{ data.kind }}</h2>
+    <p class="move-dialog__hint">Choose a destination for "{{ data.itemName }}".</p>
+  </header>
+
+  <div class="move-dialog__tree">
+    <p-tree
+      [value]="treeNodes()"
+      selectionMode="single"
+      [selectionKeys]="selectionKeys()"
+      (onNodeSelect)="onNodeSelect($event)"
+    />
+  </div>
+
+  <footer class="move-dialog__footer">
+    <button type="button" class="move-dialog__button move-dialog__button--secondary" (click)="cancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="move-dialog__button move-dialog__button--primary"
+      [disabled]="isUnchanged()"
+      (click)="move()"
+    >
+      Move
+    </button>
+  </footer>
+</div>

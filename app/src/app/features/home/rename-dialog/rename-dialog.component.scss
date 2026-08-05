@@ -1,0 +1,87 @@
+:host {
+  display: block;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.rename-dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+.rename-dialog__header {
+  padding: 18px 20px 4px;
+}
+
+.rename-dialog__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+  text-transform: capitalize;
+}
+
+.rename-dialog__body {
+  padding: 14px 20px;
+}
+
+.rename-dialog__input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.88rem;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: 2px solid var(--p-primary-400, #527ac0);
+    outline-offset: -1px;
+  }
+}
+
+.rename-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--app-card-border);
+}
+
+.rename-dialog__button {
+  padding: 7px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &--secondary {
+    border: 1px solid var(--app-card-border);
+    background: #fff;
+    color: #475569;
+
+    &:hover {
+      background: #f8fafc;
+    }
+  }
+
+  &--primary {
+    border: 1px solid var(--app-navy);
+    background: var(--app-navy);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}

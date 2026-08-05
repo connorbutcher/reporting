@@ -18,7 +18,8 @@ public static class Mapping
     {
         Id = folder.Id,
         Name = folder.Name,
-        ParentFolderId = folder.ParentFolderId
+        ParentFolderId = folder.ParentFolderId,
+        ModifiedAt = folder.UpdatedAt
     };
 
     /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
@@ -33,7 +34,24 @@ public static class Mapping
             .Where(r => r.Kind == RevisionKind.Published)
             .Select(r => r.VersionNumber)
             .DefaultIfEmpty(null)
-            .Max()
+            .Max(),
+        ModifiedAt = report.UpdatedAt
+    };
+
+    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
+    public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath) => new()
+    {
+        Id = report.Id,
+        Number = report.Number,
+        Name = report.Name,
+        HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+        LatestVersionNumber = report.Revisions
+            .Where(r => r.Kind == RevisionKind.Published)
+            .Select(r => r.VersionNumber)
+            .DefaultIfEmpty(null)
+            .Max(),
+        ModifiedAt = report.UpdatedAt,
+        FolderPath = folderPath
     };
 
     public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()

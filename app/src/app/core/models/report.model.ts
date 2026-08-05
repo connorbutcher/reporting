@@ -110,6 +110,7 @@ export interface ReportSummary {
   folderId: string | null;
   hasDraft: boolean;
   latestVersionNumber: number | null;
+  modifiedAt: string;
 }
 
 /** The content of one revision of a report — either the checked-out draft or one published version. */
@@ -128,6 +129,17 @@ export interface ReportVersionSummary {
   publishedAt: string;
   /** Rich-text (HTML) description of what changed in this version, entered when publishing. */
   notes: string | null;
+}
+
+/** A report match from a name/number search, with its folder location for display. */
+export interface ReportSearchResult {
+  id: string;
+  number: number;
+  name: string;
+  hasDraft: boolean;
+  latestVersionNumber: number | null;
+  modifiedAt: string;
+  folderPath: string;
 }
 
 export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {

@@ -14,11 +14,62 @@ public class ReportsController : ControllerBase
 
     public ReportsController(ReportingDbContext db) => _db = db;
 
+    /// <summary>Reports directly inside <paramref name="folderId"/> (root if omitted) — not the whole tree.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<ReportSummaryDto>>> GetAll()
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetAll([FromQuery] Guid? folderId)
     {
-        var reports = await _db.Reports.Include(r => r.Revisions).ToListAsync();
+        var reports = await _db.Reports
+            .Include(r => r.Revisions)
+            .Where(r => r.FolderId == folderId)
+            .OrderBy(r => r.Name)
+            .ToListAsync();
         return reports.Select(r => r.ToSummaryDto()).ToList();
+    }
+
+    /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42").</summary>
+    [HttpGet("search")]
+    public async Task<ActionResult<List<ReportSearchResultDto>>> Search([FromQuery] string? q)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return new List<ReportSearchResultDto>();
+
+        var trimmed = q.Trim();
+        var numericPart = trimmed.StartsWith("R-", StringComparison.OrdinalIgnoreCase) ? trimmed[2..] : trimmed;
+        var hasNumberMatch = int.TryParse(numericPart, out var numberQuery);
+
+        var nameMatches = await _db.Reports
+            .Include(r => r.Revisions)
+            .Where(r => EF.Functions.Like(r.Name, $"%{trimmed}%"))
+            .ToListAsync();
+
+        var numberMatches = hasNumberMatch
+            ? await _db.Reports.Include(r => r.Revisions).Where(r => r.Number == numberQuery).ToListAsync()
+            : new List<Report>();
+
+        var matches = nameMatches.Concat(numberMatches)
+            .GroupBy(r => r.Id)
+            .Select(g => g.First())
+            .OrderBy(r => r.Name)
+            .Take(100)
+            .ToList();
+
+        // Walked once in memory rather than per-result, since the whole tree is small
+        // enough to hold at once and this avoids N ancestor-chain round trips.
+        var allFolders = await _db.Folders.ToListAsync();
+        var foldersById = allFolders.ToDictionary(f => f.Id);
+
+        string PathFor(Guid? folderId)
+        {
+            var segments = new List<string>();
+            var current = folderId;
+            while (current is { } id && foldersById.TryGetValue(id, out var folder))
+            {
+                segments.Insert(0, folder.Name);
+                current = folder.ParentFolderId;
+            }
+            return segments.Count == 0 ? "Home" : "Home / " + string.Join(" / ", segments);
+        }
+
+        return matches.Select(r => r.ToSearchResultDto(PathFor(r.FolderId))).ToList();
     }
 
     [HttpGet("{id:guid}")]
@@ -40,20 +91,22 @@ public class ReportsController : ControllerBase
         }
 
         var nextNumber = (await _db.Reports.MaxAsync(r => (int?)r.Number) ?? 0) + 1;
+        var now = DateTime.UtcNow;
         var report = new Report
         {
             Id = Guid.NewGuid(),
             Number = nextNumber,
             Name = dto.Name.Trim(),
             FolderId = dto.FolderId,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
+            UpdatedAt = now,
         };
         report.Revisions.Add(new ReportRevision
         {
             Id = Guid.NewGuid(),
             ReportId = report.Id,
             Kind = RevisionKind.Draft,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
         });
 
         _db.Reports.Add(report);
@@ -76,6 +129,7 @@ public class ReportsController : ControllerBase
 
         report.Name = dto.Name.Trim();
         report.FolderId = dto.FolderId;
+        report.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return report.ToSummaryDto();
     }
@@ -188,6 +242,7 @@ public class ReportsController : ControllerBase
             }
         }
 
+        report.UpdatedAt = DateTime.UtcNow;
         _db.ReportRevisions.Add(draft);
         await _db.SaveChangesAsync();
         return draft.ToContentDto(report);
@@ -230,6 +285,7 @@ public class ReportsController : ControllerBase
             }
         }
 
+        report.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return draft.ToContentDto(report);
     }
@@ -276,6 +332,7 @@ public class ReportsController : ControllerBase
             });
         }
 
+        report.UpdatedAt = DateTime.UtcNow;
         _db.ReportRevisions.Add(published);
         _db.ReportRevisions.Remove(draft);
         await _db.SaveChangesAsync();

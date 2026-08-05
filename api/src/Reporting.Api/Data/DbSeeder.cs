@@ -135,14 +135,15 @@ public static class DbSeeder
     /// <summary>A starter report showing the build sheet columns an engineer cares about first.</summary>
     private static Report BuildDemoReport(Dataset builds)
     {
-        var report = new Report { Id = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = DateTime.UtcNow };
+        var now = DateTime.UtcNow;
+        var report = new Report { Id = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = now, UpdatedAt = now };
 
         var revision = new ReportRevision
         {
             Id = Guid.NewGuid(),
             ReportId = report.Id,
             Kind = RevisionKind.Draft,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = now,
         };
 
         var wanted = new[]

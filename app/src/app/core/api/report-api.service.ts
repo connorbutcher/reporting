@@ -1,14 +1,26 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ReportRevisionContent, ReportSummary, ReportVersionSummary } from '../models/report.model';
+import {
+  ReportRevisionContent,
+  ReportSearchResult,
+  ReportSummary,
+  ReportVersionSummary,
+} from '../models/report.model';
 
 @Service()
 export class ReportApiService {
   private readonly http = inject(HttpClient);
 
-  list(): Observable<ReportSummary[]> {
-    return this.http.get<ReportSummary[]>('/api/reports');
+  /** Reports directly inside `folderId` (root if omitted) — not the whole tree. */
+  list(folderId: string | null): Observable<ReportSummary[]> {
+    const params = folderId ? { folderId } : undefined;
+    return this.http.get<ReportSummary[]>('/api/reports', { params });
+  }
+
+  /** Finds reports anywhere in the tree by name or report number (e.g. "42" or "R-42"). */
+  search(query: string): Observable<ReportSearchResult[]> {
+    return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
   }
 
   get(id: string): Observable<ReportSummary> {

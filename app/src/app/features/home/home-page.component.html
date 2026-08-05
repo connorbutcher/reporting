@@ -4,82 +4,171 @@
       <h1 class="home__heading">Reports</h1>
     </header>
 
-    <p-tree
-      class="home__tree-widget"
-      [value]="treeNodes()"
-      selectionMode="single"
-      [selectionKeys]="treeSelectionKeys()"
-      (onNodeSelect)="onNodeSelect($event)"
-    />
+    <div class="home__search">
+      <i class="pi pi-search home__search-icon" aria-hidden="true"></i>
+      <input
+        pInputText
+        size="small"
+        class="home__search-input"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="onSearchInput($event)"
+        placeholder="Search by name or R-number…"
+        aria-label="Search reports"
+      />
+      @if (searchQuery()) {
+        <button type="button" class="home__search-clear" aria-label="Clear search" (click)="clearSearch()">
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+
+    @if (treeLoading()) {
+      <div class="home__tree-skeleton">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <p-skeleton height="1.5rem" />
+        }
+      </div>
+    } @else {
+      <p-tree
+        class="home__tree-widget"
+        [value]="treeNodes()"
+        selectionMode="single"
+        [selectionKeys]="treeSelectionKeys()"
+        (onNodeSelect)="onNodeSelect($event)"
+        (onNodeExpand)="onNodeExpand($event)"
+      />
+    }
   </aside>
 
   <section class="home__contents app-card">
-    <p-breadcrumb class="home__breadcrumb" [model]="breadcrumbItems()" [home]="homeItem" />
+    @if (searchResults(); as results) {
+      <header class="home__search-header">
+        <h2 class="home__search-title">Search results for "{{ searchQuery() }}"</h2>
+        <button type="button" class="home__search-back" (click)="clearSearch()">
+          <i class="pi pi-arrow-left" aria-hidden="true"></i>
+          Back to browsing
+        </button>
+      </header>
 
-    <div class="home__toolbar">
-      <input
-        pInputText
-        [ngModel]="newFolderName()"
-        (ngModelChange)="newFolderName.set($event)"
-        (keyup.enter)="createFolder()"
-        placeholder="New folder name"
-        aria-label="New folder name"
-      />
-      <p-button
-        icon="pi pi-folder-plus"
-        label="New folder"
-        severity="secondary"
-        outlined
-        [disabled]="!newFolderName().trim()"
-        (onClick)="createFolder()"
-      />
-
-      <input
-        pInputText
-        [ngModel]="newReportName()"
-        (ngModelChange)="newReportName.set($event)"
-        (keyup.enter)="createReport()"
-        placeholder="New report name"
-        aria-label="New report name"
-      />
-      <p-button
-        icon="pi pi-plus"
-        label="New report"
-        [disabled]="!newReportName().trim()"
-        (onClick)="createReport()"
-      />
-    </div>
-
-    @if (loading()) {
-      <p class="home__empty">Loading…</p>
-    } @else if (childFolders().length === 0 && childReports().length === 0) {
-      <p class="home__empty">This folder is empty.</p>
+      @if (searching()) {
+        <div class="home__table-skeleton">
+          @for (i of [1, 2, 3]; track i) {
+            <p-skeleton height="2rem" />
+          }
+        </div>
+      } @else if (results.length === 0) {
+        <p class="home__empty">No reports match "{{ searchQuery() }}".</p>
+      } @else {
+        <p-table [value]="results" sortMode="single" dataKey="id" size="small" class="home__table-wrapper">
+          <ng-template #header>
+            <tr>
+              <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
+              <th pSortableColumn="number" class="home__col-number">Number <p-sort-icon field="number" /></th>
+              <th pSortableColumn="folderPath">Location <p-sort-icon field="folderPath" /></th>
+              <th pSortableColumn="modifiedAt" class="home__col-modified">
+                Modified <p-sort-icon field="modifiedAt" />
+              </th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-result>
+            <tr class="home__row" (click)="openSearchResult(result)">
+              <td>
+                <span class="home__row-name">
+                  <i class="pi pi-file" aria-hidden="true"></i>
+                  {{ result.name }}
+                </span>
+              </td>
+              <td>R-{{ result.number }}</td>
+              <td>{{ result.folderPath }}</td>
+              <td>{{ result.modifiedAt | date: 'short' }}</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
     } @else {
-      <ul class="home__items">
-        @for (folder of childFolders(); track folder.id) {
-          <li>
-            <button type="button" class="home__item" (click)="selectFolder(folder.id)">
-              <i class="pi pi-folder" aria-hidden="true"></i>
-              <span class="home__item-name">{{ folder.name }}</span>
-            </button>
-          </li>
-        }
-        @for (report of childReports(); track report.id) {
-          <li>
-            <button type="button" class="home__item" (click)="openReport(report)">
-              <i class="pi pi-file" aria-hidden="true"></i>
-              <span class="home__item-name">R-{{ report.number }} · {{ report.name }}</span>
-              @if (report.hasDraft) {
-                <span class="home__item-badge home__item-badge--draft">Draft</span>
-              } @else if (report.latestVersionNumber) {
-                <span class="home__item-badge">v{{ report.latestVersionNumber }}</span>
-              } @else {
-                <span class="home__item-badge home__item-badge--empty">No versions</span>
-              }
-            </button>
-          </li>
-        }
-      </ul>
+      <p-breadcrumb class="home__breadcrumb" [model]="breadcrumbItems()" [home]="homeItem" />
+
+      <div class="home__toolbar">
+        <p-button icon="pi pi-plus" label="Create" size="small" (onClick)="openCreateDialog()" />
+      </div>
+
+      @if (errorMessage(); as error) {
+        <p class="home__error">{{ error }}</p>
+      }
+
+      @if (contentsLoading()) {
+        <div class="home__table-skeleton">
+          @for (i of [1, 2, 3, 4, 5]; track i) {
+            <p-skeleton height="2rem" />
+          }
+        </div>
+      } @else if (contentRows().length === 0) {
+        <p class="home__empty">This folder is empty.</p>
+      } @else {
+        <p-table
+          class="home__table-wrapper"
+          [value]="contentRows()"
+          [contextMenu]="cm"
+          sortMode="single"
+          dataKey="id"
+          size="small"
+          (onContextMenuSelect)="onTableContextMenuSelect($event)"
+        >
+          <ng-template #header>
+            <tr>
+              <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
+              <th pSortableColumn="number" class="home__col-number">Number <p-sort-icon field="number" /></th>
+              <th pSortableColumn="status" class="home__col-status">Status <p-sort-icon field="status" /></th>
+              <th pSortableColumn="modifiedAt" class="home__col-modified">
+                Modified <p-sort-icon field="modifiedAt" />
+              </th>
+              <th class="home__col-actions"></th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-row>
+            <tr [pContextMenuRow]="row" class="home__row" (click)="openRow(row)">
+              <td>
+                <span class="home__row-name">
+                  <i
+                    class="pi"
+                    [class.pi-folder]="row.kind === 'folder'"
+                    [class.pi-file]="row.kind === 'report'"
+                    aria-hidden="true"
+                  ></i>
+                  {{ row.name }}
+                </span>
+              </td>
+              <td>{{ row.number ? 'R-' + row.number : '—' }}</td>
+              <td>
+                @if (row.status) {
+                  <span
+                    class="home__status-badge"
+                    [class.home__status-badge--draft]="row.status === 'Draft'"
+                    [class.home__status-badge--empty]="row.status === 'No versions'"
+                  >
+                    {{ row.status }}
+                  </span>
+                } @else {
+                  —
+                }
+              </td>
+              <td>{{ row.modifiedAt | date: 'short' }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="home__row-actions"
+                  aria-label="Actions"
+                  (click)="onRowActionsClick($event, row, cm)"
+                >
+                  <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+                </button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      }
     }
   </section>
 </div>
+
+<p-contextmenu #cm [model]="contextMenuItems()" />

@@ -1,0 +1,56 @@
+<div class="create-dialog">
+  <header class="create-dialog__header">
+    <h2 class="create-dialog__title">Create</h2>
+  </header>
+
+  <div class="create-dialog__body">
+    <div class="create-dialog__type" role="radiogroup" aria-label="What to create">
+      <button
+        type="button"
+        class="create-dialog__type-option"
+        role="radio"
+        [attr.aria-checked]="kind() === 'folder'"
+        [class.create-dialog__type-option--active]="kind() === 'folder'"
+        (click)="selectKind('folder')"
+      >
+        <i class="pi pi-folder" aria-hidden="true"></i>
+        Folder
+      </button>
+      <button
+        type="button"
+        class="create-dialog__type-option"
+        role="radio"
+        [attr.aria-checked]="kind() === 'report'"
+        [class.create-dialog__type-option--active]="kind() === 'report'"
+        (click)="selectKind('report')"
+      >
+        <i class="pi pi-file" aria-hidden="true"></i>
+        Report
+      </button>
+    </div>
+
+    <input
+      #nameInput
+      class="create-dialog__input"
+      [ngModel]="name()"
+      (ngModelChange)="name.set($event)"
+      (keyup.enter)="create()"
+      [placeholder]="kind() === 'folder' ? 'Folder name' : 'Report name'"
+      aria-label="Name"
+    />
+  </div>
+
+  <footer class="create-dialog__footer">
+    <button type="button" class="create-dialog__button create-dialog__button--secondary" (click)="cancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="create-dialog__button create-dialog__button--primary"
+      [disabled]="!name().trim()"
+      (click)="create()"
+    >
+      Create
+    </button>
+  </footer>
+</div>

@@ -7,4 +7,5 @@ public class Folder
     public Guid? ParentFolderId { get; set; }
     public Folder? ParentFolder { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }

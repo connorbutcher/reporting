@@ -1,0 +1,93 @@
+:host {
+  display: block;
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.move-dialog {
+  display: flex;
+  flex-direction: column;
+}
+
+.move-dialog__header {
+  padding: 18px 20px 4px;
+}
+
+.move-dialog__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+  text-transform: capitalize;
+}
+
+.move-dialog__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-dialog__tree {
+  margin: 10px 20px 4px;
+  padding: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+}
+
+// Excluded destinations (a folder being moved, and its own descendants) are
+// still visible for context but shouldn't read as pickable.
+:host ::ng-deep .move-dialog__node--disabled > .p-tree-node-content {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.move-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--app-card-border);
+}
+
+.move-dialog__button {
+  padding: 7px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &--secondary {
+    border: 1px solid var(--app-card-border);
+    background: #fff;
+    color: #475569;
+
+    &:hover {
+      background: #f8fafc;
+    }
+  }
+
+  &--primary {
+    border: 1px solid var(--app-navy);
+    background: var(--app-navy);
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}

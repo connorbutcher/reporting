@@ -7,8 +7,20 @@ import { Folder } from '../models/folder.model';
 export class FolderApiService {
   private readonly http = inject(HttpClient);
 
+  /** The whole flat folder list — only meant for things that need the full tree at once, like the move picker. */
   list(): Observable<Folder[]> {
     return this.http.get<Folder[]>('/api/folders');
+  }
+
+  /** Direct child folders of `parentId` (root if omitted), each flagged with whether it has children of its own. */
+  children(parentId: string | null): Observable<Folder[]> {
+    const params = parentId ? { parentId } : undefined;
+    return this.http.get<Folder[]>('/api/folders/children', { params });
+  }
+
+  /** The chain of ancestors from the root down to `id`, for a breadcrumb without the whole tree. */
+  path(id: string): Observable<Folder[]> {
+    return this.http.get<Folder[]>(`/api/folders/${id}/path`);
   }
 
   create(name: string, parentFolderId: string | null): Observable<Folder> {

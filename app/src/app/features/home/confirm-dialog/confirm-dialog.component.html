@@ -1,0 +1,24 @@
+<div class="confirm-dialog">
+  <header class="confirm-dialog__header">
+    <h2 class="confirm-dialog__title">{{ data.title }}</h2>
+  </header>
+
+  <div class="confirm-dialog__body">
+    <p class="confirm-dialog__message">{{ data.message }}</p>
+  </div>
+
+  <footer class="confirm-dialog__footer">
+    <button type="button" class="confirm-dialog__button confirm-dialog__button--secondary" (click)="cancel()">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="confirm-dialog__button"
+      [class.confirm-dialog__button--danger]="data.danger"
+      [class.confirm-dialog__button--primary]="!data.danger"
+      (click)="confirm()"
+    >
+      {{ data.confirmLabel ?? 'Confirm' }}
+    </button>
+  </footer>
+</div>

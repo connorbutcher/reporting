@@ -10,6 +10,19 @@ public class ReportSummaryDto
     public Guid? FolderId { get; set; }
     public bool HasDraft { get; set; }
     public int? LatestVersionNumber { get; set; }
+    public DateTime ModifiedAt { get; set; }
+}
+
+/// <summary>A report match from a name/number search, with its folder location for display.</summary>
+public class ReportSearchResultDto
+{
+    public Guid Id { get; set; }
+    public int Number { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool HasDraft { get; set; }
+    public int? LatestVersionNumber { get; set; }
+    public DateTime ModifiedAt { get; set; }
+    public string FolderPath { get; set; } = string.Empty;
 }
 
 public class CreateReportDto
