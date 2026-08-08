@@ -42,6 +42,8 @@ export class ReportViewerComponent implements OnInit {
   /** Session-only filters layered over the published ones; rebuilt per version. */
   protected readonly viewFilters = signal<ReportViewFilters | null>(null);
   protected readonly asideTab = signal<AsideTab>('filters');
+  /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
+  protected readonly openFilterKey = signal<string | null>(null);
 
   protected readonly report = signal<ReportSummary | null>(null);
   protected readonly versions = signal<ReportVersionSummary[]>([]);
@@ -98,6 +100,7 @@ export class ReportViewerComponent implements OnInit {
           // Session filters start from what this version publishes, so switching
           // versions drops any narrowing the reader had applied to the last one.
           this.viewFilters.set(new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly()));
+          this.openFilterKey.set(null);
           this.loadSchemas(content);
           this.loading.set(false);
         });
@@ -127,6 +130,12 @@ export class ReportViewerComponent implements OnInit {
 
   protected showTab(tab: AsideTab): void {
     this.asideTab.set(tab);
+  }
+
+  /** Clicking a table's filter button takes the reader straight to its conditions. */
+  protected filterWidget(widgetId: string): void {
+    this.asideTab.set('filters');
+    this.openFilterKey.set(widgetId);
   }
 
   /** Checks out a draft — from a specific version when restoring, otherwise from latest — then edits it. */

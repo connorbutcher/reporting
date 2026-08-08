@@ -8,6 +8,7 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { SelectModule } from 'primeng/select';
 import { DatasetColumn, DatasetColumnConfiguration } from '../../../../core/models/dataset.model';
 import { ColumnAlign } from '../../../../core/models/report.model';
+import { TableColumnModel } from '../../models/table-column.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 
 export const DATE_FORMAT_OPTIONS = [
@@ -129,6 +130,15 @@ const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
                 />
               </label>
             </div>
+
+            <button type="button" class="panel-menu-item" (click)="openTolerance(column.columnId)">
+              <i class="pi pi-shield" aria-hidden="true"></i>
+              <span class="panel-menu-text">
+                <span class="panel-menu-label">Tolerance limits</span>
+                <span class="panel-menu-hint">{{ toleranceSummary(column) }}</span>
+              </span>
+              <i class="pi pi-chevron-right" aria-hidden="true"></i>
+            </button>
           } @else if (schemaColumn.type === 'dateTime') {
             <label class="panel-field">
               <span class="panel-field-label">Date format</span>
@@ -224,6 +234,15 @@ export class PanelColumnSettingsComponent {
 
   protected isNumeric(column: DatasetColumn): boolean {
     return column.type === 'int' || column.type === 'double';
+  }
+
+  protected toleranceSummary(column: TableColumnModel): string {
+    return column.tolerance() ? 'Highlighting on' : 'Not set';
+  }
+
+  protected openTolerance(columnId: string): void {
+    const widgetId = this.table()?.id;
+    if (widgetId) this.store.navigate({ kind: 'columnTolerance', widgetId, columnId });
   }
 
   protected patchFormat(patch: DatasetColumnConfiguration): void {

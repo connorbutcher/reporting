@@ -1,7 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CELL_SIZE, GRID_GAP } from '../../report-builder/grid.util';
 import { ReportRevisionContent, Widget } from '../../../core/models/report.model';
-import { FilterGroup } from '../../../core/models/filter.model';
+import { FilterGroup, countConditions } from '../../../core/models/filter.model';
 import { DataTableWidgetComponent } from '../../report-builder/widgets/data-table-widget/data-table-widget.component';
 import { StaticTextWidgetComponent } from '../../report-builder/widgets/static-text-widget/static-text-widget.component';
 
@@ -25,6 +25,19 @@ export class ReadonlyReportGridComponent {
    */
   readonly pageFilters = input<Record<string, FilterGroup | null> | null>(null);
   readonly widgetFilters = input<Record<string, FilterGroup | null> | null>(null);
+
+  /** A widget's filter button was clicked; the host decides where to show it. */
+  readonly filterWidget = output<string>();
+
+  /** Only a table bound to a dataset has anything to filter. */
+  protected canFilter(widget: Widget): boolean {
+    return widget.type === 'dataTable' && !!widget.config.datasetId;
+  }
+
+  /** Conditions on this table's own filter — what the button would open. */
+  protected conditionCount(widget: Widget): number {
+    return countConditions(this.widgetFilterFor(widget));
+  }
 
   /** So a published report narrows rows exactly as it did in the builder. */
   protected reportFilterFor(datasetId: string | null): FilterGroup | null {

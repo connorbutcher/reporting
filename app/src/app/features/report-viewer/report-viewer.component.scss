@@ -1,14 +1,27 @@
 :host {
-  display: block;
+  // A flex column, not block: percentage heights need an explicit ancestor
+  // height to resolve against, which auto-plus-max-height never gives them.
+  // Flex's own cross/main-size distribution doesn't have that requirement,
+  // so it's what lets .report-viewer below actually shrink to this box's
+  // clamped size instead of ignoring it.
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  min-height: 0;
   min-width: 0;
+  // app-main lays routed pages out in a flex row, which stretches its items
+  // to fill the viewport height by default. Opting out (align-self) lets a
+  // short report size to its own content instead of always claiming the full
+  // screen, while max-height still caps a tall one at the available space —
+  // so the grid below scrolls within the report block, not the whole page.
+  align-self: flex-start;
+  max-height: 100%;
 }
 
 .report-viewer {
   display: flex;
   gap: 16px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   padding: 16px;
   box-sizing: border-box;
 }
@@ -125,6 +138,7 @@
   width: 280px;
   flex: 0 0 280px;
   padding: 14px;
+  min-height: 0;
   overflow-y: auto;
 }
 

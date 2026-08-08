@@ -1,8 +1,17 @@
 :host {
-  display: block;
+  // Fills whatever space report-viewer__main has left below its header, and
+  // shrinks no further than that — so the viewport below is what scrolls when
+  // the report is taller than the available space, not the whole page.
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 .readonly-grid-viewport {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 18px;
 }
@@ -14,6 +23,7 @@
 }
 
 .readonly-grid__item {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -32,6 +42,47 @@
   font-weight: 600;
   color: var(--app-navy, #152a55);
   letter-spacing: 0.01em;
+}
+
+.readonly-grid__filter {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  cursor: pointer;
+  // Kept quiet until the widget is hovered, so the grid stays uncluttered.
+  opacity: 0;
+  transition: opacity 0.12s ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--app-card-border, #e2e8f0);
+    color: var(--app-navy, #152a55);
+  }
+
+  // An applied filter is state the reader must be able to see without hovering.
+  &--active {
+    opacity: 1;
+    border-color: var(--p-primary-200, #adc3e5);
+    background: var(--p-primary-50, #eef3fa);
+    color: var(--app-navy, #152a55);
+    font-weight: 600;
+  }
+}
+
+.readonly-grid__item:hover .readonly-grid__filter,
+.readonly-grid__filter:focus-visible {
+  opacity: 1;
 }
 
 .readonly-grid__body {

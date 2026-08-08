@@ -7,6 +7,7 @@ export type PanelView =
   | { kind: 'widgetColumns'; widgetId: string }
   | { kind: 'addColumn'; widgetId: string }
   | { kind: 'columnSettings'; widgetId: string; columnId: string }
+  | { kind: 'columnTolerance'; widgetId: string; columnId: string }
   | { kind: 'tableAppearance'; widgetId: string }
   | { kind: 'textStyle'; widgetId: string }
   | { kind: 'widgetFilters'; widgetId: string }

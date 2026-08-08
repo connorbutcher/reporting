@@ -57,7 +57,9 @@
     <ng-template #body let-row>
       <tr>
         @for (col of displayColumns(); track col.column.id) {
-          <td [style.text-align]="col.align">{{ format(row[col.column.id], col.column) }}</td>
+          <td [style.text-align]="col.align" [class]="toleranceClass(row[col.column.id], col)">
+            {{ format(row[col.column.id], col.column) }}
+          </td>
         }
       </tr>
     </ng-template>

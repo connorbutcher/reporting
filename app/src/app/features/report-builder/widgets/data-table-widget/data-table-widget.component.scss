@@ -63,3 +63,17 @@
 :host(.data-table-widget--no-head) ::ng-deep thead {
   display: none;
 }
+
+// Tolerance banding: red is a straight reject, orange sits inside the
+// concession zone and still needs a sign-off before it ships.
+:host ::ng-deep .data-table-widget__cell--red {
+  background: rgba(229, 72, 77, 0.16);
+  color: #b42318;
+  font-weight: 600;
+}
+
+:host ::ng-deep .data-table-widget__cell--orange {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+  font-weight: 600;
+}

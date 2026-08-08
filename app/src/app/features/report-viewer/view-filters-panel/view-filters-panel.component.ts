@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, model } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { FilterBuilderComponent } from '../../report-builder/side-panel/filter-builder/filter-builder.component';
 import { ReportViewFilters, ViewFilterEntry, entryChanged } from '../report-view-filters';
@@ -16,8 +16,11 @@ import { ReportViewFilters, ViewFilterEntry, entryChanged } from '../report-view
 export class ViewFiltersPanelComponent {
   readonly filters = input.required<ReportViewFilters>();
 
-  /** Which entry is expanded; only one at a time keeps the narrow panel readable. */
-  private readonly openKey = signal<string | null>(null);
+  /**
+   * Which entry is expanded; only one at a time keeps the narrow panel readable.
+   * Two-way so clicking a widget's filter button on the grid can open its entry.
+   */
+  readonly openKey = model<string | null>(null);
 
   protected readonly pageEntries = computed(() => this.filters().pageEntries);
   protected readonly widgetEntries = computed(() => this.filters().widgetEntries);

@@ -125,15 +125,23 @@ export class DataTableWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
 
+    this.columns.set(config.columns.map((c) => new TableColumnModel(this.id, c, this.schema)));
+
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
       catalogue: sources.catalogue,
+      // A table's filter narrows what that table shows, so it only offers the
+      // columns actually on it — the dataset's other columns belong to the
+      // report-level filter.
+      columns: computed(() =>
+        this.columns()
+          .map((c) => c.schemaColumn())
+          .filter((c): c is NonNullable<typeof c> => !!c),
+      ),
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,
       widgetId: this.id,
     });
-
-    this.columns.set(config.columns.map((c) => new TableColumnModel(this.id, c, this.schema)));
 
     this.availableColumns = computed(() => {
       const used = new Set(this.columns().map((c) => c.columnId));

@@ -23,6 +23,7 @@ import {
   DataTableColumnSetting,
   DataTableWidgetConfig,
   SortDirection,
+  ToleranceConfig,
 } from '../../../../core/models/report.model';
 
 const DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
@@ -32,6 +33,14 @@ const QUERY_DEBOUNCE_MS = 300;
 /** A row flattened to `columnId -> typed value`, so table sorting compares like with like. */
 type TableRow = Record<string, unknown>;
 
+/** A column's tolerance, resolved to concrete numbers from its limits dataset. */
+export interface ResolvedTolerance {
+  min: number;
+  max: number;
+  concessionLower: number | null;
+  concessionUpper: number | null;
+}
+
 /** A dataset column paired with the widget's settings for it. */
 export interface DisplayColumn {
   column: DatasetColumn;
@@ -39,6 +48,7 @@ export interface DisplayColumn {
   align: ColumnAlign;
   sortable: boolean;
   width?: number;
+  tolerance: ResolvedTolerance | null;
 }
 
 @Component({
@@ -76,6 +86,8 @@ export class DataTableWidgetComponent {
 
   private readonly allColumns = signal<DatasetColumn[]>([]);
   private readonly data = signal<DatasetData | null>(null);
+  /** Limits datasets referenced by tolerance-highlighted columns, cached by dataset id. */
+  private readonly toleranceSources = signal<Record<string, DatasetData>>({});
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
@@ -95,6 +107,7 @@ export class DataTableWidgetComponent {
   /** Columns are chosen explicitly, so the table shows exactly what is configured. */
   protected readonly displayColumns = computed<DisplayColumn[]>(() => {
     const byId = new Map(this.allColumns().map((c) => [c.id, c]));
+    const sources = this.toleranceSources();
 
     const chosen = this.config()
       .columns.map((setting) => ({ setting, column: byId.get(setting.columnId) }))
@@ -106,6 +119,7 @@ export class DataTableWidgetComponent {
       align: setting.align ?? (isNumeric(column.type) ? 'right' : 'left'),
       sortable: setting.sortable !== false,
       width: setting.width,
+      tolerance: resolveTolerance(setting.tolerance, sources),
     }));
   });
 
@@ -191,6 +205,25 @@ export class DataTableWidgetComponent {
       });
     });
 
+    // Fetches each limits dataset a tolerance-highlighted column points at,
+    // once per dataset id regardless of how many columns share it.
+    effect((onCleanup) => {
+      const ids = new Set<string>();
+      for (const setting of this.config().columns) {
+        if (setting.tolerance) ids.add(setting.tolerance.sourceDatasetId);
+      }
+
+      const missing = untracked(() => [...ids].filter((id) => !this.toleranceSources()[id]));
+      if (missing.length === 0) return;
+
+      const subs = missing.map((id) =>
+        this.datasetApi
+          .getData(id)
+          .subscribe((data) => this.toleranceSources.update((all) => ({ ...all, [id]: data }))),
+      );
+      onCleanup(() => subs.forEach((s) => s.unsubscribe()));
+    });
+
     this.queryQueue
       .pipe(
         debounceTime(QUERY_DEBOUNCE_MS),
@@ -243,6 +276,24 @@ export class DataTableWidgetComponent {
     });
   }
 
+  /** Red below/above a concession bound, orange in the concession band, else unmarked. */
+  protected toleranceClass(value: unknown, col: DisplayColumn): string | null {
+    const band = col.tolerance;
+    if (!band || typeof value !== 'number' || Number.isNaN(value)) return null;
+
+    if (value < band.min) {
+      return band.concessionLower !== null && value >= band.concessionLower
+        ? 'data-table-widget__cell--orange'
+        : 'data-table-widget__cell--red';
+    }
+    if (value > band.max) {
+      return band.concessionUpper !== null && value <= band.concessionUpper
+        ? 'data-table-widget__cell--orange'
+        : 'data-table-widget__cell--red';
+    }
+    return null;
+  }
+
   /** Rendering is driven by the column's stored configuration blob. */
   protected format(value: unknown, column: DatasetColumn): string {
     if (value === null || value === undefined || value === '') return '';
@@ -278,6 +329,35 @@ export class DataTableWidgetComponent {
 
 export function isNumeric(type: DatasetColumnType): boolean {
   return type === 'int' || type === 'double';
+}
+
+/** Reads the four band numbers off the spec row the tolerance points at. */
+function resolveTolerance(
+  tolerance: ToleranceConfig | undefined,
+  sources: Record<string, DatasetData>,
+): ResolvedTolerance | null {
+  if (!tolerance) return null;
+
+  const row = sources[tolerance.sourceDatasetId]?.rows.find((r) => r.id === tolerance.sourceRowId);
+  if (!row) return null;
+
+  const min = Number(row.values[tolerance.minColumnId]);
+  const max = Number(row.values[tolerance.maxColumnId]);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+
+  const concessionLower = tolerance.concessionLowerColumnId
+    ? Number(row.values[tolerance.concessionLowerColumnId])
+    : NaN;
+  const concessionUpper = tolerance.concessionUpperColumnId
+    ? Number(row.values[tolerance.concessionUpperColumnId])
+    : NaN;
+
+  return {
+    min,
+    max,
+    concessionLower: Number.isFinite(concessionLower) ? concessionLower : null,
+    concessionUpper: Number.isFinite(concessionUpper) ? concessionUpper : null,
+  };
 }
 
 /** Values arrive as strings; sorting needs the column's real type. */

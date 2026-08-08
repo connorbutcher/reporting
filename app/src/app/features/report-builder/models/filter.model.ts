@@ -21,6 +21,12 @@ export interface FilterContext {
   /** Operators per column type, once fetched. */
   readonly catalogue: Signal<OperatorCatalogue | null>;
   /**
+   * The columns this filter may test, when narrower than the whole dataset —
+   * a table's filter offers only the columns that table shows. Omitted for
+   * page-level filters, which scope the dataset and so span every column.
+   */
+  readonly columns?: Signal<DatasetColumn[]>;
+  /**
    * Where the builder's panel should take the user to fix a problem with this
    * filter. Omitted in the report viewer, which has no panel to navigate.
    */
@@ -173,7 +179,7 @@ export class FilterGroupModel extends EditorNode {
   readonly isEmpty = computed(() => this.children().length === 0);
   readonly count = computed(() => this.children().length);
 
-  /** Columns available to filter on, once the dataset's schema has loaded. */
+  /** Columns offerable in the picker, once the dataset's schema has loaded. */
   readonly columns: Signal<DatasetColumn[]>;
   /** False until both the schema and the operator catalogue are in. */
   readonly ready: Signal<boolean>;
@@ -183,7 +189,18 @@ export class FilterGroupModel extends EditorNode {
     private readonly context: FilterContext,
   ) {
     super();
-    this.columns = computed(() => context.schema()?.columns ?? []);
+    this.columns = computed(() => {
+      const all = context.schema()?.columns ?? [];
+      const allowed = context.columns?.();
+      if (!allowed) return all;
+
+      // A condition may already reference a column since taken off the table.
+      // Keep it listed so its select still shows what it's testing, rather than
+      // rendering blank and looking broken.
+      const referenced = new Set(this.children().map((c) => c.columnId()));
+      const allowedIds = new Set(allowed.map((c) => c.id));
+      return all.filter((c) => allowedIds.has(c.id) || referenced.has(c.id));
+    });
     this.ready = computed(() => !!context.schema() && !!context.catalogue());
     this.join.set(dto?.join ?? 'and');
     this.children.set(
@@ -199,11 +216,10 @@ export class FilterGroupModel extends EditorNode {
     this.join.set(join);
   }
 
-  /** Adds a condition on the first column that has operators available. */
+  /** Adds a condition on the first column this filter is allowed to test. */
   addCondition(columnId?: string): FilterConditionModel | null {
-    const column = columnId
-      ? this.context.schema()?.columns.find((c) => c.id === columnId)
-      : this.context.schema()?.columns[0];
+    const offerable = this.columns();
+    const column = columnId ? offerable.find((c) => c.id === columnId) : offerable[0];
     if (!column) return null;
 
     const catalogue = this.context.catalogue();

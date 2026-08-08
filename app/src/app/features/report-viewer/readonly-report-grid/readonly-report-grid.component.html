@@ -16,6 +16,25 @@
             <span class="readonly-grid__title">{{ widget.config.title }}</span>
           </div>
         }
+
+        <!-- Overlaid rather than placed in the header, so a table with its title
+             hidden is still filterable. -->
+        @if (canFilter(widget)) {
+          <button
+            type="button"
+            class="readonly-grid__filter"
+            [class.readonly-grid__filter--active]="conditionCount(widget) > 0"
+            [attr.aria-label]="'Filter ' + (widget.config.title || 'table')"
+            title="Filter this table"
+            (click)="filterWidget.emit(widget.id)"
+          >
+            <i class="pi pi-filter" aria-hidden="true"></i>
+            @if (conditionCount(widget); as count) {
+              <span class="readonly-grid__filter-count">{{ count }}</span>
+            }
+          </button>
+        }
+
         <div class="readonly-grid__body">
           @if (widget.type === 'dataTable') {
             <app-data-table-widget

@@ -69,6 +69,25 @@ public class DataTableColumnSetting
     public ColumnAlign? Align { get; set; }
 
     public bool Sortable { get; set; } = true;
+
+    /// <summary>Pass/fail highlighting for this column's values. Null shows no banding.</summary>
+    public ToleranceConfig? Tolerance { get; set; }
+}
+
+/// <summary>
+/// Red/amber banding for a numeric column, resolved against one row of a
+/// separate limits dataset so the same spec can be reused across columns and
+/// reports. Min/Max is the in-spec range; the optional concession bounds
+/// widen it into an amber "needs sign-off" zone before a value goes red.
+/// </summary>
+public class ToleranceConfig
+{
+    public Guid SourceDatasetId { get; set; }
+    public Guid SourceRowId { get; set; }
+    public Guid MinColumnId { get; set; }
+    public Guid MaxColumnId { get; set; }
+    public Guid? ConcessionLowerColumnId { get; set; }
+    public Guid? ConcessionUpperColumnId { get; set; }
 }
 
 public class DataTableWidgetConfig : WidgetConfig

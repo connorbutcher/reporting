@@ -20,6 +20,23 @@ export interface DataTableColumnSetting {
   /** Omitted falls back to right for numbers, left otherwise. */
   align?: ColumnAlign;
   sortable?: boolean;
+  /** Pass/fail highlighting for this column's values. Omitted shows no banding. */
+  tolerance?: ToleranceConfig;
+}
+
+/**
+ * Red/amber banding for a numeric column, resolved against one row of a
+ * separate limits dataset so the same spec can be reused across columns and
+ * reports. Min/Max is the in-spec range; the optional concession bounds
+ * widen it into an amber "needs sign-off" zone before a value goes red.
+ */
+export interface ToleranceConfig {
+  sourceDatasetId: string;
+  sourceRowId: string;
+  minColumnId: string;
+  maxColumnId: string;
+  concessionLowerColumnId?: string;
+  concessionUpperColumnId?: string;
 }
 
 /** Fields every widget config carries, regardless of type. */

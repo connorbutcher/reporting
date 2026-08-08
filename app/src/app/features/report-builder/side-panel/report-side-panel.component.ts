@@ -6,6 +6,7 @@ import { PanelAddColumnComponent } from './views/panel-add-column.component';
 import { PanelAddWidgetComponent } from './views/panel-add-widget.component';
 import { PanelColumnListComponent } from './views/panel-column-list.component';
 import { PanelColumnSettingsComponent } from './views/panel-column-settings.component';
+import { PanelColumnToleranceComponent } from './views/panel-column-tolerance.component';
 import { PanelIssuesComponent } from './views/panel-issues.component';
 import { PanelReportSettingsComponent } from './views/panel-report-settings.component';
 import { PanelRootComponent } from './views/panel-root.component';
@@ -30,6 +31,7 @@ import { PanelWidgetListComponent } from './views/panel-widget-list.component';
     PanelColumnListComponent,
     PanelAddColumnComponent,
     PanelColumnSettingsComponent,
+    PanelColumnToleranceComponent,
     PanelTableAppearanceComponent,
     PanelTextStyleComponent,
     PanelWidgetFiltersComponent,
@@ -67,6 +69,8 @@ export class ReportSidePanelComponent {
         return 'Report issues';
       case 'columnSettings':
         return this.store.selectedTableWidget()?.column(view.columnId)?.label() ?? 'Column';
+      case 'columnTolerance':
+        return 'Tolerance limits';
       case 'widget':
         return this.store.selectedWidget()?.label() ?? 'Widget';
       default:

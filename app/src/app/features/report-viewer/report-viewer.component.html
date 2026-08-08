@@ -43,6 +43,7 @@
           [content]="content"
           [pageFilters]="viewFilters()?.pageFilters() ?? null"
           [widgetFilters]="viewFilters()?.widgetFilters() ?? null"
+          (filterWidget)="filterWidget($event)"
         />
       } @else {
         <p class="report-viewer__status">
@@ -80,7 +81,7 @@
 
       @if (asideTab() === 'filters') {
         @if (viewFilters(); as filters) {
-          <app-view-filters-panel [filters]="filters" />
+          <app-view-filters-panel [filters]="filters" [(openKey)]="openFilterKey" />
         } @else {
           <p class="report-viewer__status">Nothing to filter yet.</p>
         }

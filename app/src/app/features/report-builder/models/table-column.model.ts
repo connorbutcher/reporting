@@ -1,6 +1,6 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
-import { ColumnAlign, DataTableColumnSetting } from '../../../core/models/report.model';
+import { ColumnAlign, DataTableColumnSetting, ToleranceConfig } from '../../../core/models/report.model';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
 
@@ -14,6 +14,8 @@ export class TableColumnModel extends EditorNode {
   /** Null follows the column's type: right for numbers, left otherwise. */
   readonly align = signal<ColumnAlign | null>(null);
   readonly sortable = signal(true);
+  /** Pass/fail highlighting resolved against a row of a separate limits dataset. Null shows no banding. */
+  readonly tolerance = signal<ToleranceConfig | null>(null);
 
   /** The dataset column this refers to, once the schema has loaded. */
   readonly schemaColumn: Signal<DatasetColumn | null>;
@@ -32,6 +34,7 @@ export class TableColumnModel extends EditorNode {
     this.width.set(dto.width ?? null);
     this.align.set(dto.align ?? null);
     this.sortable.set(dto.sortable !== false);
+    this.tolerance.set(dto.tolerance ?? null);
 
     this.schemaColumn = computed(
       () => this.schema()?.columns.find((c) => c.id === this.columnId) ?? null,
@@ -43,6 +46,10 @@ export class TableColumnModel extends EditorNode {
     this.width.set(width === null || !Number.isFinite(width) ? null : Math.round(width));
   }
 
+  setTolerance(tolerance: ToleranceConfig | null): void {
+    this.tolerance.set(tolerance);
+  }
+
   toDto(): DataTableColumnSetting {
     const header = this.header().trim();
     return {
@@ -51,6 +58,7 @@ export class TableColumnModel extends EditorNode {
       ...(this.width() !== null ? { width: this.width()! } : {}),
       ...(this.align() !== null ? { align: this.align()! } : {}),
       sortable: this.sortable(),
+      ...(this.tolerance() ? { tolerance: this.tolerance()! } : {}),
     };
   }
 

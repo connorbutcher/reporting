@@ -1,5 +1,5 @@
 import { Signal, computed } from '@angular/core';
-import { DatasetSchema } from '../../core/models/dataset.model';
+import { DatasetColumn, DatasetSchema } from '../../core/models/dataset.model';
 import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter.model';
 import { ReportRevisionContent, Widget } from '../../core/models/report.model';
 import { FilterGroupModel } from '../report-builder/models/filter.model';
@@ -58,12 +58,19 @@ export class ReportViewFilters {
     this.widgetEntries = tables.map((widget) => {
       const datasetId = widget.config.datasetId!;
       const title = widget.config.title?.trim() || 'Table';
+      const schema = schemaFor(datasetId);
+
+      // Only the columns this table shows — filtering it by a column that isn't
+      // on it would silently drop rows for a reason the reader can't see.
+      const placed = new Set(widget.config.columns.map((c) => c.columnId));
+      const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+
       return {
         key: widget.id,
         label: computed(() => title),
         datasetId,
         published: widget.config.filter,
-        group: buildGroup(widget.config.filter, schemaFor(datasetId), catalogue, `view:${widget.id}`),
+        group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
       };
     });
   }
@@ -101,10 +108,11 @@ function buildGroup(
   schema: Signal<DatasetSchema | null>,
   catalogue: Signal<OperatorCatalogue | null>,
   ownerId: string,
+  columns?: Signal<DatasetColumn[]>,
 ): FilterGroupModel {
   // Deep-copied so editing never mutates the published revision held in the
   // content signal, which is what reset() restores from.
-  return new FilterGroupModel(clone(published), { schema, catalogue, ownerId });
+  return new FilterGroupModel(clone(published), { schema, catalogue, ownerId, columns });
 }
 
 function clone(filter: FilterGroup | null): FilterGroup | null {
