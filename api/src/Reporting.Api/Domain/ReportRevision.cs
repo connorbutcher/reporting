@@ -27,5 +27,12 @@ public class ReportRevision
     /// <summary>Rich-text (HTML) description of what changed, entered when publishing. Null for drafts.</summary>
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// JSON-serialized report-level filters: one entry per dataset, applied to every
+    /// widget bound to that dataset. Stored as a blob for the same reason widget
+    /// configs are — it deep-copies with the revision for free on checkout/publish.
+    /// </summary>
+    public string FiltersJson { get; set; } = "[]";
+
     public List<Widget> Widgets { get; set; } = new();
 }

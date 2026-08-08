@@ -18,7 +18,11 @@
         }
         <div class="readonly-grid__body">
           @if (widget.type === 'dataTable') {
-            <app-data-table-widget [config]="widget.config" />
+            <app-data-table-widget
+              [config]="widget.config"
+              [reportFilter]="reportFilterFor(widget.config.datasetId)"
+              [widgetFilter]="widgetFilterFor(widget)"
+            />
           } @else {
             <app-static-text-widget [config]="widget.config" />
           }

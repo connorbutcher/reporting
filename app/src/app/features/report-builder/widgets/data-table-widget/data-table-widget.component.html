@@ -69,4 +69,11 @@
       </tr>
     </ng-template>
   </p-table>
+
+  @if (isFiltered()) {
+    <p class="data-table-widget__count">
+      <i class="pi pi-filter" aria-hidden="true"></i>
+      Showing {{ matchedRowCount() }} of {{ totalRowCount() }} rows
+    </p>
+  }
 }

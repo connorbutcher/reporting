@@ -1,9 +1,11 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Api.Contracts;
 using Reporting.Api.Data;
 using Reporting.Api.Domain;
+using Reporting.Api.Filtering;
 
 namespace Reporting.Api.Controllers;
 
@@ -36,10 +38,45 @@ public class DatasetsController : ControllerBase
     public async Task<ActionResult<DatasetDataDto>> GetData(Guid id)
     {
         var dataset = await _db.Datasets
-            .Include(d => d.Rows)
+            .Include(d => d.Rows).ThenInclude(r => r.Cells)
             .FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return NotFound();
         return dataset.ToDataDto();
+    }
+
+    /// <summary>
+    /// The rows matching a filter. POST rather than GET because the filter is a
+    /// tree; filtering runs in SQL so a widget never pulls rows it won't show.
+    /// </summary>
+    [HttpPost("{id:guid}/query")]
+    public async Task<ActionResult<DatasetQueryResultDto>> Query(Guid id, DatasetQueryDto dto)
+    {
+        var dataset = await _db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return NotFound();
+
+        Expression<Func<DatasetRow, bool>>? predicate;
+        try
+        {
+            predicate = FilterTranslator.Build(dto.Filter, dataset.Columns.ToDictionary(c => c.Id));
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        var all = _db.DatasetRows.Where(r => r.DatasetId == id);
+        var matching = predicate is null ? all : all.Where(predicate);
+
+        var rows = await matching.Include(r => r.Cells).ToListAsync();
+
+        return new DatasetQueryResultDto
+        {
+            Id = dataset.Id,
+            Name = dataset.Name,
+            Rows = rows.Select(r => r.ToDto()).ToList(),
+            TotalRowCount = await all.CountAsync(),
+            MatchedRowCount = rows.Count
+        };
     }
 
     /// <summary>Replaces a column's free-form display configuration blob.</summary>
@@ -144,8 +181,18 @@ public class DatasetsController : ControllerBase
         var column = await _db.DatasetColumns.FirstOrDefaultAsync(c => c.Id == columnId && c.DatasetId == id);
         if (column is null) return NotFound();
 
+        var typeChanged = column.Type != dto.Type;
         column.Name = dto.Name.Trim();
         column.Type = dto.Type;
+
+        if (typeChanged)
+        {
+            // The typed fields were parsed under the old type, so they're now wrong;
+            // re-derive them from the text each cell still carries.
+            var cells = await _db.DatasetCells.Where(c => c.ColumnId == columnId).ToListAsync();
+            foreach (var cell in cells) CellValues.Apply(cell, cell.StringValue, dto.Type);
+        }
+
         await _db.SaveChangesAsync();
         return column.ToDto();
     }
@@ -158,13 +205,10 @@ public class DatasetsController : ControllerBase
 
         _db.DatasetColumns.Remove(column);
 
-        // Row values are keyed by column id, so drop the orphaned entries too.
-        var rows = await _db.DatasetRows.Where(r => r.DatasetId == id).ToListAsync();
-        foreach (var row in rows)
-        {
-            var values = row.GetValues();
-            if (values.Remove(columnId)) row.SetValues(values);
-        }
+        // Cells reference the column by id without a FK, so clear them explicitly
+        // rather than leaving rows carrying values for a column that's gone.
+        var cells = await _db.DatasetCells.Where(c => c.ColumnId == columnId).ToListAsync();
+        _db.DatasetCells.RemoveRange(cells);
 
         await _db.SaveChangesAsync();
         return NoContent();
@@ -195,11 +239,11 @@ public class DatasetsController : ControllerBase
         if (dataset is null) return NotFound();
 
         var row = new DatasetRow { Id = Guid.NewGuid(), DatasetId = id };
-        row.SetValues(KnownValues(dataset, dto.Values));
+        ApplyValues(dataset, row, dto.Values);
 
         _db.DatasetRows.Add(row);
         await _db.SaveChangesAsync();
-        return new DatasetRowDto { Id = row.Id, Values = row.GetValues() };
+        return row.ToDto();
     }
 
     [HttpPut("{id:guid}/rows/{rowId:guid}")]
@@ -208,12 +252,14 @@ public class DatasetsController : ControllerBase
         var dataset = await _db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return NotFound();
 
-        var row = await _db.DatasetRows.FirstOrDefaultAsync(r => r.Id == rowId && r.DatasetId == id);
+        var row = await _db.DatasetRows
+            .Include(r => r.Cells)
+            .FirstOrDefaultAsync(r => r.Id == rowId && r.DatasetId == id);
         if (row is null) return NotFound();
 
-        row.SetValues(KnownValues(dataset, dto.Values));
+        ApplyValues(dataset, row, dto.Values);
         await _db.SaveChangesAsync();
-        return new DatasetRowDto { Id = row.Id, Values = row.GetValues() };
+        return row.ToDto();
     }
 
     [HttpDelete("{id:guid}/rows/{rowId:guid}")]
@@ -227,10 +273,42 @@ public class DatasetsController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Drops values for columns the dataset doesn't have, so stale keys never accumulate.</summary>
-    private static Dictionary<Guid, string> KnownValues(Dataset dataset, Dictionary<Guid, string> values)
+    /// <summary>
+    /// Rewrites a row's cells from the submitted values, parsing each against its
+    /// column's type. Values for columns the dataset doesn't have are ignored, so
+    /// stale keys never accumulate.
+    /// </summary>
+    private void ApplyValues(Dataset dataset, DatasetRow row, Dictionary<Guid, string> values)
     {
-        var known = dataset.Columns.Select(c => c.Id).ToHashSet();
-        return values.Where(pair => known.Contains(pair.Key)).ToDictionary(p => p.Key, p => p.Value);
+        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
+
+        foreach (var (columnId, raw) in values)
+        {
+            if (!columnsById.TryGetValue(columnId, out var column)) continue;
+
+            var cell = row.Cells.FirstOrDefault(c => c.ColumnId == columnId);
+            if (cell is null)
+            {
+                cell = CellValues.Create(row.Id, columnId, raw, column.Type);
+                row.Cells.Add(cell);
+
+                // Cell ids are generated here, so change detection would otherwise read
+                // this as an existing row and emit an UPDATE that matches nothing.
+                _db.Entry(cell).State = EntityState.Added;
+            }
+            else
+            {
+                CellValues.Apply(cell, raw, column.Type);
+            }
+        }
+
+        // A value the client omitted means the cell was cleared.
+        var submitted = values.Keys.ToHashSet();
+        var dropped = row.Cells.Where(c => !submitted.Contains(c.ColumnId)).ToList();
+        foreach (var cell in dropped)
+        {
+            row.Cells.Remove(cell);
+            _db.DatasetCells.Remove(cell);
+        }
     }
 }

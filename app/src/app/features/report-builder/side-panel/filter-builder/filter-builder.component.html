@@ -1,0 +1,104 @@
+@if (hint()) {
+  <p class="panel-hint">{{ hint() }}</p>
+}
+
+@if (!group().ready()) {
+  <p class="panel-empty">Loading columns…</p>
+} @else if (columnOptions().length === 0) {
+  <p class="panel-empty">This dataset has no columns to filter on.</p>
+} @else {
+  @if (group().count() > 1) {
+    <div class="panel-field">
+      <label class="panel-field-label" for="filter-join">When</label>
+      <p-select
+        inputId="filter-join"
+        size="small"
+        appendTo="body"
+        [options]="joinOptions"
+        optionLabel="label"
+        optionValue="value"
+        [ngModel]="group().join()"
+        (onChange)="group().setJoin($event.value)"
+      />
+    </div>
+  }
+
+  @if (group().count() === 0) {
+    <p class="panel-empty">No conditions — every row is shown.</p>
+  } @else {
+    <ul class="filter-rows">
+      @for (condition of group().children(); track $index) {
+        <li class="filter-row">
+          <div class="filter-row__head">
+            <p-select
+              styleClass="filter-row__column"
+              size="small"
+              appendTo="body"
+              [options]="columnOptions()"
+              optionLabel="label"
+              optionValue="value"
+              [ngModel]="condition.columnId()"
+              (onChange)="condition.setColumn($event.value)"
+              [ariaLabel]="'Column for condition ' + ($index + 1)"
+            />
+            <p-button
+              icon="pi pi-times"
+              severity="danger"
+              text
+              size="small"
+              [ariaLabel]="'Remove condition ' + ($index + 1)"
+              (onClick)="remove($index)"
+            />
+          </div>
+
+          <p-select
+            styleClass="filter-row__operator"
+            size="small"
+            appendTo="body"
+            [options]="condition.availableOperators()"
+            optionLabel="label"
+            optionValue="value"
+            [ngModel]="condition.operator()"
+            (onChange)="condition.setOperator($event.value)"
+            [ariaLabel]="'Operator for condition ' + ($index + 1)"
+          />
+
+          @if (condition.operandIndexes().length > 0) {
+            <div class="filter-row__operands">
+              @for (i of condition.operandIndexes(); track i) {
+                <input
+                  class="filter-row__value"
+                  [type]="inputType(condition)"
+                  [placeholder]="placeholder(condition, i)"
+                  [value]="operandValue(condition, i)"
+                  (change)="condition.setValue(i, $any($event.target).value)"
+                  [attr.aria-label]="placeholder(condition, i)"
+                />
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  <p-button
+    label="Add condition"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    (onClick)="addCondition()"
+  />
+
+  @if (group().count() > 0) {
+    <p-button
+      label="Clear all"
+      icon="pi pi-filter-slash"
+      severity="secondary"
+      text
+      fluid
+      (onClick)="group().clear()"
+    />
+  }
+}

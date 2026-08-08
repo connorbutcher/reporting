@@ -61,8 +61,29 @@ public static class Mapping
         Columns = revision.Columns,
         Rows = revision.Rows,
         Widgets = revision.Widgets.Select(w => w.ToDto()).ToList(),
-        Notes = revision.Notes
+        Notes = revision.Notes,
+        Filters = revision.GetFilters()
     };
+
+    public static List<ReportFilterDto> GetFilters(this ReportRevision revision)
+    {
+        // A revision created before filters existed carries a blank blob, and a
+        // malformed one shouldn't take the whole report down — either way, the
+        // honest answer is "no report-level filters".
+        if (string.IsNullOrWhiteSpace(revision.FiltersJson)) return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<ReportFilterDto>>(revision.FiltersJson, ConfigJsonOptions) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    public static void SetFilters(this ReportRevision revision, List<ReportFilterDto> filters) =>
+        revision.FiltersJson = JsonSerializer.Serialize(filters, ConfigJsonOptions);
 
     public static ReportVersionSummaryDto ToVersionSummaryDto(this ReportRevision revision) => new()
     {
@@ -115,14 +136,25 @@ public static class Mapping
         Configuration = JsonSerializer.Deserialize<JsonElement>(column.ConfigurationJson)
     };
 
-    public static DatasetDataDto ToDataDto(this Dataset dataset) => new()
+    public static DatasetDataDto ToDataDto(this Dataset dataset) =>
+        BuildDataDto(dataset, dataset.Rows);
+
+    /// <summary>The same shape as <see cref="ToDataDto"/> but over an already-narrowed row set.</summary>
+    public static DatasetDataDto BuildDataDto(Dataset dataset, IEnumerable<DatasetRow> rows) => new()
     {
         Id = dataset.Id,
         Name = dataset.Name,
-        Rows = dataset.Rows.Select(r => new DatasetRowDto
-        {
-            Id = r.Id,
-            Values = r.GetValues()
-        }).ToList()
+        Rows = rows.Select(r => r.ToDto()).ToList()
+    };
+
+    /// <summary>Assumes <see cref="DatasetRow.Cells"/> is loaded.</summary>
+    public static DatasetRowDto ToDto(this DatasetRow row) => new()
+    {
+        Id = row.Id,
+        // Cells with no text carry no information the client can use, and leaving
+        // them out keeps the payload identical to the old JSON-blob shape.
+        Values = row.Cells
+            .Where(c => c.StringValue is not null)
+            .ToDictionary(c => c.ColumnId, c => c.StringValue!)
     };
 }

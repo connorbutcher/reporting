@@ -9,5 +9,7 @@ export type PanelView =
   | { kind: 'columnSettings'; widgetId: string; columnId: string }
   | { kind: 'tableAppearance'; widgetId: string }
   | { kind: 'textStyle'; widgetId: string }
+  | { kind: 'widgetFilters'; widgetId: string }
+  | { kind: 'reportFilters' }
   | { kind: 'addWidget' }
   | { kind: 'issues' };

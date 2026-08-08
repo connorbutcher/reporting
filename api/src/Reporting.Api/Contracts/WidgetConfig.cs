@@ -94,6 +94,9 @@ public class DataTableWidgetConfig : WidgetConfig
 
     public Guid? SortColumnId { get; set; }
     public SortDirection SortDirection { get; set; } = SortDirection.Asc;
+
+    /// <summary>Rows this widget shows, narrowed server-side. Null means no widget-level filter.</summary>
+    public FilterGroupDto? Filter { get; set; }
 }
 
 public class StaticTextWidgetConfig : WidgetConfig

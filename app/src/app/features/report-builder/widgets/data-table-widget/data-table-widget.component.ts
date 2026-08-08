@@ -11,11 +11,13 @@ import {
   untracked,
 } from '@angular/core';
 import { formatDate } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SortEvent } from 'primeng/api';
 import { TableModule } from 'primeng/table';
-import { forkJoin } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn, DatasetColumnType, DatasetData } from '../../../../core/models/dataset.model';
+import { FilterGroup, combineFilters } from '../../../../core/models/filter.model';
 import {
   ColumnAlign,
   DataTableColumnSetting,
@@ -24,6 +26,8 @@ import {
 } from '../../../../core/models/report.model';
 
 const DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
+/** Long enough that typing a filter value settles into one request. */
+const QUERY_DEBOUNCE_MS = 300;
 
 /** A row flattened to `columnId -> typed value`, so table sorting compares like with like. */
 type TableRow = Record<string, unknown>;
@@ -50,6 +54,18 @@ export class DataTableWidgetComponent {
   readonly config = input.required<DataTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   readonly datasetVersion = input(0);
+  /**
+   * The report-level filter for this widget's dataset, if any. Combined with the
+   * widget's own filter so both the builder and the published viewer narrow rows
+   * identically.
+   */
+  readonly reportFilter = input<FilterGroup | null>(null);
+  /**
+   * The widget's own filter, supplied by the host rather than read from
+   * {@link config} so the builder can leave out conditions the user hasn't
+   * finished typing. Defaults to whatever the config carries.
+   */
+  readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
 
   readonly sortChange = output<{ columnId: string; direction: SortDirection }>();
   readonly columnResize = output<{ columnId: string; width: number }[]>();
@@ -63,7 +79,18 @@ export class DataTableWidgetComponent {
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
+  /** Row counts from the last query, for the "n of m" footer when filtering. */
+  protected readonly matchedRowCount = signal(0);
+  protected readonly totalRowCount = signal(0);
+  protected readonly isFiltered = computed(() => this.effectiveFilter() !== null);
+
   protected readonly datasetId = computed(() => this.config().datasetId);
+
+  /** Report-level and widget-level filters, as the single tree sent to the API. */
+  private readonly effectiveFilter = computed(() => {
+    const own = this.widgetFilter() === undefined ? this.config().filter : this.widgetFilter()!;
+    return combineFilters(this.reportFilter(), own);
+  });
 
   /** Columns are chosen explicitly, so the table shows exactly what is configured. */
   protected readonly displayColumns = computed<DisplayColumn[]>(() => {
@@ -114,20 +141,20 @@ export class DataTableWidgetComponent {
   protected readonly sortField = signal<string | undefined>(undefined);
   protected readonly sortOrder = signal(1);
 
+  /** Coalesces reloads so typing a filter value doesn't fire a request per keystroke. */
+  private readonly queryQueue = new Subject<void>();
+
   constructor() {
+    // The schema describes the table and changes only with the dataset, so it
+    // loads immediately rather than through the debounced row pipeline.
     effect((onCleanup) => {
       const datasetId = this.datasetId();
       this.datasetVersion();
 
       if (!datasetId) {
         this.allColumns.set([]);
-        this.data.set(null);
-        this.loading.set(false);
         return;
       }
-
-      this.loading.set(true);
-      this.error.set(false);
 
       // Seed the table's sort from the saved config, untracked so persisting a
       // sort doesn't refetch the dataset or stomp the table mid-interaction.
@@ -136,25 +163,59 @@ export class DataTableWidgetComponent {
         this.sortOrder.set(this.config().sortDirection === 'desc' ? -1 : 1);
       });
 
-      // Schema and row data are separate endpoints: columns describe the table,
-      // rows carry the values keyed by column id.
-      const subscription = forkJoin({
-        schema: this.datasetApi.getSchema(datasetId),
-        data: this.datasetApi.getData(datasetId),
-      }).subscribe({
-        next: ({ schema, data }) => {
-          this.allColumns.set(schema.columns);
-          this.data.set(data);
-          this.loading.set(false);
-        },
-        error: () => {
-          this.error.set(true);
-          this.loading.set(false);
-        },
-      });
+      const subscription = this.datasetApi
+        .getSchema(datasetId)
+        .subscribe({ next: (schema) => this.allColumns.set(schema.columns), error: () => this.error.set(true) });
 
       onCleanup(() => subscription.unsubscribe());
     });
+
+    // Rows reload whenever the dataset, its configuration, or either filter changes.
+    effect(() => {
+      const datasetId = this.datasetId();
+      this.datasetVersion();
+      this.effectiveFilter();
+
+      if (!datasetId) {
+        untracked(() => {
+          this.data.set(null);
+          this.loading.set(false);
+        });
+        return;
+      }
+
+      untracked(() => {
+        this.loading.set(true);
+        this.error.set(false);
+        this.queryQueue.next();
+      });
+    });
+
+    this.queryQueue
+      .pipe(
+        debounceTime(QUERY_DEBOUNCE_MS),
+        switchMap(() => {
+          const datasetId = this.datasetId();
+          if (!datasetId) return EMPTY;
+
+          return this.datasetApi.query(datasetId, this.effectiveFilter()).pipe(
+            // Caught inside the switchMap: an error reaching the outer stream
+            // would tear down the subscription and stop all future reloads.
+            catchError(() => {
+              this.error.set(true);
+              this.loading.set(false);
+              return EMPTY;
+            }),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((result) => {
+        this.data.set({ id: result.id, name: result.name, rows: result.rows });
+        this.matchedRowCount.set(result.matchedRowCount);
+        this.totalRowCount.set(result.totalRowCount);
+        this.loading.set(false);
+      });
   }
 
   protected onSort(event: SortEvent): void {

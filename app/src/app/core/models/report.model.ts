@@ -1,3 +1,5 @@
+import { FilterGroup, ReportFilter } from './filter.model';
+
 export type WidgetType = 'dataTable' | 'staticText';
 
 export type SortDirection = 'asc' | 'desc';
@@ -49,6 +51,9 @@ export interface DataTableWidgetConfig extends WidgetConfigBase {
 
   sortColumnId: string | null;
   sortDirection: SortDirection;
+
+  /** Rows this widget shows, narrowed server-side. Null means no widget-level filter. */
+  filter: FilterGroup | null;
 }
 
 export interface StaticTextWidgetConfig extends WidgetConfigBase {
@@ -122,6 +127,8 @@ export interface ReportRevisionContent {
   widgets: Widget[];
   /** Rich-text (HTML) description of what changed. Null for drafts. */
   notes: string | null;
+  /** Report-level filters, one per dataset, applied on top of each widget's own. */
+  filters: ReportFilter[];
 }
 
 export interface ReportVersionSummary {
@@ -158,6 +165,7 @@ export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
   columns: [],
   sortColumnId: null,
   sortDirection: 'asc',
+  filter: null,
 };
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {

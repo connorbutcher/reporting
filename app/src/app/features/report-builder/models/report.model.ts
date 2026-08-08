@@ -6,9 +6,11 @@ import {
   Widget,
   WidgetType,
 } from '../../../core/models/report.model';
+import { FilterGroup, ReportFilter } from '../../../core/models/filter.model';
 import { clamp, rectsOverlap } from '../grid.util';
 import { EditorNode } from './editor-node';
-import { SchemaSource, WidgetModel, widgetModelFromDto } from './widget.model';
+import { ReportFilterModel } from './filter.model';
+import { DataTableWidgetModel, ModelSources, WidgetModel, widgetModelFromDto } from './widget.model';
 import { ValidationIssue } from './validation-issue';
 
 const MIN_GRID_SIZE = 1;
@@ -28,19 +30,25 @@ export class ReportModel extends EditorNode {
   readonly gridRows = signal(10);
   readonly widgets = signal<readonly WidgetModel[]>([]);
 
+  /** Report-level filters, one per dataset, layered over each widget's own. */
+  readonly filters = signal<readonly ReportFilterModel[]>([]);
+
   /** Issues grouped by widget, so each one can show its own badge cheaply. */
   readonly issuesByWidget: Signal<Map<string, ValidationIssue[]>>;
 
   constructor(
     report: ReportRevisionContent,
-    private readonly schemas: SchemaSource,
+    private readonly sources: ModelSources,
   ) {
     super();
     this.reportId = report.reportId;
     this.name.set(report.name);
     this.gridColumns.set(report.columns);
     this.gridRows.set(report.rows);
-    this.widgets.set(report.widgets.map((w) => widgetModelFromDto(w, schemas)));
+    this.widgets.set(report.widgets.map((w) => widgetModelFromDto(w, sources)));
+    this.filters.set(
+      (report.filters ?? []).map((f) => this.buildReportFilter(f.datasetId, f.filter)),
+    );
 
     this.issuesByWidget = computed(() => {
       const map = new Map<string, ValidationIssue[]>();
@@ -54,8 +62,8 @@ export class ReportModel extends EditorNode {
     });
   }
 
-  static fromDto(report: ReportRevisionContent, schemas: SchemaSource): ReportModel {
-    const model = new ReportModel(report, schemas);
+  static fromDto(report: ReportRevisionContent, sources: ModelSources): ReportModel {
+    const model = new ReportModel(report, sources);
     // Freshly loaded state is by definition the saved state.
     model.markPristine();
     return model;
@@ -63,6 +71,42 @@ export class ReportModel extends EditorNode {
 
   widget(widgetId: string): WidgetModel | null {
     return this.widgets().find((w) => w.id === widgetId) ?? null;
+  }
+
+  // --- report-level filters -------------------------------------------------
+
+  /** Every dataset some table on this report is bound to, in first-use order. */
+  readonly usedDatasetIds = computed(() => {
+    const ids: string[] = [];
+    for (const widget of this.widgets()) {
+      if (!(widget instanceof DataTableWidgetModel)) continue;
+      const id = widget.datasetId();
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+    return ids;
+  });
+
+  reportFilter(datasetId: string): ReportFilterModel | null {
+    return this.filters().find((f) => f.datasetId === datasetId) ?? null;
+  }
+
+  /** The filter for a dataset, created on first use so the panel always has one to edit. */
+  ensureReportFilter(datasetId: string): ReportFilterModel {
+    const existing = this.reportFilter(datasetId);
+    if (existing) return existing;
+
+    const model = this.buildReportFilter(datasetId, null);
+    this.filters.update((filters) => [...filters, model]);
+    return model;
+  }
+
+  private buildReportFilter(datasetId: string, dto: FilterGroup | null): ReportFilterModel {
+    return new ReportFilterModel(datasetId, dto, {
+      schema: computed(() => this.sources.schemas()[datasetId] ?? null),
+      catalogue: this.sources.catalogue,
+      view: { kind: 'reportFilters' },
+      ownerId: `report:${datasetId}`,
+    });
   }
 
   setGridColumns(value: number): void {
@@ -86,7 +130,7 @@ export class ReportModel extends EditorNode {
         ? { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } }
         : { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
 
-    const widget = widgetModelFromDto(dto, this.schemas);
+    const widget = widgetModelFromDto(dto, this.sources);
     this.widgets.update((widgets) => [...widgets, widget]);
     return widget;
   }
@@ -110,7 +154,7 @@ export class ReportModel extends EditorNode {
     // lands exactly on top of what it was copied from.
     const slot = this.findFreeSlot(dto.w, dto.h);
     this.growRowsFor(slot.y, dto.h);
-    const copy = widgetModelFromDto({ ...dto, id: crypto.randomUUID(), ...slot }, this.schemas);
+    const copy = widgetModelFromDto({ ...dto, id: crypto.randomUUID(), ...slot }, this.sources);
 
     // Sits straight after the original so the list order matches the canvas.
     this.widgets.update((widgets) => {
@@ -163,6 +207,9 @@ export class ReportModel extends EditorNode {
       widgets: this.widgets().map((w) => w.toDto()),
       // Notes only ever exist on published versions; a draft's autosave payload never carries one.
       notes: null,
+      filters: this.filters()
+        .map((f) => f.toDto())
+        .filter((f): f is ReportFilter => f !== null),
     };
   }
 
@@ -171,7 +218,7 @@ export class ReportModel extends EditorNode {
   }
 
   protected override childNodes(): readonly EditorNode[] {
-    return this.widgets();
+    return [...this.widgets(), ...this.filters()];
   }
 
   protected override ownIssues(): ValidationIssue[] {

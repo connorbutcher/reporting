@@ -105,6 +105,28 @@ import { ReportBuilderStore } from '../../report-builder.store';
           <button
             type="button"
             class="panel-menu-item"
+            [disabled]="!table.datasetId()"
+            (click)="store.navigate({ kind: 'widgetFilters', widgetId: widget.id })"
+          >
+            <i class="pi pi-filter" aria-hidden="true"></i>
+            <span class="panel-menu-text">
+              <span class="panel-menu-label">Filters</span>
+              <span class="panel-menu-hint">
+                {{
+                  !table.datasetId()
+                    ? 'Pick a dataset first'
+                    : table.filter.count() === 0
+                      ? 'Showing every row'
+                      : table.filter.count() + ' condition' + (table.filter.count() > 1 ? 's' : '')
+                }}
+              </span>
+            </span>
+            <i class="pi pi-angle-right" aria-hidden="true"></i>
+          </button>
+
+          <button
+            type="button"
+            class="panel-menu-item"
             (click)="store.navigate({ kind: 'tableAppearance', widgetId: widget.id })"
           >
             <i class="pi pi-palette" aria-hidden="true"></i>

@@ -57,6 +57,16 @@ export class WidgetHostComponent {
   protected readonly textConfig = computed(() => this.textModel()?.toDto().config ?? null);
   protected readonly datasetVersion = computed(() => this.store.datasetVersion());
 
+  /** Only the finished conditions, so a half-typed row doesn't blank the table. */
+  protected readonly widgetFilter = computed(() => this.tableModel()?.filter.toQueryDto() ?? null);
+
+  /** The report-level filter for this table's dataset, layered over its own. */
+  protected readonly reportFilter = computed(() => {
+    const datasetId = this.tableModel()?.datasetId();
+    if (!datasetId) return null;
+    return this.store.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
+  });
+
   protected readonly dragging = signal(false);
   protected readonly dragOffset = signal<{ x: number; y: number } | null>(null);
   protected readonly dragTransform = computed(() => {

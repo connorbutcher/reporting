@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Reporting.Api.Domain;
 
 public class DatasetRow
@@ -8,12 +6,6 @@ public class DatasetRow
     public Guid DatasetId { get; set; }
     public Dataset? Dataset { get; set; }
 
-    // JSON object mapping DatasetColumn.Id to that cell's value, stored as a string.
-    public string ValuesJson { get; set; } = "{}";
-
-    public Dictionary<Guid, string> GetValues() =>
-        JsonSerializer.Deserialize<Dictionary<Guid, string>>(ValuesJson) ?? new();
-
-    public void SetValues(Dictionary<Guid, string> values) =>
-        ValuesJson = JsonSerializer.Serialize(values);
+    /// <summary>One cell per column the row has a value for.</summary>
+    public List<DatasetCell> Cells { get; set; } = new();
 }

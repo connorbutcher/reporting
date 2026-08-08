@@ -48,6 +48,9 @@ public class ReportRevisionDto
 
     /// <summary>Rich-text (HTML) description of what changed. Null for drafts and unpublished content.</summary>
     public string? Notes { get; set; }
+
+    /// <summary>Report-level filters, one per dataset, applied on top of each widget's own.</summary>
+    public List<ReportFilterDto> Filters { get; set; } = new();
 }
 
 public class ReportVersionSummaryDto

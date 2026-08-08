@@ -10,6 +10,7 @@ import {
   DatasetSchema,
   DatasetSummary,
 } from '../models/dataset.model';
+import { DatasetQueryResult, FilterGroup } from '../models/filter.model';
 
 @Service()
 export class DatasetApiService {
@@ -25,6 +26,14 @@ export class DatasetApiService {
 
   getData(id: string): Observable<DatasetData> {
     return this.http.get<DatasetData>(`/api/datasets/${id}/data`);
+  }
+
+  /**
+   * Rows matching a filter. Filtering runs in SQL, so a widget never pulls rows
+   * it isn't going to show.
+   */
+  query(id: string, filter: FilterGroup | null): Observable<DatasetQueryResult> {
+    return this.http.post<DatasetQueryResult>(`/api/datasets/${id}/query`, { filter });
   }
 
   updateColumnConfiguration(

@@ -11,8 +11,10 @@ import {
   Widget,
   WidgetType,
 } from '../../../core/models/report.model';
+import { OperatorCatalogue } from '../../../core/models/filter.model';
 import { GridRect } from '../grid.util';
 import { EditorNode } from './editor-node';
+import { FilterGroupModel } from './filter.model';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';
 import { TextStyleModel } from './text-style.model';
@@ -20,6 +22,15 @@ import { ValidationIssue } from './validation-issue';
 
 /** Look-up of dataset schemas, supplied by the store's cache. */
 export type SchemaSource = Signal<Record<string, DatasetSchema>>;
+
+/** Filter operators per column type, supplied by the store once fetched. */
+export type CatalogueSource = Signal<OperatorCatalogue | null>;
+
+/** The shared look-ups every model node needs to describe and validate itself. */
+export interface ModelSources {
+  readonly schemas: SchemaSource;
+  readonly catalogue: CatalogueSource;
+}
 
 /** Shared behaviour for anything that can sit on the report grid. */
 export abstract class WidgetModel extends EditorNode {
@@ -92,12 +103,15 @@ export class DataTableWidgetModel extends WidgetModel {
   readonly appearance: TableAppearanceModel;
   readonly columns = signal<readonly TableColumnModel[]>([]);
 
+  /** Rows this widget shows, narrowed server-side. */
+  readonly filter: FilterGroupModel;
+
   /** The bound dataset's schema, once loaded. */
   readonly schema: Signal<DatasetSchema | null>;
   /** Dataset columns not yet placed on the table. */
   readonly availableColumns: Signal<DatasetSchema['columns']>;
 
-  constructor(widget: DataTableWidget, schemas: SchemaSource) {
+  constructor(widget: DataTableWidget, sources: ModelSources) {
     super(widget);
     const config = widget.config;
 
@@ -108,7 +122,15 @@ export class DataTableWidgetModel extends WidgetModel {
 
     this.schema = computed(() => {
       const id = this.datasetId();
-      return id ? (schemas()[id] ?? null) : null;
+      return id ? (sources.schemas()[id] ?? null) : null;
+    });
+
+    this.filter = new FilterGroupModel(config.filter ?? null, {
+      schema: this.schema,
+      catalogue: sources.catalogue,
+      view: { kind: 'widgetFilters', widgetId: this.id },
+      ownerId: this.id,
+      widgetId: this.id,
     });
 
     this.columns.set(config.columns.map((c) => new TableColumnModel(this.id, c, this.schema)));
@@ -119,12 +141,13 @@ export class DataTableWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice and the sort. */
+  /** Swapping dataset invalidates every column choice, the sort, and the filter. */
   setDataset(datasetId: string | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.columns.set([]);
     this.sortColumnId.set(null);
+    this.filter.clear();
   }
 
   addColumn(columnId: string): void {
@@ -180,6 +203,7 @@ export class DataTableWidgetModel extends WidgetModel {
       columns: this.columns().map((c) => c.toDto()),
       sortColumnId: this.sortColumnId(),
       sortDirection: this.sortDirection(),
+      filter: this.filter.toDto(),
     };
     return { ...this.geometryDto(), type: 'dataTable', config };
   }
@@ -189,7 +213,7 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   protected override childNodes(): readonly EditorNode[] {
-    return [this.appearance, ...this.columns()];
+    return [this.appearance, this.filter, ...this.columns()];
   }
 
   protected override ownIssues(): ValidationIssue[] {
@@ -295,8 +319,8 @@ export class StaticTextWidgetModel extends WidgetModel {
 }
 
 /** Rebuilds the right model class for a stored widget. */
-export function widgetModelFromDto(widget: Widget, schemas: SchemaSource): WidgetModel {
+export function widgetModelFromDto(widget: Widget, sources: ModelSources): WidgetModel {
   return widget.type === 'dataTable'
-    ? new DataTableWidgetModel(widget, schemas)
+    ? new DataTableWidgetModel(widget, sources)
     : new StaticTextWidgetModel(widget);
 }

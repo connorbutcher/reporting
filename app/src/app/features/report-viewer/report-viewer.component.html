@@ -39,7 +39,11 @@
       }
 
       @if (content(); as content) {
-        <app-readonly-report-grid [content]="content" />
+        <app-readonly-report-grid
+          [content]="content"
+          [pageFilters]="viewFilters()?.pageFilters() ?? null"
+          [widgetFilters]="viewFilters()?.widgetFilters() ?? null"
+        />
       } @else {
         <p class="report-viewer__status">
           This report has no published version yet. Check it out to start building it.
@@ -48,8 +52,39 @@
     </section>
 
     <aside class="report-viewer__history app-card">
-      <h2 class="report-viewer__history-heading">Version history</h2>
-      @if (versions().length === 0) {
+      <div class="report-viewer__tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          class="report-viewer__tab"
+          [class.report-viewer__tab--active]="asideTab() === 'filters'"
+          [attr.aria-selected]="asideTab() === 'filters'"
+          (click)="showTab('filters')"
+        >
+          Filters
+          @if (viewFilters()?.conditionCount(); as count) {
+            <span class="report-viewer__tab-badge">{{ count }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="report-viewer__tab"
+          [class.report-viewer__tab--active]="asideTab() === 'history'"
+          [attr.aria-selected]="asideTab() === 'history'"
+          (click)="showTab('history')"
+        >
+          History
+        </button>
+      </div>
+
+      @if (asideTab() === 'filters') {
+        @if (viewFilters(); as filters) {
+          <app-view-filters-panel [filters]="filters" />
+        } @else {
+          <p class="report-viewer__status">Nothing to filter yet.</p>
+        }
+      } @else if (versions().length === 0) {
         <p class="report-viewer__status">No published versions yet.</p>
       } @else {
         <ul class="report-viewer__versions">

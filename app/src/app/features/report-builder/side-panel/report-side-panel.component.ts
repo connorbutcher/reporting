@@ -11,7 +11,9 @@ import { PanelReportSettingsComponent } from './views/panel-report-settings.comp
 import { PanelRootComponent } from './views/panel-root.component';
 import { PanelTableAppearanceComponent } from './views/panel-table-appearance.component';
 import { PanelTextStyleComponent } from './views/panel-text-style.component';
+import { PanelReportFiltersComponent } from './views/panel-report-filters.component';
 import { PanelWidgetDetailComponent } from './views/panel-widget-detail.component';
+import { PanelWidgetFiltersComponent } from './views/panel-widget-filters.component';
 import { PanelWidgetListComponent } from './views/panel-widget-list.component';
 
 /** Chrome for the side panel: history controls, title, and the current view. */
@@ -30,6 +32,8 @@ import { PanelWidgetListComponent } from './views/panel-widget-list.component';
     PanelColumnSettingsComponent,
     PanelTableAppearanceComponent,
     PanelTextStyleComponent,
+    PanelWidgetFiltersComponent,
+    PanelReportFiltersComponent,
     PanelIssuesComponent,
   ],
   templateUrl: './report-side-panel.component.html',
@@ -55,6 +59,10 @@ export class ReportSidePanelComponent {
         return 'Appearance';
       case 'textStyle':
         return 'Style';
+      case 'widgetFilters':
+        return 'Filters';
+      case 'reportFilters':
+        return 'Report filters';
       case 'issues':
         return 'Report issues';
       case 'columnSettings':

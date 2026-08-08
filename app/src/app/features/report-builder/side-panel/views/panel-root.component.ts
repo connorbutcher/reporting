@@ -22,6 +22,14 @@ import { ReportBuilderStore } from '../../report-builder.store';
         </span>
         <i class="pi pi-angle-right" aria-hidden="true"></i>
       </button>
+      <button type="button" class="panel-menu-item" (click)="store.navigate({ kind: 'reportFilters' })">
+        <i class="pi pi-filter" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">Report filters</span>
+          <span class="panel-menu-hint">{{ reportFilterSummary() }}</span>
+        </span>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+      </button>
       <button type="button" class="panel-menu-item" (click)="store.navigate({ kind: 'addWidget' })">
         <i class="pi pi-plus-circle" aria-hidden="true"></i>
         <span class="panel-menu-text">
@@ -69,6 +77,14 @@ import { ReportBuilderStore } from '../../report-builder.store';
 export class PanelRootComponent {
   protected readonly store = inject(ReportBuilderStore);
   protected readonly widgetCount = computed(() => this.store.widgets().length);
+
+  /** Conditions across every dataset's report-level filter. */
+  protected readonly reportFilterSummary = computed(() => {
+    const filters = this.store.model()?.filters() ?? [];
+    const count = filters.reduce((n, f) => n + f.group.count(), 0);
+    if (count === 0) return 'Applied to every table on this report';
+    return `${count} condition${count > 1 ? 's' : ''} across ${filters.filter((f) => f.group.count() > 0).length} dataset(s)`;
+  });
 
   protected readonly issueSummary = computed(() => {
     const errors = this.store.errors().length;

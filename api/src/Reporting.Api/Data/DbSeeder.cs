@@ -218,7 +218,13 @@ public static class DbSeeder
     private static void AddRow(Dataset dataset, Dictionary<Guid, string> values)
     {
         var row = new DatasetRow { Id = Guid.NewGuid(), DatasetId = dataset.Id };
-        row.SetValues(values);
+        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
+
+        foreach (var (columnId, raw) in values)
+        {
+            row.Cells.Add(CellValues.Create(row.Id, columnId, raw, columnsById[columnId].Type));
+        }
+
         dataset.Rows.Add(row);
     }
 

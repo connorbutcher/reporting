@@ -3,7 +3,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
+import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
+import { OperatorCatalogue } from '../../core/models/filter.model';
 import {
   DatasetColumnConfiguration,
   DatasetSchema,
@@ -14,7 +16,7 @@ import { rectsOverlap } from './grid.util';
 import { ReportModel } from './models/report.model';
 import { UndoHistory } from './models/undo-history';
 import { ValidationIssue } from './models/validation-issue';
-import { DataTableWidgetModel, WidgetModel } from './models/widget.model';
+import { DataTableWidgetModel, ModelSources, WidgetModel } from './models/widget.model';
 import { PanelView } from './side-panel/panel-view';
 
 const SAVE_DEBOUNCE_MS = 250;
@@ -33,6 +35,7 @@ const HISTORY_DEBOUNCE_MS = 400;
 export class ReportBuilderStore {
   private readonly reportApi = inject(ReportApiService);
   private readonly datasetApi = inject(DatasetApiService);
+  private readonly filterApi = inject(FilterApiService);
   private readonly router = inject(Router);
 
   private readonly saveQueue = new Subject<void>();
@@ -51,6 +54,15 @@ export class ReportBuilderStore {
   /** Cached per dataset id so panel interactions never refetch the schema. */
   private readonly schemaCache = signal<Record<string, DatasetSchema>>({});
   private readonly inFlightSchemas = new Set<string>();
+
+  /** Filter operators per column type; static for the server's lifetime. */
+  readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
+
+  /** The look-ups every model node validates and describes itself against. */
+  private readonly sources: ModelSources = {
+    schemas: this.schemaCache.asReadonly(),
+    catalogue: this.operatorCatalogue.asReadonly(),
+  };
 
   /** Bumped when a column's configuration changes, so widgets re-read it. */
   readonly datasetVersion = signal(0);
@@ -193,6 +205,7 @@ export class ReportBuilderStore {
   load(reportId: string): void {
     this.loading.set(true);
     this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
+    this.filterApi.operators().subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
 
     this.reportApi.getDraft(reportId).subscribe({
       next: (content) => this.setLoadedReport(content),
@@ -362,14 +375,14 @@ export class ReportBuilderStore {
    */
   private restore(report: ReportRevisionContent | null): void {
     if (!report) return;
-    this.model.set(new ReportModel(report, this.schemaCache.asReadonly()));
+    this.model.set(new ReportModel(report, this.sources));
 
     const present = new Set(report.widgets.map((w) => w.id));
     this.selectedWidgetIds.update((ids) => ids.filter((id) => present.has(id)));
   }
 
   private setLoadedReport(report: ReportRevisionContent): void {
-    const model = ReportModel.fromDto(report, this.schemaCache.asReadonly());
+    const model = ReportModel.fromDto(report, this.sources);
     this.model.set(model);
     // Seeded from the model, not the server payload: the model normalises
     // defaults and key order, so anything else would look like a change and

@@ -47,6 +47,8 @@
         <app-data-table-widget
           [config]="config"
           [datasetVersion]="datasetVersion()"
+          [reportFilter]="reportFilter()"
+          [widgetFilter]="widgetFilter()"
           (sortChange)="onSortChange($event)"
           (columnResize)="onColumnResize($event)"
         />

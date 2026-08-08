@@ -16,6 +16,7 @@ public class ReportingDbContext : DbContext
     public DbSet<Dataset> Datasets => Set<Dataset>();
     public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
     public DbSet<DatasetRow> DatasetRows => Set<DatasetRow>();
+    public DbSet<DatasetCell> DatasetCells => Set<DatasetCell>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,5 +79,22 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<DatasetColumn>()
             .Property(c => c.Type)
             .HasConversion<string>();
+
+        modelBuilder.Entity<DatasetRow>()
+            .HasMany(r => r.Cells)
+            .WithOne(c => c.Row)
+            .HasForeignKey(c => c.RowId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // A row holds at most one cell per column.
+        modelBuilder.Entity<DatasetCell>()
+            .HasIndex(c => new { c.RowId, c.ColumnId })
+            .IsUnique();
+
+        // Filters always narrow by column first, then compare one typed value, so
+        // each index leads with ColumnId.
+        modelBuilder.Entity<DatasetCell>().HasIndex(c => new { c.ColumnId, c.NumberValue });
+        modelBuilder.Entity<DatasetCell>().HasIndex(c => new { c.ColumnId, c.DateValue });
+        modelBuilder.Entity<DatasetCell>().HasIndex(c => new { c.ColumnId, c.StringValue });
     }
 }

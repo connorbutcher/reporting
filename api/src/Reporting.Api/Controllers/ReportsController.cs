@@ -222,6 +222,7 @@ public class ReportsController : ControllerBase
             Columns = source?.Columns ?? 12,
             Rows = source?.Rows ?? 10,
             CreatedAt = DateTime.UtcNow,
+            FiltersJson = source?.FiltersJson ?? "[]",
         };
 
         if (source is not null)
@@ -261,6 +262,7 @@ public class ReportsController : ControllerBase
 
         draft.Columns = Math.Max(1, dto.Columns);
         draft.Rows = Math.Max(1, dto.Rows);
+        draft.SetFilters(dto.Filters);
 
         var incomingIds = dto.Widgets.Select(w => w.Id).ToHashSet();
         draft.Widgets.RemoveAll(w => !incomingIds.Contains(w.Id));
@@ -316,6 +318,7 @@ public class ReportsController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             PublishedAt = DateTime.UtcNow,
             Notes = dto.Notes,
+            FiltersJson = draft.FiltersJson,
         };
         foreach (var widget in draft.Widgets)
         {

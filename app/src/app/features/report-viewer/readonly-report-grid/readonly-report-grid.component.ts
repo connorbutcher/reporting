@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { CELL_SIZE, GRID_GAP } from '../../report-builder/grid.util';
-import { ReportRevisionContent } from '../../../core/models/report.model';
+import { ReportRevisionContent, Widget } from '../../../core/models/report.model';
+import { FilterGroup } from '../../../core/models/filter.model';
 import { DataTableWidgetComponent } from '../../report-builder/widgets/data-table-widget/data-table-widget.component';
 import { StaticTextWidgetComponent } from '../../report-builder/widgets/static-text-widget/static-text-widget.component';
 
@@ -16,4 +17,29 @@ export class ReadonlyReportGridComponent {
 
   protected readonly cellSize = CELL_SIZE;
   protected readonly gridGap = GRID_GAP;
+
+  /**
+   * Session overrides from the viewer's filter panel, keyed by dataset id and
+   * widget id. Left unset, the grid falls back to what the version published —
+   * so it still renders correctly on its own.
+   */
+  readonly pageFilters = input<Record<string, FilterGroup | null> | null>(null);
+  readonly widgetFilters = input<Record<string, FilterGroup | null> | null>(null);
+
+  /** So a published report narrows rows exactly as it did in the builder. */
+  protected reportFilterFor(datasetId: string | null): FilterGroup | null {
+    if (!datasetId) return null;
+
+    const overrides = this.pageFilters();
+    if (overrides && datasetId in overrides) return overrides[datasetId];
+
+    return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
+  }
+
+  protected widgetFilterFor(widget: Widget): FilterGroup | null {
+    const overrides = this.widgetFilters();
+    if (overrides && widget.id in overrides) return overrides[widget.id];
+
+    return widget.type === 'dataTable' ? widget.config.filter : null;
+  }
 }
