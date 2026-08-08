@@ -1,6 +1,8 @@
 import { FilterGroup, ReportFilter } from './filter.model';
 
-export type WidgetType = 'dataTable' | 'staticText';
+export type WidgetType = 'dataTable' | 'staticText' | 'chart';
+
+export type ChartType = 'scatter';
 
 export type SortDirection = 'asc' | 'desc';
 export type ColumnAlign = 'left' | 'center' | 'right';
@@ -73,6 +75,25 @@ export interface DataTableWidgetConfig extends WidgetConfigBase {
   filter: FilterGroup | null;
 }
 
+export interface ChartWidgetConfig extends WidgetConfigBase {
+  type: 'chart';
+  chartType: ChartType;
+
+  /** Null until the user binds the chart to a dataset. */
+  datasetId: string | null;
+  xColumnId: string | null;
+  yColumnId: string | null;
+  /** Splits points into a separate coloured series per distinct value. Null plots one series. */
+  seriesColumnId: string | null;
+
+  /** Blank falls back to the bound column's own name. */
+  xAxisLabel: string;
+  yAxisLabel: string;
+
+  showLegend: boolean;
+  pointSize: number;
+}
+
 export interface StaticTextWidgetConfig extends WidgetConfigBase {
   type: 'staticText';
 
@@ -97,7 +118,7 @@ export interface StaticTextWidgetConfig extends WidgetConfigBase {
   padding: number;
 }
 
-export type WidgetConfig = DataTableWidgetConfig | StaticTextWidgetConfig;
+export type WidgetConfig = DataTableWidgetConfig | StaticTextWidgetConfig | ChartWidgetConfig;
 
 interface WidgetBase {
   id: string;
@@ -122,7 +143,12 @@ export interface StaticTextWidget extends WidgetBase {
   config: StaticTextWidgetConfig;
 }
 
-export type Widget = DataTableWidget | StaticTextWidget;
+export interface ChartWidget extends WidgetBase {
+  type: 'chart';
+  config: ChartWidgetConfig;
+}
+
+export type Widget = DataTableWidget | StaticTextWidget | ChartWidget;
 
 /** A report's identity and folder placement — everything except its content. */
 export interface ReportSummary {
@@ -183,6 +209,20 @@ export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
   sortColumnId: null,
   sortDirection: 'asc',
   filter: null,
+};
+
+export const DEFAULT_CHART_CONFIG: Omit<ChartWidgetConfig, 'type'> = {
+  title: 'Chart',
+  showTitle: true,
+  chartType: 'scatter',
+  datasetId: null,
+  xColumnId: null,
+  yColumnId: null,
+  seriesColumnId: null,
+  xAxisLabel: '',
+  yAxisLabel: '',
+  showLegend: true,
+  pointSize: 8,
 };
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {

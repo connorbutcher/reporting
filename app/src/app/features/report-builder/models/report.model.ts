@@ -1,5 +1,6 @@
 import { Signal, computed, signal } from '@angular/core';
 import {
+  DEFAULT_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
   DEFAULT_TEXT_CONFIG,
   ReportRevisionContent,
@@ -10,7 +11,13 @@ import { FilterGroup, ReportFilter } from '../../../core/models/filter.model';
 import { clamp, rectsOverlap } from '../grid.util';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter.model';
-import { DataTableWidgetModel, ModelSources, WidgetModel, widgetModelFromDto } from './widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  ModelSources,
+  WidgetModel,
+  widgetModelFromDto,
+} from './widget.model';
 import { ValidationIssue } from './validation-issue';
 
 const MIN_GRID_SIZE = 1;
@@ -79,7 +86,7 @@ export class ReportModel extends EditorNode {
   readonly usedDatasetIds = computed(() => {
     const ids: string[] = [];
     for (const widget of this.widgets()) {
-      if (!(widget instanceof DataTableWidgetModel)) continue;
+      if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel)) continue;
       const id = widget.datasetId();
       if (id && !ids.includes(id)) ids.push(id);
     }
@@ -128,7 +135,9 @@ export class ReportModel extends EditorNode {
     const dto: Widget =
       type === 'dataTable'
         ? { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } }
-        : { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
+        : type === 'chart'
+          ? { ...base, type: 'chart', config: { type: 'chart', ...DEFAULT_CHART_CONFIG } }
+          : { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
 
     const widget = widgetModelFromDto(dto, this.sources);
     this.widgets.update((widgets) => [...widgets, widget]);

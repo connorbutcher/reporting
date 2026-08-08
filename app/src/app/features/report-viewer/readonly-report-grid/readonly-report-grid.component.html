@@ -42,6 +42,8 @@
               [reportFilter]="reportFilterFor(widget.config.datasetId)"
               [widgetFilter]="widgetFilterFor(widget)"
             />
+          } @else if (widget.type === 'chart') {
+            <app-chart-widget [config]="widget.config" [reportFilter]="reportFilterFor(widget.config.datasetId)" />
           } @else {
             <app-static-text-widget [config]="widget.config" />
           }

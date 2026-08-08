@@ -56,6 +56,9 @@
       @if (textConfig(); as config) {
         <app-static-text-widget [config]="config" />
       }
+      @if (chartConfig(); as config) {
+        <app-chart-widget [config]="config" [datasetVersion]="datasetVersion()" [reportFilter]="reportFilter()" />
+      }
     </div>
   </div>
   <button

@@ -39,9 +39,16 @@ export class ReportViewFilters {
         w.type === 'dataTable' && !!w.config.datasetId,
     );
 
+    // Charts bind to a dataset too, and should narrow along with every table
+    // on it — but only tables get a widget-level filter entry of their own.
+    const datasetBound = content.widgets.filter(
+      (w): w is Extract<Widget, { type: 'dataTable' | 'chart' }> =>
+        (w.type === 'dataTable' || w.type === 'chart') && !!w.config.datasetId,
+    );
+
     // A page filter exists for every dataset in use, not only those the author
     // filtered — otherwise a reader couldn't add one where none was defined.
-    const datasetIds = [...new Set(tables.map((w) => w.config.datasetId!))];
+    const datasetIds = [...new Set(datasetBound.map((w) => w.config.datasetId!))];
 
     this.pageEntries = datasetIds.map((datasetId) => {
       const published = content.filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;

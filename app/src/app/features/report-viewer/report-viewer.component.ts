@@ -116,8 +116,8 @@ export class ReportViewerComponent implements OnInit {
   private loadSchemas(content: ReportRevisionContent): void {
     const datasetIds = new Set(
       content.widgets
-        .filter((w) => w.type === 'dataTable' && w.config.datasetId)
-        .map((w) => (w as Extract<typeof w, { type: 'dataTable' }>).config.datasetId!),
+        .filter((w) => (w.type === 'dataTable' || w.type === 'chart') && w.config.datasetId)
+        .map((w) => (w as Extract<typeof w, { type: 'dataTable' | 'chart' }>).config.datasetId!),
     );
 
     for (const datasetId of datasetIds) {

@@ -1,6 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetSchema } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
 import {
+  ChartType,
+  ChartWidget,
+  ChartWidgetConfig,
+  DEFAULT_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
   DEFAULT_TEXT_CONFIG,
   DataTableWidget,
@@ -326,9 +330,125 @@ export class StaticTextWidgetModel extends WidgetModel {
   }
 }
 
+export class ChartWidgetModel extends WidgetModel {
+  override readonly type = 'chart' as const;
+
+  readonly chartType = signal<ChartType>('scatter');
+  /** Null until the user binds the chart to a dataset. */
+  readonly datasetId = signal<string | null>(null);
+  readonly xColumnId = signal<string | null>(null);
+  readonly yColumnId = signal<string | null>(null);
+  /** Splits points into a separate coloured series per distinct value. Null plots one series. */
+  readonly seriesColumnId = signal<string | null>(null);
+  readonly xAxisLabel = signal('');
+  readonly yAxisLabel = signal('');
+  readonly showLegend = signal(true);
+  readonly pointSize = signal(8);
+
+  /** The bound dataset's schema, once loaded. */
+  readonly schema: Signal<DatasetSchema | null>;
+  /** Columns the axes can plot — only numeric types make sense on a scatter chart. */
+  readonly numericColumns: Signal<DatasetColumn[]>;
+
+  constructor(widget: ChartWidget, sources: ModelSources) {
+    super(widget);
+    const config = widget.config;
+
+    this.chartType.set(config.chartType);
+    this.datasetId.set(config.datasetId);
+    this.xColumnId.set(config.xColumnId);
+    this.yColumnId.set(config.yColumnId);
+    this.seriesColumnId.set(config.seriesColumnId);
+    this.xAxisLabel.set(config.xAxisLabel);
+    this.yAxisLabel.set(config.yAxisLabel);
+    this.showLegend.set(config.showLegend);
+    this.pointSize.set(config.pointSize);
+
+    this.schema = computed(() => {
+      const id = this.datasetId();
+      return id ? (sources.schemas()[id] ?? null) : null;
+    });
+    this.numericColumns = computed(
+      () => this.schema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
+    );
+  }
+
+  /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
+  setDataset(datasetId: string | null): void {
+    if (datasetId === this.datasetId()) return;
+    this.datasetId.set(datasetId);
+    this.xColumnId.set(null);
+    this.yColumnId.set(null);
+    this.seriesColumnId.set(null);
+  }
+
+  override toDto(): ChartWidget {
+    const config: ChartWidgetConfig = {
+      type: 'chart',
+      ...DEFAULT_CHART_CONFIG,
+      ...this.baseConfigDto(),
+      chartType: this.chartType(),
+      datasetId: this.datasetId(),
+      xColumnId: this.xColumnId(),
+      yColumnId: this.yColumnId(),
+      seriesColumnId: this.seriesColumnId(),
+      xAxisLabel: this.xAxisLabel(),
+      yAxisLabel: this.yAxisLabel(),
+      showLegend: this.showLegend(),
+      pointSize: this.pointSize(),
+    };
+    return { ...this.geometryDto(), type: 'chart', config };
+  }
+
+  protected override defaultTitle(): string {
+    return 'Chart';
+  }
+
+  protected override childNodes(): readonly EditorNode[] {
+    return [];
+  }
+
+  protected override ownIssues(): ValidationIssue[] {
+    const name = this.label();
+
+    if (!this.datasetId()) {
+      return [
+        {
+          id: `${this.id}:noDataset`,
+          severity: 'warning',
+          title: `${name} has no dataset`,
+          detail: 'Pick a dataset so the chart has something to plot.',
+          widgetId: this.id,
+          view: { kind: 'widget', widgetId: this.id },
+        },
+      ];
+    }
+
+    if (!this.xColumnId() || !this.yColumnId()) {
+      return [
+        {
+          id: `${this.id}:noAxes`,
+          severity: 'warning',
+          title: `${name} is missing an axis`,
+          detail: 'Pick both an X and a Y column to plot.',
+          widgetId: this.id,
+          view: { kind: 'widget', widgetId: this.id },
+        },
+      ];
+    }
+
+    return [];
+  }
+}
+
 /** Rebuilds the right model class for a stored widget. */
 export function widgetModelFromDto(widget: Widget, sources: ModelSources): WidgetModel {
-  return widget.type === 'dataTable'
-    ? new DataTableWidgetModel(widget, sources)
-    : new StaticTextWidgetModel(widget);
+  switch (widget.type) {
+    case 'dataTable':
+      return new DataTableWidgetModel(widget, sources);
+    case 'chart':
+      return new ChartWidgetModel(widget, sources);
+    default:
+      return new StaticTextWidgetModel(widget);
+  }
 }

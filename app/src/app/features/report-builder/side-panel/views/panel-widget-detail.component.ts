@@ -5,12 +5,21 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TextareaModule } from 'primeng/textarea';
-import { StaticTextWidgetModel } from '../../models/widget.model';
+import { CheckboxModule } from 'primeng/checkbox';
+import { ChartWidgetModel, StaticTextWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 
 @Component({
   selector: 'app-panel-widget-detail',
-  imports: [FormsModule, ButtonModule, InputNumberModule, InputTextModule, SelectModule, TextareaModule],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    CheckboxModule,
+    InputNumberModule,
+    InputTextModule,
+    SelectModule,
+    TextareaModule,
+  ],
   template: `
     @if (store.hasMultiSelection()) {
       <div class="panel-multi">
@@ -66,7 +75,7 @@ import { ReportBuilderStore } from '../../report-builder.store';
             pInputText
             [ngModel]="widget.title()"
             (ngModelChange)="widget.title.set($event)"
-            [placeholder]="widget.type === 'dataTable' ? 'Table' : 'Text'"
+            [placeholder]="defaultTitle(widget.type)"
           />
         </label>
 
@@ -162,6 +171,106 @@ import { ReportBuilderStore } from '../../report-builder.store';
             </span>
             <i class="pi pi-angle-right" aria-hidden="true"></i>
           </button>
+        }
+
+        @if (chart(); as chart) {
+          <label class="panel-field">
+            <span class="panel-field-label">Dataset</span>
+            <p-select
+              [options]="store.datasets()"
+              [ngModel]="chart.datasetId()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select a dataset"
+              appendTo="body"
+              [showClear]="true"
+              fluid
+              (onChange)="chart.setDataset($event.value ?? null)"
+            />
+          </label>
+
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">X axis</span>
+              <p-select
+                [options]="chart.numericColumns()"
+                [ngModel]="chart.xColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                [disabled]="!chart.datasetId()"
+                fluid
+                (onChange)="chart.xColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Y axis</span>
+              <p-select
+                [options]="chart.numericColumns()"
+                [ngModel]="chart.yColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                [disabled]="!chart.datasetId()"
+                fluid
+                (onChange)="chart.yColumnId.set($event.value ?? null)"
+              />
+            </label>
+          </div>
+
+          <label class="panel-field">
+            <span class="panel-field-label">Colour by (optional)</span>
+            <p-select
+              [options]="chart.schema()?.columns ?? []"
+              [ngModel]="chart.seriesColumnId()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="One series"
+              appendTo="body"
+              [showClear]="true"
+              [disabled]="!chart.datasetId()"
+              fluid
+              (onChange)="chart.seriesColumnId.set($event.value ?? null)"
+            />
+          </label>
+
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">X axis label</span>
+              <input
+                pInputText
+                [ngModel]="chart.xAxisLabel()"
+                (ngModelChange)="chart.xAxisLabel.set($event)"
+                [placeholder]="axisPlaceholder(chart, chart.xColumnId())"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Y axis label</span>
+              <input
+                pInputText
+                [ngModel]="chart.yAxisLabel()"
+                (ngModelChange)="chart.yAxisLabel.set($event)"
+                [placeholder]="axisPlaceholder(chart, chart.yColumnId())"
+              />
+            </label>
+          </div>
+
+          <label class="panel-field">
+            <span class="panel-field-label">Point size (px)</span>
+            <p-inputnumber [ngModel]="chart.pointSize()" (ngModelChange)="chart.pointSize.set($event ?? 8)" [min]="2" [max]="40" fluid />
+          </label>
+
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="chart-legend"
+              [ngModel]="chart.showLegend()"
+              (onChange)="chart.showLegend.set($event.checked)"
+            />
+            <label for="chart-legend">Show legend</label>
+          </div>
         }
 
         <div class="panel-grid-fields">
@@ -262,6 +371,10 @@ export class PanelWidgetDetailComponent {
     const widget = this.store.selectedWidget();
     return widget instanceof StaticTextWidgetModel ? widget : null;
   });
+  protected readonly chart = computed(() => {
+    const widget = this.store.selectedWidget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
 
   protected readonly index = computed(() =>
     this.store.widgets().findIndex((w) => w.id === this.store.selectedWidgetId()),
@@ -270,4 +383,20 @@ export class PanelWidgetDetailComponent {
   protected readonly hasNext = computed(
     () => this.index() >= 0 && this.index() < this.store.widgets().length - 1,
   );
+
+  protected defaultTitle(type: 'dataTable' | 'staticText' | 'chart'): string {
+    switch (type) {
+      case 'dataTable':
+        return 'Table';
+      case 'chart':
+        return 'Chart';
+      default:
+        return 'Text';
+    }
+  }
+
+  /** Falls back to the picked axis column's own name once one is chosen. */
+  protected axisPlaceholder(chart: ChartWidgetModel, columnId: string | null): string {
+    return chart.numericColumns().find((c) => c.id === columnId)?.name ?? '';
+  }
 }

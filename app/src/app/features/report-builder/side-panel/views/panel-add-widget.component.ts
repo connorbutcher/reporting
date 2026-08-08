@@ -23,6 +23,14 @@ import { ReportBuilderStore } from '../../report-builder.store';
         </span>
         <i class="pi pi-plus" aria-hidden="true"></i>
       </button>
+      <button type="button" class="panel-menu-item" (click)="store.addWidget('chart')">
+        <i class="pi pi-chart-scatter" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">Chart</span>
+          <span class="panel-menu-hint">Plot two columns from a dataset</span>
+        </span>
+        <i class="pi pi-plus" aria-hidden="true"></i>
+      </button>
     </div>
   `,
 })

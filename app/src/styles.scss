@@ -107,6 +107,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  // Flex/grid items default to a content-based minimum width, so a select
+  // showing a long option (or its own placeholder text) can force this wider
+  // than its track and push the whole panel into horizontal scroll. This
+  // opts back into shrinking to the space actually available; PrimeNG's own
+  // inputs already ellipsize overflowing text once allowed to.
+  min-width: 0;
 }
 
 .panel-field-label {
@@ -121,6 +127,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  min-width: 0;
 }
 
 .panel-inline-field {

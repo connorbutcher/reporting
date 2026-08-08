@@ -5,6 +5,7 @@ namespace Reporting.Api.Contracts;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(DataTableWidgetConfig), typeDiscriminator: "dataTable")]
 [JsonDerivedType(typeof(StaticTextWidgetConfig), typeDiscriminator: "staticText")]
+[JsonDerivedType(typeof(ChartWidgetConfig), typeDiscriminator: "chart")]
 public abstract class WidgetConfig
 {
     public string Title { get; set; } = "Widget";
@@ -116,6 +117,32 @@ public class DataTableWidgetConfig : WidgetConfig
 
     /// <summary>Rows this widget shows, narrowed server-side. Null means no widget-level filter.</summary>
     public FilterGroupDto? Filter { get; set; }
+}
+
+public enum ChartType
+{
+    Scatter
+}
+
+public class ChartWidgetConfig : WidgetConfig
+{
+    public ChartType ChartType { get; set; } = ChartType.Scatter;
+
+    /// <summary>Null until the user binds the chart to a dataset.</summary>
+    public Guid? DatasetId { get; set; }
+
+    public Guid? XColumnId { get; set; }
+    public Guid? YColumnId { get; set; }
+
+    /// <summary>Splits points into a separate coloured series per distinct value. Null plots one series.</summary>
+    public Guid? SeriesColumnId { get; set; }
+
+    /// <summary>Blank falls back to the bound column's own name.</summary>
+    public string XAxisLabel { get; set; } = string.Empty;
+    public string YAxisLabel { get; set; } = string.Empty;
+
+    public bool ShowLegend { get; set; } = true;
+    public int PointSize { get; set; } = 8;
 }
 
 public class StaticTextWidgetConfig : WidgetConfig

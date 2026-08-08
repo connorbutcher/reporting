@@ -1,8 +1,9 @@
 import { Component, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { SortDirection } from '../../../core/models/report.model';
 import { CELL_SIZE, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
-import { DataTableWidgetModel, StaticTextWidgetModel, WidgetModel } from '../models/widget.model';
+import { ChartWidgetModel, DataTableWidgetModel, StaticTextWidgetModel, WidgetModel } from '../models/widget.model';
 import { ReportBuilderStore } from '../report-builder.store';
+import { ChartWidgetComponent } from '../widgets/chart-widget/chart-widget.component';
 import { DataTableWidgetComponent } from '../widgets/data-table-widget/data-table-widget.component';
 import { StaticTextWidgetComponent } from '../widgets/static-text-widget/static-text-widget.component';
 
@@ -10,7 +11,7 @@ type ResizeDirection = 'right' | 'bottom' | 'corner';
 
 @Component({
   selector: 'app-widget-host',
-  imports: [DataTableWidgetComponent, StaticTextWidgetComponent],
+  imports: [DataTableWidgetComponent, StaticTextWidgetComponent, ChartWidgetComponent],
   templateUrl: './widget-host.component.html',
   styleUrl: './widget-host.component.scss',
   host: {
@@ -51,18 +52,23 @@ export class WidgetHostComponent {
     const widget = this.widget();
     return widget instanceof StaticTextWidgetModel ? widget : null;
   });
+  private readonly chartModel = computed(() => {
+    const widget = this.widget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
 
   /** The presentational widgets stay decoupled by taking plain config objects. */
   protected readonly tableConfig = computed(() => this.tableModel()?.toDto().config ?? null);
   protected readonly textConfig = computed(() => this.textModel()?.toDto().config ?? null);
+  protected readonly chartConfig = computed(() => this.chartModel()?.toDto().config ?? null);
   protected readonly datasetVersion = computed(() => this.store.datasetVersion());
 
   /** Only the finished conditions, so a half-typed row doesn't blank the table. */
   protected readonly widgetFilter = computed(() => this.tableModel()?.filter.toQueryDto() ?? null);
 
-  /** The report-level filter for this table's dataset, layered over its own. */
+  /** The report-level filter for this widget's dataset, layered over its own. */
   protected readonly reportFilter = computed(() => {
-    const datasetId = this.tableModel()?.datasetId();
+    const datasetId = this.tableModel()?.datasetId() ?? this.chartModel()?.datasetId();
     if (!datasetId) return null;
     return this.store.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   });

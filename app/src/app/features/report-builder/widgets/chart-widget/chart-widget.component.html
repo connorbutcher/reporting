@@ -1,0 +1,17 @@
+@if (!config().datasetId) {
+  <div class="chart-widget__status">
+    <i class="pi pi-chart-scatter" aria-hidden="true"></i>
+    Choose a dataset for this chart in the side panel.
+  </div>
+} @else if (loading()) {
+  <div class="chart-widget__status">Loading…</div>
+} @else if (error()) {
+  <div class="chart-widget__status chart-widget__status--error">Failed to load dataset.</div>
+} @else if (chartOption(); as option) {
+  <div echarts [options]="option" [autoResize]="true" class="chart-widget__canvas"></div>
+} @else {
+  <div class="chart-widget__status">
+    <i class="pi pi-sliders-h" aria-hidden="true"></i>
+    Pick an X and a Y column from the side panel.
+  </div>
+}

@@ -16,7 +16,7 @@ import { rectsOverlap } from './grid.util';
 import { ReportModel } from './models/report.model';
 import { UndoHistory } from './models/undo-history';
 import { ValidationIssue } from './models/validation-issue';
-import { DataTableWidgetModel, ModelSources, WidgetModel } from './models/widget.model';
+import { ChartWidgetModel, DataTableWidgetModel, ModelSources, WidgetModel } from './models/widget.model';
 import { PanelView } from './side-panel/panel-view';
 
 const SAVE_DEBOUNCE_MS = 250;
@@ -157,7 +157,7 @@ export class ReportBuilderStore {
     // validation can tell a missing column from a schema that hasn't loaded.
     effect(() => {
       for (const widget of this.widgets()) {
-        if (widget instanceof DataTableWidgetModel) {
+        if (widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel) {
           const datasetId = widget.datasetId();
           if (datasetId) this.ensureSchema(datasetId);
         }

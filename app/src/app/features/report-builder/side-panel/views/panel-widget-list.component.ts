@@ -24,7 +24,13 @@ import { ReportBuilderStore } from '../../report-builder.store';
       >
         <ng-template #item let-widget>
           <span class="panel-widget-item">
-            <i class="pi" [class.pi-table]="widget.type === 'dataTable'" [class.pi-align-left]="widget.type === 'staticText'" aria-hidden="true"></i>
+            <i
+              class="pi"
+              [class.pi-table]="widget.type === 'dataTable'"
+              [class.pi-align-left]="widget.type === 'staticText'"
+              [class.pi-chart-scatter]="widget.type === 'chart'"
+              aria-hidden="true"
+            ></i>
             <span class="panel-widget-text">
               <span class="panel-widget-name">{{ widget.label }}</span>
               <span class="panel-widget-meta">
