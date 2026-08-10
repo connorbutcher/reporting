@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Reporting.Abstractions\Reporting.Abstractions.csproj" />
+    <ProjectReference Include="..\Reporting.Database\Reporting.Database.csproj" />
+  </ItemGroup>
+
+</Project>

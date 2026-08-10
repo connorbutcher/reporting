@@ -57,7 +57,12 @@
         <app-static-text-widget [config]="config" />
       }
       @if (chartConfig(); as config) {
-        <app-chart-widget [config]="config" [datasetVersion]="datasetVersion()" [reportFilter]="reportFilter()" />
+        <app-chart-widget
+          [config]="config"
+          [datasetVersion]="datasetVersion()"
+          [reportFilter]="reportFilter()"
+          [widgetFilter]="widgetFilter()"
+        />
       }
     </div>
   </div>

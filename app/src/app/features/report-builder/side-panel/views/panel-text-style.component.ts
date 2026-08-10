@@ -6,6 +6,7 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../core/models/report.model';
 import { StaticTextWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
+import { PanelGroupComponent } from '../panel-group.component';
 
 const FONT_WEIGHT_OPTIONS: { label: string; value: TextFontWeight }[] = [
   { label: 'Normal', value: 'normal' },
@@ -29,163 +30,171 @@ const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
 
 @Component({
   selector: 'app-panel-text-style',
-  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectButtonModule],
+  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectButtonModule, PanelGroupComponent],
   template: `
     @if (style(); as style) {
       <div class="panel-section">
-        <label class="panel-field">
-          <span class="panel-field-label">Font size (px)</span>
-          <p-inputnumber
-            [ngModel]="style.fontSize()"
-            (ngModelChange)="style.fontSize.set($event ?? 16)"
-            [min]="8"
-            [max]="200"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus"
-            fluid
-          />
-        </label>
-
-        <label class="panel-field">
-          <span class="panel-field-label">Weight</span>
-          <p-selectbutton
-            [options]="fontWeightOptions"
-            [ngModel]="style.fontWeight()"
-            optionLabel="label"
-            optionValue="value"
-            [allowEmpty]="false"
-            (ngModelChange)="style.fontWeight.set($event)"
-          />
-        </label>
-
-        <div class="panel-style-toggles">
-          <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.italic()">
-            <input type="checkbox" [ngModel]="style.italic()" (ngModelChange)="style.italic.set($event)" />
-            <i class="pi pi-italic" aria-hidden="true"></i>
-          </label>
-          <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.underline()">
-            <input
-              type="checkbox"
-              [ngModel]="style.underline()"
-              (ngModelChange)="style.underline.set($event)"
-            />
-            <i class="pi pi-underline" aria-hidden="true"></i>
-          </label>
-          <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.strikethrough()">
-            <input
-              type="checkbox"
-              [ngModel]="style.strikethrough()"
-              (ngModelChange)="style.strikethrough.set($event)"
-            />
-            <i class="pi pi-minus" aria-hidden="true"></i>
-          </label>
-        </div>
-
-        <label class="panel-field">
-          <span class="panel-field-label">Text alignment</span>
-          <p-selectbutton
-            [options]="textAlignOptions"
-            [ngModel]="style.textAlign()"
-            optionLabel="label"
-            optionValue="value"
-            [allowEmpty]="false"
-            (ngModelChange)="style.textAlign.set($event)"
-          />
-        </label>
-
-        <label class="panel-field">
-          <span class="panel-field-label">Vertical alignment</span>
-          <p-selectbutton
-            [options]="verticalAlignOptions"
-            [ngModel]="style.verticalAlign()"
-            optionLabel="label"
-            optionValue="value"
-            [allowEmpty]="false"
-            (ngModelChange)="style.verticalAlign.set($event)"
-          />
-        </label>
-
-        <div class="panel-grid-fields">
+        <app-panel-group label="Typography" icon="T">
           <label class="panel-field">
-            <span class="panel-field-label">Text colour</span>
-            <input
-              class="panel-color-input"
-              type="color"
-              [ngModel]="style.color()"
-              (ngModelChange)="style.color.set($event)"
-            />
-          </label>
-          <label class="panel-field">
-            <span class="panel-field-label">Line height</span>
+            <span class="panel-field-label">Font size (px)</span>
             <p-inputnumber
-              [ngModel]="style.lineHeight()"
-              (ngModelChange)="style.lineHeight.set($event ?? 1.4)"
-              [min]="0.8"
-              [max]="4"
-              [step]="0.1"
-              [minFractionDigits]="1"
-              [maxFractionDigits]="2"
+              [ngModel]="style.fontSize()"
+              (ngModelChange)="style.fontSize.set($event ?? 16)"
+              [min]="8"
+              [max]="200"
+              [showButtons]="true"
+              buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus"
+              decrementButtonIcon="pi pi-minus"
               fluid
             />
           </label>
-        </div>
 
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="text-bg-enabled"
-            [ngModel]="style.backgroundColor() !== null"
-            (onChange)="style.setBackgroundEnabled($event.checked)"
-          />
-          <label for="text-bg-enabled">Background colour</label>
-        </div>
-        @if (style.backgroundColor(); as background) {
-          <input
-            class="panel-color-input"
-            type="color"
-            [ngModel]="background"
-            (ngModelChange)="style.backgroundColor.set($event)"
-          />
-        }
+          <label class="panel-field">
+            <span class="panel-field-label">Weight</span>
+            <p-selectbutton
+              [options]="fontWeightOptions"
+              [ngModel]="style.fontWeight()"
+              optionLabel="label"
+              optionValue="value"
+              [allowEmpty]="false"
+              (ngModelChange)="style.fontWeight.set($event)"
+            />
+          </label>
 
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="text-wrap"
-            [ngModel]="style.wrap()"
-            (onChange)="style.wrap.set($event.checked)"
-          />
-          <label for="text-wrap">Wrap long lines</label>
-        </div>
+          <div class="panel-style-toggles">
+            <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.italic()">
+              <input type="checkbox" [ngModel]="style.italic()" (ngModelChange)="style.italic.set($event)" />
+              <i class="pi pi-italic" aria-hidden="true"></i>
+            </label>
+            <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.underline()">
+              <input
+                type="checkbox"
+                [ngModel]="style.underline()"
+                (ngModelChange)="style.underline.set($event)"
+              />
+              <i class="pi pi-underline" aria-hidden="true"></i>
+            </label>
+            <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.strikethrough()">
+              <input
+                type="checkbox"
+                [ngModel]="style.strikethrough()"
+                (ngModelChange)="style.strikethrough.set($event)"
+              />
+              <i class="pi pi-minus" aria-hidden="true"></i>
+            </label>
+          </div>
+        </app-panel-group>
 
-        <label class="panel-field">
-          <span class="panel-field-label">Padding (px)</span>
-          <p-inputnumber
-            [ngModel]="style.padding()"
-            (ngModelChange)="style.padding.set($event ?? 0)"
-            [min]="0"
-            [max]="100"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus"
-            fluid
-          />
-        </label>
+        <app-panel-group label="Alignment" icon="＋">
+          <label class="panel-field">
+            <span class="panel-field-label">Text alignment</span>
+            <p-selectbutton
+              [options]="textAlignOptions"
+              [ngModel]="style.textAlign()"
+              optionLabel="label"
+              optionValue="value"
+              [allowEmpty]="false"
+              (ngModelChange)="style.textAlign.set($event)"
+            />
+          </label>
 
-        @if (widget(); as widget) {
+          <label class="panel-field">
+            <span class="panel-field-label">Vertical alignment</span>
+            <p-selectbutton
+              [options]="verticalAlignOptions"
+              [ngModel]="style.verticalAlign()"
+              optionLabel="label"
+              optionValue="value"
+              [allowEmpty]="false"
+              (ngModelChange)="style.verticalAlign.set($event)"
+            />
+          </label>
+        </app-panel-group>
+
+        <app-panel-group label="Appearance" icon="◐">
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">Text colour</span>
+              <input
+                class="panel-color-input"
+                type="color"
+                [ngModel]="style.color()"
+                (ngModelChange)="style.color.set($event)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Line height</span>
+              <p-inputnumber
+                [ngModel]="style.lineHeight()"
+                (ngModelChange)="style.lineHeight.set($event ?? 1.4)"
+                [min]="0.8"
+                [max]="4"
+                [step]="0.1"
+                [minFractionDigits]="1"
+                [maxFractionDigits]="2"
+                fluid
+              />
+            </label>
+          </div>
+
           <div class="panel-inline-field">
             <p-checkbox
               [binary]="true"
-              inputId="text-show-title"
-              [ngModel]="widget.showTitle()"
-              (onChange)="widget.showTitle.set($event.checked)"
+              inputId="text-bg-enabled"
+              [ngModel]="style.backgroundColor() !== null"
+              (onChange)="style.setBackgroundEnabled($event.checked)"
             />
-            <label for="text-show-title">Show header bar</label>
+            <label for="text-bg-enabled">Background colour</label>
           </div>
-        }
+          @if (style.backgroundColor(); as background) {
+            <input
+              class="panel-color-input"
+              type="color"
+              [ngModel]="background"
+              (ngModelChange)="style.backgroundColor.set($event)"
+            />
+          }
+        </app-panel-group>
+
+        <app-panel-group label="Layout" icon="▤">
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="text-wrap"
+              [ngModel]="style.wrap()"
+              (onChange)="style.wrap.set($event.checked)"
+            />
+            <label for="text-wrap">Wrap long lines</label>
+          </div>
+
+          <label class="panel-field">
+            <span class="panel-field-label">Padding (px)</span>
+            <p-inputnumber
+              [ngModel]="style.padding()"
+              (ngModelChange)="style.padding.set($event ?? 0)"
+              [min]="0"
+              [max]="100"
+              [showButtons]="true"
+              buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus"
+              decrementButtonIcon="pi pi-minus"
+              fluid
+            />
+          </label>
+
+          @if (widget(); as widget) {
+            <div class="panel-inline-field">
+              <p-checkbox
+                [binary]="true"
+                inputId="text-show-title"
+                [ngModel]="widget.showTitle()"
+                (onChange)="widget.showTitle.set($event.checked)"
+              />
+              <label for="text-show-title">Show header bar</label>
+            </div>
+          }
+        </app-panel-group>
       </div>
     }
   `,

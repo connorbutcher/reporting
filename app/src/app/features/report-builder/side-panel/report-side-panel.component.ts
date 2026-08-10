@@ -7,6 +7,7 @@ import { PanelAddWidgetComponent } from './views/panel-add-widget.component';
 import { PanelColumnListComponent } from './views/panel-column-list.component';
 import { PanelColumnSettingsComponent } from './views/panel-column-settings.component';
 import { PanelColumnToleranceComponent } from './views/panel-column-tolerance.component';
+import { PanelChartToleranceBandComponent } from './views/panel-chart-tolerance-band.component';
 import { PanelIssuesComponent } from './views/panel-issues.component';
 import { PanelReportSettingsComponent } from './views/panel-report-settings.component';
 import { PanelRootComponent } from './views/panel-root.component';
@@ -32,6 +33,7 @@ import { PanelWidgetListComponent } from './views/panel-widget-list.component';
     PanelAddColumnComponent,
     PanelColumnSettingsComponent,
     PanelColumnToleranceComponent,
+    PanelChartToleranceBandComponent,
     PanelTableAppearanceComponent,
     PanelTextStyleComponent,
     PanelWidgetFiltersComponent,
@@ -71,6 +73,8 @@ export class ReportSidePanelComponent {
         return this.store.selectedTableWidget()?.column(view.columnId)?.label() ?? 'Column';
       case 'columnTolerance':
         return 'Tolerance limits';
+      case 'chartToleranceBand':
+        return 'Tolerance band';
       case 'widget':
         return this.store.selectedWidget()?.label() ?? 'Widget';
       default:

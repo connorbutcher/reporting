@@ -63,8 +63,10 @@ export class WidgetHostComponent {
   protected readonly chartConfig = computed(() => this.chartModel()?.toDto().config ?? null);
   protected readonly datasetVersion = computed(() => this.store.datasetVersion());
 
-  /** Only the finished conditions, so a half-typed row doesn't blank the table. */
-  protected readonly widgetFilter = computed(() => this.tableModel()?.filter.toQueryDto() ?? null);
+  /** Only the finished conditions, so a half-typed row doesn't blank the widget. */
+  protected readonly widgetFilter = computed(
+    () => this.tableModel()?.filter.toQueryDto() ?? this.chartModel()?.filter.toQueryDto() ?? null,
+  );
 
   /** The report-level filter for this widget's dataset, layered over its own. */
   protected readonly reportFilter = computed(() => {

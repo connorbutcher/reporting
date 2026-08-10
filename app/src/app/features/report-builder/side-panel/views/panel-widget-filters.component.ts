@@ -6,13 +6,13 @@ import { FilterBuilderComponent } from '../filter-builder/filter-builder.compone
   selector: 'app-panel-widget-filters',
   imports: [FilterBuilderComponent],
   template: `
-    @if (table(); as table) {
-      @if (!table.datasetId()) {
-        <p class="panel-empty">Pick a dataset for this table before adding filters.</p>
+    @if (widget(); as widget) {
+      @if (!widget.datasetId()) {
+        <p class="panel-empty">Pick a dataset for this widget before adding filters.</p>
       } @else {
         <app-filter-builder
-          [group]="table.filter"
-          hint="Narrows the rows this table shows. Report filters apply on top of these."
+          [group]="widget.filter"
+          hint="Narrows the rows this widget shows. Report filters apply on top of these."
         />
       }
     }
@@ -20,5 +20,5 @@ import { FilterBuilderComponent } from '../filter-builder/filter-builder.compone
 })
 export class PanelWidgetFiltersComponent {
   private readonly store = inject(ReportBuilderStore);
-  protected readonly table = this.store.selectedTableWidget;
+  protected readonly widget = this.store.selectedFilterableWidget;
 }

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Reporting.Abstractions/Reporting.Abstractions.csproj" />
+    <Project Path="src/Reporting.Api/Reporting.Api.csproj" />
+    <Project Path="src/Reporting.DAL/Reporting.DAL.csproj" />
+    <Project Path="src/Reporting.Database/Reporting.Database.csproj" />
+  </Folder>
+</Solution>

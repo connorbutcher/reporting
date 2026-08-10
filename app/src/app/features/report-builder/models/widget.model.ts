@@ -1,6 +1,8 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
 import {
+  ChartToleranceBand,
+  ChartTooltipColumn,
   ChartType,
   ChartWidget,
   ChartWidgetConfig,
@@ -345,6 +347,13 @@ export class ChartWidgetModel extends WidgetModel {
   readonly showLegend = signal(true);
   readonly pointSize = signal(8);
 
+  /** Reference lines per spec, each resolved against its own limits dataset. */
+  readonly toleranceBands = signal<readonly ChartToleranceBand[]>([]);
+  /** Extra fields shown in a point's tooltip, beyond X/Y. */
+  readonly tooltipColumns = signal<readonly ChartTooltipColumn[]>([]);
+  /** Rows this chart plots, narrowed server-side. */
+  readonly filter: FilterGroupModel;
+
   /** The bound dataset's schema, once loaded. */
   readonly schema: Signal<DatasetSchema | null>;
   /** Columns the axes can plot — only numeric types make sense on a scatter chart. */
@@ -363,6 +372,8 @@ export class ChartWidgetModel extends WidgetModel {
     this.yAxisLabel.set(config.yAxisLabel);
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
+    this.toleranceBands.set(config.toleranceBands ?? []);
+    this.tooltipColumns.set(config.tooltipColumns ?? []);
 
     this.schema = computed(() => {
       const id = this.datasetId();
@@ -371,6 +382,16 @@ export class ChartWidgetModel extends WidgetModel {
     this.numericColumns = computed(
       () => this.schema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
     );
+
+    this.filter = new FilterGroupModel(config.filter ?? null, {
+      schema: this.schema,
+      catalogue: sources.catalogue,
+      // Unlike a table, a chart doesn't show an enumerable set of columns, so
+      // its filter offers the whole dataset rather than a narrowed list.
+      view: { kind: 'widgetFilters', widgetId: this.id },
+      ownerId: this.id,
+      widgetId: this.id,
+    });
   }
 
   /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
@@ -380,6 +401,61 @@ export class ChartWidgetModel extends WidgetModel {
     this.xColumnId.set(null);
     this.yColumnId.set(null);
     this.seriesColumnId.set(null);
+    this.tooltipColumns.set([]);
+    this.filter.clear();
+  }
+
+  addToleranceBand(): string {
+    const band: ChartToleranceBand = {
+      id: crypto.randomUUID(),
+      axis: 'y',
+      sourceDatasetId: '',
+      sourceRowId: '',
+      minColumnId: '',
+      maxColumnId: '',
+    };
+    this.toleranceBands.update((bands) => [...bands, band]);
+    return band.id;
+  }
+
+  removeToleranceBand(id: string): void {
+    this.toleranceBands.update((bands) => bands.filter((b) => b.id !== id));
+  }
+
+  updateToleranceBand(id: string, patch: Partial<Omit<ChartToleranceBand, 'id'>>): void {
+    this.toleranceBands.update((bands) => bands.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  }
+
+  toleranceBand(id: string): ChartToleranceBand | null {
+    return this.toleranceBands().find((b) => b.id === id) ?? null;
+  }
+
+  /** Adds the first dataset column not already shown in the tooltip. */
+  addTooltipColumn(): void {
+    const used = new Set(this.tooltipColumns().map((c) => c.columnId));
+    const next = (this.schema()?.columns ?? []).find((c) => !used.has(c.id));
+    if (!next) return;
+    this.tooltipColumns.update((cols) => [...cols, { columnId: next.id }]);
+  }
+
+  removeTooltipColumn(columnId: string): void {
+    this.tooltipColumns.update((cols) => cols.filter((c) => c.columnId !== columnId));
+  }
+
+  updateTooltipColumn(columnId: string, patch: Partial<Omit<ChartTooltipColumn, 'columnId'>>): void {
+    this.tooltipColumns.update((cols) =>
+      cols.map((c) => (c.columnId === columnId ? { ...c, ...patch } : c)),
+    );
+  }
+
+  /** Swaps which column an existing tooltip entry shows, dropping a duplicate if that column is already added. */
+  replaceTooltipColumn(oldColumnId: string, newColumnId: string): void {
+    if (oldColumnId === newColumnId) return;
+    this.tooltipColumns.update((cols) =>
+      cols
+        .filter((c) => c.columnId !== newColumnId)
+        .map((c) => (c.columnId === oldColumnId ? { ...c, columnId: newColumnId } : c)),
+    );
   }
 
   override toDto(): ChartWidget {
@@ -396,6 +472,15 @@ export class ChartWidgetModel extends WidgetModel {
       yAxisLabel: this.yAxisLabel(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
+      // A band the user hasn't finished pointing at a spec yet is left out — the
+      // server's Guid fields can't parse the empty placeholder, and a half-built
+      // band shouldn't block autosave. It stays in the signal above so the panel
+      // that's mid-edit can still find it.
+      toleranceBands: this.toleranceBands()
+        .filter((b) => b.sourceDatasetId && b.sourceRowId && b.minColumnId && b.maxColumnId)
+        .map((b) => ({ ...b })),
+      tooltipColumns: this.tooltipColumns().map((c) => ({ ...c })),
+      filter: this.filter.toDto(),
     };
     return { ...this.geometryDto(), type: 'chart', config };
   }
@@ -405,7 +490,7 @@ export class ChartWidgetModel extends WidgetModel {
   }
 
   protected override childNodes(): readonly EditorNode[] {
-    return [];
+    return [this.filter];
   }
 
   protected override ownIssues(): ValidationIssue[] {

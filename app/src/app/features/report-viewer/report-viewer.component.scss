@@ -52,10 +52,28 @@
 }
 
 .report-viewer__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   margin: 0;
+  min-width: 0;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--app-navy);
+}
+
+.report-viewer__tag {
+  flex: 0 0 auto;
+  font-family: var(--app-font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+.report-viewer__name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -95,38 +113,6 @@
   padding: 24px;
   color: #64748b;
   text-align: center;
-}
-
-.report-viewer__notes {
-  margin: 14px 18px 0;
-  padding: 12px 14px;
-  border: 1px solid var(--app-card-border);
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.report-viewer__notes-heading {
-  margin: 0 0 4px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
-}
-
-.report-viewer__notes-content {
-  font-size: 0.85rem;
-  color: #1f2937;
-}
-
-// The notes are rendered via [innerHTML], so their <p> tags never get this
-// component's content attribute — ::ng-deep is needed to reach them.
-:host ::ng-deep .report-viewer__notes-content p:first-child {
-  margin-top: 0;
-}
-
-:host ::ng-deep .report-viewer__notes-content p:last-child {
-  margin-bottom: 0;
 }
 
 .report-viewer__history {
@@ -248,4 +234,24 @@
   color: #64748b;
   font-size: 0.72rem;
   font-weight: 400;
+
+  // The active version's notes are the full change description, not a
+  // scanning aid for the list, so they get room to wrap instead of clipping.
+  &--full {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    margin-top: 2px;
+    color: #334155;
+  }
+}
+
+// Notes render via [innerHTML], so their <p> tags never get this component's
+// content attribute — ::ng-deep is needed to reach them.
+:host ::ng-deep .report-viewer__version-notes--full p:first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .report-viewer__version-notes--full p:last-child {
+  margin-bottom: 0;
 }

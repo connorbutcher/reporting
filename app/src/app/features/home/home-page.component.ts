@@ -26,13 +26,15 @@ import { RenameDialogComponent, RenameDialogData } from './rename-dialog/rename-
 const ROOT_KEY = '__root__';
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** A folder or report, normalized to one shape so both can share the same table row. */
+/** A folder or report, normalized to one shape so both can share row-action logic (open/rename/move/delete). */
 interface ContentRow {
   kind: 'folder' | 'report';
   id: string;
   name: string;
   number: number | null;
   status: string | null;
+  /** Drives the status stripe/text colour on a report row. Null for folders. */
+  statusKind: 'draft' | 'published' | 'empty' | null;
   modifiedAt: string;
   folder?: Folder;
   report?: ReportSummary;
@@ -69,6 +71,9 @@ export class HomePageComponent implements OnInit {
   protected readonly contentsLoading = signal(true);
   protected readonly treeLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+
+  /** Collapses the folder tree to a slim strip, freeing width for the contents table. */
+  protected readonly railCollapsed = signal(false);
 
   protected readonly contextRow = signal<ContentRow | null>(null);
 
@@ -108,20 +113,25 @@ export class HomePageComponent implements OnInit {
     })),
   );
 
-  protected readonly contentRows = computed<ContentRow[]>(() => [
-    ...this.contentFolders().map(
+  protected readonly folderRows = computed<ContentRow[]>(() =>
+    this.contentFolders().map(
       (folder): ContentRow => ({
         kind: 'folder',
         id: folder.id,
         name: folder.name,
         number: null,
         status: null,
+        statusKind: null,
         modifiedAt: folder.modifiedAt,
         folder,
       }),
     ),
-    ...this.contentReports().map(
-      (report): ContentRow => ({
+  );
+
+  protected readonly reportRows = computed<ContentRow[]>(() =>
+    this.contentReports().map((report): ContentRow => {
+      const statusKind = report.hasDraft ? 'draft' : report.latestVersionNumber ? 'published' : 'empty';
+      return {
         kind: 'report',
         id: report.id,
         name: report.name,
@@ -129,13 +139,16 @@ export class HomePageComponent implements OnInit {
         status: report.hasDraft
           ? 'Draft'
           : report.latestVersionNumber
-            ? `v${report.latestVersionNumber}`
+            ? `Published · v${report.latestVersionNumber}`
             : 'No versions',
+        statusKind,
         modifiedAt: report.modifiedAt,
         report,
-      }),
-    ),
-  ]);
+      };
+    }),
+  );
+
+  protected readonly hasContent = computed(() => this.folderRows().length + this.reportRows().length > 0);
 
   protected readonly contextMenuItems = computed<MenuItem[]>(() => {
     const row = this.contextRow();
@@ -285,6 +298,12 @@ export class HomePageComponent implements OnInit {
     this.router.navigate(['/reports', result.id]);
   }
 
+  // --- tree rail ----------------------------------------------------------
+
+  protected toggleRail(): void {
+    this.railCollapsed.update((collapsed) => !collapsed);
+  }
+
   // --- row actions ------------------------------------------------------
 
   protected openRow(row: ContentRow): void {
@@ -299,6 +318,14 @@ export class HomePageComponent implements OnInit {
 
   protected onRowActionsClick(event: MouseEvent, row: ContentRow, cm: ContextMenu): void {
     event.stopPropagation();
+    this.errorMessage.set(null);
+    this.contextRow.set(row);
+    cm.show(event);
+  }
+
+  /** Folder chips aren't p-table rows, so right-click needs its own wiring to the shared context menu. */
+  protected onFolderContextMenu(event: MouseEvent, row: ContentRow, cm: ContextMenu): void {
+    event.preventDefault();
     this.errorMessage.set(null);
     this.contextRow.set(row);
     cm.show(event);

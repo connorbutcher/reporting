@@ -6,6 +6,7 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetData, DatasetRow, DatasetSchema } from '../../../../core/models/dataset.model';
 import { ToleranceConfig } from '../../../../core/models/report.model';
 import { ReportBuilderStore } from '../../report-builder.store';
+import { PanelGroupComponent } from '../panel-group.component';
 
 /**
  * Associates a numeric column with pass/fail limits: a dataset, one row in it
@@ -15,7 +16,7 @@ import { ReportBuilderStore } from '../../report-builder.store';
  */
 @Component({
   selector: 'app-panel-column-tolerance',
-  imports: [FormsModule, ButtonModule, SelectModule],
+  imports: [FormsModule, ButtonModule, SelectModule, PanelGroupComponent],
   template: `
     @if (column(); as column) {
       <div class="panel-section">
@@ -25,101 +26,103 @@ import { ReportBuilderStore } from '../../report-builder.store';
           concession bound and min/max is orange; inside min/max is unmarked.
         </p>
 
-        <label class="panel-field">
-          <span class="panel-field-label">Limits dataset</span>
-          <p-select
-            [options]="datasets()"
-            [ngModel]="sourceDatasetId()"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Choose a dataset"
-            appendTo="body"
-            fluid
-            showClear
-            (onChange)="selectDataset($event.value ?? null)"
-          />
-        </label>
+        <app-panel-group label="Limits" icon="⛁">
+          <label class="panel-field">
+            <span class="panel-field-label">Limits dataset</span>
+            <p-select
+              [options]="datasets()"
+              [ngModel]="sourceDatasetId()"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Choose a dataset"
+              appendTo="body"
+              fluid
+              showClear
+              (onChange)="selectDataset($event.value ?? null)"
+            />
+          </label>
 
-        @if (sourceDatasetId()) {
-          @if (loadingSource()) {
-            <p class="panel-empty">Loading…</p>
-          } @else {
-            <label class="panel-field">
-              <span class="panel-field-label">Spec row</span>
-              <p-select
-                [options]="rowOptions()"
-                [ngModel]="sourceRowId()"
-                optionLabel="label"
-                optionValue="id"
-                placeholder="Choose a row"
-                appendTo="body"
-                fluid
-                (onChange)="sourceRowId.set($event.value ?? null)"
-              />
-            </label>
+          @if (sourceDatasetId()) {
+            @if (loadingSource()) {
+              <p class="panel-empty">Loading…</p>
+            } @else {
+              <label class="panel-field">
+                <span class="panel-field-label">Spec row</span>
+                <p-select
+                  [options]="rowOptions()"
+                  [ngModel]="sourceRowId()"
+                  optionLabel="label"
+                  optionValue="id"
+                  placeholder="Choose a row"
+                  appendTo="body"
+                  fluid
+                  (onChange)="sourceRowId.set($event.value ?? null)"
+                />
+              </label>
 
-            <div class="panel-grid-fields">
-              <label class="panel-field">
-                <span class="panel-field-label">Min</span>
-                <p-select
-                  [options]="numericColumns()"
-                  [ngModel]="minColumnId()"
-                  optionLabel="name"
-                  optionValue="id"
-                  placeholder="Column"
-                  appendTo="body"
-                  fluid
-                  (onChange)="minColumnId.set($event.value ?? null)"
-                />
-              </label>
-              <label class="panel-field">
-                <span class="panel-field-label">Max</span>
-                <p-select
-                  [options]="numericColumns()"
-                  [ngModel]="maxColumnId()"
-                  optionLabel="name"
-                  optionValue="id"
-                  placeholder="Column"
-                  appendTo="body"
-                  fluid
-                  (onChange)="maxColumnId.set($event.value ?? null)"
-                />
-              </label>
-              <label class="panel-field">
-                <span class="panel-field-label">Concession lower</span>
-                <p-select
-                  [options]="numericColumns()"
-                  [ngModel]="concessionLowerColumnId()"
-                  optionLabel="name"
-                  optionValue="id"
-                  placeholder="None"
-                  appendTo="body"
-                  fluid
-                  showClear
-                  (onChange)="concessionLowerColumnId.set($event.value ?? null)"
-                />
-              </label>
-              <label class="panel-field">
-                <span class="panel-field-label">Concession upper</span>
-                <p-select
-                  [options]="numericColumns()"
-                  [ngModel]="concessionUpperColumnId()"
-                  optionLabel="name"
-                  optionValue="id"
-                  placeholder="None"
-                  appendTo="body"
-                  fluid
-                  showClear
-                  (onChange)="concessionUpperColumnId.set($event.value ?? null)"
-                />
-              </label>
-            </div>
+              <div class="panel-grid-fields">
+                <label class="panel-field">
+                  <span class="panel-field-label">Min</span>
+                  <p-select
+                    [options]="numericColumns()"
+                    [ngModel]="minColumnId()"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Column"
+                    appendTo="body"
+                    fluid
+                    (onChange)="minColumnId.set($event.value ?? null)"
+                  />
+                </label>
+                <label class="panel-field">
+                  <span class="panel-field-label">Max</span>
+                  <p-select
+                    [options]="numericColumns()"
+                    [ngModel]="maxColumnId()"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="Column"
+                    appendTo="body"
+                    fluid
+                    (onChange)="maxColumnId.set($event.value ?? null)"
+                  />
+                </label>
+                <label class="panel-field">
+                  <span class="panel-field-label">Concession lower</span>
+                  <p-select
+                    [options]="numericColumns()"
+                    [ngModel]="concessionLowerColumnId()"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="None"
+                    appendTo="body"
+                    fluid
+                    showClear
+                    (onChange)="concessionLowerColumnId.set($event.value ?? null)"
+                  />
+                </label>
+                <label class="panel-field">
+                  <span class="panel-field-label">Concession upper</span>
+                  <p-select
+                    [options]="numericColumns()"
+                    [ngModel]="concessionUpperColumnId()"
+                    optionLabel="name"
+                    optionValue="id"
+                    placeholder="None"
+                    appendTo="body"
+                    fluid
+                    showClear
+                    (onChange)="concessionUpperColumnId.set($event.value ?? null)"
+                  />
+                </label>
+              </div>
 
-            @if (!isComplete()) {
-              <p class="panel-hint">Pick a spec row plus min and max columns to turn on highlighting.</p>
+              @if (!isComplete()) {
+                <p class="panel-hint">Pick a spec row plus min and max columns to turn on highlighting.</p>
+              }
             }
           }
-        }
+        </app-panel-group>
 
         <p-button
           label="Remove tolerance"

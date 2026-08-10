@@ -12,7 +12,12 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Reporting.Abstractions\Reporting.Abstractions.csproj" />
+    <ProjectReference Include="..\Reporting.Database\Reporting.Database.csproj" />
+    <ProjectReference Include="..\Reporting.DAL\Reporting.DAL.csproj" />
   </ItemGroup>
 
 </Project>

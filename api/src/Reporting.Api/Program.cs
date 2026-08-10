@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
-using Reporting.Api.Data;
+using Reporting.DAL.Repositories;
+using Reporting.Database;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,10 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+
+builder.Services.AddScoped<DatasetRepository>();
+builder.Services.AddScoped<FolderRepository>();
+builder.Services.AddScoped<ReportRepository>();
 
 var app = builder.Build();
 

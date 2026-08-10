@@ -58,6 +58,14 @@
     color: var(--app-navy, #152a55);
     font-weight: 600;
   }
+
+  // Values are set in a tabular monospace, the way a spec sheet or datasheet
+  // would — job numbers, dates and measurements all line up column to column,
+  // which the UI typeface used for headers and labels doesn't do.
+  td {
+    font-family: var(--app-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 :host(.data-table-widget--no-head) ::ng-deep thead {

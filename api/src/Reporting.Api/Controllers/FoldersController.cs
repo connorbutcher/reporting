@@ -1,61 +1,28 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Reporting.Api.Contracts;
-using Reporting.Api.Data;
-using Reporting.Api.Domain;
+using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class FoldersController : ControllerBase
+public class FoldersController(FolderRepository folders) : ControllerBase
 {
-    private readonly ReportingDbContext _db;
-
-    public FoldersController(ReportingDbContext db) => _db = db;
-
     [HttpGet]
-    public async Task<ActionResult<List<FolderDto>>> GetAll()
-    {
-        var folders = await _db.Folders.ToListAsync();
-        return folders.Select(f => f.ToDto()).ToList();
-    }
+    public async Task<ActionResult<List<FolderDto>>> GetAll() =>
+        await folders.GetAllAsync();
 
     /// <summary>Direct child folders of <paramref name="parentId"/> (root if omitted), each flagged with whether it has children of its own — enough for the tree to draw an expand arrow without fetching further.</summary>
     [HttpGet("children")]
-    public async Task<ActionResult<List<FolderDto>>> GetChildren([FromQuery] Guid? parentId)
-    {
-        var children = await _db.Folders
-            .Where(f => f.ParentFolderId == parentId)
-            .OrderBy(f => f.Name)
-            .ToListAsync();
-
-        var result = new List<FolderDto>(children.Count);
-        foreach (var folder in children)
-        {
-            var dto = folder.ToDto();
-            dto.HasChildren = await _db.Folders.AnyAsync(f => f.ParentFolderId == folder.Id);
-            result.Add(dto);
-        }
-        return result;
-    }
+    public async Task<ActionResult<List<FolderDto>>> GetChildren([FromQuery] Guid? parentId) =>
+        await folders.GetChildrenAsync(parentId);
 
     /// <summary>The chain of ancestors from the root down to <paramref name="id"/>, for building a breadcrumb without the whole tree.</summary>
     [HttpGet("{id:guid}/path")]
     public async Task<ActionResult<List<FolderDto>>> GetPath(Guid id)
     {
-        var allFolders = await _db.Folders.ToListAsync();
-        var byId = allFolders.ToDictionary(f => f.Id);
-        if (!byId.ContainsKey(id)) return NotFound();
-
-        var path = new List<FolderDto>();
-        Guid? current = id;
-        while (current is { } cid && byId.TryGetValue(cid, out var folder))
-        {
-            path.Insert(0, folder.ToDto());
-            current = folder.ParentFolderId;
-        }
-        return path;
+        var path = await folders.GetPathAsync(id);
+        return path is null ? NotFound() : path;
     }
 
     [HttpPost]
@@ -63,24 +30,15 @@ public class FoldersController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A folder needs a name.");
 
-        if (dto.ParentFolderId is { } parentId && !await _db.Folders.AnyAsync(f => f.Id == parentId))
+        try
         {
-            return BadRequest("Parent folder does not exist.");
+            var folder = await folders.CreateAsync(dto.Name.Trim(), dto.ParentFolderId);
+            return CreatedAtAction(nameof(GetAll), folder);
         }
-
-        var now = DateTime.UtcNow;
-        var folder = new Folder
+        catch (DataValidationException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = dto.Name.Trim(),
-            ParentFolderId = dto.ParentFolderId,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-
-        _db.Folders.Add(folder);
-        await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAll), folder.ToDto());
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPut("{id:guid}")]
@@ -88,47 +46,27 @@ public class FoldersController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A folder needs a name.");
 
-        var folder = await _db.Folders.FirstOrDefaultAsync(f => f.Id == id);
-        if (folder is null) return NotFound();
-
-        if (dto.ParentFolderId is { } parentId)
+        try
         {
-            // Walking the new parent's own ancestor chain catches not just a direct
-            // self-parent but moving a folder into any of its own descendants, which
-            // would otherwise splice a cycle into the tree.
-            var cursor = await _db.Folders.FirstOrDefaultAsync(f => f.Id == parentId);
-            if (cursor is null) return BadRequest("Parent folder does not exist.");
-
-            var visited = new HashSet<Guid>();
-            while (cursor is not null)
-            {
-                if (cursor.Id == id) return BadRequest("Cannot move a folder into its own subtree.");
-                if (!visited.Add(cursor.Id)) break;
-                cursor = cursor.ParentFolderId is { } pid
-                    ? await _db.Folders.FirstOrDefaultAsync(f => f.Id == pid)
-                    : null;
-            }
+            var folder = await folders.UpdateAsync(id, dto.Name.Trim(), dto.ParentFolderId);
+            return folder is null ? NotFound() : folder;
         }
-
-        folder.Name = dto.Name.Trim();
-        folder.ParentFolderId = dto.ParentFolderId;
-        folder.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return folder.ToDto();
+        catch (DataValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var folder = await _db.Folders.FirstOrDefaultAsync(f => f.Id == id);
-        if (folder is null) return NotFound();
-
-        var hasChildFolders = await _db.Folders.AnyAsync(f => f.ParentFolderId == id);
-        var hasReports = await _db.Reports.AnyAsync(r => r.FolderId == id);
-        if (hasChildFolders || hasReports) return Conflict("Folder is not empty.");
-
-        _db.Folders.Remove(folder);
-        await _db.SaveChangesAsync();
-        return NoContent();
+        try
+        {
+            return await folders.DeleteAsync(id) ? NoContent() : NotFound();
+        }
+        catch (DataConflictException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 }

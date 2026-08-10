@@ -121,6 +121,18 @@ export class ReportBuilderStore {
     return widget instanceof DataTableWidgetModel ? widget : null;
   });
 
+  /** The selected widget, narrowed to a chart — null for every other type. */
+  readonly selectedChartWidget = computed<ChartWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
+
+  /** The selected widget, when it's a kind that carries its own filter. */
+  readonly selectedFilterableWidget = computed<DataTableWidgetModel | ChartWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel ? widget : null;
+  });
+
   constructor() {
     // Any change anywhere in the tree shows up as a new snapshot here, so this
     // one effect covers every edit without each caller remembering to save.

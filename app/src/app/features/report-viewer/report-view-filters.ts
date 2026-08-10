@@ -34,13 +34,8 @@ export class ReportViewFilters {
   ) {
     const schemaFor = (datasetId: string) => computed(() => schemas()[datasetId] ?? null);
 
-    const tables = content.widgets.filter(
-      (w): w is Extract<Widget, { type: 'dataTable' }> =>
-        w.type === 'dataTable' && !!w.config.datasetId,
-    );
-
-    // Charts bind to a dataset too, and should narrow along with every table
-    // on it — but only tables get a widget-level filter entry of their own.
+    // Tables and charts both bind to a dataset and both carry their own
+    // filter now, so both get a widget-level filter entry.
     const datasetBound = content.widgets.filter(
       (w): w is Extract<Widget, { type: 'dataTable' | 'chart' }> =>
         (w.type === 'dataTable' || w.type === 'chart') && !!w.config.datasetId,
@@ -62,15 +57,21 @@ export class ReportViewFilters {
       };
     });
 
-    this.widgetEntries = tables.map((widget) => {
+    this.widgetEntries = datasetBound.map((widget) => {
       const datasetId = widget.config.datasetId!;
-      const title = widget.config.title?.trim() || 'Table';
+      const title = widget.config.title?.trim() || (widget.type === 'dataTable' ? 'Table' : 'Chart');
       const schema = schemaFor(datasetId);
 
-      // Only the columns this table shows — filtering it by a column that isn't
-      // on it would silently drop rows for a reason the reader can't see.
-      const placed = new Set(widget.config.columns.map((c) => c.columnId));
-      const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+      // A table only offers the columns it shows — filtering it by a column that
+      // isn't on it would silently drop rows for a reason the reader can't see.
+      // A chart has no such fixed set, so its filter offers the whole dataset.
+      const columns =
+        widget.type === 'dataTable'
+          ? (() => {
+              const placed = new Set(widget.config.columns.map((c) => c.columnId));
+              return computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+            })()
+          : undefined;
 
       return {
         key: widget.id,

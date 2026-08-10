@@ -10,6 +10,7 @@ import { DatasetColumn, DatasetColumnConfiguration } from '../../../../core/mode
 import { ColumnAlign } from '../../../../core/models/report.model';
 import { TableColumnModel } from '../../models/table-column.model';
 import { ReportBuilderStore } from '../../report-builder.store';
+import { PanelGroupComponent } from '../panel-group.component';
 
 export const DATE_FORMAT_OPTIONS = [
   { label: '31/12/2026', value: 'dd/MM/yyyy' },
@@ -36,146 +37,151 @@ const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
     InputTextModule,
     SelectModule,
     SelectButtonModule,
+    PanelGroupComponent,
   ],
   template: `
     @if (column(); as column) {
       <div class="panel-section">
-        <label class="panel-field">
-          <span class="panel-field-label">Header</span>
-          <input
-            pInputText
-            [ngModel]="column.header()"
-            (ngModelChange)="column.header.set($event)"
-            [placeholder]="column.schemaColumn()?.name ?? 'Column'"
-          />
-        </label>
+        <app-panel-group label="Column" icon="▤">
+          <label class="panel-field">
+            <span class="panel-field-label">Header</span>
+            <input
+              pInputText
+              [ngModel]="column.header()"
+              (ngModelChange)="column.header.set($event)"
+              [placeholder]="column.schemaColumn()?.name ?? 'Column'"
+            />
+          </label>
 
-        <label class="panel-field">
-          <span class="panel-field-label">Alignment</span>
-          <p-selectbutton
-            [options]="alignOptions"
-            [ngModel]="effectiveAlign()"
-            optionLabel="label"
-            optionValue="value"
-            [allowEmpty]="false"
-            (ngModelChange)="column.align.set($event)"
-          />
-        </label>
+          <label class="panel-field">
+            <span class="panel-field-label">Alignment</span>
+            <p-selectbutton
+              [options]="alignOptions"
+              [ngModel]="effectiveAlign()"
+              optionLabel="label"
+              optionValue="value"
+              [allowEmpty]="false"
+              (ngModelChange)="column.align.set($event)"
+            />
+          </label>
 
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="col-sortable"
-            [ngModel]="column.sortable()"
-            (onChange)="column.sortable.set($event.checked)"
-          />
-          <label for="col-sortable">Allow sorting on this column</label>
-        </div>
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="col-sortable"
+              [ngModel]="column.sortable()"
+              (onChange)="column.sortable.set($event.checked)"
+            />
+            <label for="col-sortable">Allow sorting on this column</label>
+          </div>
 
-        <label class="panel-field">
-          <span class="panel-field-label">Width (px)</span>
-          <p-inputnumber
-            [ngModel]="column.width()"
-            (ngModelChange)="column.setWidth($event ?? null)"
-            [min]="40"
-            [max]="900"
-            placeholder="Auto"
-            fluid
-          />
-        </label>
+          <label class="panel-field">
+            <span class="panel-field-label">Width (px)</span>
+            <p-inputnumber
+              [ngModel]="column.width()"
+              (ngModelChange)="column.setWidth($event ?? null)"
+              [min]="40"
+              [max]="900"
+              placeholder="Auto"
+              fluid
+            />
+          </label>
+        </app-panel-group>
 
         @if (schemaColumn(); as schemaColumn) {
-          <p class="panel-hint panel-column-settings__divider">
-            Formatting below is stored on the dataset column, so it applies everywhere it is used.
-          </p>
+          <app-panel-group label="Formatting" icon="◐">
+            <p class="panel-hint">
+              Formatting below is stored on the dataset column, so it applies everywhere it is used.
+            </p>
 
-          @if (isNumeric(schemaColumn)) {
-            <label class="panel-field">
-              <span class="panel-field-label">Decimal places</span>
-              <p-inputnumber
-                [ngModel]="config().decimals ?? null"
-                (ngModelChange)="patchFormat({ decimals: $event ?? undefined })"
-                [min]="0"
-                [max]="10"
-                placeholder="Auto"
-                fluid
-              />
-            </label>
-            <div class="panel-inline-field">
-              <p-checkbox
-                [binary]="true"
-                inputId="use-grouping"
-                [ngModel]="config().useGrouping !== false"
-                (onChange)="patchFormat({ useGrouping: $event.checked })"
-              />
-              <label for="use-grouping">Thousands separators</label>
-            </div>
-            <div class="panel-grid-fields">
+            @if (isNumeric(schemaColumn)) {
               <label class="panel-field">
-                <span class="panel-field-label">Prefix</span>
-                <input
-                  pInputText
-                  [ngModel]="config().prefix ?? ''"
-                  (ngModelChange)="patchFormat({ prefix: $event })"
-                  placeholder="£"
+                <span class="panel-field-label">Decimal places</span>
+                <p-inputnumber
+                  [ngModel]="config().decimals ?? null"
+                  (ngModelChange)="patchFormat({ decimals: $event ?? undefined })"
+                  [min]="0"
+                  [max]="10"
+                  placeholder="Auto"
+                  fluid
                 />
               </label>
-              <label class="panel-field">
-                <span class="panel-field-label">Suffix</span>
-                <input
-                  pInputText
-                  [ngModel]="config().suffix ?? ''"
-                  (ngModelChange)="patchFormat({ suffix: $event })"
-                  placeholder="%"
+              <div class="panel-inline-field">
+                <p-checkbox
+                  [binary]="true"
+                  inputId="use-grouping"
+                  [ngModel]="config().useGrouping !== false"
+                  (onChange)="patchFormat({ useGrouping: $event.checked })"
                 />
-              </label>
-            </div>
+                <label for="use-grouping">Thousands separators</label>
+              </div>
+              <div class="panel-grid-fields">
+                <label class="panel-field">
+                  <span class="panel-field-label">Prefix</span>
+                  <input
+                    pInputText
+                    [ngModel]="config().prefix ?? ''"
+                    (ngModelChange)="patchFormat({ prefix: $event })"
+                    placeholder="£"
+                  />
+                </label>
+                <label class="panel-field">
+                  <span class="panel-field-label">Suffix</span>
+                  <input
+                    pInputText
+                    [ngModel]="config().suffix ?? ''"
+                    (ngModelChange)="patchFormat({ suffix: $event })"
+                    placeholder="%"
+                  />
+                </label>
+              </div>
 
-            <button type="button" class="panel-menu-item" (click)="openTolerance(column.columnId)">
-              <i class="pi pi-shield" aria-hidden="true"></i>
-              <span class="panel-menu-text">
-                <span class="panel-menu-label">Tolerance limits</span>
-                <span class="panel-menu-hint">{{ toleranceSummary(column) }}</span>
-              </span>
-              <i class="pi pi-chevron-right" aria-hidden="true"></i>
-            </button>
-          } @else if (schemaColumn.type === 'dateTime') {
-            <label class="panel-field">
-              <span class="panel-field-label">Date format</span>
-              <p-select
-                [options]="dateFormats"
-                [ngModel]="config().dateFormat ?? 'dd/MM/yyyy'"
-                optionLabel="label"
-                optionValue="value"
-                appendTo="body"
-                fluid
-                (onChange)="patchFormat({ dateFormat: $event.value })"
-              />
-            </label>
-          } @else if (schemaColumn.type === 'bool') {
-            <div class="panel-grid-fields">
+              <button type="button" class="panel-menu-item" (click)="openTolerance(column.columnId)">
+                <i class="pi pi-shield" aria-hidden="true"></i>
+                <span class="panel-menu-text">
+                  <span class="panel-menu-label">Tolerance limits</span>
+                  <span class="panel-menu-hint">{{ toleranceSummary(column) }}</span>
+                </span>
+                <i class="pi pi-chevron-right" aria-hidden="true"></i>
+              </button>
+            } @else if (schemaColumn.type === 'dateTime') {
               <label class="panel-field">
-                <span class="panel-field-label">True label</span>
-                <input
-                  pInputText
-                  [ngModel]="config().trueLabel ?? ''"
-                  (ngModelChange)="patchFormat({ trueLabel: $event })"
-                  placeholder="Yes"
+                <span class="panel-field-label">Date format</span>
+                <p-select
+                  [options]="dateFormats"
+                  [ngModel]="config().dateFormat ?? 'dd/MM/yyyy'"
+                  optionLabel="label"
+                  optionValue="value"
+                  appendTo="body"
+                  fluid
+                  (onChange)="patchFormat({ dateFormat: $event.value })"
                 />
               </label>
-              <label class="panel-field">
-                <span class="panel-field-label">False label</span>
-                <input
-                  pInputText
-                  [ngModel]="config().falseLabel ?? ''"
-                  (ngModelChange)="patchFormat({ falseLabel: $event })"
-                  placeholder="No"
-                />
-              </label>
-            </div>
-          } @else {
-            <p class="panel-empty">Text columns have no formatting options.</p>
-          }
+            } @else if (schemaColumn.type === 'bool') {
+              <div class="panel-grid-fields">
+                <label class="panel-field">
+                  <span class="panel-field-label">True label</span>
+                  <input
+                    pInputText
+                    [ngModel]="config().trueLabel ?? ''"
+                    (ngModelChange)="patchFormat({ trueLabel: $event })"
+                    placeholder="Yes"
+                  />
+                </label>
+                <label class="panel-field">
+                  <span class="panel-field-label">False label</span>
+                  <input
+                    pInputText
+                    [ngModel]="config().falseLabel ?? ''"
+                    (ngModelChange)="patchFormat({ falseLabel: $event })"
+                    placeholder="No"
+                  />
+                </label>
+              </div>
+            } @else {
+              <p class="panel-empty">Text columns have no formatting options.</p>
+            }
+          </app-panel-group>
         } @else {
           <p class="panel-empty">This column is no longer in the dataset.</p>
         }
@@ -191,13 +197,6 @@ const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
       </div>
     } @else {
       <p class="panel-empty">This column is no longer on the table.</p>
-    }
-  `,
-  styles: `
-    .panel-column-settings__divider {
-      margin-top: 4px;
-      padding-top: 10px;
-      border-top: 1px solid var(--app-card-border);
     }
   `,
 })

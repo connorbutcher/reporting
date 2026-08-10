@@ -30,12 +30,12 @@ export class ReadonlyReportGridComponent {
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
 
-  /** Only a table bound to a dataset has anything to filter. */
+  /** Only a table or chart bound to a dataset has anything to filter. */
   protected canFilter(widget: Widget): boolean {
-    return widget.type === 'dataTable' && !!widget.config.datasetId;
+    return (widget.type === 'dataTable' || widget.type === 'chart') && !!widget.config.datasetId;
   }
 
-  /** Conditions on this table's own filter — what the button would open. */
+  /** Conditions on this widget's own filter — what the button would open. */
   protected conditionCount(widget: Widget): number {
     return countConditions(this.widgetFilterFor(widget));
   }
@@ -54,6 +54,6 @@ export class ReadonlyReportGridComponent {
     const overrides = this.widgetFilters();
     if (overrides && widget.id in overrides) return overrides[widget.id];
 
-    return widget.type === 'dataTable' ? widget.config.filter : null;
+    return widget.type === 'dataTable' || widget.type === 'chart' ? widget.config.filter : null;
   }
 }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Reporting.Api.Contracts;
-using Reporting.Api.Filtering;
+using Reporting.Abstractions;
+using Reporting.DAL.Filtering;
 
 namespace Reporting.Api.Controllers;
 

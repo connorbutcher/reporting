@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { forkJoin } from 'rxjs';
@@ -53,13 +53,6 @@ export class ReportViewerComponent implements OnInit {
   protected readonly notFound = signal(false);
 
   private reportId = '';
-
-  /** The change notes for whichever version is currently on screen, latest or historical. */
-  protected readonly currentVersionNotes = computed(() => {
-    const target = this.viewingVersion() ?? this.report()?.latestVersionNumber ?? null;
-    if (target === null) return null;
-    return this.versions().find((v) => v.versionNumber === target)?.notes ?? null;
-  });
 
   ngOnInit(): void {
     this.filterApi.operators().subscribe((catalogue) => this.catalogue.set(catalogue));

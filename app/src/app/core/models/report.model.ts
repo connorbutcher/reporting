@@ -75,6 +75,32 @@ export interface DataTableWidgetConfig extends WidgetConfigBase {
   filter: FilterGroup | null;
 }
 
+export type ChartAxis = 'x' | 'y';
+
+/**
+ * Reference lines drawn on one axis, resolved against one row of a separate
+ * limits dataset — the chart equivalent of a table column's {@link ToleranceConfig}.
+ * A chart can carry several, e.g. one per spec being plotted.
+ */
+export interface ChartToleranceBand {
+  /** Client-generated, only for addressing this band in the editor — not meaningful server-side. */
+  id: string;
+  axis: ChartAxis;
+  sourceDatasetId: string;
+  sourceRowId: string;
+  minColumnId: string;
+  maxColumnId: string;
+  concessionLowerColumnId?: string;
+  concessionUpperColumnId?: string;
+}
+
+/** One extra field shown in a point's tooltip, beyond the X/Y values. */
+export interface ChartTooltipColumn {
+  columnId: string;
+  prefix?: string;
+  suffix?: string;
+}
+
 export interface ChartWidgetConfig extends WidgetConfigBase {
   type: 'chart';
   chartType: ChartType;
@@ -92,6 +118,14 @@ export interface ChartWidgetConfig extends WidgetConfigBase {
 
   showLegend: boolean;
   pointSize: number;
+
+  /** Dashed reference lines for one or more specs plotted against an axis. */
+  toleranceBands: ChartToleranceBand[];
+  /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
+  tooltipColumns: ChartTooltipColumn[];
+
+  /** Rows this chart plots, narrowed server-side. Null means no widget-level filter. */
+  filter: FilterGroup | null;
 }
 
 export interface StaticTextWidgetConfig extends WidgetConfigBase {
@@ -223,6 +257,9 @@ export const DEFAULT_CHART_CONFIG: Omit<ChartWidgetConfig, 'type'> = {
   yAxisLabel: '',
   showLegend: true,
   pointSize: 8,
+  toleranceBands: [],
+  tooltipColumns: [],
+  filter: null,
 };
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {

@@ -8,6 +8,10 @@
   --app-navy-dark: #101f3f;
   --app-page-bg: #f1f4f9;
   --app-card-border: #e2e8f0;
+  // Job numbers, dates, measurements: a tabular monospace so columns of
+  // digits actually line up, the way a spec sheet or datasheet would set them.
+  --app-font-mono:
+    ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
 }
 
 html,
@@ -146,4 +150,64 @@ body {
   margin: 0;
   font-size: 0.8rem;
   color: #64748b;
+}
+
+// A collapsible field group for panels with more sections than comfortably
+// fit on screen at once — see app-panel-group.
+.panel-group {
+  border: 1px solid var(--app-card-border);
+  border-radius: 9px;
+  background: #fff;
+
+  &[open] > .panel-group__head::before {
+    transform: rotate(90deg);
+  }
+}
+
+.panel-group__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--app-navy);
+  user-select: none;
+
+  &::-webkit-details-marker {
+    display: none;
+  }
+
+  &::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 0;
+    height: 0;
+    border-left: 4px solid var(--app-navy);
+    border-top: 3.5px solid transparent;
+    border-bottom: 3.5px solid transparent;
+    transition: transform 0.12s ease;
+  }
+}
+
+.panel-group__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--p-primary-50, #eef3fa);
+  font-size: 0.65rem;
+}
+
+.panel-group__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 12px 12px;
 }

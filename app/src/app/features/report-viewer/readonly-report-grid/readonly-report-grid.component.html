@@ -24,8 +24,8 @@
             type="button"
             class="readonly-grid__filter"
             [class.readonly-grid__filter--active]="conditionCount(widget) > 0"
-            [attr.aria-label]="'Filter ' + (widget.config.title || 'table')"
-            title="Filter this table"
+            [attr.aria-label]="'Filter ' + (widget.config.title || widget.type)"
+            title="Filter this widget"
             (click)="filterWidget.emit(widget.id)"
           >
             <i class="pi pi-filter" aria-hidden="true"></i>
@@ -43,7 +43,11 @@
               [widgetFilter]="widgetFilterFor(widget)"
             />
           } @else if (widget.type === 'chart') {
-            <app-chart-widget [config]="widget.config" [reportFilter]="reportFilterFor(widget.config.datasetId)" />
+            <app-chart-widget
+              [config]="widget.config"
+              [reportFilter]="reportFilterFor(widget.config.datasetId)"
+              [widgetFilter]="widgetFilterFor(widget)"
+            />
           } @else {
             <app-static-text-widget [config]="widget.config" />
           }
