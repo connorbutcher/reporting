@@ -1,45 +1,22 @@
-import {
-  LOCALE_ID,
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  inject,
-  input,
-  output,
-  signal,
-  untracked,
-} from '@angular/core';
-import { formatDate } from '@angular/common';
+import { Component, ElementRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { SortEvent } from 'primeng/api';
-import { TableModule } from 'primeng/table';
-import { EMPTY, Subject, catchError, debounceTime, switchMap } from 'rxjs';
+import { TableLazyLoadEvent, TableModule } from 'primeng/table';
+import { EMPTY, Subject, catchError, debounceTime, merge, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetColumn, DatasetColumnType, DatasetData } from '../../../../core/models/dataset.model';
+import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset.model';
 import { FilterGroup, combineFilters } from '../../../../core/models/filter.model';
 import {
   ColumnAlign,
   DataTableColumnSetting,
   DataTableWidgetConfig,
   SortDirection,
-  ToleranceConfig,
 } from '../../../../core/models/report.model';
+import { TableRowResult } from '../../../../core/models/widget-query.model';
 
-const DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
 /** Long enough that typing a filter value settles into one request. */
 const QUERY_DEBOUNCE_MS = 300;
-
-/** A row flattened to `columnId -> typed value`, so table sorting compares like with like. */
-type TableRow = Record<string, unknown>;
-
-/** A column's tolerance, resolved to concrete numbers from its limits dataset. */
-export interface ResolvedTolerance {
-  min: number;
-  max: number;
-  concessionLower: number | null;
-  concessionUpper: number | null;
-}
+/** Cap on how many rows a non-paginated table pulls in one request. */
+const MAX_ROWS = 500;
 
 /** A dataset column paired with the widget's settings for it. */
 export interface DisplayColumn {
@@ -48,7 +25,6 @@ export interface DisplayColumn {
   align: ColumnAlign;
   sortable: boolean;
   width?: number;
-  tolerance: ResolvedTolerance | null;
 }
 
 @Component({
@@ -81,17 +57,14 @@ export class DataTableWidgetComponent {
   readonly columnResize = output<{ columnId: string; width: number }[]>();
 
   private readonly datasetApi = inject(DatasetApiService);
-  private readonly locale = inject(LOCALE_ID);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   private readonly allColumns = signal<DatasetColumn[]>([]);
-  private readonly data = signal<DatasetData | null>(null);
-  /** Limits datasets referenced by tolerance-highlighted columns, cached by dataset id. */
-  private readonly toleranceSources = signal<Record<string, DatasetData>>({});
+  protected readonly rows = signal<TableRowResult[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
-  /** Row counts from the last query, for the "n of m" footer when filtering. */
+  /** Row counts from the last query, for the paginator and the "n of m" footer. */
   protected readonly matchedRowCount = signal(0);
   protected readonly totalRowCount = signal(0);
   protected readonly isFiltered = computed(() => this.effectiveFilter() !== null);
@@ -107,31 +80,17 @@ export class DataTableWidgetComponent {
   /** Columns are chosen explicitly, so the table shows exactly what is configured. */
   protected readonly displayColumns = computed<DisplayColumn[]>(() => {
     const byId = new Map(this.allColumns().map((c) => [c.id, c]));
-    const sources = this.toleranceSources();
 
-    const chosen = this.config()
+    return this.config()
       .columns.map((setting) => ({ setting, column: byId.get(setting.columnId) }))
-      .filter((pair): pair is { setting: DataTableColumnSetting; column: DatasetColumn } => !!pair.column);
-
-    return chosen.map(({ setting, column }) => ({
-      column,
-      header: setting.header?.trim() || column.name,
-      align: setting.align ?? (isNumeric(column.type) ? 'right' : 'left'),
-      sortable: setting.sortable !== false,
-      width: setting.width,
-      tolerance: resolveTolerance(setting.tolerance, sources),
-    }));
-  });
-
-  protected readonly tableRows = computed<TableRow[]>(() => {
-    const columns = this.allColumns();
-    return (this.data()?.rows ?? []).map((row) => {
-      const flat: TableRow = { __rowId: row.id };
-      for (const column of columns) {
-        flat[column.id] = coerce(row.values[column.id], column.type);
-      }
-      return flat;
-    });
+      .filter((pair): pair is { setting: DataTableColumnSetting; column: DatasetColumn } => !!pair.column)
+      .map(({ setting, column }) => ({
+        column,
+        header: setting.header?.trim() || column.name,
+        align: setting.align ?? (isNumeric(column.type) ? 'right' : 'left'),
+        sortable: setting.sortable !== false,
+        width: setting.width,
+      }));
   });
 
   protected readonly resizeKey = computed(() => (this.config().resizableColumns ? '-resizable' : ''));
@@ -148,19 +107,22 @@ export class DataTableWidgetComponent {
   });
 
   /**
-   * The table owns its sort state once seeded. Feeding the persisted config
+   * The table owns its sort/page state once seeded. Feeding the persisted config
    * back in on every save fought the table's own state and left it a click
    * behind, so these are only re-seeded when the dataset reloads.
    */
   protected readonly sortField = signal<string | undefined>(undefined);
   protected readonly sortOrder = signal(1);
+  protected readonly first = signal(0);
 
-  /** Coalesces reloads so typing a filter value doesn't fire a request per keystroke. */
-  private readonly queryQueue = new Subject<void>();
+  /** Discrete interactions (paging, sorting, switching datasets) reload immediately. */
+  private readonly interactionQueue = new Subject<void>();
+  /** Typing a filter value settles into one request instead of one per keystroke. */
+  private readonly filterQueue = new Subject<void>();
 
   constructor() {
     // The schema describes the table and changes only with the dataset, so it
-    // loads immediately rather than through the debounced row pipeline.
+    // loads immediately rather than through the row query pipeline.
     effect((onCleanup) => {
       const datasetId = this.datasetId();
       this.datasetVersion();
@@ -170,11 +132,12 @@ export class DataTableWidgetComponent {
         return;
       }
 
-      // Seed the table's sort from the saved config, untracked so persisting a
-      // sort doesn't refetch the dataset or stomp the table mid-interaction.
+      // Seed the table's sort/page from the saved config, untracked so
+      // persisting a sort doesn't refetch the dataset or stomp mid-interaction.
       untracked(() => {
         this.sortField.set(this.config().sortColumnId ?? undefined);
         this.sortOrder.set(this.config().sortDirection === 'desc' ? -1 : 1);
+        this.first.set(0);
       });
 
       const subscription = this.datasetApi
@@ -184,15 +147,17 @@ export class DataTableWidgetComponent {
       onCleanup(() => subscription.unsubscribe());
     });
 
-    // Rows reload whenever the dataset, its configuration, or either filter changes.
+    // Switching datasets reloads immediately; the filter/column reload below
+    // is what gets the typing debounce.
     effect(() => {
       const datasetId = this.datasetId();
       this.datasetVersion();
-      this.effectiveFilter();
 
       if (!datasetId) {
         untracked(() => {
-          this.data.set(null);
+          this.rows.set([]);
+          this.matchedRowCount.set(0);
+          this.totalRowCount.set(0);
           this.loading.set(false);
         });
         return;
@@ -201,67 +166,84 @@ export class DataTableWidgetComponent {
       untracked(() => {
         this.loading.set(true);
         this.error.set(false);
-        this.queryQueue.next();
+        this.interactionQueue.next();
       });
     });
 
-    // Fetches each limits dataset a tolerance-highlighted column points at,
-    // once per dataset id regardless of how many columns share it.
-    effect((onCleanup) => {
-      const ids = new Set<string>();
-      for (const setting of this.config().columns) {
-        if (setting.tolerance) ids.add(setting.tolerance.sourceDatasetId);
-      }
+    // Rows reload whenever either filter or the widget's own column settings
+    // (including tolerance config) change — the server needs both to answer.
+    effect(() => {
+      if (!this.datasetId()) return;
+      this.effectiveFilter();
+      this.config().columns;
+      this.config().rowsPerPage;
+      this.config().paginator;
 
-      const missing = untracked(() => [...ids].filter((id) => !this.toleranceSources()[id]));
-      if (missing.length === 0) return;
-
-      const subs = missing.map((id) =>
-        this.datasetApi
-          .getData(id)
-          .subscribe((data) => this.toleranceSources.update((all) => ({ ...all, [id]: data }))),
-      );
-      onCleanup(() => subs.forEach((s) => s.unsubscribe()));
+      untracked(() => {
+        this.loading.set(true);
+        this.error.set(false);
+        this.first.set(0);
+        this.filterQueue.next();
+      });
     });
 
-    this.queryQueue
+    merge(this.interactionQueue, this.filterQueue.pipe(debounceTime(QUERY_DEBOUNCE_MS)))
       .pipe(
-        debounceTime(QUERY_DEBOUNCE_MS),
         switchMap(() => {
           const datasetId = this.datasetId();
           if (!datasetId) return EMPTY;
 
-          return this.datasetApi.query(datasetId, this.effectiveFilter()).pipe(
-            // Caught inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and stop all future reloads.
-            catchError(() => {
-              this.error.set(true);
-              this.loading.set(false);
-              return EMPTY;
-            }),
-          );
+          const take = this.config().paginator ? this.config().rowsPerPage || 10 : MAX_ROWS;
+
+          return this.datasetApi
+            .queryTable(datasetId, {
+              filter: this.effectiveFilter(),
+              sortColumnId: this.sortField() ?? null,
+              sortDirection: this.sortOrder() === -1 ? 'desc' : 'asc',
+              skip: this.first(),
+              take,
+              columns: this.config().columns,
+            })
+            .pipe(
+              // Caught inside the switchMap: an error reaching the outer stream
+              // would tear down the subscription and stop all future reloads.
+              catchError(() => {
+                this.error.set(true);
+                this.loading.set(false);
+                return EMPTY;
+              }),
+            );
         }),
         takeUntilDestroyed(),
       )
       .subscribe((result) => {
-        this.data.set({ id: result.id, name: result.name, rows: result.rows });
+        this.rows.set(result.rows);
         this.matchedRowCount.set(result.matchedRowCount);
         this.totalRowCount.set(result.totalRowCount);
         this.loading.set(false);
       });
   }
 
-  protected onSort(event: SortEvent): void {
-    const columnId = event.field;
-    if (!columnId) return;
+  /** PrimeNG's lazy-table event: fires for a sort click, a page change, and on first render. */
+  protected onLazyLoad(event: TableLazyLoadEvent): void {
+    const columnId = typeof event.sortField === 'string' ? event.sortField : undefined;
+    const order = event.sortOrder ?? this.sortOrder();
 
-    const direction: SortDirection = event.order === -1 ? 'desc' : 'asc';
     this.sortField.set(columnId);
-    this.sortOrder.set(event.order === -1 ? -1 : 1);
+    this.sortOrder.set(order);
+    this.first.set(event.first ?? 0);
 
     // The table also reports the sort we seeded it with, so only persist changes.
-    if (columnId === this.config().sortColumnId && direction === this.config().sortDirection) return;
-    this.sortChange.emit({ columnId, direction });
+    if (columnId) {
+      const direction: SortDirection = order === -1 ? 'desc' : 'asc';
+      if (columnId !== this.config().sortColumnId || direction !== this.config().sortDirection) {
+        this.sortChange.emit({ columnId, direction });
+      }
+    }
+
+    this.loading.set(true);
+    this.error.set(false);
+    this.interactionQueue.next();
   }
 
   /** Reads the settled header widths once the browser has laid the table out. */
@@ -277,106 +259,18 @@ export class DataTableWidgetComponent {
   }
 
   /** Red below/above a concession bound, orange in the concession band, else unmarked. */
-  protected toleranceClass(value: unknown, col: DisplayColumn): string | null {
-    const band = col.tolerance;
-    if (!band || typeof value !== 'number' || Number.isNaN(value)) return null;
-
-    if (value < band.min) {
-      return band.concessionLower !== null && value >= band.concessionLower
-        ? 'data-table-widget__cell--orange'
-        : 'data-table-widget__cell--red';
-    }
-    if (value > band.max) {
-      return band.concessionUpper !== null && value <= band.concessionUpper
-        ? 'data-table-widget__cell--orange'
-        : 'data-table-widget__cell--red';
-    }
-    return null;
-  }
-
-  /** Rendering is driven by the column's stored configuration blob. */
-  protected format(value: unknown, column: DatasetColumn): string {
-    if (value === null || value === undefined || value === '') return '';
-    const config = column.configuration ?? {};
-
-    switch (column.type) {
-      case 'int':
-      case 'double': {
-        const options: Intl.NumberFormatOptions = { useGrouping: config.useGrouping !== false };
-        if (typeof config.decimals === 'number' && config.decimals >= 0) {
-          options.minimumFractionDigits = config.decimals;
-          options.maximumFractionDigits = config.decimals;
-        }
-        const formatted = new Intl.NumberFormat(this.locale, options).format(value as number);
-        return `${config.prefix ?? ''}${formatted}${config.suffix ?? ''}`;
-      }
-      case 'dateTime': {
-        if (!(value instanceof Date)) return String(value);
-        try {
-          return formatDate(value, config.dateFormat || DEFAULT_DATE_FORMAT, this.locale);
-        } catch {
-          // A bad pattern shouldn't blank the cell.
-          return formatDate(value, DEFAULT_DATE_FORMAT, this.locale);
-        }
-      }
-      case 'bool':
-        return value ? (config.trueLabel ?? 'Yes') : (config.falseLabel ?? 'No');
+  protected toleranceClass(cell: TableRowResult['cells'][string] | undefined): string | null {
+    switch (cell?.tolerance) {
+      case 'fail':
+        return 'data-table-widget__cell--red';
+      case 'concession':
+        return 'data-table-widget__cell--orange';
       default:
-        return String(value);
+        return null;
     }
   }
 }
 
 export function isNumeric(type: DatasetColumnType): boolean {
   return type === 'int' || type === 'double';
-}
-
-/** Reads the four band numbers off the spec row the tolerance points at. */
-function resolveTolerance(
-  tolerance: ToleranceConfig | undefined,
-  sources: Record<string, DatasetData>,
-): ResolvedTolerance | null {
-  if (!tolerance) return null;
-
-  const row = sources[tolerance.sourceDatasetId]?.rows.find((r) => r.id === tolerance.sourceRowId);
-  if (!row) return null;
-
-  const min = Number(row.values[tolerance.minColumnId]);
-  const max = Number(row.values[tolerance.maxColumnId]);
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-
-  const concessionLower = tolerance.concessionLowerColumnId
-    ? Number(row.values[tolerance.concessionLowerColumnId])
-    : NaN;
-  const concessionUpper = tolerance.concessionUpperColumnId
-    ? Number(row.values[tolerance.concessionUpperColumnId])
-    : NaN;
-
-  return {
-    min,
-    max,
-    concessionLower: Number.isFinite(concessionLower) ? concessionLower : null,
-    concessionUpper: Number.isFinite(concessionUpper) ? concessionUpper : null,
-  };
-}
-
-/** Values arrive as strings; sorting needs the column's real type. */
-function coerce(raw: string | undefined, type: DatasetColumnType): unknown {
-  if (raw === undefined || raw === null || raw === '') return null;
-
-  switch (type) {
-    case 'int':
-    case 'double': {
-      const parsed = Number(raw);
-      return Number.isNaN(parsed) ? null : parsed;
-    }
-    case 'bool':
-      return raw.toLowerCase() === 'true';
-    case 'dateTime': {
-      const parsed = new Date(raw);
-      return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    default:
-      return raw;
-  }
 }

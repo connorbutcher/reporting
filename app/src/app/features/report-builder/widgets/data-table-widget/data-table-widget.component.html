@@ -3,22 +3,23 @@
     <i class="pi pi-database" aria-hidden="true"></i>
     Choose a dataset for this table in the side panel.
   </div>
-} @else if (loading()) {
-  <div class="data-table-widget__status">Loading…</div>
 } @else if (error()) {
   <div class="data-table-widget__status data-table-widget__status--error">
     Failed to load dataset.
   </div>
-} @else if (displayColumns().length === 0) {
+} @else if (displayColumns().length === 0 && !loading()) {
   <div class="data-table-widget__status">
     <i class="pi pi-list" aria-hidden="true"></i>
     Add the columns you want from the side panel.
   </div>
 } @else {
+  <!-- [loading] shows a built-in overlay rather than us swapping this element
+       out of the @if — a lazy p-table re-fires onLazyLoad on every fresh
+       mount, which would otherwise turn a loading toggle into a fetch loop. -->
   <p-table
-    [value]="tableRows()"
-    [sortField]="sortField()"
-    [sortOrder]="sortOrder()"
+    [value]="rows()"
+    [lazy]="true"
+    [loading]="loading()"
     [scrollable]="true"
     scrollHeight="flex"
     [size]="density()"
@@ -29,7 +30,8 @@
     columnResizeMode="expand"
     [paginator]="config().paginator"
     [rows]="config().rowsPerPage"
-    (onSort)="onSort($event)"
+    [totalRecords]="matchedRowCount()"
+    (onLazyLoad)="onLazyLoad($event)"
     (onColResize)="onColResize()"
   >
     <ng-template #header>
@@ -57,8 +59,8 @@
     <ng-template #body let-row>
       <tr>
         @for (col of displayColumns(); track col.column.id) {
-          <td [style.text-align]="col.align" [class]="toleranceClass(row[col.column.id], col)">
-            {{ format(row[col.column.id], col.column) }}
+          <td [style.text-align]="col.align" [class]="toleranceClass(row.cells[col.column.id])">
+            {{ row.cells[col.column.id]?.displayValue }}
           </td>
         }
       </tr>

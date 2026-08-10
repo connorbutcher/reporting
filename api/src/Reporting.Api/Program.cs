@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Reporting.DAL.Repositories;
+using Reporting.DAL.Widgets;
 using Reporting.Database;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,7 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
 builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
+builder.Services.AddScoped<ToleranceResolver>();
 
 var app = builder.Build();
 

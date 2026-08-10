@@ -46,6 +46,42 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
         }
     }
 
+    /// <summary>
+    /// A page of rows shaped for a table widget: filtered, sorted, and paged
+    /// server-side, with each cell already formatted and tolerance-classified.
+    /// </summary>
+    [HttpPost("{id:guid}/table-query")]
+    public async Task<ActionResult<TableQueryResultDto>> TableQuery(Guid id, TableQueryDto dto)
+    {
+        try
+        {
+            var result = await datasets.QueryForTableAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Rows shaped for a chart widget: filtered, grouped into series, with
+    /// tolerance bounds resolved and tooltip lines pre-formatted.
+    /// </summary>
+    [HttpPost("{id:guid}/chart-query")]
+    public async Task<ActionResult<ChartQueryResultDto>> ChartQuery(Guid id, ChartQueryDto dto)
+    {
+        try
+        {
+            var result = await datasets.QueryForChartAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     /// <summary>Replaces a column's free-form display configuration blob.</summary>
     [HttpPut("{id:guid}/columns/{columnId:guid}/configuration")]
     public async Task<ActionResult<DatasetColumnDto>> UpdateColumnConfiguration(

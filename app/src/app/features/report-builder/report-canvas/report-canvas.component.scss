@@ -70,6 +70,24 @@
   }
 }
 
+.report-builder__save-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+
+  &--pending {
+    color: #64748b;
+  }
+
+  &--error {
+    color: #b42318;
+    font-weight: 600;
+  }
+}
+
 .report-builder__status {
   display: flex;
   align-items: center;

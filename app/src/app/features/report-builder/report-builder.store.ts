@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
@@ -50,6 +50,8 @@ export class ReportBuilderStore {
   readonly loading = signal(true);
   /** True when the last save failed, so the canvas can warn instead of losing work quietly. */
   readonly saveFailed = signal(false);
+  /** True while a save request is in flight, for a "Saving…" indicator. */
+  readonly saving = signal(false);
 
   /** Cached per dataset id so panel interactions never refetch the schema. */
   private readonly schemaCache = signal<Record<string, DatasetSchema>>({});
@@ -97,6 +99,30 @@ export class ReportBuilderStore {
   readonly isValid = computed(() => this.model()?.isValid() ?? true);
   readonly dirty = computed(() => this.model()?.dirty() ?? false);
   readonly saveBlocked = computed(() => this.dirty() && !this.isValid());
+
+  /**
+   * Whether leaving right now could lose work: an edit hasn't reached the
+   * server yet, or the last attempt to send it failed. Shared by the
+   * beforeunload handler and the route guard so both agree on the risk.
+   */
+  readonly hasUnsavedRisk = computed(() => this.dirty() || this.saveFailed());
+
+  /**
+   * The normalised snapshot the draft had when it was loaded (or last
+   * published), for detecting whether there's anything new to publish.
+   * `model.dirty()` can't answer that: it clears the moment autosave catches
+   * up, and the model even starts "dirty" on load (see EditorNode.dirty)
+   * purely to push its own normalisation to the server — neither of those
+   * is a real edit worth unblocking Publish for.
+   */
+  private loadBaseline: string | null = null;
+
+  /** Whether this draft differs from what was loaded (or last published). */
+  readonly hasUnpublishedChanges = computed(() => {
+    const model = this.model();
+    if (!model || this.loadBaseline === null) return false;
+    return JSON.stringify(model.toDto()) !== this.loadBaseline;
+  });
   readonly issuesByWidget = computed<Map<string, ValidationIssue[]>>(
     () => this.model()?.issuesByWidget() ?? new Map(),
   );
@@ -183,6 +209,7 @@ export class ReportBuilderStore {
         debounceTime(SAVE_DEBOUNCE_MS),
         // A broken report is never written; the effect above re-queues once fixed.
         filter(() => this.isValid()),
+        tap(() => this.saving.set(true)),
         switchMap(() => {
           const model = this.model();
           if (!model) return EMPTY;
@@ -194,6 +221,7 @@ export class ReportBuilderStore {
             catchError((error: unknown) => {
               console.error('Failed to save report', error);
               this.saveFailed.set(true);
+              this.saving.set(false);
               return EMPTY;
             }),
           );
@@ -202,6 +230,7 @@ export class ReportBuilderStore {
       )
       .subscribe((model) => {
         this.saveFailed.set(false);
+        this.saving.set(false);
         // Any edit made while the request was in flight has already queued a
         // fresh save, which cancels this one before it can mark it clean.
         model.markPristine();
@@ -231,6 +260,7 @@ export class ReportBuilderStore {
     if (!model) return;
 
     this.reportApi.publish(model.reportId, notes).subscribe(() => {
+      this.loadBaseline = JSON.stringify(model.toDto());
       this.router.navigate(['/reports', model.reportId]);
     });
   }
@@ -396,6 +426,7 @@ export class ReportBuilderStore {
   private setLoadedReport(report: ReportRevisionContent): void {
     const model = ReportModel.fromDto(report, this.sources);
     this.model.set(model);
+    this.loadBaseline = JSON.stringify(model.toDto());
     // Seeded from the model, not the server payload: the model normalises
     // defaults and key order, so anything else would look like a change and
     // leave an undo step available before the user has done anything.

@@ -4,9 +4,10 @@ import type { EChartsCoreOption } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { EMPTY, Subject, catchError, debounceTime, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetColumn, DatasetData } from '../../../../core/models/dataset.model';
+import { DatasetColumn } from '../../../../core/models/dataset.model';
 import { FilterGroup, combineFilters } from '../../../../core/models/filter.model';
-import { ChartToleranceBand, ChartWidgetConfig } from '../../../../core/models/report.model';
+import { ChartWidgetConfig } from '../../../../core/models/report.model';
+import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
 
 /** Long enough that typing a filter value settles into one request. */
 const QUERY_DEBOUNCE_MS = 300;
@@ -22,19 +23,9 @@ const SERIES_COLORS = [
   '#dc2626',
 ];
 
-/** A band's four possible bounds, resolved to concrete numbers from its limits dataset. */
-interface ResolvedBand {
-  axis: 'x' | 'y';
-  min: number;
-  max: number;
-  concessionLower: number | null;
-  concessionUpper: number | null;
-}
-
 interface ScatterPoint {
   value: [number, number];
-  /** Every column's raw value for this row, so the tooltip can show any of them. */
-  extra: Record<string, string>;
+  tooltipLines: string[];
 }
 
 interface ScatterTooltipParams {
@@ -65,9 +56,7 @@ export class ChartWidgetComponent {
   private readonly datasetApi = inject(DatasetApiService);
 
   private readonly allColumns = signal<DatasetColumn[]>([]);
-  private readonly data = signal<DatasetData | null>(null);
-  /** Limits datasets referenced by tolerance bands, cached by dataset id. */
-  private readonly toleranceSources = signal<Record<string, DatasetData>>({});
+  private readonly data = signal<ChartQueryResult | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal(false);
 
@@ -83,13 +72,6 @@ export class ChartWidgetComponent {
   private readonly yColumn = computed(() => this.columnById(this.config().yColumnId));
   private readonly seriesColumn = computed(() => this.columnById(this.config().seriesColumnId));
 
-  private readonly resolvedBands = computed<ResolvedBand[]>(() => {
-    const sources = this.toleranceSources();
-    return this.config()
-      .toleranceBands.map((band) => resolveBand(band, sources))
-      .filter((b): b is ResolvedBand => b !== null);
-  });
-
   /** Null until there's a dataset and both axes to actually plot. */
   protected readonly chartOption = computed<EChartsCoreOption | null>(() => {
     const x = this.xColumn();
@@ -98,24 +80,11 @@ export class ChartWidgetComponent {
 
     const seriesColumn = this.seriesColumn();
     const config = this.config();
-    const groups = new Map<string, ScatterPoint[]>();
-
-    for (const row of this.data()?.rows ?? []) {
-      const xv = Number(row.values[x.id]);
-      const yv = Number(row.values[y.id]);
-      if (!Number.isFinite(xv) || !Number.isFinite(yv)) continue;
-
-      const key = seriesColumn ? row.values[seriesColumn.id]?.trim() || '(blank)' : '';
-      const point: ScatterPoint = { value: [xv, yv], extra: row.values };
-      const points = groups.get(key);
-      if (points) points.push(point);
-      else groups.set(key, [point]);
-    }
+    const series = this.data()?.series ?? [];
 
     const xLabel = config.xAxisLabel.trim() || x.name;
     const yLabel = config.yAxisLabel.trim() || y.name;
-    const names = [...groups.keys()];
-    const tooltipColumns = config.tooltipColumns;
+    const names = series.map((s) => s.label);
     const markLineData = this.markLineData();
 
     return {
@@ -128,17 +97,17 @@ export class ChartWidgetComponent {
       },
       tooltip: {
         trigger: 'item',
-        formatter: (params: ScatterTooltipParams) => this.formatTooltip(params, seriesColumn, xLabel, yLabel, tooltipColumns),
+        formatter: (params: ScatterTooltipParams) => this.formatTooltip(params, seriesColumn, xLabel, yLabel),
       },
       ...(seriesColumn && config.showLegend ? { legend: { top: 0, data: names } } : {}),
       xAxis: { type: 'value', name: xLabel, nameLocation: 'middle', nameGap: 28 },
       yAxis: { type: 'value', name: yLabel, nameLocation: 'middle', nameGap: 40 },
-      series: names.map((name, i) => ({
-        name: name || config.title || 'Series',
+      series: series.map((s, i) => ({
+        name: s.label || config.title || 'Series',
         type: 'scatter' as const,
         symbolSize: config.pointSize,
         itemStyle: { color: SERIES_COLORS[i % SERIES_COLORS.length] },
-        data: groups.get(name),
+        data: pointsFor(s),
         // Attached to the first series only — markLine coordinates are chart-wide,
         // so one copy is enough regardless of how many series are plotted.
         ...(i === 0 && markLineData.length > 0
@@ -171,12 +140,16 @@ export class ChartWidgetComponent {
       onCleanup(() => subscription.unsubscribe());
     });
 
-    // Rows reload whenever the dataset, its axes, or either filter changes.
+    // Points reload whenever the dataset, its axes, either filter, the
+    // tolerance bands, or the tooltip columns change — the server needs all
+    // of these to build a response, unlike the old raw-row fetch.
     effect(() => {
       const datasetId = this.datasetId();
       this.config().xColumnId;
       this.config().yColumnId;
       this.config().seriesColumnId;
+      this.config().toleranceBands;
+      this.config().tooltipColumns;
       this.effectiveFilter();
       this.datasetVersion();
 
@@ -195,46 +168,38 @@ export class ChartWidgetComponent {
       });
     });
 
-    // Fetches each limits dataset a tolerance band points at, once per dataset
-    // id regardless of how many bands share it.
-    effect((onCleanup) => {
-      const ids = new Set<string>();
-      for (const band of this.config().toleranceBands) {
-        if (band.sourceDatasetId) ids.add(band.sourceDatasetId);
-      }
-
-      const missing = untracked(() => [...ids].filter((id) => !this.toleranceSources()[id]));
-      if (missing.length === 0) return;
-
-      const subs = missing.map((id) =>
-        this.datasetApi
-          .getData(id)
-          .subscribe((data) => this.toleranceSources.update((all) => ({ ...all, [id]: data }))),
-      );
-      onCleanup(() => subs.forEach((s) => s.unsubscribe()));
-    });
-
     this.queryQueue
       .pipe(
         debounceTime(QUERY_DEBOUNCE_MS),
         switchMap(() => {
           const datasetId = this.datasetId();
-          if (!datasetId) return EMPTY;
+          const x = this.config().xColumnId;
+          const y = this.config().yColumnId;
+          if (!datasetId || !x || !y) return EMPTY;
 
-          return this.datasetApi.query(datasetId, this.effectiveFilter()).pipe(
-            // Caught inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and stop all future reloads.
-            catchError(() => {
-              this.error.set(true);
-              this.loading.set(false);
-              return EMPTY;
-            }),
-          );
+          return this.datasetApi
+            .queryChart(datasetId, {
+              filter: this.effectiveFilter(),
+              xColumnId: x,
+              yColumnId: y,
+              seriesColumnId: this.config().seriesColumnId,
+              toleranceBands: this.config().toleranceBands,
+              tooltipColumns: this.config().tooltipColumns,
+            })
+            .pipe(
+              // Caught inside the switchMap: an error reaching the outer stream
+              // would tear down the subscription and stop all future reloads.
+              catchError(() => {
+                this.error.set(true);
+                this.loading.set(false);
+                return EMPTY;
+              }),
+            );
         }),
         takeUntilDestroyed(),
       )
       .subscribe((result) => {
-        this.data.set({ id: result.id, name: result.name, rows: result.rows });
+        this.data.set(result);
         this.loading.set(false);
       });
   }
@@ -243,7 +208,9 @@ export class ChartWidgetComponent {
   private markLineData(): object[] {
     const entries: object[] = [];
 
-    for (const band of this.resolvedBands()) {
+    for (const band of this.data()?.toleranceBands ?? []) {
+      if (band.min === null || band.max === null) continue;
+
       const axisKey = band.axis === 'x' ? 'xAxis' : 'yAxis';
       const hasConcession = band.concessionLower !== null || band.concessionUpper !== null;
       const minMaxColor = hasConcession ? '#d97706' : '#dc2626';
@@ -267,19 +234,13 @@ export class ChartWidgetComponent {
     seriesColumn: DatasetColumn | null,
     xLabel: string,
     yLabel: string,
-    tooltipColumns: ChartWidgetConfig['tooltipColumns'],
   ): string {
     const lines = [
       ...(seriesColumn ? [params.seriesName] : []),
       `${xLabel}: ${params.value[0]}`,
       `${yLabel}: ${params.value[1]}`,
+      ...params.data.tooltipLines,
     ];
-
-    for (const tc of tooltipColumns) {
-      const raw = params.data.extra[tc.columnId];
-      if (!raw) continue;
-      lines.push(`${tc.prefix ?? ''}${raw}${tc.suffix ?? ''}`);
-    }
 
     return lines.join('<br/>');
   }
@@ -289,25 +250,6 @@ export class ChartWidgetComponent {
   }
 }
 
-/** Reads a band's four bound numbers off the spec row it points at. */
-function resolveBand(band: ChartToleranceBand, sources: Record<string, DatasetData>): ResolvedBand | null {
-  if (!band.sourceDatasetId || !band.sourceRowId || !band.minColumnId || !band.maxColumnId) return null;
-
-  const row = sources[band.sourceDatasetId]?.rows.find((r) => r.id === band.sourceRowId);
-  if (!row) return null;
-
-  const min = Number(row.values[band.minColumnId]);
-  const max = Number(row.values[band.maxColumnId]);
-  if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
-
-  const concessionLower = band.concessionLowerColumnId ? Number(row.values[band.concessionLowerColumnId]) : NaN;
-  const concessionUpper = band.concessionUpperColumnId ? Number(row.values[band.concessionUpperColumnId]) : NaN;
-
-  return {
-    axis: band.axis,
-    min,
-    max,
-    concessionLower: Number.isFinite(concessionLower) ? concessionLower : null,
-    concessionUpper: Number.isFinite(concessionUpper) ? concessionUpper : null,
-  };
+function pointsFor(series: ChartSeriesResult): ScatterPoint[] {
+  return series.points.map((p) => ({ value: [p.x, p.y], tooltipLines: p.tooltipLines }));
 }

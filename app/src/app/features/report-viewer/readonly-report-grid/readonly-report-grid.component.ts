@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, Signal, input, output } from '@angular/core';
 import { CELL_SIZE, GRID_GAP } from '../../report-builder/grid.util';
 import { ReportRevisionContent, Widget } from '../../../core/models/report.model';
 import { FilterGroup, countConditions } from '../../../core/models/filter.model';
@@ -23,9 +23,14 @@ export class ReadonlyReportGridComponent {
    * Session overrides from the viewer's filter panel, keyed by dataset id and
    * widget id. Left unset, the grid falls back to what the version published —
    * so it still renders correctly on its own.
+   *
+   * Each value is a signal, not a plain `FilterGroup`, so reading only the one
+   * a widget actually needs tracks only that filter's own changes — a `Record`
+   * rebuilt whole on every edit would hand every widget a new reference and
+   * reload the entire report each time any single filter changed.
    */
-  readonly pageFilters = input<Record<string, FilterGroup | null> | null>(null);
-  readonly widgetFilters = input<Record<string, FilterGroup | null> | null>(null);
+  readonly pageFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
+  readonly widgetFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
 
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
@@ -44,15 +49,15 @@ export class ReadonlyReportGridComponent {
   protected reportFilterFor(datasetId: string | null): FilterGroup | null {
     if (!datasetId) return null;
 
-    const overrides = this.pageFilters();
-    if (overrides && datasetId in overrides) return overrides[datasetId];
+    const override = this.pageFilters()?.get(datasetId);
+    if (override) return override();
 
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
   }
 
   protected widgetFilterFor(widget: Widget): FilterGroup | null {
-    const overrides = this.widgetFilters();
-    if (overrides && widget.id in overrides) return overrides[widget.id];
+    const override = this.widgetFilters()?.get(widget.id);
+    if (override) return override();
 
     return widget.type === 'dataTable' || widget.type === 'chart' ? widget.config.filter : null;
   }

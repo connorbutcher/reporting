@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { unsavedChangesGuard } from './features/report-builder/report-canvas/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
@@ -12,6 +13,7 @@ export const routes: Routes = [
       import('./features/report-builder/report-canvas/report-canvas.component').then(
         (m) => m.ReportCanvasComponent,
       ),
+    canDeactivate: [unsavedChangesGuard],
   },
   {
     path: 'reports/:reportId/versions/:versionNumber',

@@ -38,8 +38,8 @@
       @if (content(); as content) {
         <app-readonly-report-grid
           [content]="content"
-          [pageFilters]="viewFilters()?.pageFilters() ?? null"
-          [widgetFilters]="viewFilters()?.widgetFilters() ?? null"
+          [pageFilters]="viewFilters()?.pageFilters ?? null"
+          [widgetFilters]="viewFilters()?.widgetFilters ?? null"
           (filterWidget)="filterWidget($event)"
         />
       } @else {

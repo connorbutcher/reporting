@@ -5,7 +5,7 @@ import { ReportViewFilters, ViewFilterEntry, entryChanged } from '../report-view
 
 /**
  * The viewer's filter panel: the page filters the author defined plus each
- * table's own, all adjustable for this session only.
+ * widget's own (table or chart), all adjustable for this session only.
  */
 @Component({
   selector: 'app-view-filters-panel',

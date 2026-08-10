@@ -11,6 +11,12 @@ import {
   DatasetSummary,
 } from '../models/dataset.model';
 import { DatasetQueryResult, FilterGroup } from '../models/filter.model';
+import {
+  ChartQueryRequest,
+  ChartQueryResult,
+  TableQueryRequest,
+  TableQueryResult,
+} from '../models/widget-query.model';
 
 @Service()
 export class DatasetApiService {
@@ -34,6 +40,22 @@ export class DatasetApiService {
    */
   query(id: string, filter: FilterGroup | null): Observable<DatasetQueryResult> {
     return this.http.post<DatasetQueryResult>(`/api/datasets/${id}/query`, { filter });
+  }
+
+  /**
+   * A page of rows shaped for a table widget: filtered, sorted, and paged
+   * server-side, with each cell already formatted and tolerance-classified.
+   */
+  queryTable(id: string, request: TableQueryRequest): Observable<TableQueryResult> {
+    return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-query`, request);
+  }
+
+  /**
+   * Rows shaped for a chart widget: filtered, grouped into series, and paired
+   * with resolved tolerance bounds and pre-formatted tooltip lines.
+   */
+  queryChart(id: string, request: ChartQueryRequest): Observable<ChartQueryResult> {
+    return this.http.post<ChartQueryResult>(`/api/datasets/${id}/chart-query`, request);
   }
 
   updateColumnConfiguration(

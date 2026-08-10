@@ -1,28 +1,62 @@
 <aside class="side-panel app-card">
   <div class="side-panel__header">
-    <div class="side-panel__nav">
-      <p-button
-        icon="pi pi-chevron-left"
-        severity="secondary"
-        text
-        rounded
-        size="small"
-        ariaLabel="Back"
-        [disabled]="!store.canGoBack()"
-        (onClick)="store.back()"
-      />
-      <p-button
-        icon="pi pi-chevron-right"
-        severity="secondary"
-        text
-        rounded
-        size="small"
-        ariaLabel="Forward"
-        [disabled]="!store.canGoForward()"
-        (onClick)="store.forward()"
-      />
+    @if (ancestors().length > 0) {
+      <nav class="side-panel__breadcrumb" aria-label="Panel navigation">
+        @for (crumb of crumbs(); track crumbKey(crumb)) {
+          @if (crumb === ellipsis) {
+            <button
+              type="button"
+              class="side-panel__crumb side-panel__crumb--ellipsis"
+              aria-label="Show hidden steps"
+              (click)="expand()"
+            >
+              …
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="side-panel__crumb"
+              [class.side-panel__crumb--home]="crumb.kind === 'root'"
+              [attr.aria-label]="crumb.kind === 'root' ? 'Report builder' : null"
+              [title]="crumb.kind === 'root' ? null : labelFor(crumb)"
+              (click)="store.navigate(crumb)"
+            >
+              @if (crumb.kind === 'root') {
+                <i class="pi pi-home" aria-hidden="true"></i>
+              } @else {
+                {{ labelFor(crumb) }}
+              }
+            </button>
+          }
+          <i class="pi pi-angle-right side-panel__crumb-sep" aria-hidden="true"></i>
+        }
+      </nav>
+    }
+    <div class="side-panel__title-row">
+      <div class="side-panel__nav">
+        <p-button
+          icon="pi pi-chevron-left"
+          severity="secondary"
+          text
+          rounded
+          size="small"
+          ariaLabel="Back"
+          [disabled]="!store.canGoBack()"
+          (onClick)="store.back()"
+        />
+        <p-button
+          icon="pi pi-chevron-right"
+          severity="secondary"
+          text
+          rounded
+          size="small"
+          ariaLabel="Forward"
+          [disabled]="!store.canGoForward()"
+          (onClick)="store.forward()"
+        />
+      </div>
+      <h2 class="side-panel__title">{{ title() }}</h2>
     </div>
-    <h2 class="side-panel__title">{{ title() }}</h2>
   </div>
 
   <p-divider styleClass="side-panel__rule" />

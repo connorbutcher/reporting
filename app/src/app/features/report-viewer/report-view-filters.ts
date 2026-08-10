@@ -6,13 +6,15 @@ import { FilterGroupModel } from '../report-builder/models/filter.model';
 
 /** One editable filter shown in the viewer's panel. */
 export interface ViewFilterEntry {
-  /** A dataset id for page filters, a widget id for table filters. */
+  /** A dataset id for page filters, a widget id for widget filters. */
   readonly key: string;
   readonly label: Signal<string>;
   readonly datasetId: string;
   readonly group: FilterGroupModel;
   /** What the published report defines, for detecting and restoring changes. */
   readonly published: FilterGroup | null;
+  /** Undefined for a page filter — it isn't any one widget's. */
+  readonly type?: 'dataTable' | 'chart';
 }
 
 /**
@@ -26,6 +28,17 @@ export interface ViewFilterEntry {
 export class ReportViewFilters {
   readonly pageEntries: readonly ViewFilterEntry[];
   readonly widgetEntries: readonly ViewFilterEntry[];
+
+  /**
+   * Each entry's resolved filter, memoized per key. A `Record` rebuilt from
+   * every entry on any single edit would hand *every* widget a fresh object
+   * reference whenever *any* filter changed, and each widget treats a new
+   * filter reference as "reload me" — so one edit would reload the whole
+   * report. Keying a per-entry `computed()` instead means editing one filter
+   * only invalidates that filter's own signal.
+   */
+  readonly pageFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
+  readonly widgetFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
 
   constructor(
     content: ReportRevisionContent,
@@ -79,24 +92,19 @@ export class ReportViewFilters {
         datasetId,
         published: widget.config.filter,
         group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
+        type: widget.type,
       };
     });
+
+    // Built after pageEntries/widgetEntries exist — each computed() closes over
+    // one entry, so reading it only tracks that entry's own group signals.
+    this.pageFilters = new Map(this.pageEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
+    this.widgetFilters = new Map(this.widgetEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
   }
 
   private get allEntries(): ViewFilterEntry[] {
     return [...this.pageEntries, ...this.widgetEntries];
   }
-
-  // These read through the models' signals, so editing a condition recomputes
-  // them and re-runs the affected widget's query automatically.
-
-  readonly pageFilters = computed<Record<string, FilterGroup | null>>(() =>
-    Object.fromEntries(this.pageEntries.map((e) => [e.key, e.group.toQueryDto()])),
-  );
-
-  readonly widgetFilters = computed<Record<string, FilterGroup | null>>(() =>
-    Object.fromEntries(this.widgetEntries.map((e) => [e.key, e.group.toQueryDto()])),
-  );
 
   /** True once the reader's view differs from what the author published. */
   readonly changed = computed(() => this.allEntries.some((e) => entryChanged(e)));
@@ -127,7 +135,7 @@ function clone(filter: FilterGroup | null): FilterGroup | null {
   return filter ? (JSON.parse(JSON.stringify(filter)) as FilterGroup) : null;
 }
 
-/** Whether a reader has moved this filter away from what the report published. */
+/** Whether a reader has moved this filter away from what the author published. */
 export function entryChanged(entry: ViewFilterEntry): boolean {
   return filterKey(entry.group.toDto()) !== filterKey(entry.published);
 }
