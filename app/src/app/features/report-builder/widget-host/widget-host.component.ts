@@ -120,7 +120,7 @@ export class WidgetHostComponent {
   }
 
   protected showIssues(): void {
-    this.store.selectedWidgetIds.set([this.widget().id]);
+    this.store.selectOnly(this.widget().id);
     this.store.navigate({ kind: 'issues' });
   }
 

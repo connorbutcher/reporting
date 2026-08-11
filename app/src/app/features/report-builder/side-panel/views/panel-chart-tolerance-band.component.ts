@@ -4,9 +4,9 @@ import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetData, DatasetRow, DatasetSchema } from '../../../../core/models/dataset.model';
 import { ChartAxis } from '../../../../core/models/report.model';
 import { ReportBuilderStore } from '../../report-builder.store';
+import { ToleranceSourcePicker } from '../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../panel-group.component';
 
 const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
@@ -49,32 +49,32 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
             <span class="panel-field-label">Limits dataset</span>
             <p-select
               [options]="datasets()"
-              [ngModel]="sourceDatasetId()"
+              [ngModel]="picker.sourceDatasetId()"
               optionLabel="name"
               optionValue="id"
               placeholder="Choose a dataset"
               appendTo="body"
               fluid
               showClear
-              (onChange)="selectDataset($event.value ?? null)"
+              (onChange)="picker.selectDataset($event.value ?? null)"
             />
           </label>
 
-          @if (sourceDatasetId()) {
-            @if (loadingSource()) {
+          @if (picker.sourceDatasetId()) {
+            @if (picker.loadingSource()) {
               <p class="panel-empty">Loading…</p>
             } @else {
               <label class="panel-field">
                 <span class="panel-field-label">Spec row</span>
                 <p-select
-                  [options]="rowOptions()"
-                  [ngModel]="sourceRowId()"
+                  [options]="picker.rowOptions()"
+                  [ngModel]="picker.sourceRowId()"
                   optionLabel="label"
                   optionValue="id"
                   placeholder="Choose a row"
                   appendTo="body"
                   fluid
-                  (onChange)="sourceRowId.set($event.value ?? null)"
+                  (onChange)="picker.sourceRowId.set($event.value ?? null)"
                 />
               </label>
 
@@ -82,60 +82,60 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
                 <label class="panel-field">
                   <span class="panel-field-label">Min</span>
                   <p-select
-                    [options]="numericColumns()"
-                    [ngModel]="minColumnId()"
+                    [options]="picker.numericColumns()"
+                    [ngModel]="picker.minColumnId()"
                     optionLabel="name"
                     optionValue="id"
                     placeholder="Column"
                     appendTo="body"
                     fluid
-                    (onChange)="minColumnId.set($event.value ?? null)"
+                    (onChange)="picker.minColumnId.set($event.value ?? null)"
                   />
                 </label>
                 <label class="panel-field">
                   <span class="panel-field-label">Max</span>
                   <p-select
-                    [options]="numericColumns()"
-                    [ngModel]="maxColumnId()"
+                    [options]="picker.numericColumns()"
+                    [ngModel]="picker.maxColumnId()"
                     optionLabel="name"
                     optionValue="id"
                     placeholder="Column"
                     appendTo="body"
                     fluid
-                    (onChange)="maxColumnId.set($event.value ?? null)"
+                    (onChange)="picker.maxColumnId.set($event.value ?? null)"
                   />
                 </label>
                 <label class="panel-field">
                   <span class="panel-field-label">Concession lower</span>
                   <p-select
-                    [options]="numericColumns()"
-                    [ngModel]="concessionLowerColumnId()"
+                    [options]="picker.numericColumns()"
+                    [ngModel]="picker.concessionLowerColumnId()"
                     optionLabel="name"
                     optionValue="id"
                     placeholder="None"
                     appendTo="body"
                     fluid
                     showClear
-                    (onChange)="concessionLowerColumnId.set($event.value ?? null)"
+                    (onChange)="picker.concessionLowerColumnId.set($event.value ?? null)"
                   />
                 </label>
                 <label class="panel-field">
                   <span class="panel-field-label">Concession upper</span>
                   <p-select
-                    [options]="numericColumns()"
-                    [ngModel]="concessionUpperColumnId()"
+                    [options]="picker.numericColumns()"
+                    [ngModel]="picker.concessionUpperColumnId()"
                     optionLabel="name"
                     optionValue="id"
                     placeholder="None"
                     appendTo="body"
                     fluid
                     showClear
-                    (onChange)="concessionUpperColumnId.set($event.value ?? null)"
+                    (onChange)="picker.concessionUpperColumnId.set($event.value ?? null)"
                   />
                 </label>
               </div>
 
-              @if (!isComplete()) {
+              @if (!picker.isComplete()) {
                 <p class="panel-hint">Pick a spec row plus min and max columns to draw the lines.</p>
               }
             }
@@ -151,10 +151,10 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
 })
 export class PanelChartToleranceBandComponent {
   private readonly store = inject(ReportBuilderStore);
-  private readonly datasetApi = inject(DatasetApiService);
 
   protected readonly datasets = this.store.datasets;
   protected readonly axisOptions = AXIS_OPTIONS;
+  protected readonly picker = new ToleranceSourcePicker(inject(DatasetApiService));
 
   private readonly chart = this.store.selectedChartWidget;
 
@@ -168,31 +168,7 @@ export class PanelChartToleranceBandComponent {
     return bandId ? (this.chart()?.toleranceBand(bandId) ?? null) : null;
   });
 
-  // --- draft selection, seeded from the band's saved config -------------
-
   protected readonly axis = signal<ChartAxis>('y');
-  protected readonly sourceDatasetId = signal<string | null>(null);
-  protected readonly sourceRowId = signal<string | null>(null);
-  protected readonly minColumnId = signal<string | null>(null);
-  protected readonly maxColumnId = signal<string | null>(null);
-  protected readonly concessionLowerColumnId = signal<string | null>(null);
-  protected readonly concessionUpperColumnId = signal<string | null>(null);
-
-  private readonly sourceSchema = signal<DatasetSchema | null>(null);
-  private readonly sourceData = signal<DatasetData | null>(null);
-  protected readonly loadingSource = signal(false);
-
-  protected readonly numericColumns = computed(
-    () => this.sourceSchema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
-  );
-
-  protected readonly rowOptions = computed(() =>
-    (this.sourceData()?.rows ?? []).map((row) => ({ id: row.id, label: this.rowLabel(row) })),
-  );
-
-  protected readonly isComplete = computed(
-    () => !!this.sourceRowId() && !!this.minColumnId() && !!this.maxColumnId(),
-  );
 
   private lastBandId: string | null = null;
 
@@ -208,13 +184,7 @@ export class PanelChartToleranceBandComponent {
 
       untracked(() => {
         this.axis.set(band.axis);
-        this.sourceDatasetId.set(band.sourceDatasetId || null);
-        this.sourceRowId.set(band.sourceRowId || null);
-        this.minColumnId.set(band.minColumnId || null);
-        this.maxColumnId.set(band.maxColumnId || null);
-        this.concessionLowerColumnId.set(band.concessionLowerColumnId ?? null);
-        this.concessionUpperColumnId.set(band.concessionUpperColumnId ?? null);
-        this.loadSource(band.sourceDatasetId || null);
+        this.picker.seed(band);
       });
     });
 
@@ -223,68 +193,16 @@ export class PanelChartToleranceBandComponent {
     effect(() => {
       const bandId = this.bandId();
       const axis = this.axis();
-      const sourceDatasetId = this.sourceDatasetId();
-      const sourceRowId = this.sourceRowId();
-      const minColumnId = this.minColumnId();
-      const maxColumnId = this.maxColumnId();
-      const concessionLowerColumnId = this.concessionLowerColumnId();
-      const concessionUpperColumnId = this.concessionUpperColumnId();
+      const pointer = this.picker.toPointer();
+      if (!bandId || !pointer) return;
 
-      if (!bandId || !sourceDatasetId || !sourceRowId || !minColumnId || !maxColumnId) return;
-
-      untracked(() =>
-        this.chart()?.updateToleranceBand(bandId, {
-          axis,
-          sourceDatasetId,
-          sourceRowId,
-          minColumnId,
-          maxColumnId,
-          concessionLowerColumnId: concessionLowerColumnId ?? undefined,
-          concessionUpperColumnId: concessionUpperColumnId ?? undefined,
-        }),
-      );
+      untracked(() => this.chart()?.updateToleranceBand(bandId, { axis, ...pointer }));
     });
-  }
-
-  protected selectDataset(datasetId: string | null): void {
-    this.sourceDatasetId.set(datasetId);
-    this.sourceRowId.set(null);
-    this.minColumnId.set(null);
-    this.maxColumnId.set(null);
-    this.concessionLowerColumnId.set(null);
-    this.concessionUpperColumnId.set(null);
-    this.loadSource(datasetId);
   }
 
   protected remove(): void {
     const bandId = this.bandId();
     if (bandId) this.chart()?.removeToleranceBand(bandId);
     this.store.back();
-  }
-
-  /** A human label for a spec row, from up to its first three column values. */
-  private rowLabel(row: DatasetRow): string {
-    const columns = this.sourceSchema()?.columns.slice(0, 3) ?? [];
-    const label = columns
-      .map((c) => row.values[c.id])
-      .filter((v) => !!v)
-      .join(' · ');
-    return label || 'Row';
-  }
-
-  private loadSource(datasetId: string | null): void {
-    this.sourceSchema.set(null);
-    this.sourceData.set(null);
-    if (!datasetId) return;
-
-    this.loadingSource.set(true);
-    this.datasetApi.getSchema(datasetId).subscribe((schema) => this.sourceSchema.set(schema));
-    this.datasetApi.getData(datasetId).subscribe({
-      next: (data) => {
-        this.sourceData.set(data);
-        this.loadingSource.set(false);
-      },
-      error: () => this.loadingSource.set(false),
-    });
   }
 }

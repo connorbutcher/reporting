@@ -5,19 +5,18 @@ import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap }
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
+import { DatasetSchemaCacheService } from '../../core/services/dataset-schema-cache.service';
 import { OperatorCatalogue } from '../../core/models/filter.model';
-import {
-  DatasetColumnConfiguration,
-  DatasetSchema,
-  DatasetSummary,
-} from '../../core/models/dataset.model';
+import { DatasetColumnConfiguration, DatasetSummary } from '../../core/models/dataset.model';
 import { ReportRevisionContent, WidgetType } from '../../core/models/report.model';
-import { rectsOverlap } from './grid.util';
+import { fitsWithoutCollision } from './grid.util';
 import { ReportModel } from './models/report.model';
 import { UndoHistory } from './models/undo-history';
 import { ValidationIssue } from './models/validation-issue';
 import { ChartWidgetModel, DataTableWidgetModel, ModelSources, WidgetModel } from './models/widget.model';
 import { PanelView } from './side-panel/panel-view';
+import { SidePanelNavigation } from './state/side-panel-navigation';
+import { WidgetSelection } from './state/widget-selection';
 
 const SAVE_DEBOUNCE_MS = 250;
 /** Long enough that a burst of typing collapses into one undo step. */
@@ -29,7 +28,10 @@ const HISTORY_DEBOUNCE_MS = 400;
  *
  * The report's own state lives in the {@link ReportModel} tree — every edit
  * goes through those instance classes, and their aggregated validity and
- * dirty state is what drives saving here.
+ * dirty state is what drives saving here. Side-panel navigation and widget
+ * selection are each their own small collaborator ({@link SidePanelNavigation},
+ * {@link WidgetSelection}); this store composes them behind the same API it
+ * always had, so callers don't need to know they exist.
  */
 @Injectable()
 export class ReportBuilderStore {
@@ -37,10 +39,13 @@ export class ReportBuilderStore {
   private readonly datasetApi = inject(DatasetApiService);
   private readonly filterApi = inject(FilterApiService);
   private readonly router = inject(Router);
+  private readonly schemaCache = inject(DatasetSchemaCacheService);
 
   private readonly saveQueue = new Subject<void>();
   private readonly historyQueue = new Subject<void>();
   private readonly history = new UndoHistory();
+  private readonly navigation = new SidePanelNavigation();
+  private readonly selection = new WidgetSelection();
 
   readonly canUndo = this.history.canUndo;
   readonly canRedo = this.history.canRedo;
@@ -53,39 +58,31 @@ export class ReportBuilderStore {
   /** True while a save request is in flight, for a "Saving…" indicator. */
   readonly saving = signal(false);
 
-  /** Cached per dataset id so panel interactions never refetch the schema. */
-  private readonly schemaCache = signal<Record<string, DatasetSchema>>({});
-  private readonly inFlightSchemas = new Set<string>();
-
   /** Filter operators per column type; static for the server's lifetime. */
   readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
 
   /** The look-ups every model node validates and describes itself against. */
   private readonly sources: ModelSources = {
-    schemas: this.schemaCache.asReadonly(),
+    schemas: this.schemaCache.schemas,
     catalogue: this.operatorCatalogue.asReadonly(),
   };
 
   /** Bumped when a column's configuration changes, so widgets re-read it. */
   readonly datasetVersion = signal(0);
 
-  /** Where the side panel has been, separate from the report's undo stack. */
-  private readonly viewHistory = signal<PanelView[]>([{ kind: 'root' }]);
-  private readonly viewIndex = signal(0);
-
-  readonly view = computed(() => this.viewHistory()[this.viewIndex()]);
-  readonly canGoBack = computed(() => this.viewIndex() > 0);
-  readonly canGoForward = computed(() => this.viewIndex() < this.viewHistory().length - 1);
+  readonly view = this.navigation.view;
+  readonly canGoBack = this.navigation.canGoBack;
+  readonly canGoForward = this.navigation.canGoForward;
 
   /** Every selected widget, in the order they were added to the selection. */
-  readonly selectedWidgetIds = signal<readonly string[]>([]);
+  readonly selectedWidgetIds = this.selection.selectedWidgetIds;
 
   /**
    * The widget the side panel configures — the most recently selected one.
    * Multi-selection is for canvas operations; the panel always edits one.
    */
-  readonly selectedWidgetId = computed(() => this.selectedWidgetIds().at(-1) ?? null);
-  readonly hasMultiSelection = computed(() => this.selectedWidgetIds().length > 1);
+  readonly selectedWidgetId = this.selection.selectedWidgetId;
+  readonly hasMultiSelection = this.selection.hasMultiSelection;
 
   // --- report state, delegated to the model tree -----------------------------
 
@@ -197,7 +194,7 @@ export class ReportBuilderStore {
       for (const widget of this.widgets()) {
         if (widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel) {
           const datasetId = widget.datasetId();
-          if (datasetId) this.ensureSchema(datasetId);
+          if (datasetId) this.schemaCache.ensure(datasetId);
         }
       }
     });
@@ -268,28 +265,23 @@ export class ReportBuilderStore {
   // --- navigation -----------------------------------------------------------
 
   navigate(view: PanelView): void {
-    // Navigating from a point in history discards anything after it.
-    const trimmed = this.viewHistory().slice(0, this.viewIndex() + 1);
-    this.viewHistory.set([...trimmed, view]);
-    this.viewIndex.set(trimmed.length);
+    this.navigation.navigate(view);
     this.syncSelectionToView();
   }
 
   /** Replaces the current entry, for stepping sideways without adding history. */
   replace(view: PanelView): void {
-    this.viewHistory.update((views) => views.map((v, i) => (i === this.viewIndex() ? view : v)));
+    this.navigation.replace(view);
     this.syncSelectionToView();
   }
 
   back(): void {
-    if (!this.canGoBack()) return;
-    this.viewIndex.update((i) => i - 1);
+    this.navigation.back();
     this.syncSelectionToView();
   }
 
   forward(): void {
-    if (!this.canGoForward()) return;
-    this.viewIndex.update((i) => i + 1);
+    this.navigation.forward();
     this.syncSelectionToView();
   }
 
@@ -301,28 +293,28 @@ export class ReportBuilderStore {
       current.widgetId === widgetId &&
       this.selectedWidgetIds().length === 1;
 
-    this.selectedWidgetIds.set([widgetId]);
+    this.selection.select(widgetId);
     if (!alreadyThere) this.navigate({ kind: 'widget', widgetId });
   }
 
   /** Adds to or removes from the selection, for ctrl/shift-clicking on the canvas. */
   toggleWidgetSelection(widgetId: string): void {
-    const selected = this.selectedWidgetIds();
-    const next = selected.includes(widgetId)
-      ? selected.filter((id) => id !== widgetId)
-      : [...selected, widgetId];
-
-    this.selectedWidgetIds.set(next);
-    const primary = next.at(-1);
+    this.selection.toggle(widgetId);
+    const primary = this.selectedWidgetIds().at(-1);
     if (primary) this.navigate({ kind: 'widget', widgetId: primary });
   }
 
   clearSelection(): void {
-    this.selectedWidgetIds.set([]);
+    this.selection.clear();
   }
 
   isSelected(widgetId: string): boolean {
-    return this.selectedWidgetIds().includes(widgetId);
+    return this.selection.has(widgetId);
+  }
+
+  /** Selects a widget without navigating to it — for a caller about to navigate elsewhere itself. */
+  selectOnly(widgetId: string): void {
+    this.selection.set([widgetId]);
   }
 
   stepWidget(offset: number): void {
@@ -335,7 +327,7 @@ export class ReportBuilderStore {
 
   /** Takes the user to whatever the issue is about. */
   goToIssue(issue: ValidationIssue): void {
-    if (issue.widgetId) this.selectedWidgetIds.set([issue.widgetId]);
+    if (issue.widgetId) this.selection.set([issue.widgetId]);
     this.navigate(issue.view);
   }
 
@@ -355,8 +347,7 @@ export class ReportBuilderStore {
     if (widgetIds.length === 0) return;
     this.model()?.removeWidgets(widgetIds);
 
-    const doomed = new Set(widgetIds);
-    this.selectedWidgetIds.update((ids) => ids.filter((id) => !doomed.has(id)));
+    this.selection.filterOut(widgetIds);
     if (this.selectedWidgetIds().length === 0) this.navigate({ kind: 'widgets' });
   }
 
@@ -369,7 +360,7 @@ export class ReportBuilderStore {
     const copies = ids.map((id) => model.duplicateWidget(id)).filter((w): w is WidgetModel => !!w);
     if (copies.length === 0) return;
 
-    this.selectedWidgetIds.set(copies.map((w) => w.id));
+    this.selection.set(copies.map((w) => w.id));
     this.navigate({ kind: 'widget', widgetId: copies[copies.length - 1].id });
   }
 
@@ -387,15 +378,7 @@ export class ReportBuilderStore {
       rect: { x: widget.x() + dx, y: widget.y() + dy, w: widget.w(), h: widget.h() },
     }));
 
-    const fits = targets.every(
-      ({ rect }) =>
-        rect.x >= 0 &&
-        rect.y >= 0 &&
-        rect.x + rect.w <= model.gridColumns() &&
-        rect.y + rect.h <= model.gridRows() &&
-        !others.some((other) => rectsOverlap(rect, other.rect())),
-    );
-    if (!fits) return;
+    if (!fitsWithoutCollision(targets, others, model.gridColumns(), model.gridRows())) return;
 
     for (const { widget, rect } of targets) widget.moveTo(rect.x, rect.y);
   }
@@ -420,7 +403,7 @@ export class ReportBuilderStore {
     this.model.set(new ReportModel(report, this.sources));
 
     const present = new Set(report.widgets.map((w) => w.id));
-    this.selectedWidgetIds.update((ids) => ids.filter((id) => present.has(id)));
+    this.selection.set(this.selectedWidgetIds().filter((id) => present.has(id)));
   }
 
   private setLoadedReport(report: ReportRevisionContent): void {
@@ -447,43 +430,8 @@ export class ReportBuilderStore {
     columnId: string,
     configuration: DatasetColumnConfiguration,
   ): void {
-    // Update the cached schema straight away so the panel reflects the change,
-    // then reconcile with whatever the server stored.
-    this.patchCachedColumn(datasetId, columnId, configuration);
+    this.schemaCache.updateColumnConfiguration(datasetId, columnId, configuration);
     this.datasetVersion.update((v) => v + 1);
-
-    this.datasetApi.updateColumnConfiguration(datasetId, columnId, configuration).subscribe((column) => {
-      this.patchCachedColumn(datasetId, columnId, column.configuration ?? {});
-    });
-  }
-
-  private ensureSchema(datasetId: string): void {
-    if (this.schemaCache()[datasetId] || this.inFlightSchemas.has(datasetId)) return;
-
-    this.inFlightSchemas.add(datasetId);
-    this.datasetApi.getSchema(datasetId).subscribe({
-      next: (schema) => this.schemaCache.update((all) => ({ ...all, [datasetId]: schema })),
-      complete: () => this.inFlightSchemas.delete(datasetId),
-      error: () => this.inFlightSchemas.delete(datasetId),
-    });
-  }
-
-  private patchCachedColumn(
-    datasetId: string,
-    columnId: string,
-    configuration: DatasetColumnConfiguration,
-  ): void {
-    this.schemaCache.update((all) => {
-      const schema = all[datasetId];
-      if (!schema) return all;
-      return {
-        ...all,
-        [datasetId]: {
-          ...schema,
-          columns: schema.columns.map((c) => (c.id === columnId ? { ...c, configuration } : c)),
-        },
-      };
-    });
   }
 
   private syncSelectionToView(): void {
@@ -491,7 +439,7 @@ export class ReportBuilderStore {
     // Panel navigation always focuses a single widget; canvas multi-selection
     // is only replaced when the panel actually moves to a different one.
     if ('widgetId' in view && !this.selectedWidgetIds().includes(view.widgetId)) {
-      this.selectedWidgetIds.set([view.widgetId]);
+      this.selection.select(view.widgetId);
     }
   }
 }

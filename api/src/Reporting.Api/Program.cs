@@ -26,9 +26,11 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddScoped<DatasetRepository>();
+builder.Services.AddScoped<DatasetRowRepository>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ToleranceResolver>();
+builder.Services.AddScoped<WidgetQueryRepository>();
 
 var app = builder.Build();
 

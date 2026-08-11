@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
+using Reporting.DAL.Widgets;
 
 namespace Reporting.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class DatasetsController(DatasetRepository datasets) : ControllerBase
+public class DatasetsController(DatasetRepository datasets, DatasetRowRepository rows, WidgetQueryRepository widgetQueries) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<DatasetSummaryDto>>> GetAll() =>
@@ -24,7 +25,7 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
     [HttpGet("{id:guid}/data")]
     public async Task<ActionResult<DatasetDataDto>> GetData(Guid id)
     {
-        var data = await datasets.GetDataAsync(id);
+        var data = await rows.GetDataAsync(id);
         return data is null ? NotFound() : data;
     }
 
@@ -55,7 +56,7 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
     {
         try
         {
-            var result = await datasets.QueryForTableAsync(id, dto);
+            var result = await widgetQueries.QueryForTableAsync(id, dto);
             return result is null ? NotFound() : result;
         }
         catch (FilterException ex)
@@ -73,7 +74,7 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
     {
         try
         {
-            var result = await datasets.QueryForChartAsync(id, dto);
+            var result = await widgetQueries.QueryForChartAsync(id, dto);
             return result is null ? NotFound() : result;
         }
         catch (FilterException ex)
@@ -89,17 +90,15 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
         Guid columnId,
         [FromBody] JsonElement configuration)
     {
-        if (configuration.ValueKind is not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined))
+        try
         {
-            return BadRequest("Column configuration must be a JSON object.");
+            var column = await datasets.UpdateColumnConfigurationAsync(id, columnId, configuration);
+            return column is null ? NotFound() : column;
         }
-
-        var configurationJson = configuration.ValueKind == JsonValueKind.Object
-            ? configuration.GetRawText()
-            : "{}";
-
-        var column = await datasets.UpdateColumnConfigurationAsync(id, columnId, configurationJson);
-        return column is null ? NotFound() : column;
+        catch (DataValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // --- dataset management ---------------------------------------------------
@@ -165,18 +164,18 @@ public class DatasetsController(DatasetRepository datasets) : ControllerBase
     [HttpPost("{id:guid}/rows")]
     public async Task<ActionResult<DatasetRowDto>> AddRow(Guid id, SaveDatasetRowDto dto)
     {
-        var row = await datasets.AddRowAsync(id, dto.Values);
+        var row = await rows.AddRowAsync(id, dto.Values);
         return row is null ? NotFound() : row;
     }
 
     [HttpPut("{id:guid}/rows/{rowId:guid}")]
     public async Task<ActionResult<DatasetRowDto>> UpdateRow(Guid id, Guid rowId, SaveDatasetRowDto dto)
     {
-        var row = await datasets.UpdateRowAsync(id, rowId, dto.Values);
+        var row = await rows.UpdateRowAsync(id, rowId, dto.Values);
         return row is null ? NotFound() : row;
     }
 
     [HttpDelete("{id:guid}/rows/{rowId:guid}")]
     public async Task<IActionResult> DeleteRow(Guid id, Guid rowId) =>
-        await datasets.DeleteRowAsync(id, rowId) ? NoContent() : NotFound();
+        await rows.DeleteRowAsync(id, rowId) ? NoContent() : NotFound();
 }
