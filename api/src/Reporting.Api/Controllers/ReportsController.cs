@@ -13,6 +13,11 @@ public class ReportsController(ReportRepository reports) : ControllerBase
     public async Task<ActionResult<List<ReportSummaryDto>>> GetAll([FromQuery] Guid? folderId) =>
         await reports.GetAllAsync(folderId);
 
+    /// <summary>Every report across every folder, flat — for pickers that need the whole tree at once, like "copy from".</summary>
+    [HttpGet("all")]
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetAllFlat() =>
+        await reports.GetAllFlatAsync();
+
     /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42").</summary>
     [HttpGet("search")]
     public async Task<ActionResult<List<ReportSearchResultDto>>> Search([FromQuery] string? q) =>
@@ -32,7 +37,7 @@ public class ReportsController(ReportRepository reports) : ControllerBase
 
         try
         {
-            var report = await reports.CreateAsync(dto.Name.Trim(), dto.FolderId);
+            var report = await reports.CreateAsync(dto.Name.Trim(), dto.FolderId, dto.SourceReportId);
             return CreatedAtAction(nameof(GetAll), report);
         }
         catch (DataValidationException ex)

@@ -27,6 +27,8 @@ public class CreateReportDto
 {
     public string Name { get; set; } = string.Empty;
     public Guid? FolderId { get; set; }
+    /// <summary>When set, the new report's draft is pre-populated with this report's current content.</summary>
+    public Guid? SourceReportId { get; set; }
 }
 
 public class SaveReportDto

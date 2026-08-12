@@ -121,7 +121,8 @@ public class DataTableWidgetConfig : WidgetConfig
 
 public enum ChartType
 {
-    Scatter
+    Scatter,
+    Line
 }
 
 public enum ChartAxis
@@ -177,6 +178,13 @@ public class ChartWidgetConfig : WidgetConfig
 
     public bool ShowLegend { get; set; } = true;
     public int PointSize { get; set; } = 8;
+
+    /// <summary>Line charts only: draws the line with curved rather than straight segments.</summary>
+    public bool Smooth { get; set; }
+    /// <summary>Line charts only: whether point markers are drawn along the line.</summary>
+    public bool ShowPoints { get; set; } = true;
+    /// <summary>Line charts only: shades the area under the line.</summary>
+    public bool AreaFill { get; set; }
 
     /// <summary>Dashed reference lines for one or more specs plotted against an axis.</summary>
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();

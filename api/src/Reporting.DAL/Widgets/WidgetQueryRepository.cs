@@ -203,7 +203,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         {
             Id = dataset.Id,
             Name = dataset.Name,
-            Series = groups.Select(g => new ChartSeriesDto { Label = g.Key, Points = g.Value }).ToList(),
+            // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op for scatter.
+            Series = groups.Select(g => new ChartSeriesDto { Label = g.Key, Points = g.Value.OrderBy(p => p.X).ToList() }).ToList(),
             ToleranceBands = resolvedBands
         };
     }

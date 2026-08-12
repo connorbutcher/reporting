@@ -18,6 +18,13 @@ public class ReportRepository(ReportingDbContext db)
         return reports.Select(r => r.ToSummaryDto()).ToList();
     }
 
+    /// <summary>Every report across every folder, flat — for building a whole-tree picker like the "copy from" report select.</summary>
+    public async Task<List<ReportSummaryDto>> GetAllFlatAsync()
+    {
+        var reports = await db.Reports.Include(r => r.Revisions).OrderBy(r => r.Name).ToListAsync();
+        return reports.Select(r => r.ToSummaryDto()).ToList();
+    }
+
     /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42").</summary>
     public async Task<List<ReportSearchResultDto>> SearchAsync(string? query)
     {
@@ -69,12 +76,33 @@ public class ReportRepository(ReportingDbContext db)
         return report?.ToSummaryDto();
     }
 
-    /// <summary>Throws <see cref="DataValidationException"/> if the folder doesn't exist.</summary>
-    public async Task<ReportSummaryDto> CreateAsync(string name, Guid? folderId)
+    /// <summary>
+    /// Throws <see cref="DataValidationException"/> if the folder, or the source report
+    /// named by <paramref name="sourceReportId"/>, doesn't exist.
+    /// </summary>
+    public async Task<ReportSummaryDto> CreateAsync(string name, Guid? folderId, Guid? sourceReportId = null)
     {
         if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid))
         {
             throw new DataValidationException("Folder does not exist.");
+        }
+
+        ReportRevision? source = null;
+        if (sourceReportId is { } sid)
+        {
+            if (!await db.Reports.AnyAsync(r => r.Id == sid))
+            {
+                throw new DataValidationException("Source report does not exist.");
+            }
+
+            source = await db.ReportRevisions
+                .Include(rv => rv.Widgets)
+                .Where(rv => rv.ReportId == sid && rv.Kind == RevisionKind.Published)
+                .OrderByDescending(rv => rv.VersionNumber)
+                .FirstOrDefaultAsync()
+                ?? await db.ReportRevisions
+                    .Include(rv => rv.Widgets)
+                    .FirstOrDefaultAsync(rv => rv.ReportId == sid && rv.Kind == RevisionKind.Draft);
         }
 
         var nextNumber = (await db.Reports.MaxAsync(r => (int?)r.Number) ?? 0) + 1;
@@ -88,13 +116,15 @@ public class ReportRepository(ReportingDbContext db)
             CreatedAt = now,
             UpdatedAt = now,
         };
-        report.Revisions.Add(new ReportRevision
+        var draft = new ReportRevision
         {
             Id = Guid.NewGuid(),
             ReportId = report.Id,
             Kind = RevisionKind.Draft,
             CreatedAt = now,
-        });
+        };
+        CopyContentInto(draft, source);
+        report.Revisions.Add(draft);
 
         db.Reports.Add(report);
         await db.SaveChangesAsync();
@@ -199,34 +229,38 @@ public class ReportRepository(ReportingDbContext db)
             Id = Guid.NewGuid(),
             ReportId = id,
             Kind = RevisionKind.Draft,
-            Columns = source?.Columns ?? 12,
-            Rows = source?.Rows ?? 10,
             CreatedAt = DateTime.UtcNow,
-            FiltersJson = source?.FiltersJson ?? "[]",
         };
-
-        if (source is not null)
-        {
-            foreach (var widget in source.Widgets)
-            {
-                draft.Widgets.Add(new Widget
-                {
-                    Id = Guid.NewGuid(),
-                    ReportRevisionId = draft.Id,
-                    Type = widget.Type,
-                    X = widget.X,
-                    Y = widget.Y,
-                    W = widget.W,
-                    H = widget.H,
-                    ConfigJson = widget.ConfigJson,
-                });
-            }
-        }
+        CopyContentInto(draft, source);
 
         report.UpdatedAt = DateTime.UtcNow;
         db.ReportRevisions.Add(draft);
         await db.SaveChangesAsync();
         return draft.ToContentDto(report);
+    }
+
+    /// <summary>Copies columns/rows/filters/widgets from <paramref name="source"/> into a freshly-created <paramref name="target"/> revision. Leaves defaults in place when <paramref name="source"/> is null.</summary>
+    private static void CopyContentInto(ReportRevision target, ReportRevision? source)
+    {
+        target.Columns = source?.Columns ?? 12;
+        target.Rows = source?.Rows ?? 10;
+        target.FiltersJson = source?.FiltersJson ?? "[]";
+        if (source is null) return;
+
+        foreach (var widget in source.Widgets)
+        {
+            target.Widgets.Add(new Widget
+            {
+                Id = Guid.NewGuid(),
+                ReportRevisionId = target.Id,
+                Type = widget.Type,
+                X = widget.X,
+                Y = widget.Y,
+                W = widget.W,
+                H = widget.H,
+                ConfigJson = widget.ConfigJson,
+            });
+        }
     }
 
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
