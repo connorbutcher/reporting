@@ -117,7 +117,9 @@ export class FilterConditionModel extends EditorNode {
   readonly label = computed(() => {
     const column = this.schemaColumn()?.name ?? 'Unknown column';
     const operator = this.descriptor()?.label ?? this.operator();
-    const values = this.values().filter((v) => v.trim().length > 0).join(' and ');
+    const values = this.values()
+      .filter((v) => v.trim().length > 0)
+      .join(' and ');
     return `${column} ${operator}${values ? ` ${values}` : ''}`;
   });
 

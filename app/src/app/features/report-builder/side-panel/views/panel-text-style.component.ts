@@ -30,7 +30,13 @@ const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
 
 @Component({
   selector: 'app-panel-text-style',
-  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectButtonModule, PanelGroupComponent],
+  imports: [
+    FormsModule,
+    CheckboxModule,
+    InputNumberModule,
+    SelectButtonModule,
+    PanelGroupComponent,
+  ],
   template: `
     @if (style(); as style) {
       <div class="panel-section">
@@ -64,10 +70,17 @@ const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
 
           <div class="panel-style-toggles">
             <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.italic()">
-              <input type="checkbox" [ngModel]="style.italic()" (ngModelChange)="style.italic.set($event)" />
+              <input
+                type="checkbox"
+                [ngModel]="style.italic()"
+                (ngModelChange)="style.italic.set($event)"
+              />
               <i class="pi pi-italic" aria-hidden="true"></i>
             </label>
-            <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.underline()">
+            <label
+              class="panel-toggle-button"
+              [class.panel-toggle-button--active]="style.underline()"
+            >
               <input
                 type="checkbox"
                 [ngModel]="style.underline()"
@@ -75,7 +88,10 @@ const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
               />
               <i class="pi pi-underline" aria-hidden="true"></i>
             </label>
-            <label class="panel-toggle-button" [class.panel-toggle-button--active]="style.strikethrough()">
+            <label
+              class="panel-toggle-button"
+              [class.panel-toggle-button--active]="style.strikethrough()"
+            >
               <input
                 type="checkbox"
                 [ngModel]="style.strikethrough()"

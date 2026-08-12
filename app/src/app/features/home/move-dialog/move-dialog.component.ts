@@ -51,7 +51,9 @@ export class MoveDialogComponent {
     [this.selectedFolderId() ?? ROOT_KEY]: true,
   }));
 
-  protected readonly isUnchanged = computed(() => this.selectedFolderId() === this.data.currentFolderId);
+  protected readonly isUnchanged = computed(
+    () => this.selectedFolderId() === this.data.currentFolderId,
+  );
 
   private childNodes(parentId: string | null): TreeNode[] {
     return this.data.folders

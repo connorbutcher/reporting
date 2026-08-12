@@ -27,6 +27,12 @@ export class ChartWidgetModel extends WidgetModel {
   readonly yAxisLabel = signal('');
   readonly showLegend = signal(true);
   readonly pointSize = signal(8);
+  /** Line charts only: draws the line with curved rather than straight segments. */
+  readonly smooth = signal(false);
+  /** Line charts only: whether point markers are drawn along the line. */
+  readonly showPoints = signal(true);
+  /** Line charts only: shades the area under the line. */
+  readonly areaFill = signal(false);
 
   /** Reference lines per spec, each resolved against its own limits dataset. */
   readonly toleranceBands = signal<readonly ChartToleranceBand[]>([]);
@@ -53,6 +59,9 @@ export class ChartWidgetModel extends WidgetModel {
     this.yAxisLabel.set(config.yAxisLabel);
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
+    this.smooth.set(config.smooth);
+    this.showPoints.set(config.showPoints);
+    this.areaFill.set(config.areaFill);
     this.toleranceBands.set(config.toleranceBands ?? []);
     this.tooltipColumns.set(config.tooltipColumns ?? []);
 
@@ -123,7 +132,10 @@ export class ChartWidgetModel extends WidgetModel {
     this.tooltipColumns.update((cols) => cols.filter((c) => c.columnId !== columnId));
   }
 
-  updateTooltipColumn(columnId: string, patch: Partial<Omit<ChartTooltipColumn, 'columnId'>>): void {
+  updateTooltipColumn(
+    columnId: string,
+    patch: Partial<Omit<ChartTooltipColumn, 'columnId'>>,
+  ): void {
     this.tooltipColumns.update((cols) =>
       cols.map((c) => (c.columnId === columnId ? { ...c, ...patch } : c)),
     );
@@ -153,6 +165,9 @@ export class ChartWidgetModel extends WidgetModel {
       yAxisLabel: this.yAxisLabel(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
+      smooth: this.smooth(),
+      showPoints: this.showPoints(),
+      areaFill: this.areaFill(),
       // A band the user hasn't finished pointing at a spec yet is left out — the
       // server's Guid fields can't parse the empty placeholder, and a half-built
       // band shouldn't block autosave. It stays in the signal above so the panel

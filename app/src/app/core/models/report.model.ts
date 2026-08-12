@@ -2,7 +2,7 @@ import { FilterGroup, ReportFilter } from './filter.model';
 
 export type WidgetType = 'dataTable' | 'staticText' | 'chart';
 
-export type ChartType = 'scatter';
+export type ChartType = 'scatter' | 'line';
 
 export type SortDirection = 'asc' | 'desc';
 export type ColumnAlign = 'left' | 'center' | 'right';
@@ -118,6 +118,13 @@ export interface ChartWidgetConfig extends WidgetConfigBase {
 
   showLegend: boolean;
   pointSize: number;
+
+  /** Line charts only: draws the line with curved rather than straight segments. */
+  smooth: boolean;
+  /** Line charts only: whether point markers are drawn along the line. */
+  showPoints: boolean;
+  /** Line charts only: shades the area under the line. */
+  areaFill: boolean;
 
   /** Dashed reference lines for one or more specs plotted against an axis. */
   toleranceBands: ChartToleranceBand[];
@@ -257,6 +264,9 @@ export const DEFAULT_CHART_CONFIG: Omit<ChartWidgetConfig, 'type'> = {
   yAxisLabel: '',
   showLegend: true,
   pointSize: 8,
+  smooth: false,
+  showPoints: true,
+  areaFill: false,
   toleranceBands: [],
   tooltipColumns: [],
   filter: null,

@@ -1,26 +1,35 @@
 import { Component, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { ChartToleranceBand } from '../../../../core/models/report.model';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { ChartType } from '../../../../core/models/report.model';
 import { ChartWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 import { PanelGroupComponent } from '../panel-group.component';
+import { PanelChartToleranceListComponent } from './panel-chart-tolerance-list.component';
+import { PanelChartTooltipColumnsComponent } from './panel-chart-tooltip-columns.component';
 
-/** The chart branch of the widget-detail panel: dataset, axes, series, appearance, tolerance bands, and tooltip. */
+const CHART_TYPE_OPTIONS: { label: string; value: ChartType }[] = [
+  { label: 'Scatter', value: 'scatter' },
+  { label: 'Line', value: 'line' },
+];
+
+/** The chart branch of the widget-detail panel: dataset, axes, series, and appearance. Tolerance bands and tooltip are their own groups. */
 @Component({
   selector: 'app-panel-widget-detail-chart',
   imports: [
     FormsModule,
-    ButtonModule,
     CheckboxModule,
     InputNumberModule,
     InputTextModule,
     SelectModule,
+    SelectButtonModule,
     PanelGroupComponent,
+    PanelChartToleranceListComponent,
+    PanelChartTooltipColumnsComponent,
   ],
   template: `
     <app-panel-group label="Data source" icon="⛁">
@@ -92,6 +101,18 @@ import { PanelGroupComponent } from '../panel-group.component';
     </app-panel-group>
 
     <app-panel-group label="Appearance" icon="▤">
+      <label class="panel-field">
+        <span class="panel-field-label">Chart type</span>
+        <p-selectbutton
+          [options]="chartTypeOptions"
+          [ngModel]="chart().chartType()"
+          optionLabel="label"
+          optionValue="value"
+          [allowEmpty]="false"
+          (ngModelChange)="chart().chartType.set($event)"
+        />
+      </label>
+
       <div class="panel-grid-fields">
         <label class="panel-field">
           <span class="panel-field-label">X axis label</span>
@@ -133,6 +154,36 @@ import { PanelGroupComponent } from '../panel-group.component';
         />
         <label for="chart-legend">Show legend</label>
       </div>
+
+      @if (chart().chartType() === 'line') {
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            inputId="chart-smooth"
+            [ngModel]="chart().smooth()"
+            (onChange)="chart().smooth.set($event.checked)"
+          />
+          <label for="chart-smooth">Smooth</label>
+        </div>
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            inputId="chart-show-points"
+            [ngModel]="chart().showPoints()"
+            (onChange)="chart().showPoints.set($event.checked)"
+          />
+          <label for="chart-show-points">Show points</label>
+        </div>
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            inputId="chart-area-fill"
+            [ngModel]="chart().areaFill()"
+            (onChange)="chart().areaFill.set($event.checked)"
+          />
+          <label for="chart-area-fill">Area fill</label>
+        </div>
+      }
     </app-panel-group>
 
     <button
@@ -157,125 +208,9 @@ import { PanelGroupComponent } from '../panel-group.component';
       <i class="pi pi-angle-right" aria-hidden="true"></i>
     </button>
 
-    <app-panel-group label="Tolerance bands" icon="⛁">
-      <p class="panel-hint">Dashed reference lines resolved from a separate limits dataset.</p>
-      @if (chart().toleranceBands().length === 0) {
-        <p class="panel-empty">No reference lines yet.</p>
-      } @else {
-        @for (band of chart().toleranceBands(); track band.id) {
-          <button
-            type="button"
-            class="panel-menu-item"
-            (click)="store.navigate({ kind: 'chartToleranceBand', widgetId: chart().id, bandId: band.id })"
-          >
-            <i class="pi pi-minus" aria-hidden="true"></i>
-            <span class="panel-menu-text">
-              <span class="panel-menu-label">{{ band.axis === 'x' ? 'X axis' : 'Y axis' }}</span>
-              <span class="panel-menu-hint">{{ bandSummary(band) }}</span>
-            </span>
-            <i class="pi pi-angle-right" aria-hidden="true"></i>
-          </button>
-        }
-      }
-      <p-button label="Add band" icon="pi pi-plus" severity="secondary" outlined fluid (onClick)="addToleranceBand()" />
-    </app-panel-group>
+    <app-panel-chart-tolerance-list [chart]="chart()" />
 
-    <app-panel-group label="Tooltip" icon="◐">
-      <p class="panel-hint">Shown when hovering a point, alongside X and Y.</p>
-      @for (col of chart().tooltipColumns(); track col.columnId) {
-        <div class="panel-tooltip-row">
-          <div class="panel-tooltip-row__head">
-            <p-select
-              [options]="chart().schema()?.columns ?? []"
-              [ngModel]="col.columnId"
-              optionLabel="name"
-              optionValue="id"
-              placeholder="Column"
-              appendTo="body"
-              fluid
-              (onChange)="chart().replaceTooltipColumn(col.columnId, $event.value)"
-            />
-            <button
-              type="button"
-              class="panel-tooltip-row__remove"
-              aria-label="Remove tooltip column"
-              (click)="chart().removeTooltipColumn(col.columnId)"
-            >
-              <i class="pi pi-times" aria-hidden="true"></i>
-            </button>
-          </div>
-          <div class="panel-grid-fields">
-            <label class="panel-field">
-              <span class="panel-field-label">Prefix</span>
-              <input
-                pInputText
-                [ngModel]="col.prefix ?? ''"
-                (ngModelChange)="chart().updateTooltipColumn(col.columnId, { prefix: $event })"
-                placeholder="Job "
-              />
-            </label>
-            <label class="panel-field">
-              <span class="panel-field-label">Suffix</span>
-              <input
-                pInputText
-                [ngModel]="col.suffix ?? ''"
-                (ngModelChange)="chart().updateTooltipColumn(col.columnId, { suffix: $event })"
-                placeholder=" mm"
-              />
-            </label>
-          </div>
-        </div>
-      }
-      <p-button
-        label="Add column"
-        icon="pi pi-plus"
-        severity="secondary"
-        outlined
-        fluid
-        [disabled]="!chart().datasetId() || tooltipColumnsExhausted()"
-        (onClick)="chart().addTooltipColumn()"
-      />
-    </app-panel-group>
-  `,
-  styles: `
-    .panel-tooltip-row {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding: 10px;
-      border: 1px solid var(--app-card-border);
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .panel-tooltip-row__head {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-
-      p-select {
-        flex: 1;
-        min-width: 0;
-      }
-    }
-
-    .panel-tooltip-row__remove {
-      flex: 0 0 auto;
-      display: grid;
-      place-items: center;
-      width: 28px;
-      height: 28px;
-      border: none;
-      border-radius: 6px;
-      background: none;
-      color: #94a3b8;
-      cursor: pointer;
-
-      &:hover {
-        background: #f1f5f9;
-        color: var(--app-navy);
-      }
-    }
+    <app-panel-chart-tooltip-columns [chart]="chart()" />
   `,
 })
 export class PanelWidgetDetailChartComponent {
@@ -283,27 +218,14 @@ export class PanelWidgetDetailChartComponent {
 
   readonly chart = input.required<ChartWidgetModel>();
 
+  protected readonly chartTypeOptions = CHART_TYPE_OPTIONS;
+
   /** Falls back to the picked axis column's own name once one is chosen. */
   protected axisPlaceholder(columnId: string | null): string {
-    return this.chart()
-      .numericColumns()
-      .find((c) => c.id === columnId)?.name ?? '';
-  }
-
-  /** Adds a band and jumps straight to it, rather than leaving the user to find it in the list. */
-  protected addToleranceBand(): void {
-    const chart = this.chart();
-    const bandId = chart.addToleranceBand();
-    this.store.navigate({ kind: 'chartToleranceBand', widgetId: chart.id, bandId });
-  }
-
-  protected bandSummary(band: ChartToleranceBand): string {
-    if (!band.sourceDatasetId) return 'Not set up yet';
-    return this.store.datasets().find((d) => d.id === band.sourceDatasetId)?.name ?? 'Dataset';
-  }
-
-  protected tooltipColumnsExhausted(): boolean {
-    const total = this.chart().schema()?.columns.length ?? 0;
-    return total > 0 && this.chart().tooltipColumns().length >= total;
+    return (
+      this.chart()
+        .numericColumns()
+        .find((c) => c.id === columnId)?.name ?? ''
+    );
   }
 }

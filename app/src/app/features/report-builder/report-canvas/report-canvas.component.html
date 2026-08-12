@@ -3,7 +3,8 @@
     <header class="report-builder__canvas-header">
       <h1 class="report-builder__title">{{ store.model()?.name() ?? 'Report' }}</h1>
       <span class="report-builder__meta">
-        {{ store.gridColumns() }} × {{ store.gridRows() }} grid · {{ store.widgets().length }} widgets
+        {{ store.gridColumns() }} × {{ store.gridRows() }} grid ·
+        {{ store.widgets().length }} widgets
         @if (store.hasMultiSelection()) {
           · {{ store.selectedWidgetIds().length }} selected
         }
@@ -46,7 +47,9 @@
         type="button"
         class="report-builder__status"
         [class.report-builder__status--error]="store.errors().length > 0"
-        [class.report-builder__status--warning]="store.errors().length === 0 && store.warnings().length > 0"
+        [class.report-builder__status--warning]="
+          store.errors().length === 0 && store.warnings().length > 0
+        "
         (click)="store.navigate({ kind: 'issues' })"
       >
         <i
@@ -77,7 +80,9 @@
         <div class="report-builder__grid-viewport" (pointerdown)="onCanvasPointerDown($event)">
           <div
             class="report-builder__grid"
-            [style.grid-template-columns]="'repeat(' + store.gridColumns() + ', ' + cellSize + 'px)'"
+            [style.grid-template-columns]="
+              'repeat(' + store.gridColumns() + ', ' + cellSize + 'px)'
+            "
             [style.grid-template-rows]="'repeat(' + store.gridRows() + ', ' + cellSize + 'px)'"
             [style.gap.px]="gridGap"
             [style.--grid-step.px]="cellSize + gridGap"

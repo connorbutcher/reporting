@@ -13,7 +13,12 @@ import { fitsWithoutCollision } from './grid.util';
 import { ReportModel } from './models/report.model';
 import { UndoHistory } from './models/undo-history';
 import { ValidationIssue } from './models/validation-issue';
-import { ChartWidgetModel, DataTableWidgetModel, ModelSources, WidgetModel } from './models/widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  ModelSources,
+  WidgetModel,
+} from './models/widget.model';
 import { PanelView } from './side-panel/panel-view';
 import { SidePanelNavigation } from './state/side-panel-navigation';
 import { WidgetSelection } from './state/widget-selection';
@@ -151,10 +156,14 @@ export class ReportBuilderStore {
   });
 
   /** The selected widget, when it's a kind that carries its own filter. */
-  readonly selectedFilterableWidget = computed<DataTableWidgetModel | ChartWidgetModel | null>(() => {
-    const widget = this.selectedWidget();
-    return widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel ? widget : null;
-  });
+  readonly selectedFilterableWidget = computed<DataTableWidgetModel | ChartWidgetModel | null>(
+    () => {
+      const widget = this.selectedWidget();
+      return widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel
+        ? widget
+        : null;
+    },
+  );
 
   constructor() {
     // Any change anywhere in the tree shows up as a new snapshot here, so this
@@ -247,7 +256,8 @@ export class ReportBuilderStore {
 
     this.reportApi.getDraft(reportId).subscribe({
       next: (content) => this.setLoadedReport(content),
-      error: () => this.reportApi.checkout(reportId).subscribe((content) => this.setLoadedReport(content)),
+      error: () =>
+        this.reportApi.checkout(reportId).subscribe((content) => this.setLoadedReport(content)),
     });
   }
 
@@ -420,7 +430,9 @@ export class ReportBuilderStore {
   // --- dataset schema -------------------------------------------------------
 
   /** Columns of the selected table's dataset, or empty until they arrive. */
-  readonly activeSchemaColumns = computed(() => this.selectedTableWidget()?.schema()?.columns ?? []);
+  readonly activeSchemaColumns = computed(
+    () => this.selectedTableWidget()?.schema()?.columns ?? [],
+  );
 
   /** A table needs a dataset before columns can be chosen. */
   readonly hasDataset = computed(() => !!this.selectedTableWidget()?.datasetId());

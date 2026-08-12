@@ -18,6 +18,11 @@ export class ReportApiService {
     return this.http.get<ReportSummary[]>('/api/reports', { params });
   }
 
+  /** Every report across every folder, flat — only meant for things that need the full tree at once, like the "copy from" picker. */
+  listAll(): Observable<ReportSummary[]> {
+    return this.http.get<ReportSummary[]>('/api/reports/all');
+  }
+
   /** Finds reports anywhere in the tree by name or report number (e.g. "42" or "R-42"). */
   search(query: string): Observable<ReportSearchResult[]> {
     return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
@@ -27,8 +32,8 @@ export class ReportApiService {
     return this.http.get<ReportSummary>(`/api/reports/${id}`);
   }
 
-  create(name: string, folderId: string | null): Observable<ReportSummary> {
-    return this.http.post<ReportSummary>('/api/reports', { name, folderId });
+  create(name: string, folderId: string | null, sourceReportId?: string): Observable<ReportSummary> {
+    return this.http.post<ReportSummary>('/api/reports', { name, folderId, sourceReportId });
   }
 
   rename(id: string, name: string, folderId: string | null): Observable<ReportSummary> {

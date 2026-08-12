@@ -6,7 +6,9 @@ import { ReportBuilderStore } from '../../report-builder.store';
   imports: [],
   template: `
     <div class="panel-section">
-      <p class="panel-hint">Pick a widget to place on the canvas. You choose its content afterwards.</p>
+      <p class="panel-hint">
+        Pick a widget to place on the canvas. You choose its content afterwards.
+      </p>
       <button type="button" class="panel-menu-item" (click)="store.addWidget('dataTable')">
         <i class="pi pi-table" aria-hidden="true"></i>
         <span class="panel-menu-text">

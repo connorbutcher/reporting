@@ -10,7 +10,9 @@ import { ReportBuilderStore } from '../../report-builder.store';
         <i class="pi pi-th-large" aria-hidden="true"></i>
         <span class="panel-menu-text">
           <span class="panel-menu-label">Report settings</span>
-          <span class="panel-menu-hint">{{ store.gridColumns() }} × {{ store.gridRows() }} grid</span>
+          <span class="panel-menu-hint"
+            >{{ store.gridColumns() }} × {{ store.gridRows() }} grid</span
+          >
         </span>
         <i class="pi pi-angle-right" aria-hidden="true"></i>
       </button>
@@ -22,7 +24,11 @@ import { ReportBuilderStore } from '../../report-builder.store';
         </span>
         <i class="pi pi-angle-right" aria-hidden="true"></i>
       </button>
-      <button type="button" class="panel-menu-item" (click)="store.navigate({ kind: 'reportFilters' })">
+      <button
+        type="button"
+        class="panel-menu-item"
+        (click)="store.navigate({ kind: 'reportFilters' })"
+      >
         <i class="pi pi-filter" aria-hidden="true"></i>
         <span class="panel-menu-text">
           <span class="panel-menu-label">Report filters</span>

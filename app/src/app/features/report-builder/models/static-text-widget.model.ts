@@ -1,5 +1,9 @@
 import { signal } from '@angular/core';
-import { DEFAULT_TEXT_CONFIG, StaticTextWidget, StaticTextWidgetConfig } from '../../../core/models/report.model';
+import {
+  DEFAULT_TEXT_CONFIG,
+  StaticTextWidget,
+  StaticTextWidgetConfig,
+} from '../../../core/models/report.model';
 import { EditorNode } from './editor-node';
 import { TextStyleModel } from './text-style.model';
 import { ValidationIssue } from './validation-issue';

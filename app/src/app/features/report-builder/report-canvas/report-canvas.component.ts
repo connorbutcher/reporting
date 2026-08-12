@@ -47,9 +47,12 @@ export class ReportCanvasComponent implements OnInit {
   });
 
   protected readonly saveStatus = computed(() => {
-    if (this.store.saveFailed()) return { label: 'Save failed', icon: 'pi-exclamation-circle', variant: 'error' };
-    if (this.store.saving()) return { label: 'Saving…', icon: 'pi-spin pi-spinner', variant: 'pending' };
-    if (this.store.dirty()) return { label: 'Unsaved changes', icon: 'pi-circle-fill', variant: 'pending' };
+    if (this.store.saveFailed())
+      return { label: 'Save failed', icon: 'pi-exclamation-circle', variant: 'error' };
+    if (this.store.saving())
+      return { label: 'Saving…', icon: 'pi-spin pi-spinner', variant: 'pending' };
+    if (this.store.dirty())
+      return { label: 'Unsaved changes', icon: 'pi-circle-fill', variant: 'pending' };
     return { label: 'Saved', icon: 'pi-check', variant: 'ok' };
   });
 
@@ -72,7 +75,7 @@ export class ReportCanvasComponent implements OnInit {
     return window.confirm(
       this.store.saveFailed()
         ? 'The last save failed, so recent changes may not be stored. Leave anyway?'
-        : 'You have changes that haven\'t finished saving. Leave anyway?',
+        : "You have changes that haven't finished saving. Leave anyway?",
     );
   }
 

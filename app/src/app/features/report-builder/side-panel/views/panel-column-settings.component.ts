@@ -136,7 +136,11 @@ const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
                 </label>
               </div>
 
-              <button type="button" class="panel-menu-item" (click)="openTolerance(column.columnId)">
+              <button
+                type="button"
+                class="panel-menu-item"
+                (click)="openTolerance(column.columnId)"
+              >
                 <i class="pi pi-shield" aria-hidden="true"></i>
                 <span class="panel-menu-text">
                   <span class="panel-menu-label">Tolerance limits</span>

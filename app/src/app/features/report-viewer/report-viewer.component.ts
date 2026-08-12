@@ -8,7 +8,11 @@ import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { DatasetSchema } from '../../core/models/dataset.model';
 import { OperatorCatalogue } from '../../core/models/filter.model';
-import { ReportRevisionContent, ReportSummary, ReportVersionSummary } from '../../core/models/report.model';
+import {
+  ReportRevisionContent,
+  ReportSummary,
+  ReportVersionSummary,
+} from '../../core/models/report.model';
 import { ReadonlyReportGridComponent } from './readonly-report-grid/readonly-report-grid.component';
 import { ReportViewFilters } from './report-view-filters';
 import { ViewFiltersPanelComponent } from './view-filters-panel/view-filters-panel.component';
@@ -92,7 +96,9 @@ export class ReportViewerComponent implements OnInit {
           this.content.set(content);
           // Session filters start from what this version publishes, so switching
           // versions drops any narrowing the reader had applied to the last one.
-          this.viewFilters.set(new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly()));
+          this.viewFilters.set(
+            new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly()),
+          );
           this.openFilterKey.set(null);
           this.loadSchemas(content);
           this.loading.set(false);

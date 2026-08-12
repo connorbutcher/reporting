@@ -86,7 +86,8 @@ export class ReportModel extends EditorNode {
   readonly usedDatasetIds = computed(() => {
     const ids: string[] = [];
     for (const widget of this.widgets()) {
-      if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel)) continue;
+      if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel))
+        continue;
       const id = widget.datasetId();
       if (id && !ids.includes(id)) ids.push(id);
     }

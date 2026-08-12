@@ -20,9 +20,9 @@ import { PanelGroupComponent } from '../panel-group.component';
     @if (column(); as column) {
       <div class="panel-section">
         <p class="panel-hint">
-          Values are compared against one row of a limits dataset. Below the
-          concession-lower or above the concession-upper bound is red; between a
-          concession bound and min/max is orange; inside min/max is unmarked.
+          Values are compared against one row of a limits dataset. Below the concession-lower or
+          above the concession-upper bound is red; between a concession bound and min/max is orange;
+          inside min/max is unmarked.
         </p>
 
         <app-panel-group label="Limits" icon="⛁">
@@ -117,7 +117,9 @@ import { PanelGroupComponent } from '../panel-group.component';
               </div>
 
               @if (!picker.isComplete()) {
-                <p class="panel-hint">Pick a spec row plus min and max columns to turn on highlighting.</p>
+                <p class="panel-hint">
+                  Pick a spec row plus min and max columns to turn on highlighting.
+                </p>
               }
             }
           }

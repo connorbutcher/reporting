@@ -37,7 +37,11 @@ import { PanelGroupComponent } from '../panel-group.component';
       <span class="panel-menu-text">
         <span class="panel-menu-label">Columns</span>
         <span class="panel-menu-hint">
-          {{ table().datasetId() ? table().columns().length + ' on the table' : 'Pick a dataset first' }}
+          {{
+            table().datasetId()
+              ? table().columns().length + ' on the table'
+              : 'Pick a dataset first'
+          }}
         </span>
       </span>
       <i class="pi pi-angle-right" aria-hidden="true"></i>

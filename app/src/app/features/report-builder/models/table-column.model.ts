@@ -1,6 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
-import { ColumnAlign, DataTableColumnSetting, ToleranceConfig } from '../../../core/models/report.model';
+import {
+  ColumnAlign,
+  DataTableColumnSetting,
+  ToleranceConfig,
+} from '../../../core/models/report.model';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
 
@@ -39,7 +43,9 @@ export class TableColumnModel extends EditorNode {
     this.schemaColumn = computed(
       () => this.schema()?.columns.find((c) => c.id === this.columnId) ?? null,
     );
-    this.label = computed(() => this.header().trim() || this.schemaColumn()?.name || 'Unknown column');
+    this.label = computed(
+      () => this.header().trim() || this.schemaColumn()?.name || 'Unknown column',
+    );
   }
 
   setWidth(width: number | null): void {

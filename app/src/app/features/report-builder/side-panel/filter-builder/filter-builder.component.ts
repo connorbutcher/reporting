@@ -28,7 +28,9 @@ export class FilterBuilderComponent {
   ];
 
   protected readonly columnOptions = computed(() =>
-    this.group().columns().map((c) => ({ label: c.name, value: c.id })),
+    this.group()
+      .columns()
+      .map((c) => ({ label: c.name, value: c.id })),
   );
 
   protected addCondition(): void {

@@ -4,7 +4,8 @@
   } @else if (notFound()) {
     <p class="report-viewer__status">Report not found.</p>
   } @else if (report(); as report) {
-    @let isViewingHistorical = viewingVersion() !== null && viewingVersion() !== report.latestVersionNumber;
+    @let isViewingHistorical =
+      viewingVersion() !== null && viewingVersion() !== report.latestVersionNumber;
     <section class="report-viewer__main app-card">
       <header class="report-viewer__header">
         <div class="report-viewer__heading">
@@ -14,11 +15,15 @@
           </h1>
           @if (isViewingHistorical) {
             <span class="report-viewer__badge">Viewing v{{ viewingVersion() }}</span>
-            <button type="button" class="report-viewer__link" (click)="viewLatest()">Back to latest</button>
+            <button type="button" class="report-viewer__link" (click)="viewLatest()">
+              Back to latest
+            </button>
           } @else if (report.latestVersionNumber) {
             <span class="report-viewer__badge">Latest: v{{ report.latestVersionNumber }}</span>
           } @else {
-            <span class="report-viewer__badge report-viewer__badge--muted">No published versions yet</span>
+            <span class="report-viewer__badge report-viewer__badge--muted"
+              >No published versions yet</span
+            >
           }
         </div>
 
@@ -99,11 +104,16 @@
               >
                 <span class="report-viewer__version-row">
                   <span>v{{ version.versionNumber }}</span>
-                  <span class="report-viewer__version-date">{{ version.publishedAt | date: 'short' }}</span>
+                  <span class="report-viewer__version-date">{{
+                    version.publishedAt | date: 'short'
+                  }}</span>
                 </span>
                 @if (version.notes; as notes) {
                   @if (isActive) {
-                    <div class="report-viewer__version-notes report-viewer__version-notes--full" [innerHTML]="notes"></div>
+                    <div
+                      class="report-viewer__version-notes report-viewer__version-notes--full"
+                      [innerHTML]="notes"
+                    ></div>
                   } @else {
                     <span class="report-viewer__version-notes">{{ previewText(notes) }}</span>
                   }

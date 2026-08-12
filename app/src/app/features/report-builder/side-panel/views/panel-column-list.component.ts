@@ -14,9 +14,15 @@ import { ReportBuilderStore } from '../../report-builder.store';
         <ul class="panel-columns">
           @for (column of table.columns(); track column.columnId; let i = $index) {
             <li class="panel-column-row">
-              <button type="button" class="panel-column-open" (click)="openSettings(column.columnId)">
+              <button
+                type="button"
+                class="panel-column-open"
+                (click)="openSettings(column.columnId)"
+              >
                 <span class="panel-column-name">{{ column.label() }}</span>
-                <span class="panel-column-type">{{ column.schemaColumn()?.type ?? 'missing' }}</span>
+                <span class="panel-column-type">{{
+                  column.schemaColumn()?.type ?? 'missing'
+                }}</span>
               </button>
               <p-button
                 icon="pi pi-chevron-up"

@@ -38,10 +38,28 @@
       [placeholder]="kind() === 'folder' ? 'Folder name' : 'Report name'"
       aria-label="Name"
     />
+
+    @if (kind() === 'report') {
+      <p-tree-select
+        class="create-dialog__source"
+        [options]="treeNodes()"
+        [ngModel]="selectedSource()"
+        (ngModelChange)="selectedSource.set($event)"
+        [filter]="true"
+        filterPlaceholder="Search reports"
+        placeholder="Copy from an existing report (optional)"
+        [showClear]="true"
+        appendTo="body"
+      />
+    }
   </div>
 
   <footer class="create-dialog__footer">
-    <button type="button" class="create-dialog__button create-dialog__button--secondary" (click)="cancel()">
+    <button
+      type="button"
+      class="create-dialog__button create-dialog__button--secondary"
+      (click)="cancel()"
+    >
       Cancel
     </button>
     <button

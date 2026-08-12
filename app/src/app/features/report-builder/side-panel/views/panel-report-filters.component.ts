@@ -16,9 +16,7 @@ import { FilterBuilderComponent } from '../filter-builder/filter-builder.compone
         Add a table and bind it to a dataset — report filters apply per dataset.
       </p>
     } @else {
-      <p class="panel-hint">
-        Applies to every table on this report using the selected dataset.
-      </p>
+      <p class="panel-hint">Applies to every table on this report using the selected dataset.</p>
 
       @if (datasetIds().length > 1) {
         <nav class="panel-menu">

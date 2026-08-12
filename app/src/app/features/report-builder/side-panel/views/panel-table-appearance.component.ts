@@ -151,7 +151,9 @@ export class PanelTableAppearanceComponent {
   protected readonly store = inject(ReportBuilderStore);
   protected readonly densityOptions = DENSITY_OPTIONS;
 
-  protected readonly appearance = computed(() => this.store.selectedTableWidget()?.appearance ?? null);
+  protected readonly appearance = computed(
+    () => this.store.selectedTableWidget()?.appearance ?? null,
+  );
   protected readonly showTitle = computed(() => this.store.selectedWidget()?.showTitle() ?? true);
 
   protected setShowTitle(value: boolean): void {

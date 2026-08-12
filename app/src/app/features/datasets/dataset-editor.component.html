@@ -1,0 +1,189 @@
+@if (!store.selected()) {
+  <p class="datasets__empty">Pick a dataset on the left, or create one.</p>
+} @else {
+  <header class="datasets__detail-header">
+    <input
+      pInputText
+      class="datasets__name"
+      [ngModel]="store.selected()!.name"
+      (blur)="store.renameDataset($any($event.target).value)"
+      aria-label="Dataset name"
+    />
+    <p-button
+      label="Delete dataset"
+      icon="pi pi-trash"
+      severity="danger"
+      outlined
+      size="small"
+      (onClick)="store.deleteDataset()"
+    />
+  </header>
+
+  @if (store.error()) {
+    <p class="datasets__error">{{ store.error() }}</p>
+  }
+
+  <div class="datasets__section">
+    <h2 class="datasets__subheading">Columns</h2>
+
+    @if (store.columns().length === 0) {
+      <p class="datasets__empty">No columns yet — add one below.</p>
+    } @else {
+      <ul class="datasets__columns">
+        @for (column of store.columns(); track column.id; let i = $index) {
+          <li class="datasets__column">
+            <input
+              pInputText
+              [ngModel]="column.name"
+              (blur)="store.renameColumn(column, $any($event.target).value)"
+              [attr.aria-label]="'Name of column ' + column.name"
+            />
+            <p-select
+              [options]="columnTypes"
+              [ngModel]="column.type"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              [ariaLabel]="'Type of column ' + column.name"
+              (onChange)="store.retypeColumn(column, $event.value)"
+            />
+            <p-button
+              icon="pi pi-chevron-up"
+              severity="secondary"
+              text
+              size="small"
+              [ariaLabel]="'Move ' + column.name + ' left'"
+              [disabled]="i === 0"
+              (onClick)="store.moveColumn(i, -1)"
+            />
+            <p-button
+              icon="pi pi-chevron-down"
+              severity="secondary"
+              text
+              size="small"
+              [ariaLabel]="'Move ' + column.name + ' right'"
+              [disabled]="i === store.columns().length - 1"
+              (onClick)="store.moveColumn(i, 1)"
+            />
+            <p-button
+              icon="pi pi-times"
+              severity="danger"
+              text
+              size="small"
+              [ariaLabel]="'Delete column ' + column.name"
+              (onClick)="store.deleteColumn(column)"
+            />
+          </li>
+        }
+      </ul>
+    }
+
+    <div class="datasets__new-column">
+      <input
+        pInputText
+        [ngModel]="newColumnName()"
+        (ngModelChange)="newColumnName.set($event)"
+        (keyup.enter)="addColumn()"
+        placeholder="New column name"
+        aria-label="New column name"
+      />
+      <p-select
+        [options]="columnTypes"
+        [ngModel]="newColumnType()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        ariaLabel="New column type"
+        (onChange)="newColumnType.set($event.value)"
+      />
+      <p-button
+        label="Add column"
+        icon="pi pi-plus"
+        severity="secondary"
+        outlined
+        [disabled]="!newColumnName().trim()"
+        (onClick)="addColumn()"
+      />
+    </div>
+  </div>
+
+  <div class="datasets__section datasets__section--grow">
+    <div class="datasets__section-header">
+      <h2 class="datasets__subheading">Rows</h2>
+      <p-button
+        label="Add row"
+        icon="pi pi-plus"
+        severity="secondary"
+        outlined
+        size="small"
+        [disabled]="store.columns().length === 0"
+        (onClick)="store.addRow()"
+      />
+    </div>
+
+    @if (store.loading()) {
+      <p class="datasets__empty">Loading…</p>
+    } @else if (store.columns().length === 0) {
+      <p class="datasets__empty">Add a column before entering data.</p>
+    } @else {
+      <div class="datasets__grid">
+        <table class="datasets__table">
+          <thead>
+            <tr>
+              @for (column of store.columns(); track column.id) {
+                <th>{{ column.name }}</th>
+              }
+              <th class="datasets__row-actions"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of store.rows(); track row.id) {
+              <tr>
+                @for (column of store.columns(); track column.id) {
+                  <td>
+                    @if (isBool(column)) {
+                      <select
+                        class="datasets__cell"
+                        [value]="row.values[column.id] ?? 'False'"
+                        [attr.aria-label]="column.name"
+                        (change)="store.setCell(row, column.id, $any($event.target).value)"
+                      >
+                        <option value="True">Yes</option>
+                        <option value="False">No</option>
+                      </select>
+                    } @else {
+                      <input
+                        class="datasets__cell"
+                        [type]="inputType(column.type)"
+                        [value]="cellValue(row, column)"
+                        [attr.aria-label]="column.name"
+                        (change)="store.setCell(row, column.id, $any($event.target).value)"
+                      />
+                    }
+                  </td>
+                }
+                <td class="datasets__row-actions">
+                  <p-button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    text
+                    size="small"
+                    [ariaLabel]="'Delete row'"
+                    (onClick)="store.deleteRow(row)"
+                  />
+                </td>
+              </tr>
+            }
+            @if (store.rows().length === 0) {
+              <tr>
+                <td [attr.colspan]="store.columns().length + 1" class="datasets__empty-cell">
+                  No rows yet.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}

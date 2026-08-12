@@ -1,16 +1,14 @@
-import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, computed, effect, inject, input, untracked } from '@angular/core';
 import type { EChartsCoreOption } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
-import { EMPTY, Subject, catchError, debounceTime, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../core/models/dataset.model';
-import { FilterGroup, combineFilters } from '../../../../core/models/filter.model';
+import { FilterGroup } from '../../../../core/models/filter.model';
 import { ChartWidgetConfig } from '../../../../core/models/report.model';
 import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
+import { resolveWidgetFilter } from '../effective-filter';
+import { WidgetDataSource } from '../widget-data-source';
 
-/** Long enough that typing a filter value settles into one request. */
-const QUERY_DEBOUNCE_MS = 300;
 /** Cycles if there are more series than colours. */
 const SERIES_COLORS = [
   '#2f6fed',
@@ -55,18 +53,37 @@ export class ChartWidgetComponent {
 
   private readonly datasetApi = inject(DatasetApiService);
 
-  private readonly allColumns = signal<DatasetColumn[]>([]);
-  private readonly data = signal<ChartQueryResult | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly error = signal(false);
-
   protected readonly datasetId = computed(() => this.config().datasetId);
 
   /** Report-level and widget-level filters, as the single tree sent to the API. */
-  private readonly effectiveFilter = computed(() => {
-    const own = this.widgetFilter() === undefined ? this.config().filter : this.widgetFilter()!;
-    return combineFilters(this.reportFilter(), own);
+  private readonly effectiveFilter = computed(() =>
+    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
+  );
+
+  private readonly source = new WidgetDataSource<ChartQueryResult>({
+    datasetId: this.datasetId,
+    version: this.datasetVersion,
+    api: this.datasetApi,
+    fetch: () => {
+      const datasetId = this.datasetId();
+      const x = this.config().xColumnId;
+      const y = this.config().yColumnId;
+      if (!datasetId || !x || !y) return null;
+
+      return this.datasetApi.queryChart(datasetId, {
+        filter: this.effectiveFilter(),
+        xColumnId: x,
+        yColumnId: y,
+        seriesColumnId: this.config().seriesColumnId,
+        toleranceBands: this.config().toleranceBands,
+        tooltipColumns: this.config().tooltipColumns,
+      });
+    },
   });
+
+  protected readonly loading = this.source.loading;
+  protected readonly error = this.source.error;
+  private readonly data = this.source.result;
 
   private readonly xColumn = computed(() => this.columnById(this.config().xColumnId));
   private readonly yColumn = computed(() => this.columnById(this.config().yColumnId));
@@ -97,52 +114,43 @@ export class ChartWidgetComponent {
       },
       tooltip: {
         trigger: 'item',
-        formatter: (params: ScatterTooltipParams) => this.formatTooltip(params, seriesColumn, xLabel, yLabel),
+        formatter: (params: ScatterTooltipParams) =>
+          this.formatTooltip(params, seriesColumn, xLabel, yLabel),
       },
       ...(seriesColumn && config.showLegend ? { legend: { top: 0, data: names } } : {}),
       xAxis: { type: 'value', name: xLabel, nameLocation: 'middle', nameGap: 28 },
       yAxis: { type: 'value', name: yLabel, nameLocation: 'middle', nameGap: 40 },
-      series: series.map((s, i) => ({
-        name: s.label || config.title || 'Series',
-        type: 'scatter' as const,
-        symbolSize: config.pointSize,
-        itemStyle: { color: SERIES_COLORS[i % SERIES_COLORS.length] },
-        data: pointsFor(s),
-        // Attached to the first series only — markLine coordinates are chart-wide,
-        // so one copy is enough regardless of how many series are plotted.
-        ...(i === 0 && markLineData.length > 0
-          ? { markLine: { silent: true, symbol: 'none', data: markLineData } }
-          : {}),
-      })),
+      series: series.map((s, i) => {
+        const color = SERIES_COLORS[i % SERIES_COLORS.length];
+        const isLine = config.chartType === 'line';
+        return {
+          name: s.label || config.title || 'Series',
+          type: isLine ? ('line' as const) : ('scatter' as const),
+          ...(isLine
+            ? {
+                smooth: config.smooth,
+                showSymbol: config.showPoints,
+                symbol: config.showPoints ? 'circle' : 'none',
+                symbolSize: config.pointSize,
+                ...(config.areaFill ? { areaStyle: { opacity: 0.15, color } } : {}),
+              }
+            : { symbolSize: config.pointSize }),
+          itemStyle: { color },
+          data: pointsFor(s),
+          // Attached to the first series only — markLine coordinates are chart-wide,
+          // so one copy is enough regardless of how many series are plotted.
+          ...(i === 0 && markLineData.length > 0
+            ? { markLine: { silent: true, symbol: 'none', data: markLineData } }
+            : {}),
+        };
+      }),
     };
   });
 
-  /** Coalesces reloads so typing a filter value doesn't fire a request per keystroke. */
-  private readonly queryQueue = new Subject<void>();
-
   constructor() {
-    // The schema names the axes and changes only with the dataset, so it loads
-    // immediately rather than through the debounced row pipeline.
-    effect((onCleanup) => {
-      const datasetId = this.datasetId();
-      this.datasetVersion();
-
-      if (!datasetId) {
-        this.allColumns.set([]);
-        return;
-      }
-
-      const subscription = this.datasetApi.getSchema(datasetId).subscribe({
-        next: (schema) => this.allColumns.set(schema.columns),
-        error: () => this.error.set(true),
-      });
-
-      onCleanup(() => subscription.unsubscribe());
-    });
-
     // Points reload whenever the dataset, its axes, either filter, the
     // tolerance bands, or the tooltip columns change — the server needs all
-    // of these to build a response, unlike the old raw-row fetch.
+    // of these to build a response.
     effect(() => {
       const datasetId = this.datasetId();
       this.config().xColumnId;
@@ -155,53 +163,18 @@ export class ChartWidgetComponent {
 
       if (!datasetId) {
         untracked(() => {
-          this.data.set(null);
-          this.loading.set(false);
+          this.source.result.set(null);
+          this.source.loading.set(false);
         });
         return;
       }
 
       untracked(() => {
-        this.loading.set(true);
-        this.error.set(false);
-        this.queryQueue.next();
+        this.source.loading.set(true);
+        this.source.error.set(false);
+        this.source.reloadDebounced();
       });
     });
-
-    this.queryQueue
-      .pipe(
-        debounceTime(QUERY_DEBOUNCE_MS),
-        switchMap(() => {
-          const datasetId = this.datasetId();
-          const x = this.config().xColumnId;
-          const y = this.config().yColumnId;
-          if (!datasetId || !x || !y) return EMPTY;
-
-          return this.datasetApi
-            .queryChart(datasetId, {
-              filter: this.effectiveFilter(),
-              xColumnId: x,
-              yColumnId: y,
-              seriesColumnId: this.config().seriesColumnId,
-              toleranceBands: this.config().toleranceBands,
-              tooltipColumns: this.config().tooltipColumns,
-            })
-            .pipe(
-              // Caught inside the switchMap: an error reaching the outer stream
-              // would tear down the subscription and stop all future reloads.
-              catchError(() => {
-                this.error.set(true);
-                this.loading.set(false);
-                return EMPTY;
-              }),
-            );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe((result) => {
-        this.data.set(result);
-        this.loading.set(false);
-      });
   }
 
   /** Dashed line entries for every resolved band's bounds, coloured by what crossing them means. */
@@ -222,8 +195,10 @@ export class ChartWidgetComponent {
       });
 
       entries.push(line(band.min, 'Min', minMaxColor), line(band.max, 'Max', minMaxColor));
-      if (band.concessionLower !== null) entries.push(line(band.concessionLower, 'Concession lower', '#dc2626'));
-      if (band.concessionUpper !== null) entries.push(line(band.concessionUpper, 'Concession upper', '#dc2626'));
+      if (band.concessionLower !== null)
+        entries.push(line(band.concessionLower, 'Concession lower', '#dc2626'));
+      if (band.concessionUpper !== null)
+        entries.push(line(band.concessionUpper, 'Concession upper', '#dc2626'));
     }
 
     return entries;
@@ -246,7 +221,7 @@ export class ChartWidgetComponent {
   }
 
   private columnById(id: string | null): DatasetColumn | null {
-    return id ? (this.allColumns().find((c) => c.id === id) ?? null) : null;
+    return id ? (this.source.columns().find((c) => c.id === id) ?? null) : null;
   }
 }
 

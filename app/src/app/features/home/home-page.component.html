@@ -8,7 +8,12 @@
         (click)="toggleRail()"
         [attr.aria-label]="railCollapsed() ? 'Expand folder tree' : 'Collapse folder tree'"
       >
-        <i class="pi" [class.pi-angle-left]="!railCollapsed()" [class.pi-angle-right]="railCollapsed()" aria-hidden="true"></i>
+        <i
+          class="pi"
+          [class.pi-angle-left]="!railCollapsed()"
+          [class.pi-angle-right]="railCollapsed()"
+          aria-hidden="true"
+        ></i>
       </button>
     </header>
 
@@ -22,11 +27,11 @@
       } @else {
         <p-tree
           class="home__tree-widget"
-          [value]="treeNodes()"
+          [value]="tree.nodes()"
           selectionMode="single"
           [selectionKeys]="treeSelectionKeys()"
           (onNodeSelect)="onNodeSelect($event)"
-          (onNodeExpand)="onNodeExpand($event)"
+          (onNodeExpand)="tree.onNodeExpand($event)"
         />
       }
     }
@@ -57,7 +62,12 @@
           aria-label="Search reports"
         />
         @if (searchQuery()) {
-          <button type="button" class="home__search-clear" aria-label="Clear search" (click)="clearSearch()">
+          <button
+            type="button"
+            class="home__search-clear"
+            aria-label="Clear search"
+            (click)="clearSearch()"
+          >
             <i class="pi pi-times" aria-hidden="true"></i>
           </button>
         }
@@ -78,11 +88,19 @@
       } @else if (results.length === 0) {
         <p class="home__empty">No reports match "{{ searchQuery() }}".</p>
       } @else {
-        <p-table [value]="results" sortMode="single" dataKey="id" size="small" class="home__table-wrapper">
+        <p-table
+          [value]="results"
+          sortMode="single"
+          dataKey="id"
+          size="small"
+          class="home__table-wrapper"
+        >
           <ng-template #header>
             <tr>
               <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
-              <th pSortableColumn="number" class="home__col-number">Number <p-sort-icon field="number" /></th>
+              <th pSortableColumn="number" class="home__col-number">
+                Number <p-sort-icon field="number" />
+              </th>
               <th pSortableColumn="folderPath">Location <p-sort-icon field="folderPath" /></th>
               <th pSortableColumn="modifiedAt" class="home__col-modified">
                 Modified <p-sort-icon field="modifiedAt" />
@@ -97,7 +115,9 @@
                   {{ result.name }}
                 </span>
               </td>
-              <td><span class="home__rnum">R-{{ result.number }}</span></td>
+              <td>
+                <span class="home__rnum">R-{{ result.number }}</span>
+              </td>
               <td>{{ result.folderPath }}</td>
               <td>{{ result.modifiedAt | date: 'short' }}</td>
             </tr>
@@ -160,8 +180,12 @@
               <ng-template #header>
                 <tr>
                   <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
-                  <th pSortableColumn="number" class="home__col-number">Number <p-sort-icon field="number" /></th>
-                  <th pSortableColumn="status" class="home__col-status">Status <p-sort-icon field="status" /></th>
+                  <th pSortableColumn="number" class="home__col-number">
+                    Number <p-sort-icon field="number" />
+                  </th>
+                  <th pSortableColumn="status" class="home__col-status">
+                    Status <p-sort-icon field="status" />
+                  </th>
                   <th pSortableColumn="modifiedAt" class="home__col-modified">
                     Modified <p-sort-icon field="modifiedAt" />
                   </th>
@@ -183,7 +207,9 @@
                       {{ row.name }}
                     </span>
                   </td>
-                  <td class="home__col-number"><span class="home__rnum">R-{{ row.number }}</span></td>
+                  <td class="home__col-number">
+                    <span class="home__rnum">R-{{ row.number }}</span>
+                  </td>
                   <td class="home__col-status">
                     <span
                       class="home__status-word"

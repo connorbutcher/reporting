@@ -25,7 +25,11 @@ export class PublishDialogComponent implements AfterViewInit, OnDestroy {
       theme: 'snow',
       placeholder: 'What changed in this version?',
       modules: {
-        toolbar: [['bold', 'italic', 'underline'], [{ list: 'ordered' }, { list: 'bullet' }], ['link', 'clean']],
+        toolbar: [
+          ['bold', 'italic', 'underline'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link', 'clean'],
+        ],
       },
     });
   }

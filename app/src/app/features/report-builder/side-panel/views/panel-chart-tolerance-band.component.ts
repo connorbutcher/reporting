@@ -26,8 +26,8 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
     @if (band(); as band) {
       <div class="panel-section">
         <p class="panel-hint">
-          Values are compared against one row of a limits dataset and drawn as
-          dashed lines on the axis. Concession bounds add a second, lighter pair.
+          Values are compared against one row of a limits dataset and drawn as dashed lines on the
+          axis. Concession bounds add a second, lighter pair.
         </p>
 
         <app-panel-group label="Axis" icon="＋">
@@ -136,13 +136,22 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
               </div>
 
               @if (!picker.isComplete()) {
-                <p class="panel-hint">Pick a spec row plus min and max columns to draw the lines.</p>
+                <p class="panel-hint">
+                  Pick a spec row plus min and max columns to draw the lines.
+                </p>
               }
             }
           }
         </app-panel-group>
 
-        <p-button label="Remove band" icon="pi pi-times" severity="danger" outlined fluid (onClick)="remove()" />
+        <p-button
+          label="Remove band"
+          icon="pi pi-times"
+          severity="danger"
+          outlined
+          fluid
+          (onClick)="remove()"
+        />
       </div>
     } @else {
       <p class="panel-empty">This band is no longer on the chart.</p>

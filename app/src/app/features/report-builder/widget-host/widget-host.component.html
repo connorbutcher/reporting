@@ -1,21 +1,27 @@
 <div
   class="widget-host__surface"
-  [class.widget-host__surface--invalid]="dragInvalid()"
-  [class.widget-host__surface--dragging]="dragging()"
+  [appWidgetDrag]="widget()"
+  #drag="widgetDrag"
+  (selectRequest)="select($event)"
+  [appWidgetResize]="widget()"
+  #resize="widgetResize"
+  (gridPreview)="gridPreview.emit($event)"
+  [class.widget-host__surface--invalid]="drag.invalid()"
+  [class.widget-host__surface--dragging]="drag.dragging()"
   [class.widget-host__surface--selected]="selected()"
   [class.widget-host__surface--primary]="primary() && selected()"
   [class.widget-host__surface--has-error]="hasError()"
   [class.widget-host__surface--has-warning]="!hasError() && issues().length > 0"
-  [style.width.px]="resizePreviewSize()?.width ?? null"
-  [style.height.px]="resizePreviewSize()?.height ?? null"
-  [style.transform]="dragTransform()"
+  [style.width.px]="resize.previewSize()?.width ?? null"
+  [style.height.px]="resize.previewSize()?.height ?? null"
+  [style.transform]="drag.transform()"
   (pointerdown)="select($event)"
 >
   <div class="widget-host__content">
     <div
       class="widget-host__header"
       [class.widget-host__header--bare]="!showTitle()"
-      (pointerdown)="onDragStart($event)"
+      (pointerdown)="drag.start($event)"
     >
       @if (showTitle()) {
         <span class="widget-host__title">{{ title() }}</span>
@@ -69,22 +75,22 @@
   <button
     type="button"
     class="widget-host__resize-handle widget-host__resize-handle--right"
-    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
-    (pointerdown)="onResizeStart($event, 'right')"
+    [class.widget-host__resize-handle--invalid]="resize.invalid()"
+    (pointerdown)="resize.start($event, 'right')"
     aria-label="Resize widget width"
   ></button>
   <button
     type="button"
     class="widget-host__resize-handle widget-host__resize-handle--bottom"
-    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
-    (pointerdown)="onResizeStart($event, 'bottom')"
+    [class.widget-host__resize-handle--invalid]="resize.invalid()"
+    (pointerdown)="resize.start($event, 'bottom')"
     aria-label="Resize widget height"
   ></button>
   <button
     type="button"
     class="widget-host__resize-handle widget-host__resize-handle--corner"
-    [class.widget-host__resize-handle--invalid]="resizeInvalid()"
-    (pointerdown)="onResizeStart($event, 'corner')"
+    [class.widget-host__resize-handle--invalid]="resize.invalid()"
+    (pointerdown)="resize.start($event, 'corner')"
     aria-label="Resize widget"
   ></button>
 </div>

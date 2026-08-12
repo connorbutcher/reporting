@@ -72,7 +72,8 @@ export class ReportViewFilters {
 
     this.widgetEntries = datasetBound.map((widget) => {
       const datasetId = widget.config.datasetId!;
-      const title = widget.config.title?.trim() || (widget.type === 'dataTable' ? 'Table' : 'Chart');
+      const title =
+        widget.config.title?.trim() || (widget.type === 'dataTable' ? 'Table' : 'Chart');
       const schema = schemaFor(datasetId);
 
       // A table only offers the columns it shows — filtering it by a column that
@@ -98,8 +99,12 @@ export class ReportViewFilters {
 
     // Built after pageEntries/widgetEntries exist — each computed() closes over
     // one entry, so reading it only tracks that entry's own group signals.
-    this.pageFilters = new Map(this.pageEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
-    this.widgetFilters = new Map(this.widgetEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
+    this.pageFilters = new Map(
+      this.pageEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]),
+    );
+    this.widgetFilters = new Map(
+      this.widgetEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]),
+    );
   }
 
   private get allEntries(): ViewFilterEntry[] {

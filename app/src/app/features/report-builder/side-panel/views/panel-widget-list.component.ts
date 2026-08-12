@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { ListboxModule } from 'primeng/listbox';
+import { ChartWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 
 @Component({
@@ -28,7 +29,8 @@ import { ReportBuilderStore } from '../../report-builder.store';
               class="pi"
               [class.pi-table]="widget.type === 'dataTable'"
               [class.pi-align-left]="widget.type === 'staticText'"
-              [class.pi-chart-scatter]="widget.type === 'chart'"
+              [class.pi-chart-scatter]="widget.type === 'chart' && widget.chartType !== 'line'"
+              [class.pi-chart-line]="widget.type === 'chart' && widget.chartType === 'line'"
               aria-hidden="true"
             ></i>
             <span class="panel-widget-text">
@@ -106,6 +108,7 @@ export class PanelWidgetListComponent {
     this.store.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
+      chartType: widget instanceof ChartWidgetModel ? widget.chartType() : null,
       label: widget.label(),
       x: widget.x(),
       y: widget.y(),
