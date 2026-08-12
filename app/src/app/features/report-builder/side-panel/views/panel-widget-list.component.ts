@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { ListboxModule } from 'primeng/listbox';
-import { ChartWidgetModel } from '../../models/widget.model';
+import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { ReportBuilderStore } from '../../report-builder.store';
 
 @Component({
@@ -25,14 +25,7 @@ import { ReportBuilderStore } from '../../report-builder.store';
       >
         <ng-template #item let-widget>
           <span class="panel-widget-item">
-            <i
-              class="pi"
-              [class.pi-table]="widget.type === 'dataTable'"
-              [class.pi-align-left]="widget.type === 'staticText'"
-              [class.pi-chart-scatter]="widget.type === 'chart' && widget.chartType !== 'line'"
-              [class.pi-chart-line]="widget.type === 'chart' && widget.chartType === 'line'"
-              aria-hidden="true"
-            ></i>
+            <i [class]="widget.icon" aria-hidden="true"></i>
             <span class="panel-widget-text">
               <span class="panel-widget-name">{{ widget.label }}</span>
               <span class="panel-widget-meta">
@@ -108,7 +101,7 @@ export class PanelWidgetListComponent {
     this.store.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
-      chartType: widget instanceof ChartWidgetModel ? widget.chartType() : null,
+      icon: widgetTypeDescriptor(widget.type).icon,
       label: widget.label(),
       x: widget.x(),
       y: widget.y(),

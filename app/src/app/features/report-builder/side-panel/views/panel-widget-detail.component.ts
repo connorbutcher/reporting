@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
+import { WidgetType } from '../../../../core/models/report.model';
+import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { ChartWidgetModel, StaticTextWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 import { PanelWidgetDetailChartComponent } from './panel-widget-detail-chart.component';
@@ -200,14 +202,7 @@ export class PanelWidgetDetailComponent {
     () => this.index() >= 0 && this.index() < this.store.widgets().length - 1,
   );
 
-  protected defaultTitle(type: 'dataTable' | 'staticText' | 'chart'): string {
-    switch (type) {
-      case 'dataTable':
-        return 'Table';
-      case 'chart':
-        return 'Chart';
-      default:
-        return 'Text';
-    }
+  protected defaultTitle(type: WidgetType): string {
+    return widgetTypeDescriptor(type).label;
   }
 }

@@ -42,7 +42,7 @@
               [reportFilter]="reportFilterFor(widget.config.datasetId)"
               [widgetFilter]="widgetFilterFor(widget)"
             />
-          } @else if (widget.type === 'chart') {
+          } @else if (widget.type === 'scatterChart' || widget.type === 'lineChart') {
             <app-chart-widget
               [config]="widget.config"
               [reportFilter]="reportFilterFor(widget.config.datasetId)"

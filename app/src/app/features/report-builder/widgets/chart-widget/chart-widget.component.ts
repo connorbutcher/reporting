@@ -5,6 +5,7 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../core/models/dataset.model';
 import { FilterGroup } from '../../../../core/models/filter.model';
 import { ChartWidgetConfig } from '../../../../core/models/report.model';
+import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
@@ -54,6 +55,9 @@ export class ChartWidgetComponent {
   private readonly datasetApi = inject(DatasetApiService);
 
   protected readonly datasetId = computed(() => this.config().datasetId);
+
+  /** Icon for the empty state, so each chart kind shows its own glyph. */
+  protected readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
 
   /** Report-level and widget-level filters, as the single tree sent to the API. */
   private readonly effectiveFilter = computed(() =>
@@ -122,19 +126,9 @@ export class ChartWidgetComponent {
       yAxis: { type: 'value', name: yLabel, nameLocation: 'middle', nameGap: 40 },
       series: series.map((s, i) => {
         const color = SERIES_COLORS[i % SERIES_COLORS.length];
-        const isLine = config.chartType === 'line';
         return {
           name: s.label || config.title || 'Series',
-          type: isLine ? ('line' as const) : ('scatter' as const),
-          ...(isLine
-            ? {
-                smooth: config.smooth,
-                showSymbol: config.showPoints,
-                symbol: config.showPoints ? 'circle' : 'none',
-                symbolSize: config.pointSize,
-                ...(config.areaFill ? { areaStyle: { opacity: 0.15, color } } : {}),
-              }
-            : { symbolSize: config.pointSize }),
+          ...seriesKindOptions(config, color),
           itemStyle: { color },
           data: pointsFor(s),
           // Attached to the first series only — markLine coordinates are chart-wide,
@@ -227,4 +221,25 @@ export class ChartWidgetComponent {
 
 function pointsFor(series: ChartSeriesResult): ScatterPoint[] {
   return series.points.map((p) => ({ value: [p.x, p.y], tooltipLines: p.tooltipLines }));
+}
+
+/**
+ * The echarts series options specific to one chart kind — the type and its
+ * per-kind styling. Everything else (name, colour, data, mark lines) is shared
+ * by the caller. Adding a new kind (bar, area) means adding a case here.
+ */
+function seriesKindOptions(config: ChartWidgetConfig, color: string): object {
+  switch (config.type) {
+    case 'lineChart':
+      return {
+        type: 'line' as const,
+        smooth: config.smooth,
+        showSymbol: config.showPoints,
+        symbol: config.showPoints ? 'circle' : 'none',
+        symbolSize: config.pointSize,
+        ...(config.areaFill ? { areaStyle: { opacity: 0.15, color } } : {}),
+      };
+    case 'scatterChart':
+      return { type: 'scatter' as const, symbolSize: config.pointSize };
+  }
 }

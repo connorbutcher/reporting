@@ -12,7 +12,9 @@ import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
+  Widget,
 } from '../../core/models/report.model';
+import { isChartWidget } from '../../core/models/widget-catalog';
 import { ReadonlyReportGridComponent } from './readonly-report-grid/readonly-report-grid.component';
 import { ReportViewFilters } from './report-view-filters';
 import { ViewFiltersPanelComponent } from './view-filters-panel/view-filters-panel.component';
@@ -115,8 +117,11 @@ export class ReportViewerComponent implements OnInit {
   private loadSchemas(content: ReportRevisionContent): void {
     const datasetIds = new Set(
       content.widgets
-        .filter((w) => (w.type === 'dataTable' || w.type === 'chart') && w.config.datasetId)
-        .map((w) => (w as Extract<typeof w, { type: 'dataTable' | 'chart' }>).config.datasetId!),
+        .filter(
+          (w): w is Extract<Widget, { type: 'dataTable' | 'scatterChart' | 'lineChart' }> =>
+            (w.type === 'dataTable' || isChartWidget(w)) && !!w.config.datasetId,
+        )
+        .map((w) => w.config.datasetId!),
     );
 
     for (const datasetId of datasetIds) {

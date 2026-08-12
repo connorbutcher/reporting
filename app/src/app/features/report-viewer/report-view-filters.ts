@@ -1,7 +1,8 @@
 import { Signal, computed } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../core/models/dataset.model';
 import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter.model';
-import { ReportRevisionContent, Widget } from '../../core/models/report.model';
+import { ReportRevisionContent, Widget, WidgetType } from '../../core/models/report.model';
+import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
 import { FilterGroupModel } from '../report-builder/models/filter.model';
 
 /** One editable filter shown in the viewer's panel. */
@@ -14,7 +15,9 @@ export interface ViewFilterEntry {
   /** What the published report defines, for detecting and restoring changes. */
   readonly published: FilterGroup | null;
   /** Undefined for a page filter — it isn't any one widget's. */
-  readonly type?: 'dataTable' | 'chart';
+  readonly type?: WidgetType;
+  /** PrimeIcons class for the widget kind. Undefined for a page filter. */
+  readonly icon?: string;
 }
 
 /**
@@ -50,8 +53,8 @@ export class ReportViewFilters {
     // Tables and charts both bind to a dataset and both carry their own
     // filter now, so both get a widget-level filter entry.
     const datasetBound = content.widgets.filter(
-      (w): w is Extract<Widget, { type: 'dataTable' | 'chart' }> =>
-        (w.type === 'dataTable' || w.type === 'chart') && !!w.config.datasetId,
+      (w): w is Extract<Widget, { type: 'dataTable' | 'scatterChart' | 'lineChart' }> =>
+        (w.type === 'dataTable' || isChartWidget(w)) && !!w.config.datasetId,
     );
 
     // A page filter exists for every dataset in use, not only those the author
@@ -72,8 +75,7 @@ export class ReportViewFilters {
 
     this.widgetEntries = datasetBound.map((widget) => {
       const datasetId = widget.config.datasetId!;
-      const title =
-        widget.config.title?.trim() || (widget.type === 'dataTable' ? 'Table' : 'Chart');
+      const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
       const schema = schemaFor(datasetId);
 
       // A table only offers the columns it shows — filtering it by a column that
@@ -94,6 +96,7 @@ export class ReportViewFilters {
         published: widget.config.filter,
         group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
         type: widget.type,
+        icon: widgetTypeDescriptor(widget.type).icon,
       };
     });
 

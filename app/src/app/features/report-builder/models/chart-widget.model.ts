@@ -3,20 +3,21 @@ import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model
 import {
   ChartToleranceBand,
   ChartTooltipColumn,
-  ChartType,
   ChartWidget,
-  ChartWidgetConfig,
-  DEFAULT_CHART_CONFIG,
+  ChartWidgetConfigBase,
 } from '../../../core/models/report.model';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter.model';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources, WidgetModel } from './widget-model-base';
 
-export class ChartWidgetModel extends WidgetModel {
-  override readonly type = 'chart' as const;
-
-  readonly chartType = signal<ChartType>('scatter');
+/**
+ * Shared behaviour for every chart kind (scatter, line, and future bar/area).
+ * Owns the dataset binding, axes, series, tolerance bands, tooltip columns, and
+ * filtering — everything that isn't specific to how one kind is drawn. Concrete
+ * subclasses add their own presentation signals and assemble their own DTO.
+ */
+export abstract class ChartWidgetModel extends WidgetModel {
   /** Null until the user binds the chart to a dataset. */
   readonly datasetId = signal<string | null>(null);
   readonly xColumnId = signal<string | null>(null);
@@ -27,12 +28,6 @@ export class ChartWidgetModel extends WidgetModel {
   readonly yAxisLabel = signal('');
   readonly showLegend = signal(true);
   readonly pointSize = signal(8);
-  /** Line charts only: draws the line with curved rather than straight segments. */
-  readonly smooth = signal(false);
-  /** Line charts only: whether point markers are drawn along the line. */
-  readonly showPoints = signal(true);
-  /** Line charts only: shades the area under the line. */
-  readonly areaFill = signal(false);
 
   /** Reference lines per spec, each resolved against its own limits dataset. */
   readonly toleranceBands = signal<readonly ChartToleranceBand[]>([]);
@@ -43,14 +38,13 @@ export class ChartWidgetModel extends WidgetModel {
 
   /** The bound dataset's schema, once loaded. */
   readonly schema: Signal<DatasetSchema | null>;
-  /** Columns the axes can plot — only numeric types make sense on a scatter chart. */
+  /** Columns the axes can plot — only numeric types make sense on a chart. */
   readonly numericColumns: Signal<DatasetColumn[]>;
 
-  constructor(widget: ChartWidget, sources: ModelSources) {
+  protected constructor(widget: ChartWidget, sources: ModelSources) {
     super(widget);
     const config = widget.config;
 
-    this.chartType.set(config.chartType);
     this.datasetId.set(config.datasetId);
     this.xColumnId.set(config.xColumnId);
     this.yColumnId.set(config.yColumnId);
@@ -59,9 +53,6 @@ export class ChartWidgetModel extends WidgetModel {
     this.yAxisLabel.set(config.yAxisLabel);
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
-    this.smooth.set(config.smooth);
-    this.showPoints.set(config.showPoints);
-    this.areaFill.set(config.areaFill);
     this.toleranceBands.set(config.toleranceBands ?? []);
     this.tooltipColumns.set(config.tooltipColumns ?? []);
 
@@ -151,12 +142,10 @@ export class ChartWidgetModel extends WidgetModel {
     );
   }
 
-  override toDto(): ChartWidget {
-    const config: ChartWidgetConfig = {
-      type: 'chart',
-      ...DEFAULT_CHART_CONFIG,
+  /** The chart config fields common to every kind, for a subclass to spread into its own DTO. */
+  protected chartConfigBaseDto(): Omit<ChartWidgetConfigBase, 'type'> {
+    return {
       ...this.baseConfigDto(),
-      chartType: this.chartType(),
       datasetId: this.datasetId(),
       xColumnId: this.xColumnId(),
       yColumnId: this.yColumnId(),
@@ -165,9 +154,6 @@ export class ChartWidgetModel extends WidgetModel {
       yAxisLabel: this.yAxisLabel(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
-      smooth: this.smooth(),
-      showPoints: this.showPoints(),
-      areaFill: this.areaFill(),
       // A band the user hasn't finished pointing at a spec yet is left out — the
       // server's Guid fields can't parse the empty placeholder, and a half-built
       // band shouldn't block autosave. It stays in the signal above so the panel
@@ -178,12 +164,9 @@ export class ChartWidgetModel extends WidgetModel {
       tooltipColumns: this.tooltipColumns().map((c) => ({ ...c })),
       filter: this.filter.toDto(),
     };
-    return { ...this.geometryDto(), type: 'chart', config };
   }
 
-  protected override defaultTitle(): string {
-    return 'Chart';
-  }
+  abstract override toDto(): ChartWidget;
 
   protected override childNodes(): readonly EditorNode[] {
     return [this.filter];

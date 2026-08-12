@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { widgetTypesByGroup } from '../../../../core/models/widget-catalog';
 import { ReportBuilderStore } from '../../report-builder.store';
 
 @Component({
@@ -9,33 +10,46 @@ import { ReportBuilderStore } from '../../report-builder.store';
       <p class="panel-hint">
         Pick a widget to place on the canvas. You choose its content afterwards.
       </p>
-      <button type="button" class="panel-menu-item" (click)="store.addWidget('dataTable')">
-        <i class="pi pi-table" aria-hidden="true"></i>
-        <span class="panel-menu-text">
-          <span class="panel-menu-label">Table</span>
-          <span class="panel-menu-hint">Rows and columns from a dataset</span>
-        </span>
-        <i class="pi pi-plus" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="panel-menu-item" (click)="store.addWidget('staticText')">
-        <i class="pi pi-align-left" aria-hidden="true"></i>
-        <span class="panel-menu-text">
-          <span class="panel-menu-label">Text</span>
-          <span class="panel-menu-hint">A styled heading or block of text</span>
-        </span>
-        <i class="pi pi-plus" aria-hidden="true"></i>
-      </button>
-      <button type="button" class="panel-menu-item" (click)="store.addWidget('chart')">
-        <i class="pi pi-chart-scatter" aria-hidden="true"></i>
-        <span class="panel-menu-text">
-          <span class="panel-menu-label">Chart</span>
-          <span class="panel-menu-hint">Plot two columns from a dataset</span>
-        </span>
-        <i class="pi pi-plus" aria-hidden="true"></i>
-      </button>
+      @for (entry of groups; track entry.group.id) {
+        <div class="panel-add-group">
+          <span class="panel-add-group-label">{{ entry.group.label }}</span>
+          @for (widget of entry.types; track widget.type) {
+            <button type="button" class="panel-menu-item" (click)="store.addWidget(widget.type)">
+              <i [class]="widget.icon" aria-hidden="true"></i>
+              <span class="panel-menu-text">
+                <span class="panel-menu-label">{{ widget.label }}</span>
+                <span class="panel-menu-hint">{{ widget.hint }}</span>
+              </span>
+              <i class="pi pi-plus" aria-hidden="true"></i>
+            </button>
+          }
+        </div>
+      }
     </div>
+  `,
+  styles: `
+    .panel-add-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .panel-add-group + .panel-add-group {
+      margin-top: 14px;
+    }
+
+    .panel-add-group-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      padding: 0 2px;
+    }
   `,
 })
 export class PanelAddWidgetComponent {
   protected readonly store = inject(ReportBuilderStore);
+
+  protected readonly groups = widgetTypesByGroup();
 }

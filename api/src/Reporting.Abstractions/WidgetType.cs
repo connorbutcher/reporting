@@ -4,5 +4,6 @@ public enum WidgetType
 {
     DataTable,
     StaticText,
-    Chart
+    ScatterChart,
+    LineChart
 }

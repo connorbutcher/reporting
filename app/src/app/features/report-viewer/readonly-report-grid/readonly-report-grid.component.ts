@@ -1,6 +1,7 @@
 import { Component, Signal, input, output } from '@angular/core';
 import { CELL_SIZE, GRID_GAP } from '../../report-builder/grid.util';
 import { ReportRevisionContent, Widget } from '../../../core/models/report.model';
+import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, countConditions } from '../../../core/models/filter.model';
 import { ChartWidgetComponent } from '../../report-builder/widgets/chart-widget/chart-widget.component';
 import { DataTableWidgetComponent } from '../../report-builder/widgets/data-table-widget/data-table-widget.component';
@@ -37,7 +38,7 @@ export class ReadonlyReportGridComponent {
 
   /** Only a table or chart bound to a dataset has anything to filter. */
   protected canFilter(widget: Widget): boolean {
-    return (widget.type === 'dataTable' || widget.type === 'chart') && !!widget.config.datasetId;
+    return (widget.type === 'dataTable' || isChartWidget(widget)) && !!widget.config.datasetId;
   }
 
   /** Conditions on this widget's own filter — what the button would open. */
@@ -59,6 +60,6 @@ export class ReadonlyReportGridComponent {
     const override = this.widgetFilters()?.get(widget.id);
     if (override) return override();
 
-    return widget.type === 'dataTable' || widget.type === 'chart' ? widget.config.filter : null;
+    return widget.type === 'dataTable' || isChartWidget(widget) ? widget.config.filter : null;
   }
 }

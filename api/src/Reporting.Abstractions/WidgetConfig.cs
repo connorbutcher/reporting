@@ -5,7 +5,8 @@ namespace Reporting.Abstractions;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(DataTableWidgetConfig), typeDiscriminator: "dataTable")]
 [JsonDerivedType(typeof(StaticTextWidgetConfig), typeDiscriminator: "staticText")]
-[JsonDerivedType(typeof(ChartWidgetConfig), typeDiscriminator: "chart")]
+[JsonDerivedType(typeof(ScatterChartWidgetConfig), typeDiscriminator: "scatterChart")]
+[JsonDerivedType(typeof(LineChartWidgetConfig), typeDiscriminator: "lineChart")]
 public abstract class WidgetConfig
 {
     public string Title { get; set; } = "Widget";
@@ -119,12 +120,6 @@ public class DataTableWidgetConfig : WidgetConfig
     public FilterGroupDto? Filter { get; set; }
 }
 
-public enum ChartType
-{
-    Scatter,
-    Line
-}
-
 public enum ChartAxis
 {
     X,
@@ -159,10 +154,13 @@ public class ChartTooltipColumn
     public string? Suffix { get; set; }
 }
 
-public class ChartWidgetConfig : WidgetConfig
+/// <summary>
+/// Shared configuration for every chart kind (scatter, line, and future bar/area).
+/// Concrete kinds extend this with their own presentation options; the data-binding,
+/// tolerance, tooltip, and filter fields are common to all of them.
+/// </summary>
+public abstract class ChartWidgetConfig : WidgetConfig
 {
-    public ChartType ChartType { get; set; } = ChartType.Scatter;
-
     /// <summary>Null until the user binds the chart to a dataset.</summary>
     public Guid? DatasetId { get; set; }
 
@@ -179,13 +177,6 @@ public class ChartWidgetConfig : WidgetConfig
     public bool ShowLegend { get; set; } = true;
     public int PointSize { get; set; } = 8;
 
-    /// <summary>Line charts only: draws the line with curved rather than straight segments.</summary>
-    public bool Smooth { get; set; }
-    /// <summary>Line charts only: whether point markers are drawn along the line.</summary>
-    public bool ShowPoints { get; set; } = true;
-    /// <summary>Line charts only: shades the area under the line.</summary>
-    public bool AreaFill { get; set; }
-
     /// <summary>Dashed reference lines for one or more specs plotted against an axis.</summary>
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
 
@@ -194,6 +185,22 @@ public class ChartWidgetConfig : WidgetConfig
 
     /// <summary>Rows this chart plots, narrowed server-side. Null means no widget-level filter.</summary>
     public FilterGroupDto? Filter { get; set; }
+}
+
+/// <summary>A scatter chart: X/Y points, one mark per row.</summary>
+public class ScatterChartWidgetConfig : ChartWidgetConfig
+{
+}
+
+/// <summary>A line chart, with its own line-specific presentation options.</summary>
+public class LineChartWidgetConfig : ChartWidgetConfig
+{
+    /// <summary>Draws the line with curved rather than straight segments.</summary>
+    public bool Smooth { get; set; }
+    /// <summary>Whether point markers are drawn along the line.</summary>
+    public bool ShowPoints { get; set; } = true;
+    /// <summary>Shades the area under the line.</summary>
+    public bool AreaFill { get; set; }
 }
 
 public class StaticTextWidgetConfig : WidgetConfig

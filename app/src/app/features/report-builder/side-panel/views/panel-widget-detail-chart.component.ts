@@ -1,21 +1,15 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartType } from '../../../../core/models/report.model';
-import { ChartWidgetModel } from '../../models/widget.model';
+import { ChartWidgetModel, LineChartWidgetModel } from '../../models/widget.model';
 import { ReportBuilderStore } from '../../report-builder.store';
 import { PanelGroupComponent } from '../panel-group.component';
 import { PanelChartToleranceListComponent } from './panel-chart-tolerance-list.component';
 import { PanelChartTooltipColumnsComponent } from './panel-chart-tooltip-columns.component';
-
-const CHART_TYPE_OPTIONS: { label: string; value: ChartType }[] = [
-  { label: 'Scatter', value: 'scatter' },
-  { label: 'Line', value: 'line' },
-];
+import { PanelLineChartOptionsComponent } from './panel-line-chart-options.component';
 
 /** The chart branch of the widget-detail panel: dataset, axes, series, and appearance. Tolerance bands and tooltip are their own groups. */
 @Component({
@@ -26,10 +20,10 @@ const CHART_TYPE_OPTIONS: { label: string; value: ChartType }[] = [
     InputNumberModule,
     InputTextModule,
     SelectModule,
-    SelectButtonModule,
     PanelGroupComponent,
     PanelChartToleranceListComponent,
     PanelChartTooltipColumnsComponent,
+    PanelLineChartOptionsComponent,
   ],
   template: `
     <app-panel-group label="Data source" icon="⛁">
@@ -101,18 +95,6 @@ const CHART_TYPE_OPTIONS: { label: string; value: ChartType }[] = [
     </app-panel-group>
 
     <app-panel-group label="Appearance" icon="▤">
-      <label class="panel-field">
-        <span class="panel-field-label">Chart type</span>
-        <p-selectbutton
-          [options]="chartTypeOptions"
-          [ngModel]="chart().chartType()"
-          optionLabel="label"
-          optionValue="value"
-          [allowEmpty]="false"
-          (ngModelChange)="chart().chartType.set($event)"
-        />
-      </label>
-
       <div class="panel-grid-fields">
         <label class="panel-field">
           <span class="panel-field-label">X axis label</span>
@@ -155,34 +137,8 @@ const CHART_TYPE_OPTIONS: { label: string; value: ChartType }[] = [
         <label for="chart-legend">Show legend</label>
       </div>
 
-      @if (chart().chartType() === 'line') {
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="chart-smooth"
-            [ngModel]="chart().smooth()"
-            (onChange)="chart().smooth.set($event.checked)"
-          />
-          <label for="chart-smooth">Smooth</label>
-        </div>
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="chart-show-points"
-            [ngModel]="chart().showPoints()"
-            (onChange)="chart().showPoints.set($event.checked)"
-          />
-          <label for="chart-show-points">Show points</label>
-        </div>
-        <div class="panel-inline-field">
-          <p-checkbox
-            [binary]="true"
-            inputId="chart-area-fill"
-            [ngModel]="chart().areaFill()"
-            (onChange)="chart().areaFill.set($event.checked)"
-          />
-          <label for="chart-area-fill">Area fill</label>
-        </div>
+      @if (lineChart(); as line) {
+        <app-panel-line-chart-options [chart]="line" />
       }
     </app-panel-group>
 
@@ -218,7 +174,11 @@ export class PanelWidgetDetailChartComponent {
 
   readonly chart = input.required<ChartWidgetModel>();
 
-  protected readonly chartTypeOptions = CHART_TYPE_OPTIONS;
+  /** The model narrowed to a line chart, so line-only options render only for it. */
+  protected readonly lineChart = computed(() => {
+    const chart = this.chart();
+    return chart instanceof LineChartWidgetModel ? chart : null;
+  });
 
   /** Falls back to the picked axis column's own name once one is chosen. */
   protected axisPlaceholder(columnId: string | null): string {

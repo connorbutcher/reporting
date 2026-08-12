@@ -40,12 +40,7 @@
     @for (entry of widgetEntries(); track entry.key) {
       <div class="view-filters__entry">
         <button type="button" class="view-filters__row" (click)="toggle(entry)">
-          <i
-            class="pi"
-            [class.pi-table]="entry.type === 'dataTable'"
-            [class.pi-chart-scatter]="entry.type === 'chart'"
-            aria-hidden="true"
-          ></i>
+          <i [class]="entry.icon" aria-hidden="true"></i>
           <span class="view-filters__text">
             <span class="view-filters__label">{{ entry.label() }}</span>
             <span class="view-filters__summary">

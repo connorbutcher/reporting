@@ -1,6 +1,6 @@
 @if (!config().datasetId) {
   <div class="chart-widget__status">
-    <i class="pi pi-chart-scatter" aria-hidden="true"></i>
+    <i [class]="placeholderIcon()" aria-hidden="true"></i>
     Choose a dataset for this chart in the side panel.
   </div>
 } @else if (loading()) {

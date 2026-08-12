@@ -1,6 +1,7 @@
 import { Signal, computed, signal } from '@angular/core';
 import {
-  DEFAULT_CHART_CONFIG,
+  DEFAULT_LINE_CHART_CONFIG,
+  DEFAULT_SCATTER_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
   DEFAULT_TEXT_CONFIG,
   ReportRevisionContent,
@@ -133,16 +134,33 @@ export class ReportModel extends EditorNode {
     this.growRowsFor(slot.y, DEFAULT_WIDGET_H);
     const base = { id: crypto.randomUUID(), ...slot, w: DEFAULT_WIDGET_W, h: DEFAULT_WIDGET_H };
 
-    const dto: Widget =
-      type === 'dataTable'
-        ? { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } }
-        : type === 'chart'
-          ? { ...base, type: 'chart', config: { type: 'chart', ...DEFAULT_CHART_CONFIG } }
-          : { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
+    const dto: Widget = this.emptyWidgetDto(type, base);
 
     const widget = widgetModelFromDto(dto, this.sources);
     this.widgets.update((widgets) => [...widgets, widget]);
     return widget;
+  }
+
+  /** A freshly-placed widget of the given type, filled with that type's default config. */
+  private emptyWidgetDto(type: WidgetType, base: Omit<Widget, 'type' | 'config'>): Widget {
+    switch (type) {
+      case 'dataTable':
+        return { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } };
+      case 'scatterChart':
+        return {
+          ...base,
+          type: 'scatterChart',
+          config: { type: 'scatterChart', ...DEFAULT_SCATTER_CHART_CONFIG },
+        };
+      case 'lineChart':
+        return {
+          ...base,
+          type: 'lineChart',
+          config: { type: 'lineChart', ...DEFAULT_LINE_CHART_CONFIG },
+        };
+      case 'staticText':
+        return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
+    }
   }
 
   removeWidget(widgetId: string): void {

@@ -1,8 +1,6 @@
 import { FilterGroup, ReportFilter } from './filter.model';
 
-export type WidgetType = 'dataTable' | 'staticText' | 'chart';
-
-export type ChartType = 'scatter' | 'line';
+export type WidgetType = 'dataTable' | 'staticText' | 'scatterChart' | 'lineChart';
 
 export type SortDirection = 'asc' | 'desc';
 export type ColumnAlign = 'left' | 'center' | 'right';
@@ -101,10 +99,12 @@ export interface ChartTooltipColumn {
   suffix?: string;
 }
 
-export interface ChartWidgetConfig extends WidgetConfigBase {
-  type: 'chart';
-  chartType: ChartType;
-
+/**
+ * Configuration common to every chart kind (scatter, line, and future bar/area).
+ * Concrete kinds narrow `type` and add their own presentation options; everything
+ * about data binding, tolerance bands, tooltips, and filtering is shared here.
+ */
+export interface ChartWidgetConfigBase extends WidgetConfigBase {
   /** Null until the user binds the chart to a dataset. */
   datasetId: string | null;
   xColumnId: string | null;
@@ -119,13 +119,6 @@ export interface ChartWidgetConfig extends WidgetConfigBase {
   showLegend: boolean;
   pointSize: number;
 
-  /** Line charts only: draws the line with curved rather than straight segments. */
-  smooth: boolean;
-  /** Line charts only: whether point markers are drawn along the line. */
-  showPoints: boolean;
-  /** Line charts only: shades the area under the line. */
-  areaFill: boolean;
-
   /** Dashed reference lines for one or more specs plotted against an axis. */
   toleranceBands: ChartToleranceBand[];
   /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
@@ -134,6 +127,23 @@ export interface ChartWidgetConfig extends WidgetConfigBase {
   /** Rows this chart plots, narrowed server-side. Null means no widget-level filter. */
   filter: FilterGroup | null;
 }
+
+export interface ScatterChartWidgetConfig extends ChartWidgetConfigBase {
+  type: 'scatterChart';
+}
+
+export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
+  type: 'lineChart';
+
+  /** Draws the line with curved rather than straight segments. */
+  smooth: boolean;
+  /** Whether point markers are drawn along the line. */
+  showPoints: boolean;
+  /** Shades the area under the line. */
+  areaFill: boolean;
+}
+
+export type ChartWidgetConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
 
 export interface StaticTextWidgetConfig extends WidgetConfigBase {
   type: 'staticText';
@@ -159,7 +169,11 @@ export interface StaticTextWidgetConfig extends WidgetConfigBase {
   padding: number;
 }
 
-export type WidgetConfig = DataTableWidgetConfig | StaticTextWidgetConfig | ChartWidgetConfig;
+export type WidgetConfig =
+  | DataTableWidgetConfig
+  | StaticTextWidgetConfig
+  | ScatterChartWidgetConfig
+  | LineChartWidgetConfig;
 
 interface WidgetBase {
   id: string;
@@ -184,12 +198,20 @@ export interface StaticTextWidget extends WidgetBase {
   config: StaticTextWidgetConfig;
 }
 
-export interface ChartWidget extends WidgetBase {
-  type: 'chart';
-  config: ChartWidgetConfig;
+export interface ScatterChartWidget extends WidgetBase {
+  type: 'scatterChart';
+  config: ScatterChartWidgetConfig;
 }
 
-export type Widget = DataTableWidget | StaticTextWidget | ChartWidget;
+export interface LineChartWidget extends WidgetBase {
+  type: 'lineChart';
+  config: LineChartWidgetConfig;
+}
+
+/** Every chart kind, for code that treats charts uniformly. */
+export type ChartWidget = ScatterChartWidget | LineChartWidget;
+
+export type Widget = DataTableWidget | StaticTextWidget | ScatterChartWidget | LineChartWidget;
 
 /** A report's identity and folder placement — everything except its content. */
 export interface ReportSummary {
@@ -252,10 +274,8 @@ export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
   filter: null,
 };
 
-export const DEFAULT_CHART_CONFIG: Omit<ChartWidgetConfig, 'type'> = {
-  title: 'Chart',
+const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
-  chartType: 'scatter',
   datasetId: null,
   xColumnId: null,
   yColumnId: null,
@@ -264,12 +284,22 @@ export const DEFAULT_CHART_CONFIG: Omit<ChartWidgetConfig, 'type'> = {
   yAxisLabel: '',
   showLegend: true,
   pointSize: 8,
-  smooth: false,
-  showPoints: true,
-  areaFill: false,
   toleranceBands: [],
   tooltipColumns: [],
   filter: null,
+};
+
+export const DEFAULT_SCATTER_CHART_CONFIG: Omit<ScatterChartWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Scatter chart',
+};
+
+export const DEFAULT_LINE_CHART_CONFIG: Omit<LineChartWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Line chart',
+  smooth: false,
+  showPoints: true,
+  areaFill: false,
 };
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {
