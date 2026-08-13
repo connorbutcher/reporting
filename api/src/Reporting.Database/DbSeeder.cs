@@ -5,21 +5,35 @@ namespace Reporting.Database;
 
 public static class DbSeeder
 {
+    /// <summary>A cell to be created once its row and column have database-assigned int ids.</summary>
+    private sealed record PendingCell(DatasetRow Row, DatasetColumn Column, string Raw);
+
     public static void Seed(ReportingDbContext db)
     {
         if (db.Datasets.Any()) return;
 
-        var builds = SeedEngineBuilds(db);
-        var testRuns = SeedTestRuns(db);
+        // Cells reference their column by int id, which isn't known until the columns are saved, so
+        // build the graph in two phases: everything except cells first, then the cells.
+        var pending = new List<PendingCell>();
+
+        var builds = SeedEngineBuilds(db, pending);
+        var testRuns = SeedTestRuns(db, pending);
 
         db.Reports.Add(BuildDemoReport(builds));
         SeedFoldersAndReports(db, builds, testRuns);
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
         db.SaveChanges();
     }
 
-    private static Dataset SeedEngineBuilds(ReportingDbContext db)
+    private static Dataset SeedEngineBuilds(ReportingDbContext db, List<PendingCell> pending)
     {
-        var dataset = new Dataset { Id = Guid.NewGuid(), Name = "Engine Builds" };
+        var dataset = new Dataset { RefId = Guid.NewGuid(), Name = "Engine Builds" };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
@@ -60,23 +74,23 @@ public static class DbSeeder
 
         foreach (var r in rows)
         {
-            AddRow(dataset, new Dictionary<Guid, string>
+            AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
             {
-                [job.Id] = r.Item1,
-                [serial.Id] = r.Item2,
-                [part.Id] = r.Item3,
-                [engineType.Id] = r.Item4,
-                [buildDate.Id] = Iso(r.Item5),
-                [inspector.Id] = r.Item6,
-                [bore.Id] = Num(r.Item7),
-                [mainBearing.Id] = Num(r.Item8),
-                [bigEnd.Id] = Num(r.Item9),
-                [pistonBore.Id] = Num(r.Item10),
-                [endFloat.Id] = Num(r.Item11),
-                [deckHeight.Id] = Num(r.Item12),
-                [compression.Id] = Num(r.Item13),
-                [rework.Id] = r.Item14.ToString(CultureInfo.InvariantCulture),
-                [concessions.Id] = r.Item15.ToString(CultureInfo.InvariantCulture),
+                [job] = r.Item1,
+                [serial] = r.Item2,
+                [part] = r.Item3,
+                [engineType] = r.Item4,
+                [buildDate] = Iso(r.Item5),
+                [inspector] = r.Item6,
+                [bore] = Num(r.Item7),
+                [mainBearing] = Num(r.Item8),
+                [bigEnd] = Num(r.Item9),
+                [pistonBore] = Num(r.Item10),
+                [endFloat] = Num(r.Item11),
+                [deckHeight] = Num(r.Item12),
+                [compression] = Num(r.Item13),
+                [rework] = r.Item14.ToString(CultureInfo.InvariantCulture),
+                [concessions] = r.Item15.ToString(CultureInfo.InvariantCulture),
             });
         }
 
@@ -84,9 +98,9 @@ public static class DbSeeder
         return dataset;
     }
 
-    private static Dataset SeedTestRuns(ReportingDbContext db)
+    private static Dataset SeedTestRuns(ReportingDbContext db, List<PendingCell> pending)
     {
-        var dataset = new Dataset { Id = Guid.NewGuid(), Name = "Engine Test Runs" };
+        var dataset = new Dataset { RefId = Guid.NewGuid(), Name = "Engine Test Runs" };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
@@ -114,19 +128,19 @@ public static class DbSeeder
 
         foreach (var r in rows)
         {
-            AddRow(dataset, new Dictionary<Guid, string>
+            AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
             {
-                [job.Id] = r.Item1,
-                [serial.Id] = r.Item2,
-                [part.Id] = r.Item3,
-                [runDate.Id] = Iso(r.Item4),
-                [cell.Id] = r.Item5,
-                [power.Id] = Num(r.Item6),
-                [torque.Id] = Num(r.Item7),
-                [oil.Id] = Num(r.Item8),
-                [coolant.Id] = Num(r.Item9),
-                [duration.Id] = Num(r.Item10),
-                [passed.Id] = r.Item11.ToString(CultureInfo.InvariantCulture),
+                [job] = r.Item1,
+                [serial] = r.Item2,
+                [part] = r.Item3,
+                [runDate] = Iso(r.Item4),
+                [cell] = r.Item5,
+                [power] = Num(r.Item6),
+                [torque] = Num(r.Item7),
+                [oil] = Num(r.Item8),
+                [coolant] = Num(r.Item9),
+                [duration] = Num(r.Item10),
+                [passed] = r.Item11.ToString(CultureInfo.InvariantCulture),
             });
         }
 
@@ -138,12 +152,11 @@ public static class DbSeeder
     private static Report BuildDemoReport(Dataset builds)
     {
         var now = DateTime.UtcNow;
-        var report = new Report { Id = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = now, UpdatedAt = now };
+        var report = new Report { RefId = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = now, UpdatedAt = now };
 
         var revision = new ReportRevision
         {
-            Id = Guid.NewGuid(),
-            ReportId = report.Id,
+            RefId = Guid.NewGuid(),
             Kind = RevisionKind.Draft,
             CreatedAt = now,
         };
@@ -154,8 +167,8 @@ public static class DbSeeder
             "Big End Clearance", "Build Concessions Signed Off",
         };
 
-        revision.Widgets.Add(TitleWidget(revision.Id, "Engine Build Clearances"));
-        revision.Widgets.Add(TableWidget(revision.Id, builds, "Build Clearances", wanted));
+        revision.Widgets.Add(TitleWidget("Engine Build Clearances"));
+        revision.Widgets.Add(TableWidget(builds, "Build Clearances", wanted));
 
         report.Revisions.Add(revision);
         return report;
@@ -170,17 +183,17 @@ public static class DbSeeder
     {
         var now = DateTime.UtcNow;
 
-        var engineBuilds = new Folder { Id = Guid.NewGuid(), Name = "Engine Builds", CreatedAt = now, UpdatedAt = now };
+        var engineBuilds = new Folder { RefId = Guid.NewGuid(), Name = "Engine Builds", CreatedAt = now, UpdatedAt = now };
         var q1 = new Folder
         {
-            Id = Guid.NewGuid(),
+            RefId = Guid.NewGuid(),
             Name = "2026 Q1",
-            ParentFolderId = engineBuilds.Id,
+            ParentFolder = engineBuilds,
             CreatedAt = now,
             UpdatedAt = now,
         };
-        var chassisQa = new Folder { Id = Guid.NewGuid(), Name = "Chassis QA", CreatedAt = now, UpdatedAt = now };
-        var concessions = new Folder { Id = Guid.NewGuid(), Name = "Concessions", CreatedAt = now, UpdatedAt = now };
+        var chassisQa = new Folder { RefId = Guid.NewGuid(), Name = "Chassis QA", CreatedAt = now, UpdatedAt = now };
+        var concessions = new Folder { RefId = Guid.NewGuid(), Name = "Concessions", CreatedAt = now, UpdatedAt = now };
         db.Folders.AddRange(engineBuilds, q1, chassisQa, concessions);
 
         var buildColumns = new[]
@@ -193,34 +206,34 @@ public static class DbSeeder
         var number = 2;
 
         db.Reports.Add(PublishedReport(
-            number++, "Main Bearing Audit", engineBuilds.Id, builds, buildColumns, versions: 3, daysAgo: 21));
+            number++, "Main Bearing Audit", engineBuilds, builds, buildColumns, versions: 3, daysAgo: 21));
 
         db.Reports.Add(PublishedReport(
-            number++, "Piston Clearance Report", q1.Id, builds, buildColumns, versions: 1, daysAgo: 9));
+            number++, "Piston Clearance Report", q1, builds, buildColumns, versions: 1, daysAgo: 9));
 
         db.Reports.Add(DraftReport(
-            number++, "Chassis Torque Audit", chassisQa.Id, testRuns, testColumns, daysAgo: 2));
+            number++, "Chassis Torque Audit", chassisQa, testRuns, testColumns, daysAgo: 2));
 
         db.Reports.Add(PublishedWithDraftReport(
-            number++, "Chassis Alignment Check", chassisQa.Id, builds, buildColumns, versions: 2, daysAgo: 5));
+            number++, "Chassis Alignment Check", chassisQa, builds, buildColumns, versions: 2, daysAgo: 5));
 
-        db.Reports.Add(EmptyReport(number++, "Bore Diameter Concessions", concessions.Id, daysAgo: 14));
+        db.Reports.Add(EmptyReport(number++, "Bore Diameter Concessions", concessions, daysAgo: 14));
 
         db.Reports.Add(DraftReport(
             number, "Final Assembly QA — Batch 12", null, testRuns, testColumns, daysAgo: 1));
     }
 
     private static Report PublishedReport(
-        int number, string name, Guid? folderId, Dataset dataset, string[] columns, int versions, int daysAgo)
+        int number, string name, Folder? folder, Dataset dataset, string[] columns, int versions, int daysAgo)
     {
         var createdAt = DateTime.UtcNow.AddDays(-daysAgo - (versions - 1) * 3);
         var updatedAt = DateTime.UtcNow.AddDays(-daysAgo);
         var report = new Report
         {
-            Id = Guid.NewGuid(),
+            RefId = Guid.NewGuid(),
             Number = number,
             Name = name,
-            FolderId = folderId,
+            Folder = folder,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
         };
@@ -230,16 +243,15 @@ public static class DbSeeder
             var publishedAt = DateTime.UtcNow.AddDays(-daysAgo - (versions - v) * 3);
             var revision = new ReportRevision
             {
-                Id = Guid.NewGuid(),
-                ReportId = report.Id,
+                RefId = Guid.NewGuid(),
                 Kind = RevisionKind.Published,
                 VersionNumber = v,
                 CreatedAt = publishedAt,
                 PublishedAt = publishedAt,
                 Notes = v == versions ? $"<p>Updated {name} with the latest data.</p>" : null,
             };
-            revision.Widgets.Add(TitleWidget(revision.Id, name));
-            revision.Widgets.Add(TableWidget(revision.Id, dataset, name, columns));
+            revision.Widgets.Add(TitleWidget(name));
+            revision.Widgets.Add(TableWidget(dataset, name, columns));
             report.Revisions.Add(revision);
         }
 
@@ -247,36 +259,36 @@ public static class DbSeeder
     }
 
     private static Report DraftReport(
-        int number, string name, Guid? folderId, Dataset dataset, string[] columns, int daysAgo)
+        int number, string name, Folder? folder, Dataset dataset, string[] columns, int daysAgo)
     {
         var createdAt = DateTime.UtcNow.AddDays(-daysAgo);
         var report = new Report
         {
-            Id = Guid.NewGuid(),
+            RefId = Guid.NewGuid(),
             Number = number,
             Name = name,
-            FolderId = folderId,
+            Folder = folder,
             CreatedAt = createdAt,
             UpdatedAt = createdAt,
         };
 
-        var draft = new ReportRevision { Id = Guid.NewGuid(), ReportId = report.Id, Kind = RevisionKind.Draft, CreatedAt = createdAt };
-        draft.Widgets.Add(TitleWidget(draft.Id, name));
-        draft.Widgets.Add(TableWidget(draft.Id, dataset, name, columns));
+        var draft = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = createdAt };
+        draft.Widgets.Add(TitleWidget(name));
+        draft.Widgets.Add(TableWidget(dataset, name, columns));
         report.Revisions.Add(draft);
 
         return report;
     }
 
     private static Report PublishedWithDraftReport(
-        int number, string name, Guid? folderId, Dataset dataset, string[] columns, int versions, int daysAgo)
+        int number, string name, Folder? folder, Dataset dataset, string[] columns, int versions, int daysAgo)
     {
-        var report = PublishedReport(number, name, folderId, dataset, columns, versions, daysAgo);
+        var report = PublishedReport(number, name, folder, dataset, columns, versions, daysAgo);
 
         var draftCreatedAt = DateTime.UtcNow.AddDays(-1);
-        var draft = new ReportRevision { Id = Guid.NewGuid(), ReportId = report.Id, Kind = RevisionKind.Draft, CreatedAt = draftCreatedAt };
-        draft.Widgets.Add(TitleWidget(draft.Id, name));
-        draft.Widgets.Add(TableWidget(draft.Id, dataset, name, columns));
+        var draft = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = draftCreatedAt };
+        draft.Widgets.Add(TitleWidget(name));
+        draft.Widgets.Add(TableWidget(dataset, name, columns));
         report.Revisions.Add(draft);
         report.UpdatedAt = draftCreatedAt;
 
@@ -284,24 +296,23 @@ public static class DbSeeder
     }
 
     /// <summary>A placeholder report with no revisions at all — never checked out, never published.</summary>
-    private static Report EmptyReport(int number, string name, Guid? folderId, int daysAgo)
+    private static Report EmptyReport(int number, string name, Folder? folder, int daysAgo)
     {
         var createdAt = DateTime.UtcNow.AddDays(-daysAgo);
         return new Report
         {
-            Id = Guid.NewGuid(),
+            RefId = Guid.NewGuid(),
             Number = number,
             Name = name,
-            FolderId = folderId,
+            Folder = folder,
             CreatedAt = createdAt,
             UpdatedAt = createdAt,
         };
     }
 
-    private static Widget TitleWidget(Guid revisionId, string text) => new()
+    private static Widget TitleWidget(string text) => new()
     {
-        Id = Guid.NewGuid(),
-        ReportRevisionId = revisionId,
+        RefId = Guid.NewGuid(),
         Type = WidgetType.StaticText,
         X = 0,
         Y = 0,
@@ -316,23 +327,22 @@ public static class DbSeeder
             """,
     };
 
-    private static Widget TableWidget(Guid revisionId, Dataset dataset, string title, string[] columnNames)
+    private static Widget TableWidget(Dataset dataset, string title, string[] columnNames)
     {
         var columnIds = columnNames
-            .Select(name => dataset.Columns.First(c => c.Name == name).Id)
+            .Select(name => dataset.Columns.First(c => c.Name == name).RefId)
             .Select(id => $"{{\"columnId\":\"{id}\",\"sortable\":true}}");
 
         return new Widget
         {
-            Id = Guid.NewGuid(),
-            ReportRevisionId = revisionId,
+            RefId = Guid.NewGuid(),
             Type = WidgetType.DataTable,
             X = 0,
             Y = 1,
             W = 8,
             H = 5,
             ConfigJson = $$"""
-                {"type":"dataTable","datasetId":"{{dataset.Id}}","title":"{{title}}",
+                {"type":"dataTable","datasetId":"{{dataset.RefId}}","title":"{{title}}",
                  "showTitle":true,"showColumnHeaders":true,"resizableColumns":true,
                  "stripedRows":true,"showGridlines":false,"rowHover":true,"density":"compact",
                  "paginator":false,"rowsPerPage":10,"emptyMessage":"No rows to display.",
@@ -350,8 +360,7 @@ public static class DbSeeder
     {
         var column = new DatasetColumn
         {
-            Id = Guid.NewGuid(),
-            DatasetId = dataset.Id,
+            RefId = Guid.NewGuid(),
             Name = name,
             Type = type,
             Order = order,
@@ -361,17 +370,15 @@ public static class DbSeeder
         return column;
     }
 
-    private static void AddRow(Dataset dataset, Dictionary<Guid, string> values)
+    private static void AddRow(Dataset dataset, List<PendingCell> pending, Dictionary<DatasetColumn, string> values)
     {
-        var row = new DatasetRow { Id = Guid.NewGuid(), DatasetId = dataset.Id };
-        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
-
-        foreach (var (columnId, raw) in values)
-        {
-            row.Cells.Add(CellValues.Create(row.Id, columnId, raw, columnsById[columnId].Type));
-        }
-
+        var row = new DatasetRow { RefId = Guid.NewGuid() };
         dataset.Rows.Add(row);
+
+        foreach (var (column, raw) in values)
+        {
+            pending.Add(new PendingCell(row, column, raw));
+        }
     }
 
     /// <summary>Millimetre measurement formatting at the given precision.</summary>

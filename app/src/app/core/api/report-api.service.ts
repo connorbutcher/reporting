@@ -12,12 +12,6 @@ import {
 export class ReportApiService {
   private readonly http = inject(HttpClient);
 
-  /** Reports directly inside `folderId` (root if omitted) — not the whole tree. */
-  list(folderId: string | null): Observable<ReportSummary[]> {
-    const params = folderId ? { folderId } : undefined;
-    return this.http.get<ReportSummary[]>('/api/reports', { params });
-  }
-
   /** Every report across every folder, flat — only meant for things that need the full tree at once, like the "copy from" picker. */
   listAll(): Observable<ReportSummary[]> {
     return this.http.get<ReportSummary[]>('/api/reports/all');
@@ -26,10 +20,6 @@ export class ReportApiService {
   /** Finds reports anywhere in the tree by name or report number (e.g. "42" or "R-42"). */
   search(query: string): Observable<ReportSearchResult[]> {
     return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
-  }
-
-  get(id: string): Observable<ReportSummary> {
-    return this.http.get<ReportSummary>(`/api/reports/${id}`);
   }
 
   create(name: string, folderId: string | null, sourceReportId?: string): Observable<ReportSummary> {
@@ -46,14 +36,6 @@ export class ReportApiService {
 
   remove(id: string): Observable<void> {
     return this.http.delete<void>(`/api/reports/${id}`);
-  }
-
-  getVersions(id: string): Observable<ReportVersionSummary[]> {
-    return this.http.get<ReportVersionSummary[]>(`/api/reports/${id}/versions`);
-  }
-
-  getVersion(id: string, versionNumber: number): Observable<ReportRevisionContent> {
-    return this.http.get<ReportRevisionContent>(`/api/reports/${id}/versions/${versionNumber}`);
   }
 
   getDraft(id: string): Observable<ReportRevisionContent> {

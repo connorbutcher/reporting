@@ -1,5 +1,5 @@
 import { OVERLAY_DEFAULT_CONFIG } from '@angular/cdk/overlay';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideEchartsCore } from 'ngx-echarts';
@@ -11,7 +11,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withFetch()),
     providePrimeNG({
       theme: {
         preset: ReportingPreset,

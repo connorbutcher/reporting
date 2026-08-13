@@ -23,7 +23,7 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<ReportingDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();

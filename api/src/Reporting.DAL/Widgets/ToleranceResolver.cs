@@ -26,25 +26,44 @@ public class ToleranceResolver(ReportingDbContext db)
         var result = new Dictionary<TKey, ToleranceBounds?>();
         if (pointers.Count == 0) return result;
 
-        var rowIds = pointers.Select(p => p.SourceRowId).Distinct().ToList();
-        var columnIds = pointers
+        var rowRefs = pointers.Select(p => p.SourceRowId).Distinct().ToList();
+        var columnRefs = pointers
             .SelectMany(p => new[] { p.MinColumnId, p.MaxColumnId, p.ConcessionLowerColumnId, p.ConcessionUpperColumnId })
             .Where(id => id.HasValue)
             .Select(id => id!.Value)
             .Distinct()
             .ToList();
 
+        // Pointers address the spec row and columns by their RefIds; cells store int ids, so
+        // resolve the RefIds first and query by the int keys.
+        var rowPkByRef = await db.DatasetRows
+            .Where(r => rowRefs.Contains(r.RefId))
+            .Select(r => new { r.Id, r.RefId })
+            .ToDictionaryAsync(r => r.RefId, r => r.Id);
+        var columnPkByRef = await db.DatasetColumns
+            .Where(c => columnRefs.Contains(c.RefId))
+            .Select(c => new { c.Id, c.RefId })
+            .ToDictionaryAsync(c => c.RefId, c => c.Id);
+
+        var rowPks = rowPkByRef.Values.ToList();
+        var columnPks = columnPkByRef.Values.ToList();
+
         var cells = await db.DatasetCells
-            .Where(c => rowIds.Contains(c.RowId) && columnIds.Contains(c.ColumnId))
+            .Where(c => rowPks.Contains(c.RowId) && columnPks.Contains(c.ColumnId))
             .Select(c => new { c.RowId, c.ColumnId, c.NumberValue })
             .ToListAsync();
 
         var byRowColumn = cells.ToDictionary(c => (c.RowId, c.ColumnId), c => c.NumberValue);
 
+        double? Value(Guid rowRef, Guid columnRef) =>
+            rowPkByRef.TryGetValue(rowRef, out var rp) && columnPkByRef.TryGetValue(columnRef, out var cp)
+                ? byRowColumn.GetValueOrDefault((rp, cp))
+                : null;
+
         foreach (var pointer in pointers)
         {
-            var min = byRowColumn.GetValueOrDefault((pointer.SourceRowId, pointer.MinColumnId));
-            var max = byRowColumn.GetValueOrDefault((pointer.SourceRowId, pointer.MaxColumnId));
+            var min = Value(pointer.SourceRowId, pointer.MinColumnId);
+            var max = Value(pointer.SourceRowId, pointer.MaxColumnId);
             if (min is null || max is null)
             {
                 result[pointer.Key] = null;
@@ -52,10 +71,10 @@ public class ToleranceResolver(ReportingDbContext db)
             }
 
             var concessionLower = pointer.ConcessionLowerColumnId is { } clId
-                ? byRowColumn.GetValueOrDefault((pointer.SourceRowId, clId))
+                ? Value(pointer.SourceRowId, clId)
                 : null;
             var concessionUpper = pointer.ConcessionUpperColumnId is { } cuId
-                ? byRowColumn.GetValueOrDefault((pointer.SourceRowId, cuId))
+                ? Value(pointer.SourceRowId, cuId)
                 : null;
 
             result[pointer.Key] = new ToleranceBounds(min.Value, max.Value, concessionLower, concessionUpper);

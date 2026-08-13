@@ -1,8 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { forkJoin } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
@@ -34,7 +35,7 @@ type AsideTab = 'filters' | 'history';
   templateUrl: './report-viewer.component.html',
   styleUrl: './report-viewer.component.scss',
 })
-export class ReportViewerComponent implements OnInit {
+export class ReportViewerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly reportApi = inject(ReportApiService);
@@ -51,65 +52,68 @@ export class ReportViewerComponent implements OnInit {
   /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
   protected readonly openFilterKey = signal<string | null>(null);
 
-  protected readonly report = signal<ReportSummary | null>(null);
-  protected readonly versions = signal<ReportVersionSummary[]>([]);
-  protected readonly content = signal<ReportRevisionContent | null>(null);
-  protected readonly viewingVersion = signal<number | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly notFound = signal(false);
+  // Route params drive every fetch: changing report or version refetches automatically.
+  private readonly params = toSignal(this.route.paramMap);
+  private readonly reportId = computed(() => this.params()?.get('reportId') ?? null);
+  protected readonly viewingVersion = computed(() => {
+    const v = this.params()?.get('versionNumber');
+    return v ? Number(v) : null;
+  });
 
-  private reportId = '';
+  private readonly reportResource = httpResource<ReportSummary>(() =>
+    this.reportId() ? `/api/reports/${this.reportId()}` : undefined,
+  );
+  private readonly versionsResource = httpResource<ReportVersionSummary[]>(
+    () => (this.reportId() ? `/api/reports/${this.reportId()}/versions` : undefined),
+    { defaultValue: [] },
+  );
+  // The viewer only ever shows published versions — the draft is edited in the builder.
+  private readonly contentResource = httpResource<ReportRevisionContent>(() => {
+    const id = this.reportId();
+    // hasValue() guards the read: value() throws while the resource is loading or errored.
+    const report = this.reportResource.hasValue() ? this.reportResource.value() : null;
+    if (!id || !report) return undefined;
+    const target = this.viewingVersion() ?? report.latestVersionNumber;
+    return target != null ? `/api/reports/${id}/versions/${target}` : undefined;
+  });
 
-  ngOnInit(): void {
-    this.filterApi.operators().subscribe((catalogue) => this.catalogue.set(catalogue));
+  protected readonly report = computed(() =>
+    this.reportResource.hasValue() ? this.reportResource.value() : null,
+  );
+  protected readonly versions = this.versionsResource.value;
+  protected readonly content = computed(() =>
+    this.contentResource.hasValue() ? this.contentResource.value() : null,
+  );
+  protected readonly loading = computed(
+    () =>
+      !this.reportId() ||
+      this.reportResource.isLoading() ||
+      this.versionsResource.isLoading() ||
+      this.contentResource.isLoading(),
+  );
+  protected readonly notFound = computed(
+    () => this.reportResource.error() != null || this.versionsResource.error() != null,
+  );
 
-    this.route.paramMap.subscribe((params) => {
-      const reportId = params.get('reportId');
-      if (!reportId) return;
+  constructor() {
+    this.filterApi
+      .operators()
+      .pipe(takeUntilDestroyed())
+      .subscribe((catalogue) => this.catalogue.set(catalogue));
 
-      this.reportId = reportId;
-      const versionParam = params.get('versionNumber');
-      this.viewingVersion.set(versionParam ? Number(versionParam) : null);
-      this.load();
-    });
-  }
-
-  private load(): void {
-    this.loading.set(true);
-    this.notFound.set(false);
-
-    forkJoin({
-      report: this.reportApi.get(this.reportId),
-      versions: this.reportApi.getVersions(this.reportId),
-    }).subscribe({
-      next: ({ report, versions }) => {
-        this.report.set(report);
-        this.versions.set(versions);
-
-        const target = this.viewingVersion() ?? report.latestVersionNumber;
-        if (target === null) {
-          this.content.set(null);
-          this.viewFilters.set(null);
-          this.loading.set(false);
-          return;
-        }
-
-        this.reportApi.getVersion(this.reportId, target).subscribe((content) => {
-          this.content.set(content);
-          // Session filters start from what this version publishes, so switching
-          // versions drops any narrowing the reader had applied to the last one.
-          this.viewFilters.set(
-            new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly()),
-          );
-          this.openFilterKey.set(null);
-          this.loadSchemas(content);
-          this.loading.set(false);
-        });
-      },
-      error: () => {
-        this.notFound.set(true);
-        this.loading.set(false);
-      },
+    // A new published version to show means fresh session filters (dropping any the reader had
+    // applied) and a fresh set of schemas to name its columns.
+    effect(() => {
+      const content = this.contentResource.hasValue() ? this.contentResource.value() : null;
+      untracked(() => {
+        this.viewFilters.set(
+          content
+            ? new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly())
+            : null,
+        );
+        this.openFilterKey.set(null);
+        if (content) this.loadSchemas(content);
+      });
     });
   }
 
@@ -144,17 +148,19 @@ export class ReportViewerComponent implements OnInit {
 
   /** Checks out a draft — from a specific version when restoring, otherwise from latest — then edits it. */
   protected edit(fromVersion?: number): void {
-    this.reportApi.checkout(this.reportId, fromVersion).subscribe(() => {
-      this.router.navigate(['/reports', this.reportId, 'edit']);
+    const id = this.reportId();
+    if (!id) return;
+    this.reportApi.checkout(id, fromVersion).subscribe(() => {
+      this.router.navigate(['/reports', id, 'edit']);
     });
   }
 
   protected viewVersion(versionNumber: number): void {
-    this.router.navigate(['/reports', this.reportId, 'versions', versionNumber]);
+    this.router.navigate(['/reports', this.reportId(), 'versions', versionNumber]);
   }
 
   protected viewLatest(): void {
-    this.router.navigate(['/reports', this.reportId]);
+    this.router.navigate(['/reports', this.reportId()]);
   }
 
   /** Plain-text summary for the compact version-history list, stripped of the notes' HTML. */

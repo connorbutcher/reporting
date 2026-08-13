@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Reporting/Reporting.sqlproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>

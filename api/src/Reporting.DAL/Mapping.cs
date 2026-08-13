@@ -15,21 +15,22 @@ public static class Mapping
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
+    /// <summary>Assumes <see cref="Folder.ParentFolder"/> is loaded, so the parent's RefId can be exposed.</summary>
     public static FolderDto ToDto(this Folder folder) => new()
     {
-        Id = folder.Id,
+        Id = folder.RefId,
         Name = folder.Name,
-        ParentFolderId = folder.ParentFolderId,
+        ParentFolderId = folder.ParentFolder?.RefId,
         ModifiedAt = folder.UpdatedAt
     };
 
-    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
+    /// <summary>Assumes <see cref="Report.Revisions"/> and <see cref="Report.Folder"/> are loaded.</summary>
     public static ReportSummaryDto ToSummaryDto(this Report report) => new()
     {
-        Id = report.Id,
+        Id = report.RefId,
         Number = report.Number,
         Name = report.Name,
-        FolderId = report.FolderId,
+        FolderId = report.Folder?.RefId,
         HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
         LatestVersionNumber = report.Revisions
             .Where(r => r.Kind == RevisionKind.Published)
@@ -42,7 +43,7 @@ public static class Mapping
     /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
     public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath) => new()
     {
-        Id = report.Id,
+        Id = report.RefId,
         Number = report.Number,
         Name = report.Name,
         HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
@@ -57,7 +58,7 @@ public static class Mapping
 
     public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()
     {
-        ReportId = report.Id,
+        ReportId = report.RefId,
         Name = report.Name,
         Columns = revision.Columns,
         Rows = revision.Rows,
@@ -95,7 +96,7 @@ public static class Mapping
 
     public static WidgetDto ToDto(this Widget widget) => new()
     {
-        Id = widget.Id,
+        Id = widget.RefId,
         Type = widget.Type,
         X = widget.X,
         Y = widget.Y,
@@ -106,7 +107,7 @@ public static class Mapping
 
     public static void ApplyTo(this WidgetDto dto, Widget widget)
     {
-        widget.Id = dto.Id;
+        widget.RefId = dto.Id;
         widget.Type = dto.Type;
         widget.X = dto.X;
         widget.Y = dto.Y;
@@ -117,20 +118,20 @@ public static class Mapping
 
     public static DatasetSummaryDto ToSummaryDto(this Dataset dataset) => new()
     {
-        Id = dataset.Id,
+        Id = dataset.RefId,
         Name = dataset.Name
     };
 
     public static DatasetSchemaDto ToSchemaDto(this Dataset dataset) => new()
     {
-        Id = dataset.Id,
+        Id = dataset.RefId,
         Name = dataset.Name,
         Columns = dataset.Columns.OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
     };
 
     public static DatasetColumnDto ToDto(this DatasetColumn column) => new()
     {
-        Id = column.Id,
+        Id = column.RefId,
         Name = column.Name,
         Type = column.Type,
         Order = column.Order,
@@ -141,21 +142,26 @@ public static class Mapping
         BuildDataDto(dataset, dataset.Rows);
 
     /// <summary>The same shape as <see cref="ToDataDto"/> but over an already-narrowed row set.</summary>
-    public static DatasetDataDto BuildDataDto(Dataset dataset, IEnumerable<DatasetRow> rows) => new()
+    public static DatasetDataDto BuildDataDto(Dataset dataset, IEnumerable<DatasetRow> rows)
     {
-        Id = dataset.Id,
-        Name = dataset.Name,
-        Rows = rows.Select(r => r.ToDto()).ToList()
-    };
+        var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+        return new()
+        {
+            Id = dataset.RefId,
+            Name = dataset.Name,
+            Rows = rows.Select(r => r.ToDto(columnRefById)).ToList()
+        };
+    }
 
-    /// <summary>Assumes <see cref="DatasetRow.Cells"/> is loaded.</summary>
-    public static DatasetRowDto ToDto(this DatasetRow row) => new()
+    /// <summary>Assumes <see cref="DatasetRow.Cells"/> is loaded. Cells are keyed by their column's
+    /// stable RefId, resolved via <paramref name="columnRefById"/> (column int id → RefId).</summary>
+    public static DatasetRowDto ToDto(this DatasetRow row, IReadOnlyDictionary<int, Guid> columnRefById) => new()
     {
-        Id = row.Id,
+        Id = row.RefId,
         // Cells with no text carry no information the client can use, and leaving
         // them out keeps the payload identical to the old JSON-blob shape.
         Values = row.Cells
-            .Where(c => c.StringValue is not null)
-            .ToDictionary(c => c.ColumnId, c => c.StringValue!)
+            .Where(c => c.StringValue is not null && columnRefById.ContainsKey(c.ColumnId))
+            .ToDictionary(c => columnRefById[c.ColumnId], c => c.StringValue!)
     };
 }

@@ -8,10 +8,13 @@ namespace Reporting.Database;
 /// </summary>
 public class DatasetCell
 {
-    public Guid Id { get; set; }
-    public Guid RowId { get; set; }
+    public int Id { get; set; }
+    public int RowId { get; set; }
     public DatasetRow? Row { get; set; }
-    public Guid ColumnId { get; set; }
+
+    /// <summary>References <see cref="DatasetColumn.Id"/>. A loose reference (no FK) so the only
+    /// cascade into cells is via the row, matching how columns are torn down explicitly.</summary>
+    public int ColumnId { get; set; }
 
     /// <summary>The raw text as entered; also what string operators match against.</summary>
     public string? StringValue { get; set; }

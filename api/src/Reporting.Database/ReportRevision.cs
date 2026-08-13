@@ -14,8 +14,12 @@ public enum RevisionKind
 /// </summary>
 public class ReportRevision
 {
-    public Guid Id { get; set; }
-    public Guid ReportId { get; set; }
+    public int Id { get; set; }
+
+    /// <summary>Stable external/reference id. A revision is a distinct version, so this is unique per revision.</summary>
+    public Guid RefId { get; set; }
+
+    public int ReportId { get; set; }
     public Report? Report { get; set; }
     public RevisionKind Kind { get; set; }
     public int? VersionNumber { get; set; }

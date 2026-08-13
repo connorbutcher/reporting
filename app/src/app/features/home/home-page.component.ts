@@ -1,5 +1,6 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +12,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TableModule } from 'primeng/table';
 import { TreeModule, TreeNodeSelectEvent } from 'primeng/tree';
-import { Subject, debounceTime, distinctUntilChanged, forkJoin, of, switchMap } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { Folder } from '../../core/models/folder.model';
@@ -49,11 +50,37 @@ export class HomePageComponent implements OnInit {
 
   /** null means the root folder. */
   protected readonly selectedFolderId = signal<string | null>(null);
-  protected readonly folderPath = signal<Folder[]>([]);
 
-  protected readonly contentFolders = signal<Folder[]>([]);
-  protected readonly contentReports = signal<ReportSummary[]>([]);
-  protected readonly contentsLoading = signal(true);
+  // Contents and breadcrumb refetch automatically whenever the selected folder changes.
+  private readonly foldersResource = httpResource<Folder[]>(
+    () => {
+      const id = this.selectedFolderId();
+      const params: Record<string, string> = {};
+      if (id) params['parentId'] = id;
+      return { url: '/api/folders/children', params };
+    },
+    { defaultValue: [] },
+  );
+  private readonly reportsResource = httpResource<ReportSummary[]>(
+    () => {
+      const id = this.selectedFolderId();
+      const params: Record<string, string> = {};
+      if (id) params['folderId'] = id;
+      return { url: '/api/reports', params };
+    },
+    { defaultValue: [] },
+  );
+  private readonly pathResource = httpResource<Folder[]>(
+    () => (this.selectedFolderId() ? `/api/folders/${this.selectedFolderId()}/path` : undefined),
+    { defaultValue: [] },
+  );
+
+  protected readonly contentFolders = this.foldersResource.value;
+  protected readonly contentReports = this.reportsResource.value;
+  protected readonly folderPath = this.pathResource.value;
+  protected readonly contentsLoading = computed(
+    () => this.foldersResource.isLoading() || this.reportsResource.isLoading(),
+  );
   protected readonly treeLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
 
@@ -123,13 +150,17 @@ export class HomePageComponent implements OnInit {
         this.searchResults.set(results);
         this.searching.set(false);
       });
+
+    // Fold each contents fetch into the tree so an expanded node stays in step with the table.
+    effect(() => {
+      const folders = this.foldersResource.value();
+      untracked(() => this.tree.merge(this.selectedFolderId() ?? ROOT_KEY, folders));
+    });
   }
 
   ngOnInit(): void {
     this.treeLoading.set(true);
     this.tree.fetchChildren(null, ROOT_KEY).add(() => this.treeLoading.set(false));
-
-    this.selectFolder(null);
   }
 
   // --- selection & content loading ---------------------------------------
@@ -139,35 +170,14 @@ export class HomePageComponent implements OnInit {
     this.selectFolder(key === ROOT_KEY || !key ? null : key);
   }
 
+  /** Changing the selection is enough — the contents, breadcrumb, and tree merge all react to it. */
   protected selectFolder(id: string | null): void {
     this.selectedFolderId.set(id);
-    this.loadContents(id);
-    this.loadPath(id);
-  }
-
-  private loadContents(folderId: string | null): void {
-    this.contentsLoading.set(true);
-    forkJoin({
-      folders: this.folderApi.children(folderId),
-      reports: this.reportApi.list(folderId),
-    }).subscribe(({ folders, reports }) => {
-      this.contentFolders.set(folders);
-      this.contentReports.set(reports);
-      this.contentsLoading.set(false);
-      this.tree.merge(folderId ?? ROOT_KEY, folders);
-    });
-  }
-
-  private loadPath(folderId: string | null): void {
-    if (folderId === null) {
-      this.folderPath.set([]);
-      return;
-    }
-    this.folderApi.path(folderId).subscribe((path) => this.folderPath.set(path));
   }
 
   private reload(): void {
-    this.loadContents(this.selectedFolderId());
+    this.foldersResource.reload();
+    this.reportsResource.reload();
   }
 
   // --- search -------------------------------------------------------------

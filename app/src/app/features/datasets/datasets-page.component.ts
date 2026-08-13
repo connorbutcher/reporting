@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -13,14 +13,10 @@ import { DatasetsStore } from './datasets.store';
   styleUrl: './datasets-page.component.scss',
   providers: [DatasetsStore],
 })
-export class DatasetsPageComponent implements OnInit {
+export class DatasetsPageComponent {
   protected readonly store = inject(DatasetsStore);
 
   protected readonly newDatasetName = signal('');
-
-  ngOnInit(): void {
-    this.store.loadDatasets();
-  }
 
   protected createDataset(): void {
     const name = this.newDatasetName().trim();

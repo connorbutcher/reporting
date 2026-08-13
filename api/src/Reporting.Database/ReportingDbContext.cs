@@ -19,6 +19,16 @@ public class ReportingDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Every entity keeps a stable Guid RefId as its external/logical key, unique so it can be
+        // looked up like the old primary key. Widget is the exception (handled below): its RefId is
+        // preserved across version copies, so it repeats and is only unique within a revision.
+        modelBuilder.Entity<Folder>().HasIndex(f => f.RefId).IsUnique();
+        modelBuilder.Entity<Report>().HasIndex(r => r.RefId).IsUnique();
+        modelBuilder.Entity<ReportRevision>().HasIndex(rv => rv.RefId).IsUnique();
+        modelBuilder.Entity<Dataset>().HasIndex(d => d.RefId).IsUnique();
+        modelBuilder.Entity<DatasetColumn>().HasIndex(c => c.RefId).IsUnique();
+        modelBuilder.Entity<DatasetRow>().HasIndex(r => r.RefId).IsUnique();
+
         modelBuilder.Entity<Folder>()
             .HasOne(f => f.ParentFolder)
             .WithMany()
@@ -62,6 +72,12 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<Widget>()
             .Property(w => w.Type)
             .HasConversion<string>();
+
+        // A widget's RefId is stable across versions, so it repeats across revisions of a report —
+        // unique only within a single revision, which is all the client's per-revision diff needs.
+        modelBuilder.Entity<Widget>()
+            .HasIndex(w => new { w.ReportRevisionId, w.RefId })
+            .IsUnique();
 
         modelBuilder.Entity<Dataset>()
             .HasMany(d => d.Columns)
