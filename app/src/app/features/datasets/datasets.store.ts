@@ -1,10 +1,12 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { httpResource } from '@angular/common/http';
+import { Injectable, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import {
   DatasetColumn,
   DatasetColumnType,
+  DatasetData,
   DatasetRow,
+  DatasetSchema,
   DatasetSummary,
 } from '../../core/models/dataset.model';
 
@@ -17,45 +19,56 @@ import {
 export class DatasetsStore {
   private readonly api = inject(DatasetApiService);
 
-  readonly datasets = signal<DatasetSummary[]>([]);
+  private readonly datasetsResource = httpResource<DatasetSummary[]>(() => '/api/datasets', {
+    defaultValue: [],
+  });
+  readonly datasets = this.datasetsResource.value;
+
   readonly selectedId = signal<string | null>(null);
-  readonly columns = signal<DatasetColumn[]>([]);
-  readonly rows = signal<DatasetRow[]>([]);
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
 
   readonly selected = computed(
     () => this.datasets().find((d) => d.id === this.selectedId()) ?? null,
   );
 
-  loadDatasets(selectId?: string): void {
-    this.api.list().subscribe({
-      next: (datasets) => {
-        this.datasets.set(datasets);
-        const next = selectId ?? this.selectedId() ?? datasets[0]?.id ?? null;
-        if (next && datasets.some((d) => d.id === next)) this.select(next);
-        else this.selectedId.set(null);
-      },
-      error: () => this.error.set('Could not load datasets.'),
+  // The selected dataset's schema and rows refetch automatically whenever the selection changes.
+  private readonly schemaResource = httpResource<DatasetSchema>(() =>
+    this.selectedId() ? `/api/datasets/${this.selectedId()}/schema` : undefined,
+  );
+  private readonly dataResource = httpResource<DatasetData>(() =>
+    this.selectedId() ? `/api/datasets/${this.selectedId()}/data` : undefined,
+  );
+
+  // Seeded from the server but locally writable, so edits appear immediately and reset to the
+  // server's copy when the selection reloads. hasValue() guards the read — value() throws while a
+  // resource is loading or errored.
+  readonly columns = linkedSignal(() =>
+    this.schemaResource.hasValue() ? this.schemaResource.value().columns : [],
+  );
+  readonly rows = linkedSignal(() =>
+    this.dataResource.hasValue() ? this.dataResource.value().rows : [],
+  );
+
+  readonly loading = computed(
+    () => this.schemaResource.isLoading() || this.dataResource.isLoading(),
+  );
+  readonly error = computed(() => {
+    if (this.datasetsResource.error()) return 'Could not load datasets.';
+    if (this.schemaResource.error() || this.dataResource.error()) return 'Could not load that dataset.';
+    return null;
+  });
+
+  constructor() {
+    // Default to the first dataset once the list arrives; never override a live selection.
+    effect(() => {
+      const list = this.datasets();
+      untracked(() => {
+        if (this.selectedId() === null && list.length) this.selectedId.set(list[0].id);
+      });
     });
   }
 
   select(id: string): void {
     this.selectedId.set(id);
-    this.loading.set(true);
-    this.error.set(null);
-
-    forkJoin({ schema: this.api.getSchema(id), data: this.api.getData(id) }).subscribe({
-      next: ({ schema, data }) => {
-        this.columns.set(schema.columns);
-        this.rows.set(data.rows);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Could not load that dataset.');
-        this.loading.set(false);
-      },
-    });
   }
 
   // --- datasets -------------------------------------------------------------
@@ -63,13 +76,16 @@ export class DatasetsStore {
   createDataset(name: string): void {
     const trimmed = name.trim();
     if (!trimmed) return;
-    this.api.create(trimmed).subscribe((dataset) => this.loadDatasets(dataset.id));
+    this.api.create(trimmed).subscribe((dataset) => {
+      this.selectedId.set(dataset.id);
+      this.datasetsResource.reload();
+    });
   }
 
   renameDataset(name: string): void {
     const id = this.selectedId();
     if (!id || !name.trim()) return;
-    this.api.rename(id, name.trim()).subscribe(() => this.loadDatasets(id));
+    this.api.rename(id, name.trim()).subscribe(() => this.datasetsResource.reload());
   }
 
   deleteDataset(): void {
@@ -78,9 +94,7 @@ export class DatasetsStore {
 
     this.api.remove(id).subscribe(() => {
       this.selectedId.set(null);
-      this.columns.set([]);
-      this.rows.set([]);
-      this.loadDatasets();
+      this.datasetsResource.reload();
     });
   }
 

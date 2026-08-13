@@ -18,11 +18,6 @@ export class FolderApiService {
     return this.http.get<Folder[]>('/api/folders/children', { params });
   }
 
-  /** The chain of ancestors from the root down to `id`, for a breadcrumb without the whole tree. */
-  path(id: string): Observable<Folder[]> {
-    return this.http.get<Folder[]>(`/api/folders/${id}/path`);
-  }
-
   create(name: string, parentFolderId: string | null): Observable<Folder> {
     return this.http.post<Folder>('/api/folders', { name, parentFolderId });
   }
