@@ -93,7 +93,9 @@ public static class FilterTranslator
             throw new FilterException($"'{descriptor.Label}' on '{column.Name}' needs {descriptor.OperandCount} value(s).");
         }
 
-        var id = condition.ColumnId;
+        // Cells store the column's int id; the client addressed the column by its RefId, so match
+        // against the resolved column's primary key.
+        var id = column.Id;
 
         // Presence checks are type-independent and read off the text form.
         switch (condition.Operator)
@@ -114,7 +116,7 @@ public static class FilterTranslator
     }
 
     private static Expression<Func<DatasetRow, bool>> Number(
-        Guid id,
+        int id,
         DatasetColumn column,
         FilterOperator op,
         List<string> values)
@@ -134,14 +136,14 @@ public static class FilterTranslator
         };
     }
 
-    private static Expression<Func<DatasetRow, bool>> BetweenNumber(Guid id, double from, double to)
+    private static Expression<Func<DatasetRow, bool>> BetweenNumber(int id, double from, double to)
     {
         // Tolerate the bounds being entered either way round.
         var (low, high) = from <= to ? (from, to) : (to, from);
         return r => r.Cells.Any(c => c.ColumnId == id && c.NumberValue >= low && c.NumberValue <= high);
     }
 
-    private static Expression<Func<DatasetRow, bool>> Bool(Guid id, FilterOperator op) => op switch
+    private static Expression<Func<DatasetRow, bool>> Bool(int id, FilterOperator op) => op switch
     {
         FilterOperator.IsTrue => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == true),
         FilterOperator.IsFalse => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == false),
@@ -149,7 +151,7 @@ public static class FilterTranslator
     };
 
     private static Expression<Func<DatasetRow, bool>> Date(
-        Guid id,
+        int id,
         DatasetColumn column,
         FilterOperator op,
         List<string> values)
@@ -186,7 +188,7 @@ public static class FilterTranslator
         };
     }
 
-    private static Expression<Func<DatasetRow, bool>> OnDay(Guid id, DateTime day, bool negate)
+    private static Expression<Func<DatasetRow, bool>> OnDay(int id, DateTime day, bool negate)
     {
         var start = day.Date;
         var end = start.AddDays(1);
@@ -195,7 +197,7 @@ public static class FilterTranslator
             : r => r.Cells.Any(c => c.ColumnId == id && c.DateValue >= start && c.DateValue < end);
     }
 
-    private static Expression<Func<DatasetRow, bool>> BetweenDate(Guid id, DateTime from, DateTime to)
+    private static Expression<Func<DatasetRow, bool>> BetweenDate(int id, DateTime from, DateTime to)
     {
         var (low, high) = from <= to ? (from, to) : (to, from);
         // The upper bound is inclusive of the whole day the user picked.
@@ -204,7 +206,7 @@ public static class FilterTranslator
         return r => r.Cells.Any(c => c.ColumnId == id && c.DateValue >= start && c.DateValue < end);
     }
 
-    private static Expression<Func<DatasetRow, bool>> Text(Guid id, FilterOperator op, List<string> values)
+    private static Expression<Func<DatasetRow, bool>> Text(int id, FilterOperator op, List<string> values)
     {
         var raw = values.ElementAtOrDefault(0) ?? string.Empty;
 

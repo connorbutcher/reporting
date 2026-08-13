@@ -64,10 +64,11 @@ public static class CellValues
         }
     }
 
-    /// <summary>A new cell for the given row/column, with its typed fields already filled.</summary>
-    public static DatasetCell Create(Guid rowId, Guid columnId, string? raw, DatasetColumnType type)
+    /// <summary>A new cell for the given column, with its typed fields already filled. The caller
+    /// attaches it to its row (via <c>row.Cells.Add</c>), which sets the row FK.</summary>
+    public static DatasetCell Create(int columnId, string? raw, DatasetColumnType type)
     {
-        var cell = new DatasetCell { Id = Guid.NewGuid(), RowId = rowId, ColumnId = columnId };
+        var cell = new DatasetCell { ColumnId = columnId };
         Apply(cell, raw, type);
         return cell;
     }

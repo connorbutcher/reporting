@@ -19,7 +19,7 @@ public class DatasetRepository(ReportingDbContext db)
     {
         var dataset = await db.Datasets
             .Include(d => d.Columns)
-            .FirstOrDefaultAsync(d => d.Id == id);
+            .FirstOrDefaultAsync(d => d.RefId == id);
         return dataset?.ToSchemaDto();
     }
 
@@ -30,21 +30,24 @@ public class DatasetRepository(ReportingDbContext db)
     /// </summary>
     public async Task<DatasetQueryResultDto?> QueryAsync(Guid id, FilterGroupDto? filter)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
-        var predicate = FilterTranslator.Build(filter, dataset.Columns.ToDictionary(c => c.Id));
+        // The client references columns by their RefId, so the translator is keyed that way and
+        // resolves each to the column's int id for the cell comparison.
+        var predicate = FilterTranslator.Build(filter, dataset.Columns.ToDictionary(c => c.RefId));
 
-        var all = db.DatasetRows.Where(r => r.DatasetId == id);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
 
         var rows = await matching.Include(r => r.Cells).ToListAsync();
+        var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
 
         return new DatasetQueryResultDto
         {
-            Id = dataset.Id,
+            Id = dataset.RefId,
             Name = dataset.Name,
-            Rows = rows.Select(r => r.ToDto()).ToList(),
+            Rows = rows.Select(r => r.ToDto(columnRefById)).ToList(),
             TotalRowCount = await all.CountAsync(),
             MatchedRowCount = rows.Count
         };
@@ -58,7 +61,7 @@ public class DatasetRepository(ReportingDbContext db)
             throw new DataValidationException("Column configuration must be a JSON object.");
         }
 
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.Id == columnId && c.DatasetId == id);
+        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.RefId == id);
         if (column is null) return null;
 
         column.ConfigurationJson = configuration.ValueKind == JsonValueKind.Object
@@ -72,7 +75,7 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetSummaryDto> CreateAsync(string name)
     {
-        var dataset = new Dataset { Id = Guid.NewGuid(), Name = name };
+        var dataset = new Dataset { RefId = Guid.NewGuid(), Name = name };
         db.Datasets.Add(dataset);
         await db.SaveChangesAsync();
         return dataset.ToSummaryDto();
@@ -80,7 +83,7 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetSummaryDto?> RenameAsync(Guid id, string name)
     {
-        var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
         dataset.Name = name;
@@ -90,7 +93,7 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return false;
 
         // Columns and rows cascade; widgets pointing here are reported as an
@@ -104,30 +107,25 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetColumnDto?> AddColumnAsync(Guid id, string name, DatasetColumnType type)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
         var column = new DatasetColumn
         {
-            Id = Guid.NewGuid(),
-            DatasetId = id,
+            RefId = Guid.NewGuid(),
             Name = name,
             Type = type,
             Order = dataset.Columns.Count == 0 ? 0 : dataset.Columns.Max(c => c.Order) + 1,
         };
 
         dataset.Columns.Add(column);
-        // The id is generated here, so change detection would otherwise read
-        // this as an existing row and emit an UPDATE that matches nothing.
-        db.Entry(column).State = EntityState.Added;
-
         await db.SaveChangesAsync();
         return column.ToDto();
     }
 
     public async Task<DatasetColumnDto?> UpdateColumnAsync(Guid id, Guid columnId, string name, DatasetColumnType type)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.Id == columnId && c.DatasetId == id);
+        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.RefId == id);
         if (column is null) return null;
 
         var typeChanged = column.Type != type;
@@ -138,7 +136,7 @@ public class DatasetRepository(ReportingDbContext db)
         {
             // The typed fields were parsed under the old type, so they're now wrong;
             // re-derive them from the text each cell still carries.
-            var cells = await db.DatasetCells.Where(c => c.ColumnId == columnId).ToListAsync();
+            var cells = await db.DatasetCells.Where(c => c.ColumnId == column.Id).ToListAsync();
             foreach (var cell in cells) CellValues.Apply(cell, cell.StringValue, type);
         }
 
@@ -148,14 +146,14 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<bool> DeleteColumnAsync(Guid id, Guid columnId)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.Id == columnId && c.DatasetId == id);
+        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.RefId == id);
         if (column is null) return false;
 
         db.DatasetColumns.Remove(column);
 
         // Cells reference the column by id without a FK, so clear them explicitly
         // rather than leaving rows carrying values for a column that's gone.
-        var cells = await db.DatasetCells.Where(c => c.ColumnId == columnId).ToListAsync();
+        var cells = await db.DatasetCells.Where(c => c.ColumnId == column.Id).ToListAsync();
         db.DatasetCells.RemoveRange(cells);
 
         await db.SaveChangesAsync();
@@ -164,12 +162,12 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetSchemaDto?> ReorderColumnsAsync(Guid id, List<Guid> columnIds)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
         for (var i = 0; i < columnIds.Count; i++)
         {
-            var column = dataset.Columns.FirstOrDefault(c => c.Id == columnIds[i]);
+            var column = dataset.Columns.FirstOrDefault(c => c.RefId == columnIds[i]);
             if (column is not null) column.Order = i;
         }
 

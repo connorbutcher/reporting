@@ -10,42 +10,43 @@ public class DatasetRowRepository(ReportingDbContext db)
     public async Task<DatasetDataDto?> GetDataAsync(Guid id)
     {
         var dataset = await db.Datasets
+            .Include(d => d.Columns)
             .Include(d => d.Rows).ThenInclude(r => r.Cells)
-            .FirstOrDefaultAsync(d => d.Id == id);
+            .FirstOrDefaultAsync(d => d.RefId == id);
         return dataset?.ToDataDto();
     }
 
     public async Task<DatasetRowDto?> AddRowAsync(Guid id, Dictionary<Guid, string> values)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
-        var row = new DatasetRow { Id = Guid.NewGuid(), DatasetId = id };
+        var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
         ApplyValues(dataset, row, values);
 
         db.DatasetRows.Add(row);
         await db.SaveChangesAsync();
-        return row.ToDto();
+        return row.ToDto(ColumnRefMap(dataset));
     }
 
     public async Task<DatasetRowDto?> UpdateRowAsync(Guid id, Guid rowId, Dictionary<Guid, string> values)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
         var row = await db.DatasetRows
             .Include(r => r.Cells)
-            .FirstOrDefaultAsync(r => r.Id == rowId && r.DatasetId == id);
+            .FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.RefId == id);
         if (row is null) return null;
 
         ApplyValues(dataset, row, values);
         await db.SaveChangesAsync();
-        return row.ToDto();
+        return row.ToDto(ColumnRefMap(dataset));
     }
 
     public async Task<bool> DeleteRowAsync(Guid id, Guid rowId)
     {
-        var row = await db.DatasetRows.FirstOrDefaultAsync(r => r.Id == rowId && r.DatasetId == id);
+        var row = await db.DatasetRows.FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.RefId == id);
         if (row is null) return false;
 
         db.DatasetRows.Remove(row);
@@ -53,28 +54,27 @@ public class DatasetRowRepository(ReportingDbContext db)
         return true;
     }
 
+    private static IReadOnlyDictionary<int, Guid> ColumnRefMap(Dataset dataset) =>
+        dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+
     /// <summary>
     /// Rewrites a row's cells from the submitted values, parsing each against its
     /// column's type. Values for columns the dataset doesn't have are ignored, so
-    /// stale keys never accumulate.
+    /// stale keys never accumulate. Values are keyed by column RefId.
     /// </summary>
     private void ApplyValues(Dataset dataset, DatasetRow row, Dictionary<Guid, string> values)
     {
-        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
-        foreach (var (columnId, raw) in values)
+        foreach (var (columnRef, raw) in values)
         {
-            if (!columnsById.TryGetValue(columnId, out var column)) continue;
+            if (!columnsByRef.TryGetValue(columnRef, out var column)) continue;
 
-            var cell = row.Cells.FirstOrDefault(c => c.ColumnId == columnId);
+            var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id);
             if (cell is null)
             {
-                cell = CellValues.Create(row.Id, columnId, raw, column.Type);
+                cell = CellValues.Create(column.Id, raw, column.Type);
                 row.Cells.Add(cell);
-
-                // Cell ids are generated here, so change detection would otherwise read
-                // this as an existing row and emit an UPDATE that matches nothing.
-                db.Entry(cell).State = EntityState.Added;
             }
             else
             {
@@ -83,8 +83,11 @@ public class DatasetRowRepository(ReportingDbContext db)
         }
 
         // A value the client omitted means the cell was cleared.
-        var submitted = values.Keys.ToHashSet();
-        var dropped = row.Cells.Where(c => !submitted.Contains(c.ColumnId)).ToList();
+        var submittedPks = values.Keys
+            .Where(columnsByRef.ContainsKey)
+            .Select(k => columnsByRef[k].Id)
+            .ToHashSet();
+        var dropped = row.Cells.Where(c => !submittedPks.Contains(c.ColumnId)).ToList();
         foreach (var cell in dropped)
         {
             row.Cells.Remove(cell);

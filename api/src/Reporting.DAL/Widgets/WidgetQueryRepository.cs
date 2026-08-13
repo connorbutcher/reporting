@@ -16,19 +16,21 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     public async Task<TableQueryResultDto?> QueryForTableAsync(Guid id, TableQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
-        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsById);
+        // Keyed by RefId: the client references columns by their stable RefId, and the translator
+        // resolves each to the column's int id for cell comparisons.
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
 
-        var all = db.DatasetRows.Where(r => r.DatasetId == id);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
 
         var totalRowCount = await all.CountAsync();
         var matchedRowCount = await matching.CountAsync();
 
-        var sortColumn = dto.SortColumnId is { } sortId ? columnsById.GetValueOrDefault(sortId) : null;
+        var sortColumn = dto.SortColumnId is { } sortId ? columnsByRef.GetValueOrDefault(sortId) : null;
         var ordered = ApplySort(matching, sortColumn, dto.SortDirection);
 
         var skip = Math.Max(0, dto.Skip);
@@ -53,9 +55,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             var cells = new Dictionary<Guid, TableCellDto>();
             foreach (var setting in dto.Columns)
             {
-                if (!columnsById.TryGetValue(setting.ColumnId, out var column)) continue;
+                if (!columnsByRef.TryGetValue(setting.ColumnId, out var column)) continue;
 
-                var cell = row.Cells.FirstOrDefault(c => c.ColumnId == setting.ColumnId);
+                var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id);
                 var configuration = JsonSerializer.Deserialize<JsonElement>(column.ConfigurationJson);
                 var display = cell is null ? null : CellFormatter.Format(cell, column.Type, configuration);
 
@@ -69,12 +71,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
                 cells[setting.ColumnId] = new TableCellDto { DisplayValue = display, Tolerance = status };
             }
-            return new TableRowResultDto { Id = row.Id, Cells = cells };
+            return new TableRowResultDto { Id = row.RefId, Cells = cells };
         }).ToList();
 
         return new TableQueryResultDto
         {
-            Id = dataset.Id,
+            Id = dataset.RefId,
             Name = dataset.Name,
             Rows = resultRows,
             TotalRowCount = totalRowCount,
@@ -116,17 +118,20 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     public async Task<ChartQueryResultDto?> QueryForChartAsync(Guid id, ChartQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
         if (dataset is null) return null;
 
-        var columnsById = dataset.Columns.ToDictionary(c => c.Id);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsById);
+        // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
 
-        var all = db.DatasetRows.Where(r => r.DatasetId == id);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
 
-        var xId = dto.XColumnId;
-        var yId = dto.YColumnId;
+        // Resolve the axis columns to their int ids; a missing column yields a sentinel that
+        // matches no cell, so the chart is simply empty (as before).
+        var xId = columnsByRef.GetValueOrDefault(dto.XColumnId)?.Id ?? 0;
+        var yId = columnsByRef.GetValueOrDefault(dto.YColumnId)?.Id ?? 0;
 
         // Points need a real x and y; anything missing either is dropped, same
         // as the client's old Number.isFinite check.
@@ -136,9 +141,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         var rows = await plottable.Include(r => r.Cells).ToListAsync();
 
-        var seriesColumn = dto.SeriesColumnId is { } seriesId ? columnsById.GetValueOrDefault(seriesId) : null;
+        var seriesColumn = dto.SeriesColumnId is { } seriesId ? columnsByRef.GetValueOrDefault(seriesId) : null;
         var tooltipColumns = dto.TooltipColumns
-            .Select(tc => (Setting: tc, Column: columnsById.GetValueOrDefault(tc.ColumnId)))
+            .Select(tc => (Setting: tc, Column: columnsByRef.GetValueOrDefault(tc.ColumnId)))
             .Where(p => p.Column is not null)
             .ToList();
 
@@ -201,7 +206,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         return new ChartQueryResultDto
         {
-            Id = dataset.Id,
+            Id = dataset.RefId,
             Name = dataset.Name,
             // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op for scatter.
             Series = groups.Select(g => new ChartSeriesDto { Label = g.Key, Points = g.Value.OrderBy(p => p.X).ToList() }).ToList(),

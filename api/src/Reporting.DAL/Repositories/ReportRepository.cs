@@ -7,12 +7,20 @@ namespace Reporting.DAL.Repositories;
 /// <summary>All querying and persistence for reports, their published versions, and the checked-out draft.</summary>
 public class ReportRepository(ReportingDbContext db)
 {
-    /// <summary>Reports directly inside <paramref name="folderId"/> (root if null) — not the whole tree.</summary>
-    public async Task<List<ReportSummaryDto>> GetAllAsync(Guid? folderId)
+    /// <summary>Reports directly inside <paramref name="folderRef"/> (root if null) — not the whole tree.</summary>
+    public async Task<List<ReportSummaryDto>> GetAllAsync(Guid? folderRef)
     {
+        int? folderPk = null;
+        if (folderRef is { } fref)
+        {
+            folderPk = await db.Folders.Where(f => f.RefId == fref).Select(f => (int?)f.Id).FirstOrDefaultAsync();
+            if (folderPk is null) return [];
+        }
+
         var reports = await db.Reports
             .Include(r => r.Revisions)
-            .Where(r => r.FolderId == folderId)
+            .Include(r => r.Folder)
+            .Where(r => r.FolderId == folderPk)
             .OrderBy(r => r.Name)
             .ToListAsync();
         return reports.Select(r => r.ToSummaryDto()).ToList();
@@ -21,7 +29,11 @@ public class ReportRepository(ReportingDbContext db)
     /// <summary>Every report across every folder, flat — for building a whole-tree picker like the "copy from" report select.</summary>
     public async Task<List<ReportSummaryDto>> GetAllFlatAsync()
     {
-        var reports = await db.Reports.Include(r => r.Revisions).OrderBy(r => r.Name).ToListAsync();
+        var reports = await db.Reports
+            .Include(r => r.Revisions)
+            .Include(r => r.Folder)
+            .OrderBy(r => r.Name)
+            .ToListAsync();
         return reports.Select(r => r.ToSummaryDto()).ToList();
     }
 
@@ -55,7 +67,7 @@ public class ReportRepository(ReportingDbContext db)
         var allFolders = await db.Folders.ToListAsync();
         var foldersById = allFolders.ToDictionary(f => f.Id);
 
-        string PathFor(Guid? folderId)
+        string PathFor(int? folderId)
         {
             var segments = new List<string>();
             var current = folderId;
@@ -72,54 +84,56 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<ReportSummaryDto?> GetByIdAsync(Guid id)
     {
-        var report = await db.Reports.Include(r => r.Revisions).FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports
+            .Include(r => r.Revisions)
+            .Include(r => r.Folder)
+            .FirstOrDefaultAsync(r => r.RefId == id);
         return report?.ToSummaryDto();
     }
 
     /// <summary>
     /// Throws <see cref="DataValidationException"/> if the folder, or the source report
-    /// named by <paramref name="sourceReportId"/>, doesn't exist.
+    /// named by <paramref name="sourceReportRef"/>, doesn't exist.
     /// </summary>
-    public async Task<ReportSummaryDto> CreateAsync(string name, Guid? folderId, Guid? sourceReportId = null)
+    public async Task<ReportSummaryDto> CreateAsync(string name, Guid? folderRef, Guid? sourceReportRef = null)
     {
-        if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid))
+        Folder? folder = null;
+        if (folderRef is { } fref)
         {
-            throw new DataValidationException("Folder does not exist.");
+            folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == fref)
+                ?? throw new DataValidationException("Folder does not exist.");
         }
 
         ReportRevision? source = null;
-        if (sourceReportId is { } sid)
+        if (sourceReportRef is { } sref)
         {
-            if (!await db.Reports.AnyAsync(r => r.Id == sid))
-            {
-                throw new DataValidationException("Source report does not exist.");
-            }
+            var sourceReport = await db.Reports.FirstOrDefaultAsync(r => r.RefId == sref)
+                ?? throw new DataValidationException("Source report does not exist.");
 
             source = await db.ReportRevisions
                 .Include(rv => rv.Widgets)
-                .Where(rv => rv.ReportId == sid && rv.Kind == RevisionKind.Published)
+                .Where(rv => rv.ReportId == sourceReport.Id && rv.Kind == RevisionKind.Published)
                 .OrderByDescending(rv => rv.VersionNumber)
                 .FirstOrDefaultAsync()
                 ?? await db.ReportRevisions
                     .Include(rv => rv.Widgets)
-                    .FirstOrDefaultAsync(rv => rv.ReportId == sid && rv.Kind == RevisionKind.Draft);
+                    .FirstOrDefaultAsync(rv => rv.ReportId == sourceReport.Id && rv.Kind == RevisionKind.Draft);
         }
 
         var nextNumber = (await db.Reports.MaxAsync(r => (int?)r.Number) ?? 0) + 1;
         var now = DateTime.UtcNow;
         var report = new Report
         {
-            Id = Guid.NewGuid(),
+            RefId = Guid.NewGuid(),
             Number = nextNumber,
             Name = name,
-            FolderId = folderId,
+            Folder = folder,
             CreatedAt = now,
             UpdatedAt = now,
         };
         var draft = new ReportRevision
         {
-            Id = Guid.NewGuid(),
-            ReportId = report.Id,
+            RefId = Guid.NewGuid(),
             Kind = RevisionKind.Draft,
             CreatedAt = now,
         };
@@ -132,18 +146,24 @@ public class ReportRepository(ReportingDbContext db)
     }
 
     /// <summary>Null if <paramref name="id"/> doesn't exist. Throws <see cref="DataValidationException"/> if the folder doesn't exist.</summary>
-    public async Task<ReportSummaryDto?> UpdateAsync(Guid id, string name, Guid? folderId)
+    public async Task<ReportSummaryDto?> UpdateAsync(Guid id, string name, Guid? folderRef)
     {
-        var report = await db.Reports.Include(r => r.Revisions).FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports
+            .Include(r => r.Revisions)
+            .Include(r => r.Folder)
+            .FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
-        if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid))
+        Folder? folder = null;
+        if (folderRef is { } fref)
         {
-            throw new DataValidationException("Folder does not exist.");
+            folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == fref)
+                ?? throw new DataValidationException("Folder does not exist.");
         }
 
         report.Name = name;
-        report.FolderId = folderId;
+        report.Folder = folder;
+        report.FolderId = folder?.Id;
         report.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return report.ToSummaryDto();
@@ -151,7 +171,7 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return false;
 
         db.Reports.Remove(report);
@@ -163,10 +183,11 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<List<ReportVersionSummaryDto>?> GetVersionsAsync(Guid id)
     {
-        if (!await db.Reports.AnyAsync(r => r.Id == id)) return null;
+        var reportPk = await db.Reports.Where(r => r.RefId == id).Select(r => (int?)r.Id).FirstOrDefaultAsync();
+        if (reportPk is null) return null;
 
         var versions = await db.ReportRevisions
-            .Where(rv => rv.ReportId == id && rv.Kind == RevisionKind.Published)
+            .Where(rv => rv.ReportId == reportPk && rv.Kind == RevisionKind.Published)
             .OrderByDescending(rv => rv.VersionNumber)
             .ToListAsync();
 
@@ -175,12 +196,12 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<ReportRevisionDto?> GetVersionAsync(Guid id, int versionNumber)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
         var revision = await db.ReportRevisions
             .Include(rv => rv.Widgets)
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber);
+            .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber);
         return revision?.ToContentDto(report);
     }
 
@@ -188,12 +209,12 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<ReportRevisionDto?> GetDraftAsync(Guid id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Widgets)
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Draft);
+            .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         return draft?.ToContentDto(report);
     }
 
@@ -204,21 +225,21 @@ public class ReportRepository(ReportingDbContext db)
     /// </summary>
     public async Task<ReportRevisionDto?> CheckoutAsync(Guid id, int? fromVersionNumber)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
         var existingDraft = await db.ReportRevisions
             .Include(rv => rv.Widgets)
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Draft);
+            .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (existingDraft is not null) return existingDraft.ToContentDto(report);
 
         ReportRevision? source = fromVersionNumber is { } versionNumber
             ? await db.ReportRevisions
                 .Include(rv => rv.Widgets)
-                .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber)
+                .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber)
             : await db.ReportRevisions
                 .Include(rv => rv.Widgets)
-                .Where(rv => rv.ReportId == id && rv.Kind == RevisionKind.Published)
+                .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
                 .OrderByDescending(rv => rv.VersionNumber)
                 .FirstOrDefaultAsync();
 
@@ -226,8 +247,8 @@ public class ReportRepository(ReportingDbContext db)
 
         var draft = new ReportRevision
         {
-            Id = Guid.NewGuid(),
-            ReportId = id,
+            RefId = Guid.NewGuid(),
+            ReportId = report.Id,
             Kind = RevisionKind.Draft,
             CreatedAt = DateTime.UtcNow,
         };
@@ -239,7 +260,12 @@ public class ReportRepository(ReportingDbContext db)
         return draft.ToContentDto(report);
     }
 
-    /// <summary>Copies columns/rows/filters/widgets from <paramref name="source"/> into a freshly-created <paramref name="target"/> revision. Leaves defaults in place when <paramref name="source"/> is null.</summary>
+    /// <summary>
+    /// Copies columns/rows/filters/widgets from <paramref name="source"/> into a freshly-created
+    /// <paramref name="target"/> revision. Widget <see cref="Widget.RefId"/>s are carried over unchanged
+    /// so a widget keeps its logical identity across versions; only its <see cref="Widget.Id"/> changes.
+    /// Leaves defaults in place when <paramref name="source"/> is null.
+    /// </summary>
     private static void CopyContentInto(ReportRevision target, ReportRevision? source)
     {
         target.Columns = source?.Columns ?? 12;
@@ -251,8 +277,7 @@ public class ReportRepository(ReportingDbContext db)
         {
             target.Widgets.Add(new Widget
             {
-                Id = Guid.NewGuid(),
-                ReportRevisionId = target.Id,
+                RefId = widget.RefId,
                 Type = widget.Type,
                 X = widget.X,
                 Y = widget.Y,
@@ -266,34 +291,30 @@ public class ReportRepository(ReportingDbContext db)
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
     public async Task<ReportRevisionDto?> UpdateDraftAsync(Guid id, ReportRevisionDto dto)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Widgets)
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Draft);
+            .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (draft is null) throw new DataNotFoundException("No draft is checked out.");
 
         draft.Columns = Math.Max(1, dto.Columns);
         draft.Rows = Math.Max(1, dto.Rows);
         draft.SetFilters(dto.Filters);
 
-        var incomingIds = dto.Widgets.Select(w => w.Id).ToHashSet();
-        draft.Widgets.RemoveAll(w => !incomingIds.Contains(w.Id));
+        // Widgets are addressed by their client-generated RefId, which is stable across versions.
+        var incomingRefs = dto.Widgets.Select(w => w.Id).ToHashSet();
+        draft.Widgets.RemoveAll(w => !incomingRefs.Contains(w.RefId));
 
         foreach (var widgetDto in dto.Widgets)
         {
-            var widget = draft.Widgets.FirstOrDefault(w => w.Id == widgetDto.Id);
+            var widget = draft.Widgets.FirstOrDefault(w => w.RefId == widgetDto.Id);
             if (widget is null)
             {
-                widget = new Widget { ReportRevisionId = draft.Id };
+                widget = new Widget();
                 widgetDto.ApplyTo(widget);
                 draft.Widgets.Add(widget);
-
-                // Widget ids are generated by the client, so change detection would
-                // otherwise read this as an existing row and emit an UPDATE that
-                // matches nothing. Mark it as an insert explicitly.
-                db.Entry(widget).State = EntityState.Added;
             }
             else
             {
@@ -309,22 +330,22 @@ public class ReportRepository(ReportingDbContext db)
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
     public async Task<ReportVersionSummaryDto?> PublishAsync(Guid id, string? notes)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
         if (report is null) return null;
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Widgets)
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Draft);
+            .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (draft is null) throw new DataNotFoundException("No draft is checked out.");
 
         var nextVersion = (await db.ReportRevisions
-            .Where(rv => rv.ReportId == id && rv.Kind == RevisionKind.Published)
+            .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
             .MaxAsync(rv => (int?)rv.VersionNumber) ?? 0) + 1;
 
         var published = new ReportRevision
         {
-            Id = Guid.NewGuid(),
-            ReportId = id,
+            RefId = Guid.NewGuid(),
+            ReportId = report.Id,
             Kind = RevisionKind.Published,
             VersionNumber = nextVersion,
             Columns = draft.Columns,
@@ -334,20 +355,8 @@ public class ReportRepository(ReportingDbContext db)
             Notes = notes,
             FiltersJson = draft.FiltersJson,
         };
-        foreach (var widget in draft.Widgets)
-        {
-            published.Widgets.Add(new Widget
-            {
-                Id = Guid.NewGuid(),
-                ReportRevisionId = published.Id,
-                Type = widget.Type,
-                X = widget.X,
-                Y = widget.Y,
-                W = widget.W,
-                H = widget.H,
-                ConfigJson = widget.ConfigJson,
-            });
-        }
+        // Widget RefIds carry over so a published widget shares its predecessor's logical identity.
+        CopyContentInto(published, draft);
 
         report.UpdatedAt = DateTime.UtcNow;
         db.ReportRevisions.Add(published);
@@ -358,8 +367,11 @@ public class ReportRepository(ReportingDbContext db)
 
     public async Task<bool> DiscardDraftAsync(Guid id)
     {
+        var reportPk = await db.Reports.Where(r => r.RefId == id).Select(r => (int?)r.Id).FirstOrDefaultAsync();
+        if (reportPk is null) return false;
+
         var draft = await db.ReportRevisions
-            .FirstOrDefaultAsync(rv => rv.ReportId == id && rv.Kind == RevisionKind.Draft);
+            .FirstOrDefaultAsync(rv => rv.ReportId == reportPk && rv.Kind == RevisionKind.Draft);
         if (draft is null) return false;
 
         db.ReportRevisions.Remove(draft);

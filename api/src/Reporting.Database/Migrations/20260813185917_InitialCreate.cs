@@ -15,8 +15,10 @@ namespace Reporting.Database.Migrations
                 name: "Datasets",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -27,11 +29,13 @@ namespace Reporting.Database.Migrations
                 name: "Folders",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    ParentFolderId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ParentFolderId = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -48,12 +52,14 @@ namespace Reporting.Database.Migrations
                 name: "DatasetColumns",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    DatasetId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    Type = table.Column<string>(type: "TEXT", nullable: false),
-                    Order = table.Column<int>(type: "INTEGER", nullable: false),
-                    ConfigurationJson = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DatasetId = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Order = table.Column<int>(type: "int", nullable: false),
+                    ConfigurationJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -70,8 +76,10 @@ namespace Reporting.Database.Migrations
                 name: "DatasetRows",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    DatasetId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    DatasetId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -88,12 +96,14 @@ namespace Reporting.Database.Migrations
                 name: "Reports",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Number = table.Column<int>(type: "INTEGER", nullable: false),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    FolderId = table.Column<Guid>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Number = table.Column<int>(type: "int", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FolderId = table.Column<int>(type: "int", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -110,13 +120,14 @@ namespace Reporting.Database.Migrations
                 name: "DatasetCells",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    RowId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ColumnId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    StringValue = table.Column<string>(type: "TEXT", nullable: true),
-                    NumberValue = table.Column<double>(type: "REAL", nullable: true),
-                    BoolValue = table.Column<bool>(type: "INTEGER", nullable: true),
-                    DateValue = table.Column<DateTime>(type: "TEXT", nullable: true)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RowId = table.Column<int>(type: "int", nullable: false),
+                    ColumnId = table.Column<int>(type: "int", nullable: false),
+                    StringValue = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    NumberValue = table.Column<double>(type: "float", nullable: true),
+                    BoolValue = table.Column<bool>(type: "bit", nullable: true),
+                    DateValue = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -133,16 +144,18 @@ namespace Reporting.Database.Migrations
                 name: "ReportRevisions",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ReportId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Kind = table.Column<string>(type: "TEXT", nullable: false),
-                    VersionNumber = table.Column<int>(type: "INTEGER", nullable: true),
-                    Columns = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 12),
-                    Rows = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 10),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    PublishedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    Notes = table.Column<string>(type: "TEXT", nullable: true),
-                    FiltersJson = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ReportId = table.Column<int>(type: "int", nullable: false),
+                    Kind = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    VersionNumber = table.Column<int>(type: "int", nullable: true),
+                    Columns = table.Column<int>(type: "int", nullable: false, defaultValue: 12),
+                    Rows = table.Column<int>(type: "int", nullable: false, defaultValue: 10),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    PublishedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FiltersJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -159,14 +172,16 @@ namespace Reporting.Database.Migrations
                 name: "Widgets",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ReportRevisionId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Type = table.Column<string>(type: "TEXT", nullable: false),
-                    X = table.Column<int>(type: "INTEGER", nullable: false),
-                    Y = table.Column<int>(type: "INTEGER", nullable: false),
-                    W = table.Column<int>(type: "INTEGER", nullable: false),
-                    H = table.Column<int>(type: "INTEGER", nullable: false),
-                    ConfigJson = table.Column<string>(type: "TEXT", nullable: false)
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RefId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ReportRevisionId = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    X = table.Column<int>(type: "int", nullable: false),
+                    Y = table.Column<int>(type: "int", nullable: false),
+                    W = table.Column<int>(type: "int", nullable: false),
+                    H = table.Column<int>(type: "int", nullable: false),
+                    ConfigJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -206,14 +221,44 @@ namespace Reporting.Database.Migrations
                 column: "DatasetId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_DatasetColumns_RefId",
+                table: "DatasetColumns",
+                column: "RefId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_DatasetRows_DatasetId",
                 table: "DatasetRows",
                 column: "DatasetId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_DatasetRows_RefId",
+                table: "DatasetRows",
+                column: "RefId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Datasets_RefId",
+                table: "Datasets",
+                column: "RefId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Folders_ParentFolderId",
                 table: "Folders",
                 column: "ParentFolderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Folders_RefId",
+                table: "Folders",
+                column: "RefId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReportRevisions_RefId",
+                table: "ReportRevisions",
+                column: "RefId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_ReportRevisions_ReportId",
@@ -232,9 +277,16 @@ namespace Reporting.Database.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Widgets_ReportRevisionId",
+                name: "IX_Reports_RefId",
+                table: "Reports",
+                column: "RefId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Widgets_ReportRevisionId_RefId",
                 table: "Widgets",
-                column: "ReportRevisionId");
+                columns: new[] { "ReportRevisionId", "RefId" },
+                unique: true);
         }
 
         /// <inheritdoc />
