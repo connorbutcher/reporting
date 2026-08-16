@@ -128,6 +128,7 @@ export class HomePageComponent implements OnInit {
       { label: 'Open', icon: 'pi pi-external-link', command: () => this.openRow(row) },
       { label: 'Rename', icon: 'pi pi-pencil', command: () => this.rename(row) },
       { label: 'Move', icon: 'pi pi-arrows-alt', command: () => this.move(row) },
+      { label: 'Sharing', icon: 'pi pi-users', command: () => this.permissions(row) },
       { separator: true },
       { label: 'Delete', icon: 'pi pi-trash', command: () => this.remove(row) },
     ];
@@ -237,6 +238,13 @@ export class HomePageComponent implements OnInit {
     this.actions.move(row).subscribe((destination) => {
       this.reload();
       if (destination !== this.selectedFolderId()) this.tree.refreshNodeIfPresent(destination);
+    });
+  }
+
+  private permissions(row: ContentRow): void {
+    // Changing sharing can change what's visible, so refresh the contents if anything was saved.
+    this.actions.permissions(row).subscribe((changed) => {
+      if (changed) this.reload();
     });
   }
 

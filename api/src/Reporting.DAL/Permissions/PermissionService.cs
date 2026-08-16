@@ -1,139 +1,153 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Permissions;
 
 /// <summary>
-/// Resolves a user's effective <see cref="AccessLevel"/> on a folder, report, or the root
-/// scope by loading its inheritance chain and its grants, then handing them to the pure
-/// <see cref="AccessResolver"/>. It loads the (small) folder set to walk ancestors in
-/// memory; batching this for whole-listing visibility is a later optimisation.
+/// Resolves and enforces the current user's access. On first use it loads a snapshot of the
+/// folder tree and every grant once, then answers any number of folder/report/root questions
+/// from memory via the pure <see cref="AccessResolver"/> — so filtering a whole list costs no
+/// extra round trips. Global admins short-circuit before anything is even loaded. Scoped, so
+/// the snapshot lives for one request.
 /// </summary>
-public class PermissionService(ReportingDbContext db)
+public class PermissionService(ReportingDbContext db, ICurrentUserAccessor currentUserAccessor)
 {
-    public Task<AccessLevel> ResolveAsync(ICurrentUser user, SecurableType type, int? securableId) => type switch
-    {
-        SecurableType.Root => ResolveForRootAsync(user),
-        SecurableType.Folder when securableId is { } id => ResolveForFolderAsync(user, id),
-        SecurableType.Report when securableId is { } id => ResolveForReportAsync(user, id),
-        _ => Task.FromResult(AccessLevel.None)
-    };
+    private Snapshot? snapshot;
 
-    public async Task<AccessLevel> ResolveForRootAsync(ICurrentUser user)
+    // --- level queries ----------------------------------------------------
+
+    public async Task<AccessLevel> LevelForRootAsync() => (await LoadAsync()).ResolveRoot();
+
+    public async Task<AccessLevel> LevelForFolderAsync(int folderId) => (await LoadAsync()).ResolveFolder(folderId);
+
+    public async Task<AccessLevel> LevelForReportAsync(int reportId, int? folderId, bool inheritsPermissions) =>
+        (await LoadAsync()).ResolveReport(reportId, folderId, inheritsPermissions);
+
+    // --- visibility (>= Viewer) ------------------------------------------
+
+    public async Task<bool> CanSeeFolderAsync(int folderId) =>
+        await LevelForFolderAsync(folderId) >= AccessLevel.Viewer;
+
+    public async Task<bool> CanSeeReportAsync(int reportId, int? folderId, bool inheritsPermissions) =>
+        await LevelForReportAsync(reportId, folderId, inheritsPermissions) >= AccessLevel.Viewer;
+
+    // --- guards (throw AccessDeniedException below the required level) -----
+
+    public async Task RequireFolderAsync(int folderId, AccessLevel required) =>
+        Require(await LevelForFolderAsync(folderId), required);
+
+    public async Task RequireReportAsync(int reportId, int? folderId, bool inheritsPermissions, AccessLevel required) =>
+        Require(await LevelForReportAsync(reportId, folderId, inheritsPermissions), required);
+
+    /// <summary>Creating an item inside a folder (or at the root when null) needs Editor on that container.</summary>
+    public Task RequireCreateInAsync(int? folderId) => folderId is { } id
+        ? RequireFolderAsync(id, AccessLevel.Editor)
+        : RootEditorAsync();
+
+    private async Task RootEditorAsync() => Require(await LevelForRootAsync(), AccessLevel.Editor);
+
+    private static void Require(AccessLevel actual, AccessLevel required)
     {
-        if (user.IsGlobalAdmin) return AccessLevel.Manager;
-        var root = new SecurableNode(false, await RootGrantsAsync(), null);
-        return AccessResolver.Resolve(user, root);
+        if (actual < required) throw new AccessDeniedException($"This action requires {required} access.");
     }
 
-    public async Task<AccessLevel> ResolveForFolderAsync(ICurrentUser user, int folderId)
+    // --- snapshot ---------------------------------------------------------
+
+    private async Task<Snapshot> LoadAsync()
     {
-        if (user.IsGlobalAdmin) return AccessLevel.Manager;
+        if (snapshot is not null) return snapshot;
 
-        var folders = await FolderMapAsync();
-        if (!folders.ContainsKey(folderId)) return AccessLevel.None;
+        var user = await currentUserAccessor.GetAsync();
+        // An admin resolves to Manager everywhere, so there's nothing to load.
+        if (user.IsGlobalAdmin) return snapshot = Snapshot.ForAdmin(user);
 
-        var chain = FolderChain(folderId, folders);
-        var grants = await FolderAndRootGrantsAsync(chain);
-        return AccessResolver.Resolve(user, BuildFolderNode(chain, grants));
+        var folders = (await db.Folders
+                .Select(f => new { f.Id, f.ParentFolderId, f.InheritsPermissions })
+                .ToListAsync())
+            .ToDictionary(f => f.Id, f => new FolderRow(f.ParentFolderId, f.InheritsPermissions));
+
+        var grants = await db.AccessGrants
+            .Select(g => new { g.SecurableType, g.SecurableId, g.SubjectType, g.SubjectId, g.Level })
+            .ToListAsync();
+
+        List<GrantLine> Lines(SecurableType type) => grants
+            .Where(g => g.SecurableType == type)
+            .Select(g => new GrantLine(g.SubjectType, g.SubjectId, g.Level))
+            .ToList();
+
+        Dictionary<int, IReadOnlyList<GrantLine>> ById(SecurableType type) => grants
+            .Where(g => g.SecurableType == type && g.SecurableId != null)
+            .GroupBy(g => g.SecurableId!.Value)
+            .ToDictionary(
+                grp => grp.Key,
+                grp => (IReadOnlyList<GrantLine>)grp.Select(g => new GrantLine(g.SubjectType, g.SubjectId, g.Level)).ToList());
+
+        snapshot = new Snapshot(user, folders, Lines(SecurableType.Root), ById(SecurableType.Folder), ById(SecurableType.Report));
+        return snapshot;
     }
 
-    public async Task<AccessLevel> ResolveForReportAsync(ICurrentUser user, int reportId)
+    private sealed record FolderRow(int? ParentFolderId, bool Inherits);
+
+    /// <summary>The loaded-once view of the tree and its grants, resolving any securable in memory.</summary>
+    private sealed class Snapshot(
+        ICurrentUser user,
+        IReadOnlyDictionary<int, FolderRow> folders,
+        IReadOnlyList<GrantLine> rootGrants,
+        IReadOnlyDictionary<int, IReadOnlyList<GrantLine>> folderGrants,
+        IReadOnlyDictionary<int, IReadOnlyList<GrantLine>> reportGrants)
     {
-        if (user.IsGlobalAdmin) return AccessLevel.Manager;
+        private static readonly IReadOnlyList<GrantLine> NoGrants = Array.Empty<GrantLine>();
 
-        var report = await db.Reports
-            .Where(r => r.Id == reportId)
-            .Select(r => new { r.FolderId, r.InheritsPermissions })
-            .FirstOrDefaultAsync();
-        if (report is null) return AccessLevel.None;
+        public static Snapshot ForAdmin(ICurrentUser user) => new(
+            user,
+            new Dictionary<int, FolderRow>(),
+            NoGrants,
+            new Dictionary<int, IReadOnlyList<GrantLine>>(),
+            new Dictionary<int, IReadOnlyList<GrantLine>>());
 
-        var folders = await FolderMapAsync();
-        var chain = report.FolderId is { } fid && folders.ContainsKey(fid)
-            ? FolderChain(fid, folders)
-            : new List<FolderLink>();
+        public AccessLevel ResolveRoot() =>
+            user.IsGlobalAdmin ? AccessLevel.Manager : AccessResolver.Resolve(user, RootNode());
 
-        var grants = await FolderAndRootGrantsAsync(chain);
-        var reportGrants = await GrantsForAsync(SecurableType.Report, reportId);
-
-        // The report is the leaf; its parent is its folder chain (or the root directly).
-        var node = new SecurableNode(report.InheritsPermissions, reportGrants, BuildFolderNode(chain, grants));
-        return AccessResolver.Resolve(user, node);
-    }
-
-    // --- chain building ---------------------------------------------------
-
-    /// <summary>Links the root node, then the folder chain from root-level down to the leaf.</summary>
-    private static SecurableNode BuildFolderNode(List<FolderLink> leafToRoot, GrantBundle grants)
-    {
-        SecurableNode node = new(false, grants.Root, null);
-        for (var i = leafToRoot.Count - 1; i >= 0; i--)
+        public AccessLevel ResolveFolder(int folderId)
         {
-            node = new SecurableNode(leafToRoot[i].Inherits, grants.ForFolder(leafToRoot[i].Id), node);
+            if (user.IsGlobalAdmin) return AccessLevel.Manager;
+            return folders.ContainsKey(folderId) ? AccessResolver.Resolve(user, FolderNode(folderId)) : AccessLevel.None;
         }
-        return node;
-    }
 
-    /// <summary>Folder ids and their inherit flags from the given folder up to a root-level folder.</summary>
-    private static List<FolderLink> FolderChain(int folderId, IReadOnlyDictionary<int, (int? Parent, bool Inherits)> map)
-    {
-        var chain = new List<FolderLink>();
-        int? current = folderId;
-        var guard = 0;
-        while (current is { } id && map.TryGetValue(id, out var folder))
+        public AccessLevel ResolveReport(int reportId, int? folderId, bool inheritsPermissions)
         {
-            chain.Add(new FolderLink(id, folder.Inherits));
-            current = folder.Parent;
-            if (++guard > 10_000) break; // defends against a corrupt parent cycle
+            if (user.IsGlobalAdmin) return AccessLevel.Manager;
+            var parent = folderId is { } id && folders.ContainsKey(id) ? FolderNode(id) : RootNode();
+            var node = new SecurableNode(inheritsPermissions, Grants(reportGrants, reportId), parent);
+            return AccessResolver.Resolve(user, node);
         }
-        return chain;
-    }
 
-    // --- data loading -----------------------------------------------------
+        private SecurableNode RootNode() => new(InheritsPermissions: false, rootGrants, null);
 
-    private async Task<Dictionary<int, (int? Parent, bool Inherits)>> FolderMapAsync() =>
-        (await db.Folders
-            .Select(f => new { f.Id, f.ParentFolderId, f.InheritsPermissions })
-            .ToListAsync())
-        .ToDictionary(f => f.Id, f => ((int?)f.ParentFolderId, f.InheritsPermissions));
+        private SecurableNode FolderNode(int folderId)
+        {
+            // Collect the chain leaf -> root-level folder, then link root -> ... -> leaf.
+            var chain = new List<int>();
+            int? current = folderId;
+            var guard = 0;
+            while (current is { } id && folders.TryGetValue(id, out var row))
+            {
+                chain.Add(id);
+                current = row.ParentFolderId;
+                if (++guard > 10_000) break; // defends against a corrupt parent cycle
+            }
 
-    private async Task<GrantBundle> FolderAndRootGrantsAsync(List<FolderLink> chain)
-    {
-        var folderIds = chain.Select(c => c.Id).ToList();
-        var byFolder = folderIds.Count == 0
-            ? new Dictionary<int, List<GrantLine>>()
-            : (await db.AccessGrants
-                    .Where(g => g.SecurableType == SecurableType.Folder
-                        && g.SecurableId != null
-                        && folderIds.Contains(g.SecurableId.Value))
-                    .Select(g => new { g.SecurableId, g.SubjectType, g.SubjectId, g.Level })
-                    .ToListAsync())
-                .GroupBy(g => g.SecurableId!.Value)
-                .ToDictionary(
-                    grp => grp.Key,
-                    grp => grp.Select(g => new GrantLine(g.SubjectType, g.SubjectId, g.Level)).ToList());
+            var node = RootNode();
+            for (var i = chain.Count - 1; i >= 0; i--)
+            {
+                node = new SecurableNode(folders[chain[i]].Inherits, Grants(folderGrants, chain[i]), node);
+            }
+            return node;
+        }
 
-        return new GrantBundle(await RootGrantsAsync(), byFolder);
-    }
-
-    private Task<List<GrantLine>> RootGrantsAsync() => GrantsForAsync(SecurableType.Root, null);
-
-    private async Task<List<GrantLine>> GrantsForAsync(SecurableType type, int? securableId) =>
-        (await db.AccessGrants
-            .Where(g => g.SecurableType == type && g.SecurableId == securableId)
-            .Select(g => new { g.SubjectType, g.SubjectId, g.Level })
-            .ToListAsync())
-        .Select(g => new GrantLine(g.SubjectType, g.SubjectId, g.Level))
-        .ToList();
-
-    private sealed record FolderLink(int Id, bool Inherits);
-
-    private sealed record GrantBundle(
-        IReadOnlyList<GrantLine> Root,
-        IReadOnlyDictionary<int, List<GrantLine>> ByFolder)
-    {
-        public IReadOnlyList<GrantLine> ForFolder(int id) =>
-            ByFolder.TryGetValue(id, out var grants) ? grants : Array.Empty<GrantLine>();
+        private static IReadOnlyList<GrantLine> Grants(IReadOnlyDictionary<int, IReadOnlyList<GrantLine>> map, int id) =>
+            map.TryGetValue(id, out var grants) ? grants : NoGrants;
     }
 }

@@ -520,3 +520,44 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    CREATE TABLE [GrantAuditEntries] (
+        [Id] int NOT NULL IDENTITY,
+        [SecurableType] nvarchar(450) NOT NULL,
+        [SecurableId] int NULL,
+        [Action] nvarchar(max) NOT NULL,
+        [SubjectType] nvarchar(max) NULL,
+        [SubjectId] int NULL,
+        [OldLevel] nvarchar(max) NULL,
+        [NewLevel] nvarchar(max) NULL,
+        [ActorUserId] int NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_GrantAuditEntries] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    CREATE INDEX [IX_GrantAuditEntries_SecurableType_SecurableId_CreatedAt] ON [GrantAuditEntries] ([SecurableType], [SecurableId], [CreatedAt]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260816213132_GrantAuditTrail', N'10.0.10');
+END;
+
+COMMIT;
+GO
+

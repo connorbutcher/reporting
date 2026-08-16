@@ -1,16 +1,26 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Permissions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
 
-/// <summary>All querying and persistence for the folder tree.</summary>
-public class FolderRepository(ReportingDbContext db)
+/// <summary>
+/// All querying and persistence for the folder tree. Reads are filtered to what the current
+/// user may see (a folder they can't reach is simply absent, and a lookup of it returns
+/// null → 404); mutations are guarded to the level the enforcement matrix requires.
+/// </summary>
+public class FolderRepository(ReportingDbContext db, PermissionService permissions)
 {
     public async Task<List<FolderDto>> GetAllAsync()
     {
         var folders = await db.Folders.Include(f => f.ParentFolder).ToListAsync();
-        return folders.Select(f => f.ToDto()).ToList();
+        var visible = new List<FolderDto>();
+        foreach (var folder in folders)
+        {
+            if (await permissions.CanSeeFolderAsync(folder.Id)) visible.Add(folder.ToDto());
+        }
+        return visible;
     }
 
     /// <summary>Direct children of <paramref name="parentRef"/> (root if null), each flagged with whether it has children of its own — enough for the tree to draw an expand arrow without fetching further.</summary>
@@ -32,6 +42,7 @@ public class FolderRepository(ReportingDbContext db)
         var result = new List<FolderDto>(children.Count);
         foreach (var folder in children)
         {
+            if (!await permissions.CanSeeFolderAsync(folder.Id)) continue;
             var dto = folder.ToDto();
             dto.HasChildren = await db.Folders.AnyAsync(f => f.ParentFolderId == folder.Id);
             result.Add(dto);
@@ -46,6 +57,9 @@ public class FolderRepository(ReportingDbContext db)
         var byId = allFolders.ToDictionary(f => f.Id);
         var start = allFolders.FirstOrDefault(f => f.RefId == id);
         if (start is null) return null;
+        // The breadcrumb is only shown for a folder the user can open; the ancestors above it
+        // are surfaced as name-only path segments (traverse), not as openable folders here.
+        if (!await permissions.CanSeeFolderAsync(start.Id)) return null;
 
         var path = new List<FolderDto>();
         var current = (Folder?)start;
@@ -66,6 +80,9 @@ public class FolderRepository(ReportingDbContext db)
             parent = await db.Folders.FirstOrDefaultAsync(f => f.RefId == pref)
                 ?? throw new DataValidationException("Parent folder does not exist.");
         }
+
+        // Creating a subfolder is an Editor action on the containing folder (or the root).
+        await permissions.RequireCreateInAsync(parent?.Id);
 
         var now = DateTime.UtcNow;
         var folder = new Folder
@@ -90,6 +107,10 @@ public class FolderRepository(ReportingDbContext db)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == id);
         if (folder is null) return null;
+        // Hide a folder the user can't see behind the same 404 as a missing one.
+        if (!await permissions.CanSeeFolderAsync(folder.Id)) return null;
+        // Renaming or moving a folder is a Manager action on it.
+        await permissions.RequireFolderAsync(folder.Id, AccessLevel.Manager);
 
         Folder? parent = null;
         if (parentRef is { } pref)
@@ -112,6 +133,9 @@ public class FolderRepository(ReportingDbContext db)
             }
         }
 
+        // Moving into a different container also needs Editor on the destination.
+        if (folder.ParentFolderId != parent?.Id) await permissions.RequireCreateInAsync(parent?.Id);
+
         folder.Name = name;
         folder.ParentFolder = parent;
         folder.ParentFolderId = parent?.Id;
@@ -125,6 +149,9 @@ public class FolderRepository(ReportingDbContext db)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == id);
         if (folder is null) return false;
+        // Hide an invisible folder as a plain 404; deleting one you can see needs Manager.
+        if (!await permissions.CanSeeFolderAsync(folder.Id)) return false;
+        await permissions.RequireFolderAsync(folder.Id, AccessLevel.Manager);
 
         var hasChildFolders = await db.Folders.AnyAsync(f => f.ParentFolderId == folder.Id);
         var hasReports = await db.Reports.AnyAsync(r => r.FolderId == folder.Id);
