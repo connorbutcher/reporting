@@ -4,6 +4,7 @@
     [Number]    INT              NOT NULL,
     [Name]      NVARCHAR (MAX)   NOT NULL,
     [FolderId]  INT              NULL,
+    [InheritsPermissions] BIT    NOT NULL DEFAULT 1,
     [CreatedAt] DATETIME2 (7)    NOT NULL,
     [UpdatedAt] DATETIME2 (7)    NOT NULL,
     CONSTRAINT [PK_Reports] PRIMARY KEY CLUSTERED ([Id] ASC),

@@ -1,5 +1,6 @@
 import { Signal, computed, signal } from '@angular/core';
 import {
+  DEFAULT_BAR_CHART_CONFIG,
   DEFAULT_LINE_CHART_CONFIG,
   DEFAULT_SCATTER_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
@@ -157,6 +158,12 @@ export class ReportModel extends EditorNode {
           ...base,
           type: 'lineChart',
           config: { type: 'lineChart', ...DEFAULT_LINE_CHART_CONFIG },
+        };
+      case 'barChart':
+        return {
+          ...base,
+          type: 'barChart',
+          config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
         };
       case 'staticText':
         return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };

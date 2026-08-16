@@ -1,4 +1,5 @@
 import { Widget } from '../../../core/models/report.model';
+import { BarChartWidgetModel } from './bar-chart-widget.model';
 import { DataTableWidgetModel } from './data-table-widget.model';
 import { LineChartWidgetModel } from './line-chart-widget.model';
 import { ScatterChartWidgetModel } from './scatter-chart-widget.model';
@@ -10,6 +11,7 @@ export * from './data-table-widget.model';
 export * from './chart-widget.model';
 export * from './scatter-chart-widget.model';
 export * from './line-chart-widget.model';
+export * from './bar-chart-widget.model';
 export * from './static-text-widget.model';
 
 /** Rebuilds the right model class for a stored widget. */
@@ -21,6 +23,8 @@ export function widgetModelFromDto(widget: Widget, sources: ModelSources): Widge
       return new ScatterChartWidgetModel(widget, sources);
     case 'lineChart':
       return new LineChartWidgetModel(widget, sources);
+    case 'barChart':
+      return new BarChartWidgetModel(widget, sources);
     default:
       return new StaticTextWidgetModel(widget);
   }

@@ -7,6 +7,7 @@ namespace Reporting.Abstractions;
 [JsonDerivedType(typeof(StaticTextWidgetConfig), typeDiscriminator: "staticText")]
 [JsonDerivedType(typeof(ScatterChartWidgetConfig), typeDiscriminator: "scatterChart")]
 [JsonDerivedType(typeof(LineChartWidgetConfig), typeDiscriminator: "lineChart")]
+[JsonDerivedType(typeof(BarChartWidgetConfig), typeDiscriminator: "barChart")]
 public abstract class WidgetConfig
 {
     public string Title { get; set; } = "Widget";
@@ -201,6 +202,35 @@ public class LineChartWidgetConfig : ChartWidgetConfig
     public bool ShowPoints { get; set; } = true;
     /// <summary>Shades the area under the line.</summary>
     public bool AreaFill { get; set; }
+}
+
+/// <summary>How a bar chart reduces the many rows in one category down to a single bar height.</summary>
+public enum Aggregate
+{
+    Sum,
+    Average,
+    Count,
+    Min,
+    Max
+}
+
+/// <summary>
+/// A bar chart: unlike scatter/line it doesn't plot raw rows. Rows are grouped by
+/// the category column (<see cref="ChartWidgetConfig.XColumnId"/>) and each group's
+/// values in the measure column (<see cref="ChartWidgetConfig.YColumnId"/>) are
+/// reduced to one bar by <see cref="Aggregate"/>. The measure is unused — and may be
+/// left unbound — when the aggregate is <see cref="Aggregate.Count"/>, which counts
+/// rows. A series column, if set, splits each category into grouped (or stacked) bars.
+/// </summary>
+public class BarChartWidgetConfig : ChartWidgetConfig
+{
+    public Aggregate Aggregate { get; set; } = Aggregate.Sum;
+
+    /// <summary>Stacks a category's series bars into one column instead of placing them side by side.</summary>
+    public bool Stacked { get; set; }
+
+    /// <summary>Draws bars horizontally (categories down the Y axis) rather than as vertical columns.</summary>
+    public bool Horizontal { get; set; }
 }
 
 public class StaticTextWidgetConfig : WidgetConfig

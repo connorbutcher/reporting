@@ -1,6 +1,9 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Reporting.Abstractions;
+using Reporting.DAL.Identity;
+using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
@@ -31,6 +34,11 @@ builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<WidgetQueryRepository>();
+builder.Services.AddScoped<PermissionService>();
+
+// Until authentication is wired up the app runs as the seeded default user. Real auth
+// swaps this single registration for a claims-backed accessor.
+builder.Services.AddScoped<ICurrentUserAccessor, DevCurrentUserAccessor>();
 
 var app = builder.Build();
 
@@ -39,6 +47,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
     db.Database.Migrate();
     DbSeeder.Seed(db);
+    DbSeeder.SeedIdentity(db);
 }
 
 // Configure the HTTP request pipeline.
