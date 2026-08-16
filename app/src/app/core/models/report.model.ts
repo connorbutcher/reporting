@@ -1,6 +1,9 @@
 import { FilterGroup, ReportFilter } from './filter.model';
 
-export type WidgetType = 'dataTable' | 'staticText' | 'scatterChart' | 'lineChart';
+export type WidgetType = 'dataTable' | 'staticText' | 'scatterChart' | 'lineChart' | 'barChart';
+
+/** How a bar chart reduces the many rows in one category down to a single bar height. */
+export type Aggregate = 'sum' | 'average' | 'count' | 'min' | 'max';
 
 export type SortDirection = 'asc' | 'desc';
 export type ColumnAlign = 'left' | 'center' | 'right';
@@ -143,7 +146,26 @@ export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
   areaFill: boolean;
 }
 
-export type ChartWidgetConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
+/**
+ * A bar chart. Unlike scatter/line it doesn't plot raw rows: rows are grouped by
+ * the category column (`xColumnId`) and each group's values in the measure column
+ * (`yColumnId`) are reduced to one bar by `aggregate`. The measure is unused — and
+ * may be left unbound — when `aggregate` is `'count'`, which counts rows.
+ */
+export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
+  type: 'barChart';
+
+  aggregate: Aggregate;
+  /** Stacks a category's series bars into one column instead of placing them side by side. */
+  stacked: boolean;
+  /** Draws bars horizontally (categories down the Y axis) rather than as vertical columns. */
+  horizontal: boolean;
+}
+
+export type ChartWidgetConfig =
+  | ScatterChartWidgetConfig
+  | LineChartWidgetConfig
+  | BarChartWidgetConfig;
 
 export interface StaticTextWidgetConfig extends WidgetConfigBase {
   type: 'staticText';
@@ -173,7 +195,8 @@ export type WidgetConfig =
   | DataTableWidgetConfig
   | StaticTextWidgetConfig
   | ScatterChartWidgetConfig
-  | LineChartWidgetConfig;
+  | LineChartWidgetConfig
+  | BarChartWidgetConfig;
 
 interface WidgetBase {
   id: string;
@@ -208,10 +231,20 @@ export interface LineChartWidget extends WidgetBase {
   config: LineChartWidgetConfig;
 }
 
-/** Every chart kind, for code that treats charts uniformly. */
-export type ChartWidget = ScatterChartWidget | LineChartWidget;
+export interface BarChartWidget extends WidgetBase {
+  type: 'barChart';
+  config: BarChartWidgetConfig;
+}
 
-export type Widget = DataTableWidget | StaticTextWidget | ScatterChartWidget | LineChartWidget;
+/** Every chart kind, for code that treats charts uniformly. */
+export type ChartWidget = ScatterChartWidget | LineChartWidget | BarChartWidget;
+
+export type Widget =
+  | DataTableWidget
+  | StaticTextWidget
+  | ScatterChartWidget
+  | LineChartWidget
+  | BarChartWidget;
 
 /** A report's identity and folder placement — everything except its content. */
 export interface ReportSummary {
@@ -300,6 +333,14 @@ export const DEFAULT_LINE_CHART_CONFIG: Omit<LineChartWidgetConfig, 'type'> = {
   smooth: false,
   showPoints: true,
   areaFill: false,
+};
+
+export const DEFAULT_BAR_CHART_CONFIG: Omit<BarChartWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Bar chart',
+  aggregate: 'sum',
+  stacked: false,
+  horizontal: false,
 };
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {

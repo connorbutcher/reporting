@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reporting.Database;
 
@@ -11,9 +12,11 @@ using Reporting.Database;
 namespace Reporting.Database.Migrations
 {
     [DbContext(typeof(ReportingDbContext))]
-    partial class ReportingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260816160306_SparseCellValuesAndFilteredIndexes")]
+    partial class SparseCellValuesAndFilteredIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,48 +24,6 @@ namespace Reporting.Database.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("Reporting.Database.AccessGrant", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CreatedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Level")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("SecurableId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SecurableType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int?>("SubjectId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SubjectType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubjectType", "SubjectId");
-
-                    b.HasIndex("SecurableType", "SecurableId", "SubjectType", "SubjectId")
-                        .IsUnique();
-
-                    b.ToTable("AccessGrants");
-                });
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>
                 {
@@ -204,11 +165,6 @@ namespace Reporting.Database.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<bool>("InheritsPermissions")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -245,11 +201,6 @@ namespace Reporting.Database.Migrations
 
                     b.Property<int?>("FolderId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("InheritsPermissions")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -329,80 +280,6 @@ namespace Reporting.Database.Migrations
                     b.HasIndex("ReportId");
 
                     b.ToTable("ReportRevisions");
-                });
-
-            modelBuilder.Entity("Reporting.Database.User", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<bool>("IsGlobalAdmin")
-                        .HasColumnType("bit");
-
-                    b.Property<Guid>("RefId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("RefId")
-                        .IsUnique();
-
-                    b.ToTable("Users");
-                });
-
-            modelBuilder.Entity("Reporting.Database.UserGroup", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("RefId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RefId")
-                        .IsUnique();
-
-                    b.ToTable("UserGroups");
-                });
-
-            modelBuilder.Entity("Reporting.Database.UserGroupMember", b =>
-                {
-                    b.Property<int>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserGroupId", "UserId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserGroupMembers");
                 });
 
             modelBuilder.Entity("Reporting.Database.Widget", b =>
@@ -511,25 +388,6 @@ namespace Reporting.Database.Migrations
                     b.Navigation("Report");
                 });
 
-            modelBuilder.Entity("Reporting.Database.UserGroupMember", b =>
-                {
-                    b.HasOne("Reporting.Database.UserGroup", "UserGroup")
-                        .WithMany("Members")
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Reporting.Database.User", "User")
-                        .WithMany("Memberships")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-
-                    b.Navigation("UserGroup");
-                });
-
             modelBuilder.Entity("Reporting.Database.Widget", b =>
                 {
                     b.HasOne("Reporting.Database.ReportRevision", "ReportRevision")
@@ -561,16 +419,6 @@ namespace Reporting.Database.Migrations
             modelBuilder.Entity("Reporting.Database.ReportRevision", b =>
                 {
                     b.Navigation("Widgets");
-                });
-
-            modelBuilder.Entity("Reporting.Database.User", b =>
-                {
-                    b.Navigation("Memberships");
-                });
-
-            modelBuilder.Entity("Reporting.Database.UserGroup", b =>
-                {
-                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

@@ -56,6 +56,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'chart',
   },
   {
+    type: 'barChart',
+    label: 'Bar chart',
+    hint: 'Summarise a column into bars',
+    icon: 'pi pi-chart-bar',
+    group: 'chart',
+  },
+  {
     type: 'staticText',
     label: 'Text',
     hint: 'A styled heading or block of text',

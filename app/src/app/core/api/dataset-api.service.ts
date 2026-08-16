@@ -12,6 +12,8 @@ import {
 } from '../models/dataset.model';
 import { DatasetQueryResult, FilterGroup } from '../models/filter.model';
 import {
+  BarChartQueryRequest,
+  BarChartQueryResult,
   ChartQueryRequest,
   ChartQueryResult,
   TableQueryRequest,
@@ -56,6 +58,14 @@ export class DatasetApiService {
    */
   queryChart(id: string, request: ChartQueryRequest): Observable<ChartQueryResult> {
     return this.http.post<ChartQueryResult>(`/api/datasets/${id}/chart-query`, request);
+  }
+
+  /**
+   * Rows shaped for a bar chart: filtered, grouped by the category column, and
+   * reduced to one value per category (per series) by the chosen aggregate.
+   */
+  queryBarChart(id: string, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
+    return this.http.post<BarChartQueryResult>(`/api/datasets/${id}/bar-chart-query`, request);
   }
 
   updateColumnConfiguration(
