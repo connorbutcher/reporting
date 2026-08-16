@@ -7,10 +7,12 @@ namespace Reporting.DAL.Permissions;
 
 /// <summary>
 /// Resolves and enforces the current user's access. On first use it loads a snapshot of the
-/// folder tree and every grant once, then answers any number of folder/report/root questions
-/// from memory via the pure <see cref="AccessResolver"/> — so filtering a whole list costs no
-/// extra round trips. Global admins short-circuit before anything is even loaded. Scoped, so
-/// the snapshot lives for one request.
+/// folder tree and the grants that can affect this user once, then answers any number of
+/// folder/report/root questions from memory via the pure <see cref="AccessResolver"/> — so
+/// filtering a whole list costs no extra round trips. Only grants for the user, their groups,
+/// or everyone are loaded (the only ones resolution can match), each folder's node and resolved
+/// level is memoised, and global admins short-circuit before anything is loaded at all. Scoped,
+/// so the snapshot lives for one request.
 /// </summary>
 public class PermissionService(ReportingDbContext db, ICurrentUserAccessor currentUserAccessor)
 {
@@ -68,7 +70,14 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
                 .ToListAsync())
             .ToDictionary(f => f.Id, f => new FolderRow(f.ParentFolderId, f.InheritsPermissions));
 
+        // Only grants that can match this user matter to resolution — their own, their groups',
+        // and everyone's. Loading the rest (grants for other users/groups) would be discarded, so
+        // the query filters them out up front, riding the (SubjectType, SubjectId) index.
+        var groupIds = user.GroupIds.ToList();
         var grants = await db.AccessGrants
+            .Where(g => g.SubjectType == GrantSubjectType.Everyone
+                || (g.SubjectType == GrantSubjectType.User && g.SubjectId == user.Id)
+                || (g.SubjectType == GrantSubjectType.Group && g.SubjectId != null && groupIds.Contains(g.SubjectId.Value)))
             .Select(g => new { g.SecurableType, g.SecurableId, g.SubjectType, g.SubjectId, g.Level })
             .ToListAsync();
 
@@ -90,7 +99,7 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
 
     private sealed record FolderRow(int? ParentFolderId, bool Inherits);
 
-    /// <summary>The loaded-once view of the tree and its grants, resolving any securable in memory.</summary>
+    /// <summary>The loaded-once view of the tree and this user's grants, resolving any securable in memory.</summary>
     private sealed class Snapshot(
         ICurrentUser user,
         IReadOnlyDictionary<int, FolderRow> folders,
@@ -99,6 +108,13 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
         IReadOnlyDictionary<int, IReadOnlyList<GrantLine>> reportGrants)
     {
         private static readonly IReadOnlyList<GrantLine> NoGrants = Array.Empty<GrantLine>();
+
+        // Each folder's chain node and each object's resolved level are built once and reused, so
+        // filtering a list of siblings doesn't rebuild their shared ancestors or re-resolve repeats.
+        private readonly Dictionary<int, SecurableNode> folderNodes = new();
+        private readonly Dictionary<int, AccessLevel> folderLevels = new();
+        private readonly Dictionary<int, AccessLevel> reportLevels = new();
+        private SecurableNode? rootNode;
 
         public static Snapshot ForAdmin(ICurrentUser user) => new(
             user,
@@ -113,38 +129,48 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
         public AccessLevel ResolveFolder(int folderId)
         {
             if (user.IsGlobalAdmin) return AccessLevel.Manager;
-            return folders.ContainsKey(folderId) ? AccessResolver.Resolve(user, FolderNode(folderId)) : AccessLevel.None;
+            if (!folders.ContainsKey(folderId)) return AccessLevel.None;
+            if (folderLevels.TryGetValue(folderId, out var cached)) return cached;
+            return folderLevels[folderId] = AccessResolver.Resolve(user, FolderNode(folderId));
         }
 
         public AccessLevel ResolveReport(int reportId, int? folderId, bool inheritsPermissions)
         {
             if (user.IsGlobalAdmin) return AccessLevel.Manager;
+            if (reportLevels.TryGetValue(reportId, out var cached)) return cached;
             var parent = folderId is { } id && folders.ContainsKey(id) ? FolderNode(id) : RootNode();
             var node = new SecurableNode(inheritsPermissions, Grants(reportGrants, reportId), parent);
-            return AccessResolver.Resolve(user, node);
+            return reportLevels[reportId] = AccessResolver.Resolve(user, node);
         }
 
-        private SecurableNode RootNode() => new(InheritsPermissions: false, rootGrants, null);
+        private SecurableNode RootNode() => rootNode ??= new(InheritsPermissions: false, rootGrants, null);
 
         private SecurableNode FolderNode(int folderId)
         {
-            // Collect the chain leaf -> root-level folder, then link root -> ... -> leaf.
-            var chain = new List<int>();
+            if (folderNodes.TryGetValue(folderId, out var existing)) return existing;
+
+            // Walk up collecting the not-yet-built tail, stopping at a cached ancestor or the root.
+            var pending = new List<int>();
             int? current = folderId;
             var guard = 0;
-            while (current is { } id && folders.TryGetValue(id, out var row))
+            while (current is { } id && folders.ContainsKey(id) && !folderNodes.ContainsKey(id))
             {
-                chain.Add(id);
-                current = row.ParentFolderId;
+                pending.Add(id);
+                current = folders[id].ParentFolderId;
                 if (++guard > 10_000) break; // defends against a corrupt parent cycle
             }
 
-            var node = RootNode();
-            for (var i = chain.Count - 1; i >= 0; i--)
+            var node = current is { } cachedId && folderNodes.TryGetValue(cachedId, out var cachedParent)
+                ? cachedParent
+                : RootNode();
+
+            // Build downward so each folder's node is created once and shared by its siblings and descendants.
+            for (var i = pending.Count - 1; i >= 0; i--)
             {
-                node = new SecurableNode(folders[chain[i]].Inherits, Grants(folderGrants, chain[i]), node);
+                node = new SecurableNode(folders[pending[i]].Inherits, Grants(folderGrants, pending[i]), node);
+                folderNodes[pending[i]] = node;
             }
-            return node;
+            return folderNodes[folderId];
         }
 
         private static IReadOnlyList<GrantLine> Grants(IReadOnlyDictionary<int, IReadOnlyList<GrantLine>> map, int id) =>
