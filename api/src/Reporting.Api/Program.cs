@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Reporting.Api;
 using Reporting.Abstractions;
 using Reporting.DAL.Identity;
 using Reporting.DAL.Permissions;
@@ -35,6 +36,8 @@ builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<WidgetQueryRepository>();
 builder.Services.AddScoped<PermissionService>();
+builder.Services.AddScoped<PermissionAdminService>();
+builder.Services.AddScoped<UserRepository>();
 
 // Until authentication is wired up the app runs as the seeded default user. Real auth
 // swaps this single registration for a claims-backed accessor.
@@ -57,6 +60,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Maps AccessDeniedException (thrown by the permission guards in the repositories) to 403.
+app.UseMiddleware<AccessDeniedMiddleware>();
 
 app.UseAuthorization();
 

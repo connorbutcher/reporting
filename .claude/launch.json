@@ -5,7 +5,8 @@
       "name": "reporting-api",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "api/src/Reporting.Api", "--urls", "http://localhost:5291"],
-      "port": 5291
+      "port": 5291,
+      "autoPort": false
     },
     {
       "name": "reporting-app",

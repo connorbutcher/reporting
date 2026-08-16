@@ -15,6 +15,10 @@ import {
   CreateDialogResult,
 } from './create-dialog/create-dialog.component';
 import { MoveDialogComponent, MoveDialogData } from './move-dialog/move-dialog.component';
+import {
+  PermissionsDialogComponent,
+  PermissionsDialogData,
+} from './permissions-dialog/permissions-dialog.component';
 import { RenameDialogComponent, RenameDialogData } from './rename-dialog/rename-dialog.component';
 import { ContentRow } from './content-row';
 
@@ -101,6 +105,16 @@ export class HomeItemActionsService {
       ),
       map(() => undefined),
     );
+  }
+
+  /** Opens the sharing dialog for a folder or report; emits true if any grant or inheritance change was saved. */
+  permissions(row: ContentRow): Observable<boolean> {
+    return defer(
+      () =>
+        this.dialog.open<boolean>(PermissionsDialogComponent, {
+          data: { kind: row.kind, id: row.id, name: row.name } satisfies PermissionsDialogData,
+        }).closed,
+    ).pipe(map((changed) => !!changed));
   }
 
   /** Opens the create dialog under the given folder; emits what was created. */

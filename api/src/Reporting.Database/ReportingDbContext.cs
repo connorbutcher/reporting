@@ -20,6 +20,7 @@ public class ReportingDbContext : DbContext
     public DbSet<UserGroup> UserGroups => Set<UserGroup>();
     public DbSet<UserGroupMember> UserGroupMembers => Set<UserGroupMember>();
     public DbSet<AccessGrant> AccessGrants => Set<AccessGrant>();
+    public DbSet<GrantAuditEntry> GrantAuditEntries => Set<GrantAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -170,5 +171,14 @@ public class ReportingDbContext : DbContext
             .HasFilter(null);
         modelBuilder.Entity<AccessGrant>()
             .HasIndex(g => new { g.SubjectType, g.SubjectId });
+
+        modelBuilder.Entity<GrantAuditEntry>().Property(a => a.SecurableType).HasConversion<string>();
+        modelBuilder.Entity<GrantAuditEntry>().Property(a => a.Action).HasConversion<string>();
+        modelBuilder.Entity<GrantAuditEntry>().Property(a => a.SubjectType).HasConversion<string>();
+        modelBuilder.Entity<GrantAuditEntry>().Property(a => a.OldLevel).HasConversion<string>();
+        modelBuilder.Entity<GrantAuditEntry>().Property(a => a.NewLevel).HasConversion<string>();
+        // Retrieval is always "the trail for this securable, newest first".
+        modelBuilder.Entity<GrantAuditEntry>()
+            .HasIndex(a => new { a.SecurableType, a.SecurableId, a.CreatedAt });
     }
 }

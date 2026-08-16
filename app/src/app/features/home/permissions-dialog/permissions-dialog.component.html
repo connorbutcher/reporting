@@ -1,0 +1,116 @@
+<div class="perm-dialog">
+  <header class="perm-dialog__header">
+    <h2 class="perm-dialog__title">Sharing · {{ data.name }}</h2>
+    <button type="button" class="perm-dialog__close" (click)="close()" aria-label="Close">✕</button>
+  </header>
+
+  @if (loading()) {
+    <div class="perm-dialog__body">
+      <p class="perm-dialog__muted">Loading…</p>
+    </div>
+  } @else if (error() && !permissions()) {
+    <div class="perm-dialog__body">
+      <p class="perm-dialog__error">{{ error() }}</p>
+    </div>
+  } @else if (permissions(); as perms) {
+    <div class="perm-dialog__body">
+      @if (error()) {
+        <p class="perm-dialog__error">{{ error() }}</p>
+      }
+
+      <label class="perm-dialog__inherit">
+        <p-checkbox
+          [binary]="true"
+          inputId="perm-inherit"
+          [ngModel]="perms.inheritsPermissions"
+          [disabled]="saving()"
+          (onChange)="toggleInherit($event.checked)"
+        />
+        <span class="perm-dialog__inherit-text">
+          <span class="perm-dialog__inherit-label">Inherit access from parent</span>
+          <span class="perm-dialog__muted">
+            {{
+              perms.inheritsPermissions
+                ? 'Access flows down from the parent. Turn off to restrict this ' + data.kind + '.'
+                : 'Access is set only here. Current access was kept when inheritance was turned off.'
+            }}
+          </span>
+        </span>
+      </label>
+
+      <div class="perm-dialog__add">
+        <p-select
+          class="perm-dialog__add-subject"
+          [options]="subjectOptions()"
+          [ngModel]="newSubject()"
+          (ngModelChange)="newSubject.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Add a person or group"
+          appendTo="body"
+          [filter]="true"
+          [disabled]="saving()"
+          fluid
+        />
+        <p-select
+          [options]="levels"
+          [ngModel]="newLevel()"
+          (ngModelChange)="newLevel.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [disabled]="saving()"
+        />
+        <button
+          type="button"
+          class="perm-dialog__btn perm-dialog__btn--primary"
+          [disabled]="!newSubject() || saving()"
+          (click)="addGrant()"
+        >
+          Add
+        </button>
+      </div>
+
+      <ul class="perm-dialog__list">
+        @for (grant of perms.effective; track grant.subjectType + ':' + grant.subjectId) {
+          <li class="perm-dialog__row">
+            <span class="perm-dialog__subject">
+              <span class="perm-dialog__subject-name">{{ grant.subjectName }}</span>
+              @if (grant.inherited) {
+                <span class="perm-dialog__badge">Inherited · {{ grant.inheritedFrom }}</span>
+              }
+            </span>
+            @if (grant.inherited) {
+              <span class="perm-dialog__level-static">{{ levelLabel(grant.level) }}</span>
+            } @else {
+              <p-select
+                [options]="levels"
+                [ngModel]="grant.level"
+                (ngModelChange)="changeLevel(grant, $event)"
+                optionLabel="label"
+                optionValue="value"
+                appendTo="body"
+                [disabled]="saving()"
+              />
+              <button
+                type="button"
+                class="perm-dialog__icon"
+                [disabled]="saving()"
+                (click)="remove(grant)"
+                [attr.aria-label]="'Remove ' + grant.subjectName"
+              >
+                ✕
+              </button>
+            }
+          </li>
+        } @empty {
+          <li class="perm-dialog__muted">No one has access yet.</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <footer class="perm-dialog__footer">
+    <button type="button" class="perm-dialog__btn perm-dialog__btn--primary" (click)="close()">Done</button>
+  </footer>
+</div>
