@@ -5,4 +5,7 @@
     <Project Path="src/Reporting.DAL/Reporting.DAL.csproj" />
     <Project Path="src/Reporting.Database/Reporting.Database.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Reporting.Tests/Reporting.Tests.csproj" />
+  </Folder>
 </Solution>

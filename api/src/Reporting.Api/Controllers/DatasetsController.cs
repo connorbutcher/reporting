@@ -83,6 +83,24 @@ public class DatasetsController(DatasetRepository datasets, DatasetRowRepository
         }
     }
 
+    /// <summary>
+    /// Rows shaped for a bar chart: filtered, grouped by the category column, and
+    /// reduced to one value per category (per series) by the chosen aggregate.
+    /// </summary>
+    [HttpPost("{id:guid}/bar-chart-query")]
+    public async Task<ActionResult<BarChartQueryResultDto>> BarChartQuery(Guid id, BarChartQueryDto dto)
+    {
+        try
+        {
+            var result = await widgetQueries.QueryForBarChartAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     /// <summary>Replaces a column's free-form display configuration blob.</summary>
     [HttpPut("{id:guid}/columns/{columnId:guid}/configuration")]
     public async Task<ActionResult<DatasetColumnDto>> UpdateColumnConfiguration(

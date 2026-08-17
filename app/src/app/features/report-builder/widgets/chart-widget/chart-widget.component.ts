@@ -4,9 +4,20 @@ import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../core/models/dataset.model';
 import { FilterGroup } from '../../../../core/models/filter.model';
-import { ChartWidgetConfig } from '../../../../core/models/report.model';
+import {
+  Aggregate,
+  BarChartWidgetConfig,
+  ChartWidgetConfig,
+  LineChartWidgetConfig,
+  ScatterChartWidgetConfig,
+} from '../../../../core/models/report.model';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
+import {
+  BarChartQueryResult,
+  ChartQueryResult,
+  ChartSeriesResult,
+  ResolvedToleranceBand,
+} from '../../../../core/models/widget-query.model';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 
@@ -32,6 +43,9 @@ interface ScatterTooltipParams {
   seriesName: string;
   data: ScatterPoint;
 }
+
+/** The two chart kinds that plot raw rows as points, as opposed to aggregated bars. */
+type PointChartConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
 
 @Component({
   selector: 'app-chart-widget',
@@ -64,23 +78,44 @@ export class ChartWidgetComponent {
     resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
 
-  private readonly source = new WidgetDataSource<ChartQueryResult>({
+  private readonly source = new WidgetDataSource<ChartQueryResult | BarChartQueryResult>({
     datasetId: this.datasetId,
     version: this.datasetVersion,
     api: this.datasetApi,
     fetch: () => {
+      const config = this.config();
       const datasetId = this.datasetId();
-      const x = this.config().xColumnId;
-      const y = this.config().yColumnId;
-      if (!datasetId || !x || !y) return null;
+      if (!datasetId) return null;
+
+      // A bar chart groups and aggregates server-side, so it asks a different
+      // endpoint and needs a category (and, unless counting, a measure).
+      if (config.type === 'barChart') {
+        const category = config.xColumnId;
+        if (!category) return null;
+        const needsValue = config.aggregate !== 'count';
+        if (needsValue && !config.yColumnId) return null;
+
+        return this.datasetApi.queryBarChart(datasetId, {
+          filter: this.effectiveFilter(),
+          categoryColumnId: category,
+          valueColumnId: needsValue ? config.yColumnId : null,
+          aggregate: config.aggregate,
+          seriesColumnId: config.seriesColumnId,
+          toleranceBands: config.toleranceBands,
+        });
+      }
+
+      const x = config.xColumnId;
+      const y = config.yColumnId;
+      if (!x || !y) return null;
 
       return this.datasetApi.queryChart(datasetId, {
         filter: this.effectiveFilter(),
         xColumnId: x,
         yColumnId: y,
-        seriesColumnId: this.config().seriesColumnId,
-        toleranceBands: this.config().toleranceBands,
-        tooltipColumns: this.config().tooltipColumns,
+        seriesColumnId: config.seriesColumnId,
+        toleranceBands: config.toleranceBands,
+        tooltipColumns: config.tooltipColumns,
       });
     },
   });
@@ -93,20 +128,58 @@ export class ChartWidgetComponent {
   private readonly yColumn = computed(() => this.columnById(this.config().yColumnId));
   private readonly seriesColumn = computed(() => this.columnById(this.config().seriesColumnId));
 
-  /** Null until there's a dataset and both axes to actually plot. */
+  /** Null until there's a dataset and enough columns bound to actually plot. */
   protected readonly chartOption = computed<EChartsCoreOption | null>(() => {
+    const config = this.config();
+    return config.type === 'barChart' ? this.barOption(config) : this.pointOption(config);
+  });
+
+  constructor() {
+    // Points reload whenever the dataset, its axes, the aggregate, either filter,
+    // the tolerance bands, or the tooltip columns change — the server needs all
+    // of these to build a response.
+    effect(() => {
+      const config = this.config();
+      const datasetId = this.datasetId();
+      config.xColumnId;
+      config.yColumnId;
+      config.seriesColumnId;
+      config.toleranceBands;
+      config.tooltipColumns;
+      if (config.type === 'barChart') config.aggregate;
+      this.effectiveFilter();
+      this.datasetVersion();
+
+      if (!datasetId) {
+        untracked(() => {
+          this.source.result.set(null);
+          this.source.loading.set(false);
+        });
+        return;
+      }
+
+      untracked(() => {
+        this.source.loading.set(true);
+        this.source.error.set(false);
+        this.source.reloadDebounced();
+      });
+    });
+  }
+
+  /** The scatter/line option: value axes with one mark per row, grouped into series. */
+  private pointOption(config: PointChartConfig): EChartsCoreOption | null {
     const x = this.xColumn();
     const y = this.yColumn();
     if (!x || !y) return null;
 
     const seriesColumn = this.seriesColumn();
-    const config = this.config();
-    const series = this.data()?.series ?? [];
+    const data = this.data() as ChartQueryResult | null;
+    const series = data?.series ?? [];
 
     const xLabel = config.xAxisLabel.trim() || x.name;
     const yLabel = config.yAxisLabel.trim() || y.name;
     const names = series.map((s) => s.label);
-    const markLineData = this.markLineData();
+    const markLineData = this.markLineData((band) => (band.axis === 'x' ? 'xAxis' : 'yAxis'));
 
     return {
       grid: {
@@ -139,46 +212,80 @@ export class ChartWidgetComponent {
         };
       }),
     };
-  });
-
-  constructor() {
-    // Points reload whenever the dataset, its axes, either filter, the
-    // tolerance bands, or the tooltip columns change — the server needs all
-    // of these to build a response.
-    effect(() => {
-      const datasetId = this.datasetId();
-      this.config().xColumnId;
-      this.config().yColumnId;
-      this.config().seriesColumnId;
-      this.config().toleranceBands;
-      this.config().tooltipColumns;
-      this.effectiveFilter();
-      this.datasetVersion();
-
-      if (!datasetId) {
-        untracked(() => {
-          this.source.result.set(null);
-          this.source.loading.set(false);
-        });
-        return;
-      }
-
-      untracked(() => {
-        this.source.loading.set(true);
-        this.source.error.set(false);
-        this.source.reloadDebounced();
-      });
-    });
   }
 
-  /** Dashed line entries for every resolved band's bounds, coloured by what crossing them means. */
-  private markLineData(): object[] {
+  /** The bar option: a category axis with one aggregated value per category, per series. */
+  private barOption(config: BarChartWidgetConfig): EChartsCoreOption | null {
+    const categoryColumn = this.xColumn();
+    if (!categoryColumn) return null;
+
+    const data = this.data() as BarChartQueryResult | null;
+    const categories = data?.categories ?? [];
+    const series = data?.series ?? [];
+
+    const valueColumn = this.yColumn();
+    const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
+    const valueLabel = config.yAxisLabel.trim() || valueColumn?.name || aggregateLabel(config.aggregate);
+
+    // A legend only earns its space once bars split into more than one series.
+    const showLegend = series.length > 1 && config.showLegend;
+    const horizontal = config.horizontal;
+
+    // The value axis is whichever one isn't holding the categories, so reference
+    // lines land on the measure regardless of orientation.
+    const markLineData = this.markLineData(() => (horizontal ? 'xAxis' : 'yAxis'));
+
+    const categoryAxis = {
+      type: 'category' as const,
+      data: categories,
+      name: categoryLabel,
+      nameLocation: 'middle' as const,
+      nameGap: horizontal ? 64 : 28,
+      // Long category lists overlap horizontally, so tilt them once there are a few.
+      ...(horizontal ? {} : { axisLabel: { rotate: categories.length > 6 ? 30 : 0 } }),
+    };
+    const valueAxis = {
+      type: 'value' as const,
+      name: valueLabel,
+      nameLocation: 'middle' as const,
+      nameGap: horizontal ? 28 : 48,
+    };
+
+    return {
+      grid: { left: 56, right: 20, top: showLegend ? 40 : 20, bottom: 56, containLabel: true },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      ...(showLegend ? { legend: { top: 0, data: series.map((s) => s.label) } } : {}),
+      xAxis: horizontal ? valueAxis : categoryAxis,
+      yAxis: horizontal ? categoryAxis : valueAxis,
+      series: series.map((s, i) => {
+        const color = SERIES_COLORS[i % SERIES_COLORS.length];
+        return {
+          name: s.label || config.title || 'Series',
+          type: 'bar' as const,
+          // A shared stack name piles a category's series into one bar.
+          ...(config.stacked ? { stack: 'total' } : {}),
+          itemStyle: { color },
+          data: s.values,
+          ...(i === 0 && markLineData.length > 0
+            ? { markLine: { silent: true, symbol: 'none', data: markLineData } }
+            : {}),
+        };
+      }),
+    };
+  }
+
+  /**
+   * Dashed line entries for every resolved band's bounds, coloured by what crossing
+   * them means. The axis each line binds to is chosen by the caller, since a bar's
+   * value axis flips with orientation while a scatter band keeps its own axis.
+   */
+  private markLineData(axisKeyFor: (band: ResolvedToleranceBand) => 'xAxis' | 'yAxis'): object[] {
     const entries: object[] = [];
 
     for (const band of this.data()?.toleranceBands ?? []) {
       if (band.min === null || band.max === null) continue;
 
-      const axisKey = band.axis === 'x' ? 'xAxis' : 'yAxis';
+      const axisKey = axisKeyFor(band);
       const hasConcession = band.concessionLower !== null || band.concessionUpper !== null;
       const minMaxColor = hasConcession ? '#d97706' : '#dc2626';
 
@@ -223,12 +330,27 @@ function pointsFor(series: ChartSeriesResult): ScatterPoint[] {
   return series.points.map((p) => ({ value: [p.x, p.y], tooltipLines: p.tooltipLines }));
 }
 
+function aggregateLabel(aggregate: Aggregate): string {
+  switch (aggregate) {
+    case 'sum':
+      return 'Sum';
+    case 'average':
+      return 'Average';
+    case 'count':
+      return 'Count';
+    case 'min':
+      return 'Min';
+    case 'max':
+      return 'Max';
+  }
+}
+
 /**
- * The echarts series options specific to one chart kind — the type and its
- * per-kind styling. Everything else (name, colour, data, mark lines) is shared
- * by the caller. Adding a new kind (bar, area) means adding a case here.
+ * The echarts series options specific to one point-chart kind — the type and its
+ * per-kind styling. Everything else (name, colour, data, mark lines) is shared by
+ * the caller. Bars are handled separately, in {@link ChartWidgetComponent}.
  */
-function seriesKindOptions(config: ChartWidgetConfig, color: string): object {
+function seriesKindOptions(config: PointChartConfig, color: string): object {
   switch (config.type) {
     case 'lineChart':
       return {

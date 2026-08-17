@@ -3,6 +3,7 @@
     [RefId]          UNIQUEIDENTIFIER NOT NULL,
     [Name]           NVARCHAR (MAX)   NOT NULL,
     [ParentFolderId] INT              NULL,
+    [InheritsPermissions] BIT         NOT NULL DEFAULT 1,
     [CreatedAt]      DATETIME2 (7)    NOT NULL,
     [UpdatedAt]      DATETIME2 (7)    NOT NULL,
     CONSTRAINT [PK_Folders] PRIMARY KEY CLUSTERED ([Id] ASC),

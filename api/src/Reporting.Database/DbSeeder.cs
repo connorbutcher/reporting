@@ -8,6 +8,86 @@ public static class DbSeeder
     /// <summary>A cell to be created once its row and column have database-assigned int ids.</summary>
     private sealed record PendingCell(DatasetRow Row, DatasetColumn Column, string Raw);
 
+    /// <summary>
+    /// Seeds the identity/permission baseline: the stand-in default user the app runs as
+    /// until auth lands, and the single grant that makes the root open to every
+    /// authenticated user. Idempotent and independent of the demo-content seed, so it runs
+    /// on every startup and tops up whatever is missing.
+    /// </summary>
+    public static void SeedIdentity(ReportingDbContext db)
+    {
+        var changed = false;
+
+        if (!db.Users.Any(u => u.RefId == WellKnownIds.DefaultUser))
+        {
+            db.Users.Add(new User
+            {
+                RefId = WellKnownIds.DefaultUser,
+                Email = "dev@local",
+                DisplayName = "Local Developer",
+                // A global admin so every existing flow keeps working before enforcement lands.
+                // Flip to false (and grant explicitly) to exercise the permission checks.
+                IsGlobalAdmin = true,
+                CreatedAt = DateTime.UtcNow
+            });
+            changed = true;
+        }
+
+        var hasRootBaseline = db.AccessGrants.Any(g =>
+            g.SecurableType == SecurableType.Root && g.SubjectType == GrantSubjectType.Everyone);
+        if (!hasRootBaseline)
+        {
+            db.AccessGrants.Add(new AccessGrant
+            {
+                SecurableType = SecurableType.Root,
+                SecurableId = null,
+                SubjectType = GrantSubjectType.Everyone,
+                SubjectId = null,
+                Level = AccessLevel.Viewer,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = 0
+            });
+            changed = true;
+        }
+
+        if (changed) db.SaveChanges();
+
+        SeedDemoDirectory(db);
+    }
+
+    /// <summary>
+    /// A handful of demo users and a group so the permission editor's pickers and grant flows
+    /// have something to work with before a real directory is connected. Idempotent, keyed by
+    /// email/name; remove alongside the dev current-user stub when authentication lands.
+    /// </summary>
+    private static void SeedDemoDirectory(ReportingDbContext db)
+    {
+        var demoUsers = new[]
+        {
+            ("alice@local", "Alice Whitfield"),
+            ("bob@local", "Bob Okafor"),
+            ("carol@local", "Carol Lindqvist"),
+        };
+
+        var added = false;
+        foreach (var (email, name) in demoUsers)
+        {
+            if (db.Users.Any(u => u.Email == email)) continue;
+            db.Users.Add(new User { RefId = Guid.NewGuid(), Email = email, DisplayName = name, CreatedAt = DateTime.UtcNow });
+            added = true;
+        }
+        if (added) db.SaveChanges();
+
+        if (!db.UserGroups.Any(g => g.Name == "QA Leads"))
+        {
+            var alice = db.Users.FirstOrDefault(u => u.Email == "alice@local");
+            var group = new UserGroup { RefId = Guid.NewGuid(), Name = "QA Leads" };
+            if (alice is not null) group.Members.Add(new UserGroupMember { User = alice });
+            db.UserGroups.Add(group);
+            db.SaveChanges();
+        }
+    }
+
     public static void Seed(ReportingDbContext db)
     {
         if (db.Datasets.Any()) return;

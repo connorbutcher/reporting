@@ -297,3 +297,267 @@ END;
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    DROP INDEX [IX_DatasetCells_ColumnId_DateValue] ON [DatasetCells];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    DROP INDEX [IX_DatasetCells_ColumnId_NumberValue] ON [DatasetCells];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    DROP INDEX [IX_DatasetCells_ColumnId_StringValue] ON [DatasetCells];
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    ALTER TABLE [DatasetCells] ALTER COLUMN [NumberValue] float SPARSE NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    ALTER TABLE [DatasetCells] ALTER COLUMN [DateValue] datetime2(7) SPARSE NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    ALTER TABLE [DatasetCells] ALTER COLUMN [BoolValue] bit SPARSE NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_DatasetCells_ColumnId_DateValue] ON [DatasetCells] ([ColumnId], [DateValue]) WHERE [DateValue] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_DatasetCells_ColumnId_NumberValue] ON [DatasetCells] ([ColumnId], [NumberValue]) WHERE [NumberValue] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    EXEC(N'CREATE INDEX [IX_DatasetCells_ColumnId_StringValue] ON [DatasetCells] ([ColumnId], [StringValue]) WHERE [StringValue] IS NOT NULL');
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816160306_SparseCellValuesAndFilteredIndexes'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260816160306_SparseCellValuesAndFilteredIndexes', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    ALTER TABLE [Reports] ADD [InheritsPermissions] bit NOT NULL DEFAULT CAST(1 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    ALTER TABLE [Folders] ADD [InheritsPermissions] bit NOT NULL DEFAULT CAST(1 AS bit);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE TABLE [AccessGrants] (
+        [Id] int NOT NULL IDENTITY,
+        [SecurableType] nvarchar(450) NOT NULL,
+        [SecurableId] int NULL,
+        [SubjectType] nvarchar(450) NOT NULL,
+        [SubjectId] int NULL,
+        [Level] nvarchar(max) NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [CreatedByUserId] int NOT NULL,
+        CONSTRAINT [PK_AccessGrants] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE TABLE [UserGroups] (
+        [Id] int NOT NULL IDENTITY,
+        [RefId] uniqueidentifier NOT NULL,
+        [Name] nvarchar(max) NOT NULL,
+        CONSTRAINT [PK_UserGroups] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE TABLE [Users] (
+        [Id] int NOT NULL IDENTITY,
+        [RefId] uniqueidentifier NOT NULL,
+        [Email] nvarchar(450) NOT NULL,
+        [DisplayName] nvarchar(max) NOT NULL,
+        [IsGlobalAdmin] bit NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_Users] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE TABLE [UserGroupMembers] (
+        [UserGroupId] int NOT NULL,
+        [UserId] int NOT NULL,
+        CONSTRAINT [PK_UserGroupMembers] PRIMARY KEY ([UserGroupId], [UserId]),
+        CONSTRAINT [FK_UserGroupMembers_UserGroups_UserGroupId] FOREIGN KEY ([UserGroupId]) REFERENCES [UserGroups] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_UserGroupMembers_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_AccessGrants_SecurableType_SecurableId_SubjectType_SubjectId] ON [AccessGrants] ([SecurableType], [SecurableId], [SubjectType], [SubjectId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_AccessGrants_SubjectType_SubjectId] ON [AccessGrants] ([SubjectType], [SubjectId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_UserGroupMembers_UserId] ON [UserGroupMembers] ([UserId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_UserGroups_RefId] ON [UserGroups] ([RefId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Users_Email] ON [Users] ([Email]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Users_RefId] ON [Users] ([RefId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816174855_PermissionsIdentityFoundation'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260816174855_PermissionsIdentityFoundation', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    CREATE TABLE [GrantAuditEntries] (
+        [Id] int NOT NULL IDENTITY,
+        [SecurableType] nvarchar(450) NOT NULL,
+        [SecurableId] int NULL,
+        [Action] nvarchar(max) NOT NULL,
+        [SubjectType] nvarchar(max) NULL,
+        [SubjectId] int NULL,
+        [OldLevel] nvarchar(max) NULL,
+        [NewLevel] nvarchar(max) NULL,
+        [ActorUserId] int NOT NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_GrantAuditEntries] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    CREATE INDEX [IX_GrantAuditEntries_SecurableType_SecurableId_CreatedAt] ON [GrantAuditEntries] ([SecurableType], [SecurableId], [CreatedAt]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260816213132_GrantAuditTrail'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260816213132_GrantAuditTrail', N'10.0.10');
+END;
+
+COMMIT;
+GO
+
