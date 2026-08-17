@@ -10,7 +10,7 @@ public class ReportsController(ReportRepository reports) : ControllerBase
 {
     /// <summary>Reports directly inside <paramref name="folderId"/> (root if omitted) — not the whole tree.</summary>
     [HttpGet]
-    public async Task<ActionResult<List<ReportSummaryDto>>> GetAll([FromQuery] Guid? folderId) =>
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetAll([FromQuery] int? folderId) =>
         await reports.GetAllAsync(folderId);
 
     /// <summary>Every report across every folder, flat — for pickers that need the whole tree at once, like "copy from".</summary>
@@ -23,8 +23,8 @@ public class ReportsController(ReportRepository reports) : ControllerBase
     public async Task<ActionResult<List<ReportSearchResultDto>>> Search([FromQuery] string? q) =>
         await reports.SearchAsync(q);
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ReportSummaryDto>> GetById(Guid id)
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ReportSummaryDto>> GetById(int id)
     {
         var report = await reports.GetByIdAsync(id);
         return report is null ? NotFound() : report;
@@ -46,8 +46,8 @@ public class ReportsController(ReportRepository reports) : ControllerBase
         }
     }
 
-    [HttpPut("{id:guid}")]
-    public async Task<ActionResult<ReportSummaryDto>> Update(Guid id, SaveReportDto dto)
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ReportSummaryDto>> Update(int id, SaveReportDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A report needs a name.");
 
@@ -62,21 +62,21 @@ public class ReportsController(ReportRepository reports) : ControllerBase
         }
     }
 
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id) =>
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id) =>
         await reports.DeleteAsync(id) ? NoContent() : NotFound();
 
     // --- version history --------------------------------------------------
 
-    [HttpGet("{id:guid}/versions")]
-    public async Task<ActionResult<List<ReportVersionSummaryDto>>> GetVersions(Guid id)
+    [HttpGet("{id:int}/versions")]
+    public async Task<ActionResult<List<ReportVersionSummaryDto>>> GetVersions(int id)
     {
         var versions = await reports.GetVersionsAsync(id);
         return versions is null ? NotFound() : versions;
     }
 
-    [HttpGet("{id:guid}/versions/{versionNumber:int}")]
-    public async Task<ActionResult<ReportRevisionDto>> GetVersion(Guid id, int versionNumber)
+    [HttpGet("{id:int}/versions/{versionNumber:int}")]
+    public async Task<ActionResult<ReportRevisionDto>> GetVersion(int id, int versionNumber)
     {
         var revision = await reports.GetVersionAsync(id, versionNumber);
         return revision is null ? NotFound() : revision;
@@ -84,16 +84,16 @@ public class ReportsController(ReportRepository reports) : ControllerBase
 
     // --- draft (checkout / autosave / publish) -----------------------------
 
-    [HttpGet("{id:guid}/draft")]
-    public async Task<ActionResult<ReportRevisionDto>> GetDraft(Guid id)
+    [HttpGet("{id:int}/draft")]
+    public async Task<ActionResult<ReportRevisionDto>> GetDraft(int id)
     {
         var draft = await reports.GetDraftAsync(id);
         return draft is null ? NotFound() : draft;
     }
 
     /// <summary>Checks out a draft to edit. Idempotent: an existing draft is returned as-is.</summary>
-    [HttpPost("{id:guid}/draft")]
-    public async Task<ActionResult<ReportRevisionDto>> Checkout(Guid id, CheckoutDraftDto dto)
+    [HttpPost("{id:int}/draft")]
+    public async Task<ActionResult<ReportRevisionDto>> Checkout(int id, CheckoutDraftDto dto)
     {
         try
         {
@@ -106,8 +106,8 @@ public class ReportsController(ReportRepository reports) : ControllerBase
         }
     }
 
-    [HttpPut("{id:guid}/draft")]
-    public async Task<ActionResult<ReportRevisionDto>> UpdateDraft(Guid id, ReportRevisionDto dto)
+    [HttpPut("{id:int}/draft")]
+    public async Task<ActionResult<ReportRevisionDto>> UpdateDraft(int id, ReportRevisionDto dto)
     {
         try
         {
@@ -120,8 +120,8 @@ public class ReportsController(ReportRepository reports) : ControllerBase
         }
     }
 
-    [HttpPost("{id:guid}/draft/publish")]
-    public async Task<ActionResult<ReportVersionSummaryDto>> Publish(Guid id, PublishDraftDto dto)
+    [HttpPost("{id:int}/draft/publish")]
+    public async Task<ActionResult<ReportVersionSummaryDto>> Publish(int id, PublishDraftDto dto)
     {
         try
         {
@@ -134,7 +134,7 @@ public class ReportsController(ReportRepository reports) : ControllerBase
         }
     }
 
-    [HttpDelete("{id:guid}/draft")]
-    public async Task<IActionResult> DiscardDraft(Guid id) =>
+    [HttpDelete("{id:int}/draft")]
+    public async Task<IActionResult> DiscardDraft(int id) =>
         await reports.DiscardDraftAsync(id) ? NoContent() : NotFound();
 }

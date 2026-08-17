@@ -2,10 +2,10 @@ namespace Reporting.Abstractions;
 
 public class ReportSummaryDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public int Number { get; set; }
     public string Name { get; set; } = string.Empty;
-    public Guid? FolderId { get; set; }
+    public int? FolderId { get; set; }
     public bool HasDraft { get; set; }
     public int? LatestVersionNumber { get; set; }
     public DateTime ModifiedAt { get; set; }
@@ -14,7 +14,7 @@ public class ReportSummaryDto
 /// <summary>A report match from a name/number search, with its folder location for display.</summary>
 public class ReportSearchResultDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public int Number { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool HasDraft { get; set; }
@@ -26,21 +26,21 @@ public class ReportSearchResultDto
 public class CreateReportDto
 {
     public string Name { get; set; } = string.Empty;
-    public Guid? FolderId { get; set; }
+    public int? FolderId { get; set; }
     /// <summary>When set, the new report's draft is pre-populated with this report's current content.</summary>
-    public Guid? SourceReportId { get; set; }
+    public int? SourceReportId { get; set; }
 }
 
 public class SaveReportDto
 {
     public string Name { get; set; } = string.Empty;
-    public Guid? FolderId { get; set; }
+    public int? FolderId { get; set; }
 }
 
 /// <summary>The content of one revision (draft or a specific published version) of a report.</summary>
 public class ReportRevisionDto
 {
-    public Guid ReportId { get; set; }
+    public int ReportId { get; set; }
     public string Name { get; set; } = string.Empty;
     public int Columns { get; set; } = 12;
     public int Rows { get; set; } = 10;

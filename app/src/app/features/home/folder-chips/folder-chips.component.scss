@@ -1,0 +1,92 @@
+// The host stands in for the section as a flex child of the contents column.
+:host {
+  display: contents;
+}
+
+.home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home__section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.home__folder-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+// A plain container, not itself interactive — the open button and the actions button inside it
+// are two separate, sibling controls (never nested `<button>`s, which is invalid HTML and breaks
+// keyboard/screen-reader navigation).
+.home__folder-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 160px;
+  padding: 8px 6px 8px 12px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 9px;
+  background: #fff;
+
+  &:hover {
+    border-color: var(--p-primary-200, #adc3e5);
+    background: var(--p-primary-50, #eef3fa);
+  }
+}
+
+.home__folder-chip-open {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.home__folder-chip-icon {
+  flex: 0 0 auto;
+  color: var(--app-navy);
+  font-size: 0.85rem;
+}
+
+.home__folder-chip-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.home__folder-chip-actions {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff;
+    color: var(--app-navy);
+  }
+}

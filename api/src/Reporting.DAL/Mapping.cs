@@ -15,22 +15,21 @@ public static class Mapping
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
-    /// <summary>Assumes <see cref="Folder.ParentFolder"/> is loaded, so the parent's RefId can be exposed.</summary>
     public static FolderDto ToDto(this Folder folder) => new()
     {
-        Id = folder.RefId,
+        Id = folder.Id,
         Name = folder.Name,
-        ParentFolderId = folder.ParentFolder?.RefId,
+        ParentFolderId = folder.ParentFolderId,
         ModifiedAt = folder.UpdatedAt
     };
 
-    /// <summary>Assumes <see cref="Report.Revisions"/> and <see cref="Report.Folder"/> are loaded.</summary>
+    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded.</summary>
     public static ReportSummaryDto ToSummaryDto(this Report report) => new()
     {
-        Id = report.RefId,
+        Id = report.Id,
         Number = report.Number,
         Name = report.Name,
-        FolderId = report.Folder?.RefId,
+        FolderId = report.FolderId,
         HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
         LatestVersionNumber = report.Revisions
             .Where(r => r.Kind == RevisionKind.Published)
@@ -43,7 +42,7 @@ public static class Mapping
     /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
     public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath) => new()
     {
-        Id = report.RefId,
+        Id = report.Id,
         Number = report.Number,
         Name = report.Name,
         HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
@@ -58,7 +57,7 @@ public static class Mapping
 
     public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()
     {
-        ReportId = report.RefId,
+        ReportId = report.Id,
         Name = report.Name,
         Columns = revision.Columns,
         Rows = revision.Rows,

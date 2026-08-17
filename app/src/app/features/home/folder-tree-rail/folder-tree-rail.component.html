@@ -1,0 +1,37 @@
+<aside class="home__tree app-card" [class.home__tree--collapsed]="store.railCollapsed()">
+  <header class="home__tree-header">
+    <h1 class="home__heading">Reports</h1>
+    <button
+      type="button"
+      class="home__tree-toggle"
+      (click)="store.toggleRail()"
+      [attr.aria-label]="store.railCollapsed() ? 'Expand folder tree' : 'Collapse folder tree'"
+    >
+      <i
+        class="pi"
+        [class.pi-angle-left]="!store.railCollapsed()"
+        [class.pi-angle-right]="store.railCollapsed()"
+        aria-hidden="true"
+      ></i>
+    </button>
+  </header>
+
+  @if (!store.railCollapsed()) {
+    @if (store.treeLoading()) {
+      <div class="home__tree-skeleton">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <p-skeleton height="1.5rem" />
+        }
+      </div>
+    } @else {
+      <p-tree
+        class="home__tree-widget"
+        [value]="store.tree.nodes()"
+        selectionMode="single"
+        [selectionKeys]="store.treeSelectionKeys()"
+        (onNodeSelect)="store.onNodeSelect($event)"
+        (onNodeExpand)="store.tree.onNodeExpand($event)"
+      />
+    }
+  }
+</aside>

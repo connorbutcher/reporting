@@ -13,6 +13,7 @@ import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { Folder } from '../../../core/models/folder.model';
 import { ReportSummary } from '../../../core/models/report.model';
+import { groupByParent } from '../group-by-parent.util';
 
 export type CreateKind = 'folder' | 'report';
 
@@ -25,7 +26,7 @@ export interface CreateDialogResult {
   kind: CreateKind;
   name: string;
   /** Set when the user picked an existing report to start from — undefined means start blank. */
-  sourceReportId?: string;
+  sourceReportId?: number;
 }
 
 /** Lets the user pick folder-vs-report, name it, and (for reports) optionally copy an existing one — in one step, before creating either. */
@@ -44,6 +45,9 @@ export class CreateDialogComponent implements AfterViewInit {
   protected readonly name = signal('');
   protected readonly selectedSource = signal<TreeNode | null>(null);
 
+  private readonly foldersByParent = computed(() => groupByParent(this.data.folders, (f) => f.parentFolderId));
+  private readonly reportsByParent = computed(() => groupByParent(this.data.reports, (r) => r.folderId));
+
   protected readonly treeNodes = computed<TreeNode[]>(() => [
     {
       key: '__root__',
@@ -59,24 +63,20 @@ export class CreateDialogComponent implements AfterViewInit {
     this.nameInput().nativeElement.focus();
   }
 
-  private childNodes(parentId: string | null): TreeNode[] {
-    const folderNodes = this.data.folders
-      .filter((f) => f.parentFolderId === parentId)
-      .map((folder) => ({
-        key: `folder:${folder.id}`,
-        label: folder.name,
-        icon: 'pi pi-folder',
-        selectable: false,
-        children: this.childNodes(folder.id),
-      }));
-    const reportNodes = this.data.reports
-      .filter((r) => r.folderId === parentId)
-      .map((report) => ({
-        key: report.id,
-        label: report.name,
-        icon: 'pi pi-file',
-        leaf: true,
-      }));
+  private childNodes(parentId: number | null): TreeNode[] {
+    const folderNodes = (this.foldersByParent().get(parentId) ?? []).map((folder) => ({
+      key: `folder:${folder.id}`,
+      label: folder.name,
+      icon: 'pi pi-folder',
+      selectable: false,
+      children: this.childNodes(folder.id),
+    }));
+    const reportNodes = (this.reportsByParent().get(parentId) ?? []).map((report) => ({
+      key: String(report.id),
+      label: report.name,
+      icon: 'pi pi-file',
+      leaf: true,
+    }));
     return [...folderNodes, ...reportNodes];
   }
 
@@ -88,8 +88,9 @@ export class CreateDialogComponent implements AfterViewInit {
   protected create(): void {
     const name = this.name().trim();
     if (!name) return;
+    const sourceKey = this.selectedSource()?.key;
     const sourceReportId =
-      this.kind() === 'report' ? (this.selectedSource()?.key ?? undefined) : undefined;
+      this.kind() === 'report' && sourceKey !== undefined ? Number(sourceKey) : undefined;
     this.dialogRef.close({ kind: this.kind(), name, sourceReportId });
   }
 

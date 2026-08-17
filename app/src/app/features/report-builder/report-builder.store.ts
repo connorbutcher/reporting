@@ -249,7 +249,7 @@ export class ReportBuilderStore {
    * (e.g. a direct navigation or a page refresh mid-edit) one is checked out
    * on the fly so the canvas still has something to edit.
    */
-  load(reportId: string): void {
+  load(reportId: number): void {
     this.loading.set(true);
     this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
     this.filterApi.operators().subscribe((catalogue) => this.operatorCatalogue.set(catalogue));

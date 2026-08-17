@@ -1,0 +1,76 @@
+// The host stands in for the aside as a flex child of the page's `.home` row.
+:host {
+  display: contents;
+}
+
+.home__tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  flex: 0 0 260px;
+  padding: 14px;
+  overflow-y: auto;
+  transition:
+    flex-basis 0.16s ease,
+    width 0.16s ease;
+
+  &--collapsed {
+    width: 44px;
+    flex: 0 0 44px;
+    overflow: hidden;
+    padding: 14px 6px;
+  }
+}
+
+.home__tree-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+
+  .home__tree--collapsed & {
+    justify-content: center;
+  }
+}
+
+.home__tree--collapsed .home__heading {
+  display: none;
+}
+
+.home__tree-toggle {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--app-card-border);
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 11px;
+
+  &:hover {
+    color: var(--app-navy);
+    border-color: #94a3b8;
+  }
+}
+
+.home__heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
+.home__tree-widget {
+  display: block;
+}
+
+.home__tree-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

@@ -1,0 +1,60 @@
+// Row/column styles shared by the reports table and the search-results table.
+// Each of those components pulls this in with `@use '../home-table';` so the
+// two stay visually identical without duplicating the rules.
+
+.home__table-wrapper {
+  display: block;
+  min-height: 0;
+  overflow: auto;
+}
+
+.home__row {
+  cursor: pointer;
+
+  // Rows are keyboard-openable (tabindex + Enter) alongside the click handler, so they need
+  // their own visible focus state — a table row isn't a native control and gets no outline by default.
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-400, #6b93c9);
+    outline-offset: -2px;
+  }
+}
+
+.home__row-name {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .pi {
+    color: var(--app-navy);
+    margin-right: 8px;
+  }
+}
+
+.home__col-number,
+.home__col-status,
+.home__col-modified {
+  width: 130px;
+}
+
+.home__rnum {
+  font-family: var(--app-font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+.home__table-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home__empty {
+  margin: 0;
+  padding: 12px;
+  color: #64748b;
+  font-size: 0.82rem;
+}

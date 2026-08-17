@@ -1,0 +1,69 @@
+<div class="home__section">
+  <span class="home__section-label">Reports</span>
+  <p-table
+    class="home__table-wrapper"
+    [value]="store.reportRows()"
+    sortMode="single"
+    dataKey="id"
+    size="small"
+  >
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
+        <th pSortableColumn="number" class="home__col-number">
+          Number <p-sort-icon field="number" />
+        </th>
+        <th pSortableColumn="status" class="home__col-status">
+          Status <p-sort-icon field="status" />
+        </th>
+        <th pSortableColumn="modifiedAt" class="home__col-modified">
+          Modified <p-sort-icon field="modifiedAt" />
+        </th>
+        <th class="home__col-actions"></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr
+        class="home__row"
+        [class.home__row--draft]="row.statusKind === 'draft'"
+        [class.home__row--published]="row.statusKind === 'published'"
+        [class.home__row--empty]="row.statusKind === 'empty'"
+        tabindex="0"
+        (click)="store.openRow(row)"
+        (keydown.enter)="store.openRow(row)"
+        (contextmenu)="onContextMenu($event, row)"
+      >
+        <td class="home__col-status-stripe">
+          <span class="home__row-name">
+            <i class="pi pi-file" aria-hidden="true"></i>
+            {{ row.name }}
+          </span>
+        </td>
+        <td class="home__col-number">
+          <span class="home__rnum">R-{{ row.number }}</span>
+        </td>
+        <td class="home__col-status">
+          <span
+            class="home__status-word"
+            [class.home__status-word--draft]="row.statusKind === 'draft'"
+            [class.home__status-word--published]="row.statusKind === 'published'"
+            [class.home__status-word--empty]="row.statusKind === 'empty'"
+          >
+            {{ row.status }}
+          </span>
+        </td>
+        <td class="home__col-modified">{{ row.modifiedAt | date: 'short' }}</td>
+        <td class="home__col-actions">
+          <button
+            type="button"
+            class="home__row-actions"
+            aria-label="Actions"
+            (click)="onActions($event, row)"
+          >
+            <i class="pi pi-ellipsis-v" aria-hidden="true"></i>
+          </button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

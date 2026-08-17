@@ -13,115 +13,27 @@
   box-sizing: border-box;
 }
 
-.home__tree {
+.home__contents {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 260px;
-  flex: 0 0 260px;
-  padding: 14px;
-  overflow-y: auto;
-  transition:
-    flex-basis 0.16s ease,
-    width 0.16s ease;
-
-  &--collapsed {
-    width: 44px;
-    flex: 0 0 44px;
-    overflow: hidden;
-    padding: 14px 6px;
-  }
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 18px;
+  overflow: hidden;
 }
 
-.home__tree-header {
+.home__toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 4px;
-
-  .home__tree--collapsed & {
-    justify-content: center;
-  }
+  gap: 14px;
 }
 
-.home__tree--collapsed .home__heading {
-  display: none;
-}
-
-.home__tree-toggle {
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--app-card-border);
-  border-radius: 6px;
-  background: #fff;
-  color: #64748b;
-  cursor: pointer;
-  font-size: 11px;
-
-  &:hover {
-    color: var(--app-navy);
-    border-color: #94a3b8;
-  }
-}
-
-.home__heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--app-navy);
-}
-
-.home__tree-widget {
+.home__breadcrumb {
   display: block;
-}
-
-.home__search {
-  position: relative;
-  display: flex;
-  align-items: center;
-  // Searches the whole tree, not the folder being browsed, so it sits at the
-  // top of the content card rather than a fixed width matching the toolbar.
-  width: 280px;
-  flex: 0 0 auto;
-}
-
-.home__search-icon {
-  position: absolute;
-  left: 9px;
-  color: #94a3b8;
-  font-size: 0.78rem;
-  pointer-events: none;
-}
-
-.home__search-input {
-  width: 100%;
-  padding-left: 26px !important;
-  padding-right: 26px !important;
-  box-sizing: border-box;
-}
-
-.home__search-clear {
-  position: absolute;
-  right: 6px;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 999px;
-  background: none;
-  color: #94a3b8;
-  cursor: pointer;
-  font-size: 0.7rem;
-
-  &:hover {
-    background: #f1f5f9;
-    color: var(--app-navy);
-  }
+  flex: 1;
+  min-width: 0;
 }
 
 .home__search-back {
@@ -143,27 +55,10 @@
   }
 }
 
-.home__contents {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  padding: 16px 18px;
-  overflow: hidden;
-}
-
-.home__breadcrumb {
-  display: block;
-  flex: 1;
-  min-width: 0;
-}
-
-.home__toolbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.home__action-pending {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: 0.9rem;
 }
 
 .home__error {
@@ -176,192 +71,10 @@
   font-size: 0.8rem;
 }
 
-.home__tree-skeleton,
 .home__table-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.home__table-wrapper {
-  display: block;
-  min-height: 0;
-  overflow: auto;
-}
-
-.home__row {
-  cursor: pointer;
-}
-
-.home__row-name {
-  display: inline-flex;
-  align-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  .pi {
-    color: var(--app-navy);
-    margin-right: 8px;
-  }
-}
-
-.home__col-number,
-.home__col-status,
-.home__col-modified {
-  width: 130px;
-}
-
-.home__col-actions {
-  width: 36px;
-}
-
-.home__rnum {
-  font-family: var(--app-font-mono);
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #64748b;
-  letter-spacing: 0.01em;
-}
-
-// A left-edge stripe is the primary at-a-glance status signal (same language
-// as the tolerance banding on data tables); the text label backs it up for
-// anyone who can't rely on colour alone.
-.home__col-status-stripe {
-  position: relative;
-  padding-left: 20px !important;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    top: 8px;
-    bottom: 8px;
-    width: 3px;
-    border-radius: 3px;
-    background: var(--app-card-border);
-  }
-}
-
-.home__row--draft .home__col-status-stripe::before {
-  background: #f59e0b;
-}
-
-.home__row--published .home__col-status-stripe::before {
-  background: var(--app-navy);
-}
-
-.home__row--empty .home__col-status-stripe::before {
-  background: #cbd5e1;
-}
-
-.home__status-word {
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-
-  &--draft {
-    color: #b45309;
-  }
-
-  &--published {
-    color: var(--app-navy);
-  }
-
-  &--empty {
-    color: #64748b;
-  }
-}
-
-.home__section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.home__section-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-}
-
-.home__folder-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.home__folder-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 160px;
-  padding: 8px 6px 8px 12px;
-  border: 1px solid var(--app-card-border);
-  border-radius: 9px;
-  background: #fff;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--p-primary-200, #adc3e5);
-    background: var(--p-primary-50, #eef3fa);
-  }
-}
-
-.home__folder-chip-icon {
-  flex: 0 0 auto;
-  color: var(--app-navy);
-  font-size: 0.85rem;
-}
-
-.home__folder-chip-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.82rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-}
-
-.home__folder-chip-actions {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: #94a3b8;
-  cursor: pointer;
-
-  &:hover {
-    background: #fff;
-    color: var(--app-navy);
-  }
-}
-
-.home__row-actions {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: #64748b;
-  cursor: pointer;
-
-  &:hover {
-    background: #f1f5f9;
-    color: var(--app-navy);
-  }
 }
 
 .home__empty {

@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { Observable, defer, filter, forkJoin, map, switchMap } from 'rxjs';
+import { Observable, defer, filter, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { Folder } from '../../core/models/folder.model';
@@ -23,7 +23,7 @@ import { RenameDialogComponent, RenameDialogData } from './rename-dialog/rename-
 import { ContentRow } from './content-row';
 
 /** What a completed create resolved to, so the page can reload or open the new report. */
-export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: string };
+export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: number };
 
 /**
  * The row/create dialog flows for the home page, pulled out of the component so
@@ -38,6 +38,13 @@ export class HomeItemActionsService {
   private readonly folderApi = inject(FolderApiService);
   private readonly reportApi = inject(ReportApiService);
 
+  /**
+   * True only while {@link move} or {@link create} are prefetching the data their dialog needs
+   * to build its folder tree — the two flows with a gap between the trigger and the dialog
+   * appearing. Rename/remove/permissions open their dialog immediately, so they never set this.
+   */
+  readonly busy = signal(false);
+
   rename(row: ContentRow): Observable<void> {
     return defer(
       () =>
@@ -48,21 +55,22 @@ export class HomeItemActionsService {
       filter((newName): newName is string => !!newName),
       switchMap((newName) =>
         row.kind === 'folder'
-          ? this.folderApi.rename(row.id, newName, row.folder!.parentFolderId)
-          : this.reportApi.rename(row.id, newName, row.report!.folderId),
+          ? this.folderApi.rename(row.id, newName, row.folder.parentFolderId)
+          : this.reportApi.rename(row.id, newName, row.report.folderId),
       ),
       map(() => undefined),
     );
   }
 
   /** Emits the chosen destination folder (null = root) on a successful move. */
-  move(row: ContentRow): Observable<string | null> {
-    const currentFolderId =
-      row.kind === 'folder' ? row.folder!.parentFolderId : row.report!.folderId;
+  move(row: ContentRow): Observable<number | null> {
+    const currentFolderId = row.kind === 'folder' ? row.folder.parentFolderId : row.report.folderId;
+    this.busy.set(true);
     return this.folderApi.list().pipe(
+      tap({ next: () => this.busy.set(false), error: () => this.busy.set(false) }),
       switchMap(
         (allFolders) =>
-          this.dialog.open<string | null | undefined>(MoveDialogComponent, {
+          this.dialog.open<number | null | undefined>(MoveDialogComponent, {
             data: {
               kind: row.kind,
               itemName: row.name,
@@ -72,7 +80,7 @@ export class HomeItemActionsService {
             } satisfies MoveDialogData,
           }).closed,
       ),
-      filter((destination): destination is string | null => destination !== undefined),
+      filter((destination): destination is number | null => destination !== undefined),
       switchMap((destination) => {
         const moved: Observable<Folder | ReportSummary> =
           row.kind === 'folder'
@@ -118,8 +126,10 @@ export class HomeItemActionsService {
   }
 
   /** Opens the create dialog under the given folder; emits what was created. */
-  create(folderId: string | null): Observable<CreateOutcome> {
+  create(folderId: number | null): Observable<CreateOutcome> {
+    this.busy.set(true);
     return forkJoin({ folders: this.folderApi.list(), reports: this.reportApi.listAll() }).pipe(
+      tap({ next: () => this.busy.set(false), error: () => this.busy.set(false) }),
       switchMap(
         ({ folders, reports }) =>
           this.dialog.open<CreateDialogResult | undefined>(CreateDialogComponent, {

@@ -17,7 +17,7 @@ import {
 
 export interface PermissionsDialogData {
   kind: SecurableKind;
-  id: string;
+  id: number;
   name: string;
 }
 

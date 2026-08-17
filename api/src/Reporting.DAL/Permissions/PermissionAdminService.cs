@@ -21,39 +21,39 @@ public class PermissionAdminService(
 {
     // --- reads ------------------------------------------------------------
 
-    public async Task<PermissionsDto?> GetFolderPermissionsAsync(Guid folderRef)
+    public async Task<PermissionsDto?> GetFolderPermissionsAsync(int folderId)
     {
-        var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == folderRef);
+        var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
         if (folder is null || !await CanManageFolderAsync(folder)) return null;
         return await BuildPermissionsAsync(await BuildFolderChainAsync(folder.Id), folder.InheritsPermissions);
     }
 
-    public async Task<PermissionsDto?> GetReportPermissionsAsync(Guid reportRef)
+    public async Task<PermissionsDto?> GetReportPermissionsAsync(int reportId)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == reportRef);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
         if (report is null || !await CanManageReportAsync(report)) return null;
         return await BuildPermissionsAsync(await BuildReportChainAsync(report), report.InheritsPermissions);
     }
 
-    public async Task<List<GrantAuditEntryDto>?> GetFolderAuditAsync(Guid folderRef)
+    public async Task<List<GrantAuditEntryDto>?> GetFolderAuditAsync(int folderId)
     {
-        var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == folderRef);
+        var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
         if (folder is null || !await CanManageFolderAsync(folder)) return null;
         return await BuildAuditAsync(SecurableType.Folder, folder.Id);
     }
 
-    public async Task<List<GrantAuditEntryDto>?> GetReportAuditAsync(Guid reportRef)
+    public async Task<List<GrantAuditEntryDto>?> GetReportAuditAsync(int reportId)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == reportRef);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
         if (report is null || !await CanManageReportAsync(report)) return null;
         return await BuildAuditAsync(SecurableType.Report, report.Id);
     }
 
     // --- inheritance toggle ----------------------------------------------
 
-    public async Task<bool> SetFolderInheritanceAsync(Guid folderRef, SetInheritanceDto dto)
+    public async Task<bool> SetFolderInheritanceAsync(int folderId, SetInheritanceDto dto)
     {
-        var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == folderRef);
+        var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
         if (folder is null || !await CanManageFolderAsync(folder)) return false;
 
         if (folder.InheritsPermissions != dto.Inherits)
@@ -68,9 +68,9 @@ public class PermissionAdminService(
         return true;
     }
 
-    public async Task<bool> SetReportInheritanceAsync(Guid reportRef, SetInheritanceDto dto)
+    public async Task<bool> SetReportInheritanceAsync(int reportId, SetInheritanceDto dto)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == reportRef);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
         if (report is null || !await CanManageReportAsync(report)) return false;
 
         if (report.InheritsPermissions != dto.Inherits)
@@ -87,31 +87,31 @@ public class PermissionAdminService(
 
     // --- grant upsert / remove -------------------------------------------
 
-    public async Task<AccessGrantDto?> UpsertFolderGrantAsync(Guid folderRef, SaveGrantDto dto)
+    public async Task<AccessGrantDto?> UpsertFolderGrantAsync(int folderId, SaveGrantDto dto)
     {
-        var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == folderRef);
+        var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
         if (folder is null || !await CanManageFolderAsync(folder)) return null;
         return await UpsertGrantAsync(await BuildFolderChainAsync(folder.Id), dto);
     }
 
-    public async Task<AccessGrantDto?> UpsertReportGrantAsync(Guid reportRef, SaveGrantDto dto)
+    public async Task<AccessGrantDto?> UpsertReportGrantAsync(int reportId, SaveGrantDto dto)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == reportRef);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
         if (report is null || !await CanManageReportAsync(report)) return null;
         return await UpsertGrantAsync(await BuildReportChainAsync(report), dto);
     }
 
-    public async Task<bool> RemoveFolderGrantAsync(Guid folderRef, RemoveGrantDto dto)
+    public async Task<bool> RemoveFolderGrantAsync(int folderId, RemoveGrantDto dto)
     {
-        var folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == folderRef);
+        var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
         if (folder is null || !await CanManageFolderAsync(folder)) return false;
         await RemoveGrantAsync(await BuildFolderChainAsync(folder.Id), dto.SubjectType, dto.SubjectId);
         return true;
     }
 
-    public async Task<bool> RemoveReportGrantAsync(Guid reportRef, RemoveGrantDto dto)
+    public async Task<bool> RemoveReportGrantAsync(int reportId, RemoveGrantDto dto)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == reportRef);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
         if (report is null || !await CanManageReportAsync(report)) return false;
         await RemoveGrantAsync(await BuildReportChainAsync(report), dto.SubjectType, dto.SubjectId);
         return true;

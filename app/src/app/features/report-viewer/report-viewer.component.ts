@@ -54,7 +54,10 @@ export class ReportViewerComponent {
 
   // Route params drive every fetch: changing report or version refetches automatically.
   private readonly params = toSignal(this.route.paramMap);
-  private readonly reportId = computed(() => this.params()?.get('reportId') ?? null);
+  private readonly reportId = computed(() => {
+    const raw = this.params()?.get('reportId');
+    return raw ? Number(raw) : null;
+  });
   protected readonly viewingVersion = computed(() => {
     const v = this.params()?.get('versionNumber');
     return v ? Number(v) : null;

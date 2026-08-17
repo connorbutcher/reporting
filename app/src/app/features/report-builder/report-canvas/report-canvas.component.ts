@@ -58,7 +58,7 @@ export class ReportCanvasComponent implements OnInit {
 
   ngOnInit(): void {
     const reportId = this.route.snapshot.paramMap.get('reportId');
-    if (reportId) this.store.load(reportId);
+    if (reportId) this.store.load(Number(reportId));
   }
 
   /** Browser-level guard for closing the tab or reloading. */

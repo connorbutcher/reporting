@@ -248,10 +248,10 @@ export type Widget =
 
 /** A report's identity and folder placement — everything except its content. */
 export interface ReportSummary {
-  id: string;
+  id: number;
   number: number;
   name: string;
-  folderId: string | null;
+  folderId: number | null;
   hasDraft: boolean;
   latestVersionNumber: number | null;
   modifiedAt: string;
@@ -259,7 +259,7 @@ export interface ReportSummary {
 
 /** The content of one revision of a report — either the checked-out draft or one published version. */
 export interface ReportRevisionContent {
-  reportId: string;
+  reportId: number;
   name: string;
   columns: number;
   rows: number;
@@ -279,7 +279,7 @@ export interface ReportVersionSummary {
 
 /** A report match from a name/number search, with its folder location for display. */
 export interface ReportSearchResult {
-  id: string;
+  id: number;
   number: number;
   name: string;
   hasDraft: boolean;

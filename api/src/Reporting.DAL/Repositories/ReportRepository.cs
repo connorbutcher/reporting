@@ -13,20 +13,14 @@ namespace Reporting.DAL.Repositories;
 /// </summary>
 public class ReportRepository(ReportingDbContext db, PermissionService permissions)
 {
-    /// <summary>Reports directly inside <paramref name="folderRef"/> (root if null) — not the whole tree.</summary>
-    public async Task<List<ReportSummaryDto>> GetAllAsync(Guid? folderRef)
+    /// <summary>Reports directly inside <paramref name="folderId"/> (root if null) — not the whole tree.</summary>
+    public async Task<List<ReportSummaryDto>> GetAllAsync(int? folderId)
     {
-        int? folderPk = null;
-        if (folderRef is { } fref)
-        {
-            folderPk = await db.Folders.Where(f => f.RefId == fref).Select(f => (int?)f.Id).FirstOrDefaultAsync();
-            if (folderPk is null) return [];
-        }
+        if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid)) return [];
 
         var reports = await db.Reports
             .Include(r => r.Revisions)
-            .Include(r => r.Folder)
-            .Where(r => r.FolderId == folderPk)
+            .Where(r => r.FolderId == folderId)
             .OrderBy(r => r.Name)
             .ToListAsync();
         return await FilterVisibleAsync(reports, r => r.ToSummaryDto());
@@ -37,7 +31,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var reports = await db.Reports
             .Include(r => r.Revisions)
-            .Include(r => r.Folder)
             .OrderBy(r => r.Name)
             .ToListAsync();
         return await FilterVisibleAsync(reports, r => r.ToSummaryDto());
@@ -100,12 +93,11 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         return await FilterVisibleAsync(matches, r => r.ToSearchResultDto(PathFor(r.FolderId)));
     }
 
-    public async Task<ReportSummaryDto?> GetByIdAsync(Guid id)
+    public async Task<ReportSummaryDto?> GetByIdAsync(int id)
     {
         var report = await db.Reports
             .Include(r => r.Revisions)
-            .Include(r => r.Folder)
-            .FirstOrDefaultAsync(r => r.RefId == id);
+            .FirstOrDefaultAsync(r => r.Id == id);
         if (report is null || !await CanSeeAsync(report)) return null;
         return report.ToSummaryDto();
     }
@@ -129,14 +121,14 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
 
     /// <summary>
     /// Throws <see cref="DataValidationException"/> if the folder, or the source report
-    /// named by <paramref name="sourceReportRef"/>, doesn't exist.
+    /// named by <paramref name="sourceReportId"/>, doesn't exist.
     /// </summary>
-    public async Task<ReportSummaryDto> CreateAsync(string name, Guid? folderRef, Guid? sourceReportRef = null)
+    public async Task<ReportSummaryDto> CreateAsync(string name, int? folderId, int? sourceReportId = null)
     {
         Folder? folder = null;
-        if (folderRef is { } fref)
+        if (folderId is { } fid)
         {
-            folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == fref)
+            folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == fid)
                 ?? throw new DataValidationException("Folder does not exist.");
         }
 
@@ -144,9 +136,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         await permissions.RequireCreateInAsync(folder?.Id);
 
         ReportRevision? source = null;
-        if (sourceReportRef is { } sref)
+        if (sourceReportId is { } sid)
         {
-            var sourceReport = await db.Reports.FirstOrDefaultAsync(r => r.RefId == sref)
+            var sourceReport = await db.Reports.FirstOrDefaultAsync(r => r.Id == sid)
                 ?? throw new DataValidationException("Source report does not exist.");
 
             // You can only duplicate a report you're allowed to see.
@@ -189,20 +181,19 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     }
 
     /// <summary>Null if <paramref name="id"/> doesn't exist. Throws <see cref="DataValidationException"/> if the folder doesn't exist.</summary>
-    public async Task<ReportSummaryDto?> UpdateAsync(Guid id, string name, Guid? folderRef)
+    public async Task<ReportSummaryDto?> UpdateAsync(int id, string name, int? folderId)
     {
         var report = await db.Reports
             .Include(r => r.Revisions)
-            .Include(r => r.Folder)
-            .FirstOrDefaultAsync(r => r.RefId == id);
+            .FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
         // Renaming or moving a report is a Manager action on it.
         if (!await AuthorizeAsync(report, AccessLevel.Manager)) return null;
 
         Folder? folder = null;
-        if (folderRef is { } fref)
+        if (folderId is { } fid)
         {
-            folder = await db.Folders.FirstOrDefaultAsync(f => f.RefId == fref)
+            folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == fid)
                 ?? throw new DataValidationException("Folder does not exist.");
         }
 
@@ -210,16 +201,15 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (report.FolderId != folder?.Id) await permissions.RequireCreateInAsync(folder?.Id);
 
         report.Name = name;
-        report.Folder = folder;
         report.FolderId = folder?.Id;
         report.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return report.ToSummaryDto();
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(int id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return false;
         // Hide an invisible report as a 404; deleting one you can see needs Manager.
         if (!await AuthorizeAsync(report, AccessLevel.Manager)) return false;
@@ -231,9 +221,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
 
     // --- version history --------------------------------------------------
 
-    public async Task<List<ReportVersionSummaryDto>?> GetVersionsAsync(Guid id)
+    public async Task<List<ReportVersionSummaryDto>?> GetVersionsAsync(int id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null || !await CanSeeAsync(report)) return null;
 
         var versions = await db.ReportRevisions
@@ -244,9 +234,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         return versions.Select(v => v.ToVersionSummaryDto()).ToList();
     }
 
-    public async Task<ReportRevisionDto?> GetVersionAsync(Guid id, int versionNumber)
+    public async Task<ReportRevisionDto?> GetVersionAsync(int id, int versionNumber)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null || !await CanSeeAsync(report)) return null;
 
         var revision = await db.ReportRevisions
@@ -257,9 +247,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
 
     // --- draft (checkout / autosave / publish) -----------------------------
 
-    public async Task<ReportRevisionDto?> GetDraftAsync(Guid id)
+    public async Task<ReportRevisionDto?> GetDraftAsync(int id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
         // The draft is the editing surface, so seeing it is an Editor action.
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
@@ -275,9 +265,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     /// Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/>
     /// if a specific source version was requested and doesn't exist.
     /// </summary>
-    public async Task<ReportRevisionDto?> CheckoutAsync(Guid id, int? fromVersionNumber)
+    public async Task<ReportRevisionDto?> CheckoutAsync(int id, int? fromVersionNumber)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
@@ -342,9 +332,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     }
 
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
-    public async Task<ReportRevisionDto?> UpdateDraftAsync(Guid id, ReportRevisionDto dto)
+    public async Task<ReportRevisionDto?> UpdateDraftAsync(int id, ReportRevisionDto dto)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
@@ -382,9 +372,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     }
 
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
-    public async Task<ReportVersionSummaryDto?> PublishAsync(Guid id, string? notes)
+    public async Task<ReportVersionSummaryDto?> PublishAsync(int id, string? notes)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
         // Publishing is an Editor action.
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
@@ -421,9 +411,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         return published.ToVersionSummaryDto();
     }
 
-    public async Task<bool> DiscardDraftAsync(Guid id)
+    public async Task<bool> DiscardDraftAsync(int id)
     {
-        var report = await db.Reports.FirstOrDefaultAsync(r => r.RefId == id);
+        var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return false;
         // Discarding a draft is an Editor action; an invisible report is hidden as a 404.
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return false;

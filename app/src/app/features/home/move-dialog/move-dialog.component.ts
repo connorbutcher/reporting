@@ -3,6 +3,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeModule, TreeNodeSelectEvent } from 'primeng/tree';
 import { Folder } from '../../../core/models/folder.model';
+import { groupByParent } from '../group-by-parent.util';
 
 const ROOT_KEY = '__root__';
 
@@ -10,9 +11,9 @@ export interface MoveDialogData {
   kind: 'folder' | 'report';
   itemName: string;
   folders: Folder[];
-  currentFolderId: string | null;
+  currentFolderId: number | null;
   /** When moving a folder, its own id — it and its descendants can't be valid targets. */
-  excludeSubtreeOf?: string;
+  excludeSubtreeOf?: number;
 }
 
 /**
@@ -27,13 +28,15 @@ export interface MoveDialogData {
   styleUrl: './move-dialog.component.scss',
 })
 export class MoveDialogComponent {
-  private readonly dialogRef = inject(DialogRef<string | null | undefined>);
+  private readonly dialogRef = inject(DialogRef<number | null | undefined>);
   protected readonly data = inject<MoveDialogData>(DIALOG_DATA);
 
-  protected readonly selectedFolderId = signal<string | null>(this.data.currentFolderId);
+  protected readonly selectedFolderId = signal<number | null>(this.data.currentFolderId);
+
+  private readonly foldersByParent = computed(() => groupByParent(this.data.folders, (f) => f.parentFolderId));
 
   private readonly excludedIds = computed(() => {
-    if (!this.data.excludeSubtreeOf) return new Set<string>();
+    if (this.data.excludeSubtreeOf === undefined) return new Set<number>();
     return this.collectSubtreeIds(this.data.excludeSubtreeOf);
   });
 
@@ -48,41 +51,37 @@ export class MoveDialogComponent {
   ]);
 
   protected readonly selectionKeys = computed<Record<string, boolean>>(() => ({
-    [this.selectedFolderId() ?? ROOT_KEY]: true,
+    [String(this.selectedFolderId() ?? ROOT_KEY)]: true,
   }));
 
   protected readonly isUnchanged = computed(
     () => this.selectedFolderId() === this.data.currentFolderId,
   );
 
-  private childNodes(parentId: string | null): TreeNode[] {
-    return this.data.folders
-      .filter((f) => f.parentFolderId === parentId)
-      .map((folder) => {
-        const disabled = this.excludedIds().has(folder.id);
-        return {
-          key: folder.id,
-          label: folder.name,
-          icon: 'pi pi-folder',
-          expanded: true,
-          selectable: !disabled,
-          styleClass: disabled ? 'move-dialog__node--disabled' : undefined,
-          children: this.childNodes(folder.id),
-        };
-      });
+  private childNodes(parentId: number | null): TreeNode[] {
+    return (this.foldersByParent().get(parentId) ?? []).map((folder) => {
+      const disabled = this.excludedIds().has(folder.id);
+      return {
+        key: String(folder.id),
+        label: folder.name,
+        icon: 'pi pi-folder',
+        expanded: true,
+        selectable: !disabled,
+        styleClass: disabled ? 'move-dialog__node--disabled' : undefined,
+        children: this.childNodes(folder.id),
+      };
+    });
   }
 
   /** The folder itself plus every folder nested under it, so it can't become its own descendant. */
-  private collectSubtreeIds(rootId: string): Set<string> {
-    const ids = new Set<string>([rootId]);
-    let added = true;
-    while (added) {
-      added = false;
-      for (const folder of this.data.folders) {
-        if (folder.parentFolderId && ids.has(folder.parentFolderId) && !ids.has(folder.id)) {
-          ids.add(folder.id);
-          added = true;
-        }
+  private collectSubtreeIds(rootId: number): Set<number> {
+    const ids = new Set<number>([rootId]);
+    const queue = [rootId];
+    while (queue.length > 0) {
+      const parentId = queue.pop()!;
+      for (const child of this.foldersByParent().get(parentId) ?? []) {
+        ids.add(child.id);
+        queue.push(child.id);
       }
     }
     return ids;
@@ -90,8 +89,8 @@ export class MoveDialogComponent {
 
   protected onNodeSelect(event: TreeNodeSelectEvent): void {
     const key = event.node.key;
-    if (key && this.excludedIds().has(key)) return;
-    this.selectedFolderId.set(key === ROOT_KEY || !key ? null : key);
+    if (key && this.excludedIds().has(Number(key))) return;
+    this.selectedFolderId.set(key === ROOT_KEY || !key ? null : Number(key));
   }
 
   protected move(): void {

@@ -13,24 +13,24 @@ export class FolderApiService {
   }
 
   /** Direct child folders of `parentId` (root if omitted), each flagged with whether it has children of its own. */
-  children(parentId: string | null): Observable<Folder[]> {
+  children(parentId: number | null): Observable<Folder[]> {
     const params = parentId ? { parentId } : undefined;
     return this.http.get<Folder[]>('/api/folders/children', { params });
   }
 
-  create(name: string, parentFolderId: string | null): Observable<Folder> {
+  create(name: string, parentFolderId: number | null): Observable<Folder> {
     return this.http.post<Folder>('/api/folders', { name, parentFolderId });
   }
 
-  rename(id: string, name: string, parentFolderId: string | null): Observable<Folder> {
+  rename(id: number, name: string, parentFolderId: number | null): Observable<Folder> {
     return this.http.put<Folder>(`/api/folders/${id}`, { name, parentFolderId });
   }
 
-  move(id: string, parentFolderId: string | null, name: string): Observable<Folder> {
+  move(id: number, parentFolderId: number | null, name: string): Observable<Folder> {
     return this.rename(id, name, parentFolderId);
   }
 
-  remove(id: string): Observable<void> {
+  remove(id: number): Observable<void> {
     return this.http.delete<void>(`/api/folders/${id}`);
   }
 }

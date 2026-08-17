@@ -22,40 +22,40 @@ export class ReportApiService {
     return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
   }
 
-  create(name: string, folderId: string | null, sourceReportId?: string): Observable<ReportSummary> {
+  create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {
     return this.http.post<ReportSummary>('/api/reports', { name, folderId, sourceReportId });
   }
 
-  rename(id: string, name: string, folderId: string | null): Observable<ReportSummary> {
+  rename(id: number, name: string, folderId: number | null): Observable<ReportSummary> {
     return this.http.put<ReportSummary>(`/api/reports/${id}`, { name, folderId });
   }
 
-  move(id: string, folderId: string | null, name: string): Observable<ReportSummary> {
+  move(id: number, folderId: number | null, name: string): Observable<ReportSummary> {
     return this.rename(id, name, folderId);
   }
 
-  remove(id: string): Observable<void> {
+  remove(id: number): Observable<void> {
     return this.http.delete<void>(`/api/reports/${id}`);
   }
 
-  getDraft(id: string): Observable<ReportRevisionContent> {
+  getDraft(id: number): Observable<ReportRevisionContent> {
     return this.http.get<ReportRevisionContent>(`/api/reports/${id}/draft`);
   }
 
   /** Checks out a draft to edit; idempotent if one is already checked out. */
-  checkout(id: string, fromVersionNumber?: number): Observable<ReportRevisionContent> {
+  checkout(id: number, fromVersionNumber?: number): Observable<ReportRevisionContent> {
     return this.http.post<ReportRevisionContent>(`/api/reports/${id}/draft`, { fromVersionNumber });
   }
 
-  updateDraft(id: string, content: ReportRevisionContent): Observable<ReportRevisionContent> {
+  updateDraft(id: number, content: ReportRevisionContent): Observable<ReportRevisionContent> {
     return this.http.put<ReportRevisionContent>(`/api/reports/${id}/draft`, content);
   }
 
-  publish(id: string, notes: string | null): Observable<ReportVersionSummary> {
+  publish(id: number, notes: string | null): Observable<ReportVersionSummary> {
     return this.http.post<ReportVersionSummary>(`/api/reports/${id}/draft/publish`, { notes });
   }
 
-  discardDraft(id: string): Observable<void> {
+  discardDraft(id: number): Observable<void> {
     return this.http.delete<void>(`/api/reports/${id}/draft`);
   }
 }

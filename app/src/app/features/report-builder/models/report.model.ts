@@ -33,7 +33,7 @@ const DEFAULT_WIDGET_H = 3;
  * them collide. Everything widget-specific is validated by the widget itself.
  */
 export class ReportModel extends EditorNode {
-  readonly reportId: string;
+  readonly reportId: number;
   readonly name = signal('');
   readonly gridColumns = signal(12);
   readonly gridRows = signal(10);

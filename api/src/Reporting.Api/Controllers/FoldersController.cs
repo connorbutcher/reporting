@@ -14,12 +14,12 @@ public class FoldersController(FolderRepository folders) : ControllerBase
 
     /// <summary>Direct child folders of <paramref name="parentId"/> (root if omitted), each flagged with whether it has children of its own — enough for the tree to draw an expand arrow without fetching further.</summary>
     [HttpGet("children")]
-    public async Task<ActionResult<List<FolderDto>>> GetChildren([FromQuery] Guid? parentId) =>
+    public async Task<ActionResult<List<FolderDto>>> GetChildren([FromQuery] int? parentId) =>
         await folders.GetChildrenAsync(parentId);
 
     /// <summary>The chain of ancestors from the root down to <paramref name="id"/>, for building a breadcrumb without the whole tree.</summary>
-    [HttpGet("{id:guid}/path")]
-    public async Task<ActionResult<List<FolderDto>>> GetPath(Guid id)
+    [HttpGet("{id:int}/path")]
+    public async Task<ActionResult<List<FolderDto>>> GetPath(int id)
     {
         var path = await folders.GetPathAsync(id);
         return path is null ? NotFound() : path;
@@ -41,8 +41,8 @@ public class FoldersController(FolderRepository folders) : ControllerBase
         }
     }
 
-    [HttpPut("{id:guid}")]
-    public async Task<ActionResult<FolderDto>> Update(Guid id, SaveFolderDto dto)
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<FolderDto>> Update(int id, SaveFolderDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A folder needs a name.");
 
@@ -57,8 +57,8 @@ public class FoldersController(FolderRepository folders) : ControllerBase
         }
     }
 
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
     {
         try
         {

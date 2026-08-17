@@ -1,0 +1,24 @@
+<!-- Searches the whole tree, not just the folder being browsed, so it stays
+     reachable regardless of the rail's collapsed state or which view below is showing. -->
+<div class="home__search">
+  <i class="pi pi-search home__search-icon" aria-hidden="true"></i>
+  <input
+    pInputText
+    size="small"
+    class="home__search-input"
+    [ngModel]="store.searchQuery()"
+    (ngModelChange)="store.onSearchInput($event)"
+    placeholder="Search by name or R-number…"
+    aria-label="Search reports"
+  />
+  @if (store.searchQuery()) {
+    <button
+      type="button"
+      class="home__search-clear"
+      aria-label="Clear search"
+      (click)="store.clearSearch()"
+    >
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+  }
+</div>

@@ -18,11 +18,14 @@ export const ROOT_KEY = '__root__';
  * picks up structural changes (new children appearing under a node) when it
  * receives genuinely new node objects, not an existing tree with properties
  * patched on it.
+ *
+ * PrimeNG tree keys are always strings, so folder ids (numbers) are stringified
+ * at this boundary; everywhere else in the app deals with the numeric id directly.
  */
 export class FolderTreeStore {
-  /** Every folder we've learned about so far, from any children fetch. */
+  /** Every folder we've learned about so far, from any children fetch — keyed by its stringified id. */
   private readonly knownFolders = signal<Map<string, Folder>>(new Map());
-  /** Child folder ids already fetched for each parent key (ROOT_KEY or a folder id). */
+  /** Child folder keys already fetched for each parent key (ROOT_KEY or a stringified folder id). */
   private readonly childrenOf = signal<Map<string, string[]>>(new Map());
   private readonly expandedKeys = signal<Set<string>>(new Set([ROOT_KEY]));
   private readonly loadingKeys = signal<Set<string>>(new Set());
@@ -33,8 +36,18 @@ export class FolderTreeStore {
 
   constructor(private readonly folderApi: FolderApiService) {}
 
+  /**
+   * Whether a parent's children have been fetched yet — for a key (ROOT_KEY or a stringified
+   * folder id). Reactive, so a caller can drive a loading skeleton off it. The root's children
+   * can arrive either from an explicit {@link fetchChildren} or from the home page folding its
+   * own contents fetch in via {@link merge}, so this is the single source of "is the tree ready".
+   */
+  hasChildrenLoaded(key: string): boolean {
+    return this.childrenOf().has(key);
+  }
+
   /** Loads a parent's children into the tree; returns the subscription so callers can chain teardown. */
-  fetchChildren(parentId: string | null, key: string) {
+  fetchChildren(parentId: number | null, key: string) {
     this.loadingKeys.update((s) => new Set(s).add(key));
     return this.folderApi.children(parentId).subscribe((children) => {
       this.merge(key, children);
@@ -50,13 +63,13 @@ export class FolderTreeStore {
   merge(key: string, children: Folder[]): void {
     this.knownFolders.update((m) => {
       const next = new Map(m);
-      for (const folder of children) next.set(folder.id, folder);
+      for (const folder of children) next.set(String(folder.id), folder);
       return next;
     });
     this.childrenOf.update((m) =>
       new Map(m).set(
         key,
-        children.map((f) => f.id),
+        children.map((f) => String(f.id)),
       ),
     );
   }
@@ -66,12 +79,26 @@ export class FolderTreeStore {
     if (!key) return;
     this.expandedKeys.update((s) => new Set(s).add(key));
     if (this.childrenOf().has(key)) return;
-    this.fetchChildren(key === ROOT_KEY ? null : key, key);
+    this.fetchChildren(key === ROOT_KEY ? null : Number(key), key);
+  }
+
+  /**
+   * Expands the tree down to a folder reached directly by URL, fetching any ancestor levels not
+   * yet loaded so the target becomes visible (and can be highlighted). `path` runs root → target,
+   * as returned by the folder path endpoint. Each ancestor must be expanded and have its children
+   * loaded for the next level to appear; the target itself only needs to be visible, not opened.
+   */
+  revealPath(path: Folder[]): void {
+    for (const folder of path.slice(0, -1)) {
+      const key = String(folder.id);
+      this.expandedKeys.update((s) => new Set(s).add(key));
+      if (!this.childrenOf().has(key)) this.fetchChildren(folder.id, key);
+    }
   }
 
   /** Refreshes a folder's tree entry from the server — for a folder other than the one just loaded via `merge`. */
-  refreshNodeIfPresent(folderId: string | null): void {
-    const key = folderId ?? ROOT_KEY;
+  refreshNodeIfPresent(folderId: number | null): void {
+    const key = folderId !== null ? String(folderId) : ROOT_KEY;
     if (!this.childrenOf().has(key)) return;
     this.folderApi.children(folderId).subscribe((children) => this.merge(key, children));
   }
@@ -88,7 +115,7 @@ export class FolderTreeStore {
       leaf: childIds ? childIds.length === 0 : !hasChildren,
       children: childIds?.map((id) => {
         const folder = folders.get(id)!;
-        return this.buildTreeNode(folder.id, folder.name, 'pi pi-folder', folder.hasChildren);
+        return this.buildTreeNode(id, folder.name, 'pi pi-folder', folder.hasChildren);
       }),
     };
   }

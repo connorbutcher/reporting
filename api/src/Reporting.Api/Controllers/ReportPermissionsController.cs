@@ -7,29 +7,29 @@ namespace Reporting.Api.Controllers;
 
 /// <summary>Manage the grants on a report — its own overrides on top of what it inherits from its folder.</summary>
 [ApiController]
-[Route("api/reports/{reportId:guid}/permissions")]
+[Route("api/reports/{reportId:int}/permissions")]
 public class ReportPermissionsController(PermissionAdminService admin) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PermissionsDto>> Get(Guid reportId)
+    public async Task<ActionResult<PermissionsDto>> Get(int reportId)
     {
         var result = await admin.GetReportPermissionsAsync(reportId);
         return result is null ? NotFound() : result;
     }
 
     [HttpGet("audit")]
-    public async Task<ActionResult<List<GrantAuditEntryDto>>> Audit(Guid reportId)
+    public async Task<ActionResult<List<GrantAuditEntryDto>>> Audit(int reportId)
     {
         var result = await admin.GetReportAuditAsync(reportId);
         return result is null ? NotFound() : result;
     }
 
     [HttpPut("inheritance")]
-    public async Task<IActionResult> SetInheritance(Guid reportId, SetInheritanceDto dto) =>
+    public async Task<IActionResult> SetInheritance(int reportId, SetInheritanceDto dto) =>
         await admin.SetReportInheritanceAsync(reportId, dto) ? NoContent() : NotFound();
 
     [HttpPut]
-    public async Task<ActionResult<AccessGrantDto>> Upsert(Guid reportId, SaveGrantDto dto)
+    public async Task<ActionResult<AccessGrantDto>> Upsert(int reportId, SaveGrantDto dto)
     {
         try
         {
@@ -43,7 +43,7 @@ public class ReportPermissionsController(PermissionAdminService admin) : Control
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Remove(Guid reportId, [FromBody] RemoveGrantDto dto)
+    public async Task<IActionResult> Remove(int reportId, [FromBody] RemoveGrantDto dto)
     {
         try
         {

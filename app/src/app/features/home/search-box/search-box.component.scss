@@ -1,0 +1,49 @@
+// The host stands in for the search field as a flex child of the toolbar.
+:host {
+  display: contents;
+}
+
+.home__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  // Searches the whole tree, not the folder being browsed, so it sits at the
+  // top of the content card rather than a fixed width matching the toolbar.
+  width: 280px;
+  flex: 0 0 auto;
+}
+
+.home__search-icon {
+  position: absolute;
+  left: 9px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  pointer-events: none;
+}
+
+.home__search-input {
+  width: 100%;
+  padding-left: 26px !important;
+  padding-right: 26px !important;
+  box-sizing: border-box;
+}
+
+.home__search-clear {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.7rem;
+
+  &:hover {
+    background: #f1f5f9;
+    color: var(--app-navy);
+  }
+}

@@ -1,0 +1,6 @@
+@use '../home-table';
+
+// The host stands in for its content as a flex child of the contents column.
+:host {
+  display: contents;
+}

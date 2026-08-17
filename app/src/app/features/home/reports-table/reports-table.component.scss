@@ -1,0 +1,90 @@
+@use '../home-table';
+
+// The host stands in for the section as a flex child of the contents column.
+:host {
+  display: contents;
+}
+
+.home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home__section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.home__col-actions {
+  width: 36px;
+}
+
+// A left-edge stripe is the primary at-a-glance status signal (same language
+// as the tolerance banding on data tables); the text label backs it up for
+// anyone who can't rely on colour alone.
+.home__col-status-stripe {
+  position: relative;
+  padding-left: 20px !important;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--app-card-border);
+  }
+}
+
+.home__row--draft .home__col-status-stripe::before {
+  background: #f59e0b;
+}
+
+.home__row--published .home__col-status-stripe::before {
+  background: var(--app-navy);
+}
+
+.home__row--empty .home__col-status-stripe::before {
+  background: #cbd5e1;
+}
+
+.home__status-word {
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--draft {
+    color: #b45309;
+  }
+
+  &--published {
+    color: var(--app-navy);
+  }
+
+  &--empty {
+    color: #64748b;
+  }
+}
+
+.home__row-actions {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+
+  &:hover {
+    background: #f1f5f9;
+    color: var(--app-navy);
+  }
+}
