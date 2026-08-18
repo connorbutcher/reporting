@@ -7,10 +7,10 @@ import { FilterGroupModel } from '../report-builder/models/filter.model';
 
 /** One editable filter shown in the viewer's panel. */
 export interface ViewFilterEntry {
-  /** A dataset id for page filters, a widget id for widget filters. */
+  /** The map key: a dataset id (stringified) for page filters, a widget id for widget filters. */
   readonly key: string;
   readonly label: Signal<string>;
-  readonly datasetId: string;
+  readonly datasetId: number;
   readonly group: FilterGroupModel;
   /** What the published report defines, for detecting and restoring changes. */
   readonly published: FilterGroup | null;
@@ -45,10 +45,10 @@ export class ReportViewFilters {
 
   constructor(
     content: ReportRevisionContent,
-    schemas: Signal<Record<string, DatasetSchema>>,
+    schemas: Signal<Record<number, DatasetSchema>>,
     catalogue: Signal<OperatorCatalogue | null>,
   ) {
-    const schemaFor = (datasetId: string) => computed(() => schemas()[datasetId] ?? null);
+    const schemaFor = (datasetId: number) => computed(() => schemas()[datasetId] ?? null);
 
     // Tables and charts both bind to a dataset and both carry their own
     // filter now, so both get a widget-level filter entry.
@@ -65,7 +65,7 @@ export class ReportViewFilters {
       const published = content.filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
       const schema = schemaFor(datasetId);
       return {
-        key: datasetId,
+        key: String(datasetId),
         label: computed(() => schema()?.name ?? 'Dataset'),
         datasetId,
         published,

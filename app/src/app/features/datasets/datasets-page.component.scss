@@ -25,7 +25,22 @@
 
 .datasets__list-header {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.datasets__back {
+  display: inline-flex;
   align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--app-navy);
+  }
 }
 
 .datasets__heading {

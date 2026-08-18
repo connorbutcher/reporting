@@ -62,7 +62,7 @@ export class PanelReportFiltersComponent {
   protected readonly datasetIds = computed(() => this.store.model()?.usedDatasetIds() ?? []);
 
   /** Which dataset's filter is on screen; defaults to the first one in use. */
-  private readonly selectedDatasetId = signal<string | null>(null);
+  private readonly selectedDatasetId = signal<number | null>(null);
   protected readonly activeDatasetId = computed(
     () => this.selectedDatasetId() ?? this.datasetIds()[0] ?? null,
   );
@@ -84,15 +84,15 @@ export class PanelReportFiltersComponent {
     });
   }
 
-  protected select(datasetId: string): void {
+  protected select(datasetId: number): void {
     this.selectedDatasetId.set(datasetId);
   }
 
-  protected datasetName(datasetId: string): string {
+  protected datasetName(datasetId: number): string {
     return this.store.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
   }
 
-  protected conditionCount(datasetId: string): string {
+  protected conditionCount(datasetId: number): string {
     const count = this.store.model()?.reportFilter(datasetId)?.group.count() ?? 0;
     return count === 0 ? 'No conditions' : `${count} condition${count > 1 ? 's' : ''}`;
   }

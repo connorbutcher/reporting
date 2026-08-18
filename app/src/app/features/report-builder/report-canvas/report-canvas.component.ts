@@ -1,60 +1,35 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Dialog } from '@angular/cdk/dialog';
-import { CELL_SIZE, GRID_GAP, GridPreview } from '../grid.util';
-import { PublishDialogComponent } from '../publish-dialog/publish-dialog.component';
 import { ReportBuilderStore } from '../report-builder.store';
 import { ReportSidePanelComponent } from '../side-panel/report-side-panel.component';
-import { WidgetHostComponent } from '../widget-host/widget-host.component';
+import { BuilderShortcutsDirective } from './builder-shortcuts.directive';
+import { BuilderToolbarComponent } from './builder-toolbar/builder-toolbar.component';
+import { CanvasGridComponent } from './canvas-grid/canvas-grid.component';
 
-/** Nudging by a whole cell keeps widgets on the grid. */
-const NUDGE = 1;
-
+/**
+ * The report builder screen. A thin shell: it provides the
+ * {@link ReportBuilderStore}, loads the report from the route, guards against
+ * leaving with unsaved changes, and lays out the toolbar, canvas, and side
+ * panel. Everything else lives in the store and the child components.
+ */
 @Component({
   selector: 'app-report-canvas',
-  imports: [WidgetHostComponent, ReportSidePanelComponent],
+  imports: [
+    BuilderToolbarComponent,
+    CanvasGridComponent,
+    ReportSidePanelComponent,
+    BuilderShortcutsDirective,
+  ],
   templateUrl: './report-canvas.component.html',
   styleUrl: './report-canvas.component.scss',
   providers: [ReportBuilderStore],
   host: {
-    '(document:keydown)': 'onKeyDown($event)',
     '(window:beforeunload)': 'onBeforeUnload($event)',
   },
 })
 export class ReportCanvasComponent implements OnInit {
-  protected readonly store = inject(ReportBuilderStore);
+  private readonly store = inject(ReportBuilderStore);
   private readonly route = inject(ActivatedRoute);
-  private readonly dialog = inject(Dialog);
-
-  protected readonly cellSize = CELL_SIZE;
-  protected readonly gridGap = GRID_GAP;
-  protected readonly dropPreview = signal<GridPreview | null>(null);
-
-  protected readonly statusLabel = computed(() => {
-    if (this.store.saveBlocked()) return 'Not saving — fix errors';
-
-    const errors = this.store.errors().length;
-    const warnings = this.store.warnings().length;
-    if (errors) return `${errors} error${errors > 1 ? 's' : ''}`;
-    if (warnings) return `${warnings} warning${warnings > 1 ? 's' : ''}`;
-    return 'No issues';
-  });
-
-  protected readonly publishTitle = computed(() => {
-    if (!this.store.isValid()) return 'Fix errors before publishing';
-    if (!this.store.hasUnpublishedChanges()) return 'No changes to publish';
-    return 'Publish this draft as a new version';
-  });
-
-  protected readonly saveStatus = computed(() => {
-    if (this.store.saveFailed())
-      return { label: 'Save failed', icon: 'pi-exclamation-circle', variant: 'error' };
-    if (this.store.saving())
-      return { label: 'Saving…', icon: 'pi-spin pi-spinner', variant: 'pending' };
-    if (this.store.dirty())
-      return { label: 'Unsaved changes', icon: 'pi-circle-fill', variant: 'pending' };
-    return { label: 'Saved', icon: 'pi-check', variant: 'ok' };
-  });
 
   ngOnInit(): void {
     const reportId = this.route.snapshot.paramMap.get('reportId');
@@ -78,80 +53,4 @@ export class ReportCanvasComponent implements OnInit {
         : "You have changes that haven't finished saving. Leave anyway?",
     );
   }
-
-  protected publish(): void {
-    const ref = this.dialog.open<string | null>(PublishDialogComponent);
-    ref.closed.subscribe((notes) => {
-      // undefined means the dialog was cancelled or dismissed.
-      if (notes === undefined) return;
-      this.store.publish(notes);
-    });
-  }
-
-  protected onDropPreview(preview: GridPreview | null): void {
-    this.dropPreview.set(preview);
-  }
-
-  /** Clicking empty canvas drops the selection. */
-  protected onCanvasPointerDown(event: PointerEvent): void {
-    if (event.target === event.currentTarget) this.store.clearSelection();
-  }
-
-  protected onKeyDown(event: KeyboardEvent): void {
-    // Never steal keys from a field the user is typing in.
-    if (isTextEntry(event.target)) return;
-
-    const ctrl = event.ctrlKey || event.metaKey;
-
-    if (ctrl && event.key.toLowerCase() === 'z') {
-      event.preventDefault();
-      if (event.shiftKey) this.store.redo();
-      else this.store.undo();
-      return;
-    }
-
-    if (ctrl && event.key.toLowerCase() === 'y') {
-      event.preventDefault();
-      this.store.redo();
-      return;
-    }
-
-    if (ctrl && event.key.toLowerCase() === 'd') {
-      event.preventDefault();
-      this.store.duplicateSelection();
-      return;
-    }
-
-    if (event.key === 'Delete' || event.key === 'Backspace') {
-      const ids = this.store.selectedWidgetIds();
-      if (ids.length === 0) return;
-      event.preventDefault();
-      this.store.removeWidgets(ids);
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      this.store.clearSelection();
-      return;
-    }
-
-    const nudge = NUDGE_KEYS[event.key];
-    if (nudge && this.store.selectedWidgetIds().length > 0) {
-      event.preventDefault();
-      this.store.nudgeSelection(nudge.dx, nudge.dy);
-    }
-  }
-}
-
-const NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
-  ArrowLeft: { dx: -NUDGE, dy: 0 },
-  ArrowRight: { dx: NUDGE, dy: 0 },
-  ArrowUp: { dx: 0, dy: -NUDGE },
-  ArrowDown: { dx: 0, dy: NUDGE },
-};
-
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }

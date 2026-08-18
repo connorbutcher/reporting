@@ -1,6 +1,14 @@
 <div class="datasets">
   <aside class="datasets__list app-card">
     <header class="datasets__list-header">
+      <a
+        class="datasets__back"
+        [routerLink]="['/reports', reportId, 'edit']"
+        aria-label="Back to report"
+      >
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        Back to report
+      </a>
       <h1 class="datasets__heading">Datasets</h1>
     </header>
 

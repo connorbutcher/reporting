@@ -1,0 +1,25 @@
+@if (store.loading()) {
+  <p class="canvas-grid__status-text">Loading report…</p>
+} @else {
+  <div class="canvas-grid__viewport" (pointerdown)="onCanvasPointerDown($event)">
+    <div
+      class="canvas-grid__grid"
+      [style.grid-template-columns]="'repeat(' + store.gridColumns() + ', ' + cellSize + 'px)'"
+      [style.grid-template-rows]="'repeat(' + store.gridRows() + ', ' + cellSize + 'px)'"
+      [style.gap.px]="gridGap"
+      [style.--grid-step.px]="cellSize + gridGap"
+    >
+      @for (widget of store.widgets(); track widget.id) {
+        <app-widget-host [widget]="widget" (gridPreview)="onDropPreview($event)" />
+      }
+      @if (dropPreview(); as preview) {
+        <div
+          class="canvas-grid__drop-preview"
+          [class.canvas-grid__drop-preview--invalid]="preview.invalid"
+          [style.grid-column]="preview.x + 1 + ' / span ' + preview.w"
+          [style.grid-row]="preview.y + 1 + ' / span ' + preview.h"
+        ></div>
+      }
+    </div>
+  </div>
+}

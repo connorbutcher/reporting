@@ -1,0 +1,143 @@
+:host {
+  display: block;
+}
+
+.builder-toolbar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--app-card-border);
+}
+
+.builder-toolbar__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
+.builder-toolbar__meta {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.builder-toolbar__history {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.builder-toolbar__icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--p-primary-50, #eef3fa);
+    color: var(--app-navy);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.builder-toolbar__save-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #94a3b8;
+
+  &--pending {
+    color: #64748b;
+  }
+
+  &--error {
+    color: #b42318;
+    font-weight: 600;
+  }
+}
+
+.builder-toolbar__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.97);
+  }
+
+  &--warning {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #b45309;
+  }
+
+  &--error {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #b42318;
+  }
+}
+
+.builder-toolbar__datasets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--app-navy);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--p-primary-50, #eef3fa);
+  }
+}
+
+.builder-toolbar__publish {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--app-navy);
+  border-radius: 999px;
+  background: var(--app-navy);
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}

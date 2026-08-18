@@ -19,7 +19,7 @@ import { ModelSources, WidgetModel } from './widget-model-base';
  */
 export abstract class ChartWidgetModel extends WidgetModel {
   /** Null until the user binds the chart to a dataset. */
-  readonly datasetId = signal<string | null>(null);
+  readonly datasetId = signal<number | null>(null);
   readonly xColumnId = signal<string | null>(null);
   readonly yColumnId = signal<string | null>(null);
   /** Splits points into a separate coloured series per distinct value. Null plots one series. */
@@ -76,7 +76,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
   }
 
   /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
-  setDataset(datasetId: string | null): void {
+  setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.xColumnId.set(null);
@@ -90,7 +90,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
     const band: ChartToleranceBand = {
       id: crypto.randomUUID(),
       axis: 'y',
-      sourceDatasetId: '',
+      // 0 / '' are the "not pointed at a spec yet" placeholders; a band with these is left out of
+      // the saved config (see chartConfigBaseDto) until the user finishes filling it in.
+      sourceDatasetId: 0,
       sourceRowId: '',
       minColumnId: '',
       maxColumnId: '',

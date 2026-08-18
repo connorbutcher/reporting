@@ -1,0 +1,55 @@
+:host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.canvas-grid__status-text {
+  margin: auto;
+  color: #64748b;
+}
+
+.canvas-grid__viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+.canvas-grid__grid {
+  display: grid;
+  width: fit-content;
+  height: fit-content;
+  position: relative;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background-color: #fbfcfe;
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      rgba(15, 23, 42, 0.07) 0,
+      rgba(15, 23, 42, 0.07) 1px,
+      transparent 1px,
+      transparent var(--grid-step, 88px)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0.07) 0,
+      rgba(15, 23, 42, 0.07) 1px,
+      transparent 1px,
+      transparent var(--grid-step, 88px)
+    );
+}
+
+.canvas-grid__drop-preview {
+  pointer-events: none;
+  border: 2px dashed var(--app-navy);
+  border-radius: 8px;
+  background: rgba(21, 42, 85, 0.12);
+  z-index: 5;
+
+  &--invalid {
+    border-color: #e5484d;
+    background: rgba(229, 72, 77, 0.15);
+  }
+}

@@ -17,7 +17,7 @@ export class DataTableWidgetModel extends WidgetModel {
   override readonly type = 'dataTable' as const;
 
   /** Null until the user binds the table to a dataset. */
-  readonly datasetId = signal<string | null>(null);
+  readonly datasetId = signal<number | null>(null);
   readonly sortColumnId = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>('asc');
 
@@ -71,7 +71,7 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   /** Swapping dataset invalidates every column choice, the sort, and the filter. */
-  setDataset(datasetId: string | null): void {
+  setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.columns.set([]);

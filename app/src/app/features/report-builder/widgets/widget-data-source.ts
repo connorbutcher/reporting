@@ -6,7 +6,7 @@ import { DatasetColumn } from '../../../core/models/dataset.model';
 
 export interface WidgetDataSourceOptions<T> {
   /** The dataset to load, or null when the widget isn't configured yet. */
-  datasetId: Signal<string | null>;
+  datasetId: Signal<number | null>;
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   version: Signal<number>;
   api: DatasetApiService;

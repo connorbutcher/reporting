@@ -115,15 +115,43 @@ public static class Mapping
         widget.ConfigJson = JsonSerializer.Serialize(dto.Config, typeof(WidgetConfig), ConfigJsonOptions);
     }
 
+    /// <summary>
+    /// Rewrites the dataset primary keys a widget config references (its primary dataset and any
+    /// tolerance source datasets) through <paramref name="map"/> — used when a revision is copied and
+    /// its datasets are re-inserted under new ids. Ids absent from the map are left untouched.
+    /// </summary>
+    public static string RemapConfigDatasetIds(string configJson, IReadOnlyDictionary<int, int> map)
+    {
+        var config = JsonSerializer.Deserialize<WidgetConfig>(configJson, ConfigJsonOptions)!;
+
+        int? Remap(int? id) => id is { } v && map.TryGetValue(v, out var mapped) ? mapped : id;
+        int Remap0(int id) => map.TryGetValue(id, out var mapped) ? mapped : id;
+
+        switch (config)
+        {
+            case DataTableWidgetConfig table:
+                table.DatasetId = Remap(table.DatasetId);
+                foreach (var column in table.Columns)
+                    if (column.Tolerance is { } tolerance) tolerance.SourceDatasetId = Remap0(tolerance.SourceDatasetId);
+                break;
+            case ChartWidgetConfig chart:
+                chart.DatasetId = Remap(chart.DatasetId);
+                foreach (var band in chart.ToleranceBands) band.SourceDatasetId = Remap0(band.SourceDatasetId);
+                break;
+        }
+
+        return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);
+    }
+
     public static DatasetSummaryDto ToSummaryDto(this Dataset dataset) => new()
     {
-        Id = dataset.RefId,
+        Id = dataset.Id,
         Name = dataset.Name
     };
 
     public static DatasetSchemaDto ToSchemaDto(this Dataset dataset) => new()
     {
-        Id = dataset.RefId,
+        Id = dataset.Id,
         Name = dataset.Name,
         Columns = dataset.Columns.OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
     };
@@ -146,7 +174,7 @@ public static class Mapping
         var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
         return new()
         {
-            Id = dataset.RefId,
+            Id = dataset.Id,
             Name = dataset.Name,
             Rows = rows.Select(r => r.ToDto(columnRefById)).ToList()
         };

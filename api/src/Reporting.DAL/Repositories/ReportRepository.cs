@@ -145,13 +145,11 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             if (!await CanSeeAsync(sourceReport))
                 throw new DataValidationException("Source report does not exist.");
 
-            source = await db.ReportRevisions
-                .Include(rv => rv.Widgets)
+            source = await IncludeContent(db.ReportRevisions)
                 .Where(rv => rv.ReportId == sourceReport.Id && rv.Kind == RevisionKind.Published)
                 .OrderByDescending(rv => rv.VersionNumber)
                 .FirstOrDefaultAsync()
-                ?? await db.ReportRevisions
-                    .Include(rv => rv.Widgets)
+                ?? await IncludeContent(db.ReportRevisions)
                     .FirstOrDefaultAsync(rv => rv.ReportId == sourceReport.Id && rv.Kind == RevisionKind.Draft);
         }
 
@@ -172,11 +170,11 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             Kind = RevisionKind.Draft,
             CreatedAt = now,
         };
-        CopyContentInto(draft, source);
         report.Revisions.Add(draft);
-
         db.Reports.Add(report);
-        await db.SaveChangesAsync();
+
+        // Saves the report and deep-copies any source content (widgets + datasets) into the draft.
+        await CopyContentIntoAsync(draft, source);
         return report.ToSummaryDto();
     }
 
@@ -277,11 +275,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (existingDraft is not null) return existingDraft.ToContentDto(report);
 
         ReportRevision? source = fromVersionNumber is { } versionNumber
-            ? await db.ReportRevisions
-                .Include(rv => rv.Widgets)
+            ? await IncludeContent(db.ReportRevisions)
                 .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber)
-            : await db.ReportRevisions
-                .Include(rv => rv.Widgets)
+            : await IncludeContent(db.ReportRevisions)
                 .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
                 .OrderByDescending(rv => rv.VersionNumber)
                 .FirstOrDefaultAsync();
@@ -295,41 +291,137 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             Kind = RevisionKind.Draft,
             CreatedAt = DateTime.UtcNow,
         };
-        CopyContentInto(draft, source);
-
         report.UpdatedAt = DateTime.UtcNow;
         db.ReportRevisions.Add(draft);
-        await db.SaveChangesAsync();
+        await CopyContentIntoAsync(draft, source);
         return draft.ToContentDto(report);
     }
 
+    /// <summary>Loads the parts of a revision needed to deep-copy it: its widgets and its datasets' full graph.</summary>
+    private static IQueryable<ReportRevision> IncludeContent(IQueryable<ReportRevision> revisions) =>
+        revisions
+            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Datasets).ThenInclude(d => d.Columns)
+            .Include(rv => rv.Datasets).ThenInclude(d => d.Rows).ThenInclude(r => r.Cells);
+
     /// <summary>
-    /// Copies columns/rows/filters/widgets from <paramref name="source"/> into a freshly-created
-    /// <paramref name="target"/> revision. Widget <see cref="Widget.RefId"/>s are carried over unchanged
-    /// so a widget keeps its logical identity across versions; only its <see cref="Widget.Id"/> changes.
+    /// Copies grid, filters, widgets and datasets from <paramref name="source"/> into a freshly-added
+    /// <paramref name="target"/> revision, saving as it goes. Widget and dataset column/row
+    /// <c>RefId</c>s are carried over unchanged so they keep their logical identity across versions;
+    /// only their int primary keys change. Because a widget references its dataset by that primary
+    /// key, the copied datasets' new keys are remapped into the copied widget configs and report
+    /// filters. <paramref name="target"/> (and its parent) must already be tracked/added on the context.
     /// Leaves defaults in place when <paramref name="source"/> is null.
     /// </summary>
-    private static void CopyContentInto(ReportRevision target, ReportRevision? source)
+    private async Task CopyContentIntoAsync(ReportRevision target, ReportRevision? source)
     {
         target.Columns = source?.Columns ?? 12;
         target.Rows = source?.Rows ?? 10;
         target.FiltersJson = source?.FiltersJson ?? "[]";
-        if (source is null) return;
 
-        foreach (var widget in source.Widgets)
+        // Widget configs still reference the source's dataset primary keys here; they're remapped
+        // once the copied datasets have been saved and their new keys are known.
+        if (source is not null)
         {
-            target.Widgets.Add(new Widget
+            foreach (var widget in source.Widgets)
             {
-                RefId = widget.RefId,
-                Type = widget.Type,
-                X = widget.X,
-                Y = widget.Y,
-                W = widget.W,
-                H = widget.H,
-                ConfigJson = widget.ConfigJson,
-            });
+                target.Widgets.Add(new Widget
+                {
+                    RefId = widget.RefId,
+                    Type = widget.Type,
+                    X = widget.X,
+                    Y = widget.Y,
+                    W = widget.W,
+                    H = widget.H,
+                    ConfigJson = widget.ConfigJson,
+                });
+            }
         }
+
+        // Copy each dataset's shell (columns + rows, preserving their RefIds). Cells reference their
+        // column by int id, which isn't known until the columns are saved, so they're deferred to a
+        // second phase — the same two-step the seeder uses.
+        var datasetCopies = new List<DatasetCopy>();
+        if (source is not null)
+        {
+            foreach (var sourceDataset in source.Datasets)
+            {
+                var copy = new Dataset { Name = sourceDataset.Name };
+
+                var columnPairs = new List<(DatasetColumn Source, DatasetColumn Copy)>();
+                foreach (var column in sourceDataset.Columns)
+                {
+                    var columnCopy = new DatasetColumn
+                    {
+                        RefId = column.RefId,
+                        Name = column.Name,
+                        Type = column.Type,
+                        Order = column.Order,
+                        ConfigurationJson = column.ConfigurationJson,
+                    };
+                    copy.Columns.Add(columnCopy);
+                    columnPairs.Add((column, columnCopy));
+                }
+
+                var rowPairs = new List<(DatasetRow Source, DatasetRow Copy)>();
+                foreach (var row in sourceDataset.Rows)
+                {
+                    var rowCopy = new DatasetRow { RefId = row.RefId };
+                    copy.Rows.Add(rowCopy);
+                    rowPairs.Add((row, rowCopy));
+                }
+
+                target.Datasets.Add(copy);
+                datasetCopies.Add(new DatasetCopy(sourceDataset, copy, columnPairs, rowPairs));
+            }
+        }
+
+        // First save: assigns primary keys to the revision, its widgets, datasets, columns and rows.
+        await db.SaveChangesAsync();
+
+        if (source is null || datasetCopies.Count == 0) return;
+
+        // Second phase: copy cells against the new column ids, and remap the dataset primary keys.
+        foreach (var dataset in datasetCopies)
+        {
+            var columnIdMap = dataset.ColumnPairs.ToDictionary(p => p.Source.Id, p => p.Copy.Id);
+            foreach (var (sourceRow, rowCopy) in dataset.RowPairs)
+            {
+                foreach (var cell in sourceRow.Cells)
+                {
+                    if (!columnIdMap.TryGetValue(cell.ColumnId, out var newColumnId)) continue;
+                    db.DatasetCells.Add(new DatasetCell
+                    {
+                        RowId = rowCopy.Id,
+                        ColumnId = newColumnId,
+                        StringValue = cell.StringValue,
+                        NumberValue = cell.NumberValue,
+                        BoolValue = cell.BoolValue,
+                        DateValue = cell.DateValue,
+                    });
+                }
+            }
+        }
+
+        var datasetIdMap = datasetCopies.ToDictionary(d => d.Source.Id, d => d.Copy.Id);
+        foreach (var widget in target.Widgets)
+            widget.ConfigJson = Mapping.RemapConfigDatasetIds(widget.ConfigJson, datasetIdMap);
+
+        var filters = target.GetFilters();
+        var filtersChanged = false;
+        foreach (var filter in filters)
+            if (datasetIdMap.TryGetValue(filter.DatasetId, out var mapped)) { filter.DatasetId = mapped; filtersChanged = true; }
+        if (filtersChanged) target.SetFilters(filters);
+
+        await db.SaveChangesAsync();
     }
+
+    /// <summary>Correlates a source dataset with its freshly-added copy so cells and dataset ids can be remapped after the first save.</summary>
+    private sealed record DatasetCopy(
+        Dataset Source,
+        Dataset Copy,
+        List<(DatasetColumn Source, DatasetColumn Copy)> ColumnPairs,
+        List<(DatasetRow Source, DatasetRow Copy)> RowPairs);
 
     /// <summary>Null if the report doesn't exist. Throws <see cref="DataNotFoundException"/> if no draft is checked out.</summary>
     public async Task<ReportRevisionDto?> UpdateDraftAsync(int id, ReportRevisionDto dto)
@@ -379,8 +471,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         // Publishing is an Editor action.
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
-        var draft = await db.ReportRevisions
-            .Include(rv => rv.Widgets)
+        var draft = await IncludeContent(db.ReportRevisions)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (draft is null) throw new DataNotFoundException("No draft is checked out.");
 
@@ -394,18 +485,17 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             ReportId = report.Id,
             Kind = RevisionKind.Published,
             VersionNumber = nextVersion,
-            Columns = draft.Columns,
-            Rows = draft.Rows,
             CreatedAt = DateTime.UtcNow,
             PublishedAt = DateTime.UtcNow,
             Notes = notes,
-            FiltersJson = draft.FiltersJson,
         };
-        // Widget RefIds carry over so a published widget shares its predecessor's logical identity.
-        CopyContentInto(published, draft);
+        db.ReportRevisions.Add(published);
+
+        // Deep-copies the draft's widgets + datasets (grid/filters included) into the new version,
+        // remapping dataset ids. Widget/column/row RefIds carry over so they keep their identity.
+        await CopyContentIntoAsync(published, draft);
 
         report.UpdatedAt = DateTime.UtcNow;
-        db.ReportRevisions.Add(published);
         db.ReportRevisions.Remove(draft);
         await db.SaveChangesAsync();
         return published.ToVersionSummaryDto();

@@ -11,20 +11,26 @@ import {
 } from '../../core/models/dataset.model';
 
 /**
- * State and CRUD for the datasets screen. Provided at the page so the list
- * sidebar and the editor share one instance, keeping every mutation in one
- * place while the components stay presentational.
+ * State and CRUD for the datasets screen. Datasets belong to a report's draft
+ * revision, so the store is scoped to a report id (set by the page from the
+ * route). Provided at the page so the list sidebar and the editor share one
+ * instance, keeping every mutation in one place while the components stay
+ * presentational.
  */
 @Injectable()
 export class DatasetsStore {
   private readonly api = inject(DatasetApiService);
 
-  private readonly datasetsResource = httpResource<DatasetSummary[]>(() => '/api/datasets', {
-    defaultValue: [],
-  });
+  /** The report whose draft datasets are being edited; set by the page from the route. */
+  private readonly reportId = signal<number | null>(null);
+
+  private readonly datasetsResource = httpResource<DatasetSummary[]>(
+    () => (this.reportId() !== null ? `/api/reports/${this.reportId()}/datasets` : undefined),
+    { defaultValue: [] },
+  );
   readonly datasets = this.datasetsResource.value;
 
-  readonly selectedId = signal<string | null>(null);
+  readonly selectedId = signal<number | null>(null);
 
   readonly selected = computed(
     () => this.datasets().find((d) => d.id === this.selectedId()) ?? null,
@@ -67,7 +73,14 @@ export class DatasetsStore {
     });
   }
 
-  select(id: string): void {
+  /** Points the store at a report's draft datasets; the list refetches reactively. */
+  setReport(reportId: number): void {
+    if (reportId === this.reportId()) return;
+    this.reportId.set(reportId);
+    this.selectedId.set(null);
+  }
+
+  select(id: number): void {
     this.selectedId.set(id);
   }
 
@@ -75,8 +88,9 @@ export class DatasetsStore {
 
   createDataset(name: string): void {
     const trimmed = name.trim();
-    if (!trimmed) return;
-    this.api.create(trimmed).subscribe((dataset) => {
+    const reportId = this.reportId();
+    if (!trimmed || reportId === null) return;
+    this.api.create(reportId, trimmed).subscribe((dataset) => {
       this.selectedId.set(dataset.id);
       this.datasetsResource.reload();
     });

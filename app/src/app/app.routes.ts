@@ -16,6 +16,12 @@ export const routes: Routes = [
     canDeactivate: [unsavedChangesGuard],
   },
   {
+    // The datasets of a report's checked-out draft are managed here, reached from the builder.
+    path: 'reports/:reportId/edit/datasets',
+    loadComponent: () =>
+      import('./features/datasets/datasets-page.component').then((m) => m.DatasetsPageComponent),
+  },
+  {
     path: 'reports/:reportId/versions/:versionNumber',
     loadComponent: () =>
       import('./features/report-viewer/report-viewer.component').then((m) => m.ReportViewerComponent),
@@ -24,11 +30,6 @@ export const routes: Routes = [
     path: 'reports/:reportId',
     loadComponent: () =>
       import('./features/report-viewer/report-viewer.component').then((m) => m.ReportViewerComponent),
-  },
-  {
-    path: 'datasets',
-    loadComponent: () =>
-      import('./features/datasets/datasets-page.component').then((m) => m.DatasetsPageComponent),
   },
   { path: '**', redirectTo: '' },
 ];

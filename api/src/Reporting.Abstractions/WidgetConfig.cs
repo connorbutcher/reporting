@@ -85,7 +85,7 @@ public class DataTableColumnSetting
 /// </summary>
 public class ToleranceConfig
 {
-    public Guid SourceDatasetId { get; set; }
+    public int SourceDatasetId { get; set; }
     public Guid SourceRowId { get; set; }
     public Guid MinColumnId { get; set; }
     public Guid MaxColumnId { get; set; }
@@ -96,7 +96,7 @@ public class ToleranceConfig
 public class DataTableWidgetConfig : WidgetConfig
 {
     /// <summary>Null until the user binds the table to a dataset.</summary>
-    public Guid? DatasetId { get; set; }
+    public int? DatasetId { get; set; }
 
     public bool ShowColumnHeaders { get; set; } = true;
 
@@ -139,7 +139,7 @@ public class ChartToleranceBand
 
     public ChartAxis Axis { get; set; } = ChartAxis.Y;
 
-    public Guid SourceDatasetId { get; set; }
+    public int SourceDatasetId { get; set; }
     public Guid SourceRowId { get; set; }
     public Guid MinColumnId { get; set; }
     public Guid MaxColumnId { get; set; }
@@ -163,7 +163,7 @@ public class ChartTooltipColumn
 public abstract class ChartWidgetConfig : WidgetConfig
 {
     /// <summary>Null until the user binds the chart to a dataset.</summary>
-    public Guid? DatasetId { get; set; }
+    public int? DatasetId { get; set; }
 
     public Guid? XColumnId { get; set; }
     public Guid? YColumnId { get; set; }

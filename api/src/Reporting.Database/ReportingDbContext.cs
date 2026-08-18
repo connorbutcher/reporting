@@ -30,9 +30,13 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<Folder>().HasIndex(f => f.RefId).IsUnique();
         modelBuilder.Entity<Report>().HasIndex(r => r.RefId).IsUnique();
         modelBuilder.Entity<ReportRevision>().HasIndex(rv => rv.RefId).IsUnique();
-        modelBuilder.Entity<Dataset>().HasIndex(d => d.RefId).IsUnique();
-        modelBuilder.Entity<DatasetColumn>().HasIndex(c => c.RefId).IsUnique();
-        modelBuilder.Entity<DatasetRow>().HasIndex(r => r.RefId).IsUnique();
+
+        // A dataset now belongs to a revision and is referenced by its int primary key (not a RefId).
+        // Its columns' and rows' RefIds are carried over unchanged when a revision is copied to a new
+        // version, so those RefIds repeat across revisions — unique only within a single dataset, which
+        // is all the client's per-widget column/row references need. This mirrors Widget.RefId below.
+        modelBuilder.Entity<DatasetColumn>().HasIndex(c => new { c.DatasetId, c.RefId }).IsUnique();
+        modelBuilder.Entity<DatasetRow>().HasIndex(r => new { r.DatasetId, r.RefId }).IsUnique();
 
         modelBuilder.Entity<Folder>()
             .HasOne(f => f.ParentFolder)
@@ -83,6 +87,14 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<Widget>()
             .HasIndex(w => new { w.ReportRevisionId, w.RefId })
             .IsUnique();
+
+        // Datasets are owned by a revision; deleting a revision (or the report above it) cascades
+        // through datasets → columns/rows → cells via the chain of cascades declared here.
+        modelBuilder.Entity<ReportRevision>()
+            .HasMany(rv => rv.Datasets)
+            .WithOne(d => d.ReportRevision)
+            .HasForeignKey(d => d.ReportRevisionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Dataset>()
             .HasMany(d => d.Columns)

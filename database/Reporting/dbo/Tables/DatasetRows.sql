@@ -8,11 +8,6 @@
 
 
 GO
-CREATE NONCLUSTERED INDEX [IX_DatasetRows_DatasetId]
-    ON [dbo].[DatasetRows]([DatasetId] ASC);
-
-
-GO
-CREATE UNIQUE NONCLUSTERED INDEX [IX_DatasetRows_RefId]
-    ON [dbo].[DatasetRows]([RefId] ASC);
+CREATE UNIQUE NONCLUSTERED INDEX [IX_DatasetRows_DatasetId_RefId]
+    ON [dbo].[DatasetRows]([DatasetId] ASC, [RefId] ASC);
 

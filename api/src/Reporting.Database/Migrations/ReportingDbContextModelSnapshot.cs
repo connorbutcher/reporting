@@ -76,13 +76,12 @@ namespace Reporting.Database.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("RefId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ReportRevisionId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RefId")
-                        .IsUnique();
+                    b.HasIndex("ReportRevisionId");
 
                     b.ToTable("Datasets");
                 });
@@ -161,9 +160,7 @@ namespace Reporting.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DatasetId");
-
-                    b.HasIndex("RefId")
+                    b.HasIndex("DatasetId", "RefId")
                         .IsUnique();
 
                     b.ToTable("DatasetColumns");
@@ -185,9 +182,7 @@ namespace Reporting.Database.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DatasetId");
-
-                    b.HasIndex("RefId")
+                    b.HasIndex("DatasetId", "RefId")
                         .IsUnique();
 
                     b.ToTable("DatasetRows");
@@ -491,6 +486,17 @@ namespace Reporting.Database.Migrations
                     b.ToTable("Widgets");
                 });
 
+            modelBuilder.Entity("Reporting.Database.Dataset", b =>
+                {
+                    b.HasOne("Reporting.Database.ReportRevision", "ReportRevision")
+                        .WithMany("Datasets")
+                        .HasForeignKey("ReportRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportRevision");
+                });
+
             modelBuilder.Entity("Reporting.Database.DatasetCell", b =>
                 {
                     b.HasOne("Reporting.Database.DatasetRow", "Row")
@@ -604,6 +610,8 @@ namespace Reporting.Database.Migrations
 
             modelBuilder.Entity("Reporting.Database.ReportRevision", b =>
                 {
+                    b.Navigation("Datasets");
+
                     b.Navigation("Widgets");
                 });
 

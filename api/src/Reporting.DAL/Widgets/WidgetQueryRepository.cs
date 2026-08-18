@@ -14,9 +14,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// with each requested column's value already formatted per its stored display
     /// configuration and classified against its tolerance band, if it has one.
     /// </summary>
-    public async Task<TableQueryResultDto?> QueryForTableAsync(Guid id, TableQueryDto dto)
+    public async Task<TableQueryResultDto?> QueryForTableAsync(int id, TableQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         // Keyed by RefId: the client references columns by their stable RefId, and the translator
@@ -42,7 +42,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .Where(c => c.Tolerance is not null)
             .Select(c => (
                 Key: c.ColumnId,
-                c.Tolerance!.SourceRowId,
+                c.Tolerance!.SourceDatasetId,
+                c.Tolerance.SourceRowId,
                 c.Tolerance.MinColumnId,
                 c.Tolerance.MaxColumnId,
                 c.Tolerance.ConcessionLowerColumnId,
@@ -76,7 +77,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         return new TableQueryResultDto
         {
-            Id = dataset.RefId,
+            Id = dataset.Id,
             Name = dataset.Name,
             Rows = resultRows,
             TotalRowCount = totalRowCount,
@@ -116,9 +117,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// series column's value, paired with resolved tolerance bounds and
     /// pre-formatted tooltip lines — the client only builds the ECharts option.
     /// </summary>
-    public async Task<ChartQueryResultDto?> QueryForChartAsync(Guid id, ChartQueryDto dto)
+    public async Task<ChartQueryResultDto?> QueryForChartAsync(int id, ChartQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
@@ -179,9 +180,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         }
 
         var pointers = dto.ToleranceBands
-            .Where(b => b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
+            .Where(b => b.SourceDatasetId != 0 && b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
             .Select(b => (
                 Key: b.Id,
+                b.SourceDatasetId,
                 b.SourceRowId,
                 b.MinColumnId,
                 b.MaxColumnId,
@@ -206,7 +208,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         return new ChartQueryResultDto
         {
-            Id = dataset.RefId,
+            Id = dataset.Id,
             Name = dataset.Name,
             // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op for scatter.
             Series = groups.Select(g => new ChartSeriesDto { Label = g.Key, Points = g.Value.OrderBy(p => p.X).ToList() }).ToList(),
@@ -223,12 +225,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// only the aggregated rows (one per category/series) come back rather than every
     /// underlying row.
     /// </summary>
-    public async Task<BarChartQueryResultDto?> QueryForBarChartAsync(Guid id, BarChartQueryDto dto)
+    public async Task<BarChartQueryResultDto?> QueryForBarChartAsync(int id, BarChartQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
-        var empty = new BarChartQueryResultDto { Id = dataset.RefId, Name = dataset.Name };
+        var empty = new BarChartQueryResultDto { Id = dataset.Id, Name = dataset.Name };
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
         var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
@@ -355,9 +357,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .ToList();
 
         var pointers = dto.ToleranceBands
-            .Where(b => b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
+            .Where(b => b.SourceDatasetId != 0 && b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
             .Select(b => (
                 Key: b.Id,
+                b.SourceDatasetId,
                 b.SourceRowId,
                 b.MinColumnId,
                 b.MaxColumnId,
@@ -382,7 +385,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         return new BarChartQueryResultDto
         {
-            Id = dataset.RefId,
+            Id = dataset.Id,
             Name = dataset.Name,
             Categories = orderedCategories,
             Series = series,

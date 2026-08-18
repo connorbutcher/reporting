@@ -86,7 +86,7 @@ export class ReportModel extends EditorNode {
 
   /** Every dataset some table on this report is bound to, in first-use order. */
   readonly usedDatasetIds = computed(() => {
-    const ids: string[] = [];
+    const ids: number[] = [];
     for (const widget of this.widgets()) {
       if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel))
         continue;
@@ -96,12 +96,12 @@ export class ReportModel extends EditorNode {
     return ids;
   });
 
-  reportFilter(datasetId: string): ReportFilterModel | null {
+  reportFilter(datasetId: number): ReportFilterModel | null {
     return this.filters().find((f) => f.datasetId === datasetId) ?? null;
   }
 
   /** The filter for a dataset, created on first use so the panel always has one to edit. */
-  ensureReportFilter(datasetId: string): ReportFilterModel {
+  ensureReportFilter(datasetId: number): ReportFilterModel {
     const existing = this.reportFilter(datasetId);
     if (existing) return existing;
 
@@ -110,7 +110,7 @@ export class ReportModel extends EditorNode {
     return model;
   }
 
-  private buildReportFilter(datasetId: string, dto: FilterGroup | null): ReportFilterModel {
+  private buildReportFilter(datasetId: number, dto: FilterGroup | null): ReportFilterModel {
     return new ReportFilterModel(datasetId, dto, {
       schema: computed(() => this.sources.schemas()[datasetId] ?? null),
       catalogue: this.sources.catalogue,

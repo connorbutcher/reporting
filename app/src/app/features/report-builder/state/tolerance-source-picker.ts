@@ -5,7 +5,7 @@ import { ToleranceConfig } from '../../../core/models/report.model';
 
 /** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
 export interface ToleranceSeed {
-  readonly sourceDatasetId?: string | null;
+  readonly sourceDatasetId?: number | null;
   readonly sourceRowId?: string | null;
   readonly minColumnId?: string | null;
   readonly maxColumnId?: string | null;
@@ -21,7 +21,7 @@ export interface ToleranceSeed {
  * widget renders; this only records and edits the pointers.
  */
 export class ToleranceSourcePicker {
-  readonly sourceDatasetId = signal<string | null>(null);
+  readonly sourceDatasetId = signal<number | null>(null);
   readonly sourceRowId = signal<string | null>(null);
   readonly minColumnId = signal<string | null>(null);
   readonly maxColumnId = signal<string | null>(null);
@@ -58,7 +58,7 @@ export class ToleranceSourcePicker {
   }
 
   /** Swapping dataset invalidates every downstream pick — the old row and columns belong to the old schema. */
-  selectDataset(datasetId: string | null): void {
+  selectDataset(datasetId: number | null): void {
     this.sourceDatasetId.set(datasetId);
     this.sourceRowId.set(null);
     this.minColumnId.set(null);
@@ -98,7 +98,7 @@ export class ToleranceSourcePicker {
     return label || 'Row';
   }
 
-  private loadSource(datasetId: string | null): void {
+  private loadSource(datasetId: number | null): void {
     this.sourceSchema.set(null);
     this.sourceData.set(null);
     if (!datasetId) return;

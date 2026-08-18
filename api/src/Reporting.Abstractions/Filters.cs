@@ -99,7 +99,7 @@ public class FilterOperatorsForTypeDto
 /// </summary>
 public class ReportFilterDto
 {
-    public Guid DatasetId { get; set; }
+    public int DatasetId { get; set; }
     public FilterGroupDto Filter { get; set; } = new();
 }
 
@@ -113,7 +113,7 @@ public class DatasetQueryDto
 
 public class DatasetQueryResultDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<DatasetRowDto> Rows { get; set; } = new();
 

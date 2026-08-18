@@ -88,19 +88,21 @@ public static class DbSeeder
         }
     }
 
+    /// <summary>A data table whose config JSON (datasetId + column ids) is filled in once its dataset has a primary key.</summary>
+    private sealed record PendingTable(Widget Widget, Dataset Dataset, string Title, string[] ColumnNames);
+
     public static void Seed(ReportingDbContext db)
     {
-        if (db.Datasets.Any()) return;
+        if (db.Reports.Any()) return;
 
-        // Cells reference their column by int id, which isn't known until the columns are saved, so
-        // build the graph in two phases: everything except cells first, then the cells.
+        // Each revision owns its own dataset. Two things aren't known until the graph is first saved:
+        // a cell's column int id, and a table widget's dataset int id (which its config references).
+        // So build everything first, save, then fill cells and patch the table configs.
         var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
 
-        var builds = SeedEngineBuilds(db, pending);
-        var testRuns = SeedTestRuns(db, pending);
-
-        db.Reports.Add(BuildDemoReport(builds));
-        SeedFoldersAndReports(db, builds, testRuns);
+        db.Reports.Add(BuildDemoReport(pending, pendingTables));
+        SeedFoldersAndReports(db, pending, pendingTables);
 
         db.SaveChanges();
 
@@ -108,12 +110,46 @@ public static class DbSeeder
         {
             row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
         }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
         db.SaveChanges();
     }
 
-    private static Dataset SeedEngineBuilds(ReportingDbContext db, List<PendingCell> pending)
+    /// <summary>
+    /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
+    /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
+    /// </summary>
+    private static void AddDataset(
+        ReportRevision revision,
+        List<PendingCell> pending,
+        List<PendingTable> pendingTables,
+        string title,
+        Func<List<PendingCell>, Dataset> datasetFactory,
+        string[] columnNames)
     {
-        var dataset = new Dataset { RefId = Guid.NewGuid(), Name = "Engine Builds" };
+        var dataset = datasetFactory(pending);
+        revision.Datasets.Add(dataset);
+
+        revision.Widgets.Add(TitleWidget(title));
+        var table = new Widget
+        {
+            RefId = Guid.NewGuid(),
+            Type = WidgetType.DataTable,
+            X = 0,
+            Y = 1,
+            W = 8,
+            H = 5,
+            ConfigJson = "{}",
+        };
+        revision.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, title, columnNames));
+    }
+
+    private static Dataset BuildEngineBuilds(List<PendingCell> pending)
+    {
+        var dataset = new Dataset { Name = "Engine Builds" };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
@@ -174,13 +210,12 @@ public static class DbSeeder
             });
         }
 
-        db.Datasets.Add(dataset);
         return dataset;
     }
 
-    private static Dataset SeedTestRuns(ReportingDbContext db, List<PendingCell> pending)
+    private static Dataset BuildTestRuns(List<PendingCell> pending)
     {
-        var dataset = new Dataset { RefId = Guid.NewGuid(), Name = "Engine Test Runs" };
+        var dataset = new Dataset { Name = "Engine Test Runs" };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
@@ -224,12 +259,11 @@ public static class DbSeeder
             });
         }
 
-        db.Datasets.Add(dataset);
         return dataset;
     }
 
     /// <summary>A starter report showing the build sheet columns an engineer cares about first.</summary>
-    private static Report BuildDemoReport(Dataset builds)
+    private static Report BuildDemoReport(List<PendingCell> pending, List<PendingTable> pendingTables)
     {
         var now = DateTime.UtcNow;
         var report = new Report { RefId = Guid.NewGuid(), Number = 1, Name = "Engine Build Report", CreatedAt = now, UpdatedAt = now };
@@ -247,8 +281,7 @@ public static class DbSeeder
             "Big End Clearance", "Build Concessions Signed Off",
         };
 
-        revision.Widgets.Add(TitleWidget("Engine Build Clearances"));
-        revision.Widgets.Add(TableWidget(builds, "Build Clearances", wanted));
+        AddDataset(revision, pending, pendingTables, "Build Clearances", BuildEngineBuilds, wanted);
 
         report.Revisions.Add(revision);
         return report;
@@ -259,7 +292,7 @@ public static class DbSeeder
     /// published, published-with-a-draft-back-out, and no revisions at all) —
     /// so the home page has enough variety to be worth demoing.
     /// </summary>
-    private static void SeedFoldersAndReports(ReportingDbContext db, Dataset builds, Dataset testRuns)
+    private static void SeedFoldersAndReports(ReportingDbContext db, List<PendingCell> pending, List<PendingTable> pendingTables)
     {
         var now = DateTime.UtcNow;
 
@@ -286,25 +319,26 @@ public static class DbSeeder
         var number = 2;
 
         db.Reports.Add(PublishedReport(
-            number++, "Main Bearing Audit", engineBuilds, builds, buildColumns, versions: 3, daysAgo: 21));
+            number++, "Main Bearing Audit", engineBuilds, BuildEngineBuilds, buildColumns, versions: 3, daysAgo: 21, pending, pendingTables));
 
         db.Reports.Add(PublishedReport(
-            number++, "Piston Clearance Report", q1, builds, buildColumns, versions: 1, daysAgo: 9));
+            number++, "Piston Clearance Report", q1, BuildEngineBuilds, buildColumns, versions: 1, daysAgo: 9, pending, pendingTables));
 
         db.Reports.Add(DraftReport(
-            number++, "Chassis Torque Audit", chassisQa, testRuns, testColumns, daysAgo: 2));
+            number++, "Chassis Torque Audit", chassisQa, BuildTestRuns, testColumns, daysAgo: 2, pending, pendingTables));
 
         db.Reports.Add(PublishedWithDraftReport(
-            number++, "Chassis Alignment Check", chassisQa, builds, buildColumns, versions: 2, daysAgo: 5));
+            number++, "Chassis Alignment Check", chassisQa, BuildEngineBuilds, buildColumns, versions: 2, daysAgo: 5, pending, pendingTables));
 
         db.Reports.Add(EmptyReport(number++, "Bore Diameter Concessions", concessions, daysAgo: 14));
 
         db.Reports.Add(DraftReport(
-            number, "Final Assembly QA — Batch 12", null, testRuns, testColumns, daysAgo: 1));
+            number, "Final Assembly QA — Batch 12", null, BuildTestRuns, testColumns, daysAgo: 1, pending, pendingTables));
     }
 
     private static Report PublishedReport(
-        int number, string name, Folder? folder, Dataset dataset, string[] columns, int versions, int daysAgo)
+        int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
+        string[] columns, int versions, int daysAgo, List<PendingCell> pending, List<PendingTable> pendingTables)
     {
         var createdAt = DateTime.UtcNow.AddDays(-daysAgo - (versions - 1) * 3);
         var updatedAt = DateTime.UtcNow.AddDays(-daysAgo);
@@ -330,8 +364,7 @@ public static class DbSeeder
                 PublishedAt = publishedAt,
                 Notes = v == versions ? $"<p>Updated {name} with the latest data.</p>" : null,
             };
-            revision.Widgets.Add(TitleWidget(name));
-            revision.Widgets.Add(TableWidget(dataset, name, columns));
+            AddDataset(revision, pending, pendingTables, name, datasetFactory, columns);
             report.Revisions.Add(revision);
         }
 
@@ -339,7 +372,8 @@ public static class DbSeeder
     }
 
     private static Report DraftReport(
-        int number, string name, Folder? folder, Dataset dataset, string[] columns, int daysAgo)
+        int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
+        string[] columns, int daysAgo, List<PendingCell> pending, List<PendingTable> pendingTables)
     {
         var createdAt = DateTime.UtcNow.AddDays(-daysAgo);
         var report = new Report
@@ -353,22 +387,21 @@ public static class DbSeeder
         };
 
         var draft = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = createdAt };
-        draft.Widgets.Add(TitleWidget(name));
-        draft.Widgets.Add(TableWidget(dataset, name, columns));
+        AddDataset(draft, pending, pendingTables, name, datasetFactory, columns);
         report.Revisions.Add(draft);
 
         return report;
     }
 
     private static Report PublishedWithDraftReport(
-        int number, string name, Folder? folder, Dataset dataset, string[] columns, int versions, int daysAgo)
+        int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
+        string[] columns, int versions, int daysAgo, List<PendingCell> pending, List<PendingTable> pendingTables)
     {
-        var report = PublishedReport(number, name, folder, dataset, columns, versions, daysAgo);
+        var report = PublishedReport(number, name, folder, datasetFactory, columns, versions, daysAgo, pending, pendingTables);
 
         var draftCreatedAt = DateTime.UtcNow.AddDays(-1);
         var draft = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = draftCreatedAt };
-        draft.Widgets.Add(TitleWidget(name));
-        draft.Widgets.Add(TableWidget(dataset, name, columns));
+        AddDataset(draft, pending, pendingTables, name, datasetFactory, columns);
         report.Revisions.Add(draft);
         report.UpdatedAt = draftCreatedAt;
 
@@ -407,28 +440,23 @@ public static class DbSeeder
             """,
     };
 
-    private static Widget TableWidget(Dataset dataset, string title, string[] columnNames)
+    /// <summary>
+    /// The data-table config JSON, built once the dataset has a primary key. The dataset is
+    /// referenced by that int id; columns are still referenced by their stable RefIds.
+    /// </summary>
+    private static string TableConfigJson(string title, Dataset dataset, string[] columnNames)
     {
         var columnIds = columnNames
             .Select(name => dataset.Columns.First(c => c.Name == name).RefId)
             .Select(id => $"{{\"columnId\":\"{id}\",\"sortable\":true}}");
 
-        return new Widget
-        {
-            RefId = Guid.NewGuid(),
-            Type = WidgetType.DataTable,
-            X = 0,
-            Y = 1,
-            W = 8,
-            H = 5,
-            ConfigJson = $$"""
-                {"type":"dataTable","datasetId":"{{dataset.RefId}}","title":"{{title}}",
-                 "showTitle":true,"showColumnHeaders":true,"resizableColumns":true,
-                 "stripedRows":true,"showGridlines":false,"rowHover":true,"density":"compact",
-                 "paginator":false,"rowsPerPage":10,"emptyMessage":"No rows to display.",
-                 "columns":[{{string.Join(",", columnIds)}}],"sortColumnId":null,"sortDirection":"asc"}
-                """,
-        };
+        return $$"""
+            {"type":"dataTable","datasetId":{{dataset.Id}},"title":"{{title}}",
+             "showTitle":true,"showColumnHeaders":true,"resizableColumns":true,
+             "stripedRows":true,"showGridlines":false,"rowHover":true,"density":"compact",
+             "paginator":false,"rowsPerPage":10,"emptyMessage":"No rows to display.",
+             "columns":[{{string.Join(",", columnIds)}}],"sortColumnId":null,"sortDirection":"asc"}
+            """;
     }
 
     private static DatasetColumn Column(

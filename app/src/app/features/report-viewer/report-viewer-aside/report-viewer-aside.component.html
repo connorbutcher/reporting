@@ -1,0 +1,37 @@
+<aside class="report-aside app-card">
+  <div class="report-aside__tabs" role="tablist">
+    <button
+      type="button"
+      role="tab"
+      class="report-aside__tab"
+      [class.report-aside__tab--active]="store.asideTab() === 'filters'"
+      [attr.aria-selected]="store.asideTab() === 'filters'"
+      (click)="store.showTab('filters')"
+    >
+      Filters
+      @if (store.viewFilters()?.conditionCount(); as count) {
+        <span class="report-aside__tab-badge">{{ count }}</span>
+      }
+    </button>
+    <button
+      type="button"
+      role="tab"
+      class="report-aside__tab"
+      [class.report-aside__tab--active]="store.asideTab() === 'history'"
+      [attr.aria-selected]="store.asideTab() === 'history'"
+      (click)="store.showTab('history')"
+    >
+      History
+    </button>
+  </div>
+
+  @if (store.asideTab() === 'filters') {
+    @if (store.viewFilters(); as filters) {
+      <app-view-filters-panel [filters]="filters" [(openKey)]="store.openFilterKey" />
+    } @else {
+      <p class="report-aside__status">Nothing to filter yet.</p>
+    }
+  } @else {
+    <app-version-history />
+  }
+</aside>

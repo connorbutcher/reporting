@@ -1,51 +1,18 @@
 <div class="report-viewer">
-  @if (loading()) {
+  @if (store.loading()) {
     <p class="report-viewer__status">Loading…</p>
-  } @else if (notFound()) {
+  } @else if (store.notFound()) {
     <p class="report-viewer__status">Report not found.</p>
-  } @else if (report(); as report) {
-    @let isViewingHistorical =
-      viewingVersion() !== null && viewingVersion() !== report.latestVersionNumber;
+  } @else if (store.report()) {
     <section class="report-viewer__main app-card">
-      <header class="report-viewer__header">
-        <div class="report-viewer__heading">
-          <h1 class="report-viewer__title">
-            <span class="report-viewer__tag">R-{{ report.number }}</span>
-            <span class="report-viewer__name">{{ report.name }}</span>
-          </h1>
-          @if (isViewingHistorical) {
-            <span class="report-viewer__badge">Viewing v{{ viewingVersion() }}</span>
-            <button type="button" class="report-viewer__link" (click)="viewLatest()">
-              Back to latest
-            </button>
-          } @else if (report.latestVersionNumber) {
-            <span class="report-viewer__badge">Latest: v{{ report.latestVersionNumber }}</span>
-          } @else {
-            <span class="report-viewer__badge report-viewer__badge--muted"
-              >No published versions yet</span
-            >
-          }
-        </div>
+      <app-report-viewer-header />
 
-        @if (report.hasDraft) {
-          <p-button label="Continue editing" icon="pi pi-pencil" (onClick)="edit()" />
-        } @else if (isViewingHistorical) {
-          <p-button
-            [label]="'Restore v' + viewingVersion() + ' into a draft'"
-            icon="pi pi-history"
-            (onClick)="edit(viewingVersion()!)"
-          />
-        } @else {
-          <p-button label="Check out to edit" icon="pi pi-pencil" (onClick)="edit()" />
-        }
-      </header>
-
-      @if (content(); as content) {
+      @if (store.content(); as content) {
         <app-readonly-report-grid
           [content]="content"
-          [pageFilters]="viewFilters()?.pageFilters ?? null"
-          [widgetFilters]="viewFilters()?.widgetFilters ?? null"
-          (filterWidget)="filterWidget($event)"
+          [pageFilters]="store.viewFilters()?.pageFilters ?? null"
+          [widgetFilters]="store.viewFilters()?.widgetFilters ?? null"
+          (filterWidget)="store.filterWidget($event)"
         />
       } @else {
         <p class="report-viewer__status">
@@ -54,75 +21,6 @@
       }
     </section>
 
-    <aside class="report-viewer__history app-card">
-      <div class="report-viewer__tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          class="report-viewer__tab"
-          [class.report-viewer__tab--active]="asideTab() === 'filters'"
-          [attr.aria-selected]="asideTab() === 'filters'"
-          (click)="showTab('filters')"
-        >
-          Filters
-          @if (viewFilters()?.conditionCount(); as count) {
-            <span class="report-viewer__tab-badge">{{ count }}</span>
-          }
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="report-viewer__tab"
-          [class.report-viewer__tab--active]="asideTab() === 'history'"
-          [attr.aria-selected]="asideTab() === 'history'"
-          (click)="showTab('history')"
-        >
-          History
-        </button>
-      </div>
-
-      @if (asideTab() === 'filters') {
-        @if (viewFilters(); as filters) {
-          <app-view-filters-panel [filters]="filters" [(openKey)]="openFilterKey" />
-        } @else {
-          <p class="report-viewer__status">Nothing to filter yet.</p>
-        }
-      } @else if (versions().length === 0) {
-        <p class="report-viewer__status">No published versions yet.</p>
-      } @else {
-        <ul class="report-viewer__versions">
-          @for (version of versions(); track version.versionNumber) {
-            @let isActive =
-              viewingVersion() === version.versionNumber ||
-              (!viewingVersion() && version.versionNumber === report.latestVersionNumber);
-            <li>
-              <button
-                type="button"
-                class="report-viewer__version"
-                [class.report-viewer__version--active]="isActive"
-                (click)="viewVersion(version.versionNumber)"
-              >
-                <span class="report-viewer__version-row">
-                  <span>v{{ version.versionNumber }}</span>
-                  <span class="report-viewer__version-date">{{
-                    version.publishedAt | date: 'short'
-                  }}</span>
-                </span>
-                @if (version.notes; as notes) {
-                  @if (isActive) {
-                    <div
-                      class="report-viewer__version-notes report-viewer__version-notes--full"
-                      [innerHTML]="notes"
-                    ></div>
-                  } @else {
-                    <span class="report-viewer__version-notes">{{ previewText(notes) }}</span>
-                  }
-                }
-              </button>
-            </li>
-          }
-        </ul>
-      }
-    </aside>
+    <app-report-viewer-aside />
   }
 </div>

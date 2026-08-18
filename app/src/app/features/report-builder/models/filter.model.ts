@@ -291,11 +291,11 @@ export class FilterGroupModel extends EditorNode {
  * bound to that dataset, on top of whatever filter the widget sets itself.
  */
 export class ReportFilterModel extends EditorNode {
-  readonly datasetId: string;
+  readonly datasetId: number;
   readonly group: FilterGroupModel;
   readonly datasetName: Signal<string>;
 
-  constructor(datasetId: string, dto: FilterGroup | null, context: FilterContext) {
+  constructor(datasetId: number, dto: FilterGroup | null, context: FilterContext) {
     super();
     this.datasetId = datasetId;
     this.group = new FilterGroupModel(dto, context);

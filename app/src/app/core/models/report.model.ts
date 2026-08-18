@@ -34,7 +34,7 @@ export interface DataTableColumnSetting {
  * widen it into an amber "needs sign-off" zone before a value goes red.
  */
 export interface ToleranceConfig {
-  sourceDatasetId: string;
+  sourceDatasetId: number;
   sourceRowId: string;
   minColumnId: string;
   maxColumnId: string;
@@ -51,7 +51,7 @@ interface WidgetConfigBase {
 export interface DataTableWidgetConfig extends WidgetConfigBase {
   type: 'dataTable';
   /** Null until the user binds the table to a dataset. */
-  datasetId: string | null;
+  datasetId: number | null;
 
   showColumnHeaders: boolean;
 
@@ -87,7 +87,7 @@ export interface ChartToleranceBand {
   /** Client-generated, only for addressing this band in the editor — not meaningful server-side. */
   id: string;
   axis: ChartAxis;
-  sourceDatasetId: string;
+  sourceDatasetId: number;
   sourceRowId: string;
   minColumnId: string;
   maxColumnId: string;
@@ -109,7 +109,7 @@ export interface ChartTooltipColumn {
  */
 export interface ChartWidgetConfigBase extends WidgetConfigBase {
   /** Null until the user binds the chart to a dataset. */
-  datasetId: string | null;
+  datasetId: number | null;
   xColumnId: string | null;
   yColumnId: string | null;
   /** Splits points into a separate coloured series per distinct value. Null plots one series. */

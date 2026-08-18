@@ -4,7 +4,7 @@ namespace Reporting.Abstractions;
 
 public class DatasetSummaryDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
 }
 
@@ -19,7 +19,7 @@ public class DatasetColumnDto
 
 public class DatasetSchemaDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<DatasetColumnDto> Columns { get; set; } = new();
 }
@@ -34,7 +34,7 @@ public class DatasetRowDto
 
 public class DatasetDataDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<DatasetRowDto> Rows { get; set; } = new();
 }

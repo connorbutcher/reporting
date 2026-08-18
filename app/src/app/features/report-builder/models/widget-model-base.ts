@@ -5,8 +5,8 @@ import { OperatorCatalogue } from '../../../core/models/filter.model';
 import { GridRect } from '../grid.util';
 import { EditorNode } from './editor-node';
 
-/** Look-up of dataset schemas, supplied by the store's cache. */
-export type SchemaSource = Signal<Record<string, DatasetSchema>>;
+/** Look-up of dataset schemas by dataset id, supplied by the store's cache. */
+export type SchemaSource = Signal<Record<number, DatasetSchema>>;
 
 /** Filter operators per column type, supplied by the store once fetched. */
 export type CatalogueSource = Signal<OperatorCatalogue | null>;

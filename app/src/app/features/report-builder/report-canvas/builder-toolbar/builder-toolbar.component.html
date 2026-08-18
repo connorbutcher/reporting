@@ -1,0 +1,83 @@
+<header class="builder-toolbar">
+  <h1 class="builder-toolbar__title">{{ store.model()?.name() ?? 'Report' }}</h1>
+  <span class="builder-toolbar__meta">
+    {{ store.gridColumns() }} × {{ store.gridRows() }} grid ·
+    {{ store.widgets().length }} widgets
+    @if (store.hasMultiSelection()) {
+      · {{ store.selectedWidgetIds().length }} selected
+    }
+  </span>
+
+  <div class="builder-toolbar__history">
+    <button
+      type="button"
+      class="builder-toolbar__icon-button"
+      title="Undo (Ctrl+Z)"
+      aria-label="Undo"
+      [disabled]="!store.canUndo()"
+      (click)="store.undo()"
+    >
+      <i class="pi pi-undo" aria-hidden="true"></i>
+    </button>
+    <button
+      type="button"
+      class="builder-toolbar__icon-button"
+      title="Redo (Ctrl+Shift+Z)"
+      aria-label="Redo"
+      [disabled]="!store.canRedo()"
+      (click)="store.redo()"
+    >
+      <i class="pi pi-refresh" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <span
+    class="builder-toolbar__save-status"
+    [class.builder-toolbar__save-status--error]="saveStatus().variant === 'error'"
+    [class.builder-toolbar__save-status--pending]="saveStatus().variant === 'pending'"
+    [attr.role]="saveStatus().variant === 'error' ? 'alert' : null"
+  >
+    <i class="pi" [class]="saveStatus().icon" aria-hidden="true"></i>
+    {{ saveStatus().label }}
+  </span>
+
+  <button
+    type="button"
+    class="builder-toolbar__status"
+    [class.builder-toolbar__status--error]="store.errors().length > 0"
+    [class.builder-toolbar__status--warning]="
+      store.errors().length === 0 && store.warnings().length > 0
+    "
+    (click)="store.navigate({ kind: 'issues' })"
+  >
+    <i
+      class="pi"
+      [class.pi-check-circle]="store.issues().length === 0"
+      [class.pi-exclamation-triangle]="store.issues().length > 0"
+      aria-hidden="true"
+    ></i>
+    {{ statusLabel() }}
+  </button>
+
+  @if (reportId(); as id) {
+    <a
+      class="builder-toolbar__datasets"
+      [routerLink]="['/reports', id, 'edit', 'datasets']"
+      title="Manage this report's datasets"
+    >
+      <i class="pi pi-database" aria-hidden="true"></i>
+      Datasets
+    </a>
+  }
+
+  <button
+    type="button"
+    class="builder-toolbar__publish"
+    [disabled]="!store.hasUnpublishedChanges() || !store.isValid()"
+    [title]="publishTitle()"
+    (click)="publish()"
+  >
+    <i class="pi pi-cloud-upload" aria-hidden="true"></i>
+    Publish
+  </button>
+</header>

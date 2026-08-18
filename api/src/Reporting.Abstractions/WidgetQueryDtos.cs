@@ -40,7 +40,7 @@ public class TableRowResultDto
 
 public class TableQueryResultDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<TableRowResultDto> Rows { get; set; } = new();
 
@@ -92,7 +92,7 @@ public class ResolvedToleranceBandDto
 
 public class ChartQueryResultDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<ChartSeriesDto> Series { get; set; } = new();
     public List<ResolvedToleranceBandDto> ToleranceBands { get; set; } = new();
@@ -129,7 +129,7 @@ public class BarSeriesDto
 
 public class BarChartQueryResultDto
 {
-    public Guid Id { get; set; }
+    public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
 
     /// <summary>The bar categories, in display order — the shared X axis every series aligns to.</summary>

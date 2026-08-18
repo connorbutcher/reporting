@@ -47,10 +47,11 @@ export class ReadonlyReportGridComponent {
   }
 
   /** So a published report narrows rows exactly as it did in the builder. */
-  protected reportFilterFor(datasetId: string | null): FilterGroup | null {
+  protected reportFilterFor(datasetId: number | null): FilterGroup | null {
     if (!datasetId) return null;
 
-    const override = this.pageFilters()?.get(datasetId);
+    // Page filters are keyed by the stringified dataset id (see ReportViewFilters).
+    const override = this.pageFilters()?.get(String(datasetId));
     if (override) return override();
 
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;

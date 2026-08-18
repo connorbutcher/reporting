@@ -251,7 +251,7 @@ export class ReportBuilderStore {
    */
   load(reportId: number): void {
     this.loading.set(true);
-    this.datasetApi.list().subscribe((datasets) => this.datasets.set(datasets));
+    this.datasetApi.listForReport(reportId).subscribe((datasets) => this.datasets.set(datasets));
     this.filterApi.operators().subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
 
     this.reportApi.getDraft(reportId).subscribe({
@@ -438,7 +438,7 @@ export class ReportBuilderStore {
   readonly hasDataset = computed(() => !!this.selectedTableWidget()?.datasetId());
 
   updateColumnConfiguration(
-    datasetId: string,
+    datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,
   ): void {

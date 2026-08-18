@@ -11,13 +11,13 @@ import { DatasetColumnConfiguration, DatasetSchema } from '../models/dataset.mod
 export class DatasetSchemaCacheService {
   private readonly datasetApi = inject(DatasetApiService);
 
-  private readonly cache = signal<Record<string, DatasetSchema>>({});
-  private readonly inFlight = new Set<string>();
+  private readonly cache = signal<Record<number, DatasetSchema>>({});
+  private readonly inFlight = new Set<number>();
 
   readonly schemas = this.cache.asReadonly();
 
   /** Fetches a dataset's schema once; later calls for the same id are no-ops. */
-  ensure(datasetId: string): void {
+  ensure(datasetId: number): void {
     if (this.cache()[datasetId] || this.inFlight.has(datasetId)) return;
 
     this.inFlight.add(datasetId);
@@ -33,7 +33,7 @@ export class DatasetSchemaCacheService {
    * the change, then reconciles with whatever the server actually stored.
    */
   updateColumnConfiguration(
-    datasetId: string,
+    datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,
   ): void {
@@ -44,7 +44,7 @@ export class DatasetSchemaCacheService {
     });
   }
 
-  private patchColumn(datasetId: string, columnId: string, configuration: DatasetColumnConfiguration): void {
+  private patchColumn(datasetId: number, columnId: string, configuration: DatasetColumnConfiguration): void {
     this.cache.update((all) => {
       const schema = all[datasetId];
       if (!schema) return all;

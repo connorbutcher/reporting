@@ -24,15 +24,16 @@ import {
 export class DatasetApiService {
   private readonly http = inject(HttpClient);
 
-  list(): Observable<DatasetSummary[]> {
-    return this.http.get<DatasetSummary[]>('/api/datasets');
+  /** The datasets owned by a report's checked-out draft revision. */
+  listForReport(reportId: number): Observable<DatasetSummary[]> {
+    return this.http.get<DatasetSummary[]>(`/api/reports/${reportId}/datasets`);
   }
 
-  getSchema(id: string): Observable<DatasetSchema> {
+  getSchema(id: number): Observable<DatasetSchema> {
     return this.http.get<DatasetSchema>(`/api/datasets/${id}/schema`);
   }
 
-  getData(id: string): Observable<DatasetData> {
+  getData(id: number): Observable<DatasetData> {
     return this.http.get<DatasetData>(`/api/datasets/${id}/data`);
   }
 
@@ -40,7 +41,7 @@ export class DatasetApiService {
    * Rows matching a filter. Filtering runs in SQL, so a widget never pulls rows
    * it isn't going to show.
    */
-  query(id: string, filter: FilterGroup | null): Observable<DatasetQueryResult> {
+  query(id: number, filter: FilterGroup | null): Observable<DatasetQueryResult> {
     return this.http.post<DatasetQueryResult>(`/api/datasets/${id}/query`, { filter });
   }
 
@@ -48,7 +49,7 @@ export class DatasetApiService {
    * A page of rows shaped for a table widget: filtered, sorted, and paged
    * server-side, with each cell already formatted and tolerance-classified.
    */
-  queryTable(id: string, request: TableQueryRequest): Observable<TableQueryResult> {
+  queryTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
     return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-query`, request);
   }
 
@@ -56,7 +57,7 @@ export class DatasetApiService {
    * Rows shaped for a chart widget: filtered, grouped into series, and paired
    * with resolved tolerance bounds and pre-formatted tooltip lines.
    */
-  queryChart(id: string, request: ChartQueryRequest): Observable<ChartQueryResult> {
+  queryChart(id: number, request: ChartQueryRequest): Observable<ChartQueryResult> {
     return this.http.post<ChartQueryResult>(`/api/datasets/${id}/chart-query`, request);
   }
 
@@ -64,12 +65,12 @@ export class DatasetApiService {
    * Rows shaped for a bar chart: filtered, grouped by the category column, and
    * reduced to one value per category (per series) by the chosen aggregate.
    */
-  queryBarChart(id: string, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
+  queryBarChart(id: number, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
     return this.http.post<BarChartQueryResult>(`/api/datasets/${id}/bar-chart-query`, request);
   }
 
   updateColumnConfiguration(
-    datasetId: string,
+    datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,
   ): Observable<DatasetColumn> {
@@ -81,24 +82,25 @@ export class DatasetApiService {
 
   // --- dataset management ---------------------------------------------------
 
-  create(name: string): Observable<DatasetSummary> {
-    return this.http.post<DatasetSummary>('/api/datasets', { name });
+  /** Creates a dataset on a report's draft revision. */
+  create(reportId: number, name: string): Observable<DatasetSummary> {
+    return this.http.post<DatasetSummary>(`/api/reports/${reportId}/datasets`, { name });
   }
 
-  rename(id: string, name: string): Observable<DatasetSummary> {
+  rename(id: number, name: string): Observable<DatasetSummary> {
     return this.http.put<DatasetSummary>(`/api/datasets/${id}`, { name });
   }
 
-  remove(id: string): Observable<void> {
+  remove(id: number): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${id}`);
   }
 
-  addColumn(datasetId: string, name: string, type: DatasetColumnType): Observable<DatasetColumn> {
+  addColumn(datasetId: number, name: string, type: DatasetColumnType): Observable<DatasetColumn> {
     return this.http.post<DatasetColumn>(`/api/datasets/${datasetId}/columns`, { name, type });
   }
 
   updateColumn(
-    datasetId: string,
+    datasetId: number,
     columnId: string,
     name: string,
     type: DatasetColumnType,
@@ -106,23 +108,23 @@ export class DatasetApiService {
     return this.http.put<DatasetColumn>(`/api/datasets/${datasetId}/columns/${columnId}`, { name, type });
   }
 
-  removeColumn(datasetId: string, columnId: string): Observable<void> {
+  removeColumn(datasetId: number, columnId: string): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${datasetId}/columns/${columnId}`);
   }
 
-  reorderColumns(datasetId: string, columnIds: string[]): Observable<DatasetSchema> {
+  reorderColumns(datasetId: number, columnIds: string[]): Observable<DatasetSchema> {
     return this.http.put<DatasetSchema>(`/api/datasets/${datasetId}/columns/order`, { columnIds });
   }
 
-  addRow(datasetId: string, values: Record<string, string>): Observable<DatasetRow> {
+  addRow(datasetId: number, values: Record<string, string>): Observable<DatasetRow> {
     return this.http.post<DatasetRow>(`/api/datasets/${datasetId}/rows`, { values });
   }
 
-  updateRow(datasetId: string, rowId: string, values: Record<string, string>): Observable<DatasetRow> {
+  updateRow(datasetId: number, rowId: string, values: Record<string, string>): Observable<DatasetRow> {
     return this.http.put<DatasetRow>(`/api/datasets/${datasetId}/rows/${rowId}`, { values });
   }
 
-  removeRow(datasetId: string, rowId: string): Observable<void> {
+  removeRow(datasetId: number, rowId: string): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${datasetId}/rows/${rowId}`);
   }
 }

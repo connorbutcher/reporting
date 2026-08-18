@@ -7,18 +7,18 @@ namespace Reporting.DAL.Repositories;
 /// <summary>Row and cell CRUD for a dataset.</summary>
 public class DatasetRowRepository(ReportingDbContext db)
 {
-    public async Task<DatasetDataDto?> GetDataAsync(Guid id)
+    public async Task<DatasetDataDto?> GetDataAsync(int id)
     {
         var dataset = await db.Datasets
             .Include(d => d.Columns)
             .Include(d => d.Rows).ThenInclude(r => r.Cells)
-            .FirstOrDefaultAsync(d => d.RefId == id);
+            .FirstOrDefaultAsync(d => d.Id == id);
         return dataset?.ToDataDto();
     }
 
-    public async Task<DatasetRowDto?> AddRowAsync(Guid id, Dictionary<Guid, string> values)
+    public async Task<DatasetRowDto?> AddRowAsync(int id, Dictionary<Guid, string> values)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
@@ -29,14 +29,14 @@ public class DatasetRowRepository(ReportingDbContext db)
         return row.ToDto(ColumnRefMap(dataset));
     }
 
-    public async Task<DatasetRowDto?> UpdateRowAsync(Guid id, Guid rowId, Dictionary<Guid, string> values)
+    public async Task<DatasetRowDto?> UpdateRowAsync(int id, Guid rowId, Dictionary<Guid, string> values)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.RefId == id);
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         var row = await db.DatasetRows
             .Include(r => r.Cells)
-            .FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.RefId == id);
+            .FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.Id == id);
         if (row is null) return null;
 
         ApplyValues(dataset, row, values);
@@ -44,9 +44,9 @@ public class DatasetRowRepository(ReportingDbContext db)
         return row.ToDto(ColumnRefMap(dataset));
     }
 
-    public async Task<bool> DeleteRowAsync(Guid id, Guid rowId)
+    public async Task<bool> DeleteRowAsync(int id, Guid rowId)
     {
-        var row = await db.DatasetRows.FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.RefId == id);
+        var row = await db.DatasetRows.FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.Id == id);
         if (row is null) return false;
 
         db.DatasetRows.Remove(row);

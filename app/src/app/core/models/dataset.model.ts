@@ -1,7 +1,8 @@
 export type DatasetColumnType = 'string' | 'int' | 'double' | 'bool' | 'dateTime';
 
 export interface DatasetSummary {
-  id: string;
+  /** The dataset's primary key. Datasets belong to a report revision and are referenced by this id. */
+  id: number;
   name: string;
 }
 
@@ -33,7 +34,7 @@ export interface DatasetColumn {
 }
 
 export interface DatasetSchema {
-  id: string;
+  id: number;
   name: string;
   columns: DatasetColumn[];
 }
@@ -45,7 +46,7 @@ export interface DatasetRow {
 }
 
 export interface DatasetData {
-  id: string;
+  id: number;
   name: string;
   rows: DatasetRow[];
 }

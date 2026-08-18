@@ -39,4 +39,10 @@ public class ReportRevision
     public string FiltersJson { get; set; } = "[]";
 
     public List<Widget> Widgets { get; set; } = new();
+
+    /// <summary>
+    /// The datasets belonging to this revision. Deep-copied with the revision on checkout/publish
+    /// (like <see cref="Widgets"/>), so editing a draft's data never touches an already-published version.
+    /// </summary>
+    public List<Dataset> Datasets { get; set; } = new();
 }

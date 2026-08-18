@@ -57,3 +57,11 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+)
 - Use the `inject()` function instead of constructor injection
+- Components must NOT inject or call services directly. A feature screen provides a single component-scoped `@Injectable()` store (listed in the component's `providers`); the store is the only thing that injects services (HTTP, data, etc.). Sub-components inject the store and read/drive it — never a service.
+- The store instance itself must NOT be publicly exposed to the UI. Keep the injected store as a private field and expose narrow public getters/methods on the component that delegate to it, so the template binds only to the component's own API — never to `store.xyz` directly.
+
+## Styles (SCSS)
+
+- Follow the SMACSS categorization (Base, Layout, Module, State, Theme) when organizing rules; keep component styles scoped as Module rules local to their component.
+- Nest selectors where possible instead of writing flat, fully-qualified class names — let the parent selector provide the scope.
+- Never use `__` in SCSS class/selector names. Use nesting (or a single hyphen) to express a sub-element instead of a BEM-style double-underscore separator.
