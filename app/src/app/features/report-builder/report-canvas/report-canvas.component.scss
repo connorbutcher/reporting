@@ -11,13 +11,13 @@
   height: 100%;
   padding: 16px;
   box-sizing: border-box;
-}
 
-.report-builder__canvas {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+  .canvas {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
 }

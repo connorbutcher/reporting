@@ -23,9 +23,12 @@ import {
 import { ValidationIssue } from './validation-issue';
 
 const MIN_GRID_SIZE = 1;
-const MAX_GRID_SIZE = 48;
-const DEFAULT_WIDGET_W = 4;
-const DEFAULT_WIDGET_H = 3;
+// Columns fill the canvas width, so a fine column count is normal now; rows can
+// run long since the report scrolls vertically.
+const MAX_GRID_SIZE = 200;
+// Sized for the default ~48-column grid: roughly a quarter width, a useful height.
+const DEFAULT_WIDGET_W = 12;
+const DEFAULT_WIDGET_H = 8;
 
 /**
  * The report being edited. Owns the grid and the widgets on it, and validates
@@ -35,8 +38,8 @@ const DEFAULT_WIDGET_H = 3;
 export class ReportModel extends EditorNode {
   readonly reportId: number;
   readonly name = signal('');
-  readonly gridColumns = signal(12);
-  readonly gridRows = signal(10);
+  readonly gridColumns = signal(48);
+  readonly gridRows = signal(30);
   readonly widgets = signal<readonly WidgetModel[]>([]);
 
   /** Report-level filters, one per dataset, layered over each widget's own. */

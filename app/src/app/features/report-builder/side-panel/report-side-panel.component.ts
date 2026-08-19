@@ -1,23 +1,10 @@
+import { NgComponentOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { ReportBuilderStore } from '../report-builder.store';
+import { PANEL_COMPONENTS } from './panel-component.registry';
 import { PanelView } from './panel-view';
-import { PanelAddColumnComponent } from './views/panel-add-column.component';
-import { PanelAddWidgetComponent } from './views/panel-add-widget.component';
-import { PanelColumnListComponent } from './views/panel-column-list.component';
-import { PanelColumnSettingsComponent } from './views/panel-column-settings.component';
-import { PanelColumnToleranceComponent } from './views/panel-column-tolerance.component';
-import { PanelChartToleranceBandComponent } from './views/panel-chart-tolerance-band.component';
-import { PanelIssuesComponent } from './views/panel-issues.component';
-import { PanelReportSettingsComponent } from './views/panel-report-settings.component';
-import { PanelRootComponent } from './views/panel-root.component';
-import { PanelTableAppearanceComponent } from './views/panel-table-appearance.component';
-import { PanelTextStyleComponent } from './views/panel-text-style.component';
-import { PanelReportFiltersComponent } from './views/panel-report-filters.component';
-import { PanelWidgetDetailComponent } from './views/panel-widget-detail.component';
-import { PanelWidgetFiltersComponent } from './views/panel-widget-filters.component';
-import { PanelWidgetListComponent } from './views/panel-widget-list.component';
 
 /**
  * Where a view sits in the panel's logical hierarchy — independent of how the
@@ -67,32 +54,22 @@ const COLLAPSE_THRESHOLD = 4;
 /** Chrome for the side panel: history controls, breadcrumb, and the current view. */
 @Component({
   selector: 'app-report-side-panel',
-  imports: [
-    ButtonModule,
-    DividerModule,
-    PanelRootComponent,
-    PanelReportSettingsComponent,
-    PanelWidgetListComponent,
-    PanelWidgetDetailComponent,
-    PanelAddWidgetComponent,
-    PanelColumnListComponent,
-    PanelAddColumnComponent,
-    PanelColumnSettingsComponent,
-    PanelColumnToleranceComponent,
-    PanelChartToleranceBandComponent,
-    PanelTableAppearanceComponent,
-    PanelTextStyleComponent,
-    PanelWidgetFiltersComponent,
-    PanelReportFiltersComponent,
-    PanelIssuesComponent,
-  ],
+  imports: [NgComponentOutlet, ButtonModule, DividerModule],
   templateUrl: './report-side-panel.component.html',
   styleUrl: './report-side-panel.component.scss',
 })
 export class ReportSidePanelComponent {
-  protected readonly store = inject(ReportBuilderStore);
+  private readonly store = inject(ReportBuilderStore);
 
   protected readonly ellipsis = ELLIPSIS;
+
+  /** The component to render for the current view — replaces a per-kind template switch. */
+  protected readonly currentPanel = computed(() => PANEL_COMPONENTS[this.store.view().kind]);
+
+  // Narrow pass-throughs so the template binds only to this component's own API,
+  // never to the store directly.
+  protected readonly canGoBack = this.store.canGoBack;
+  protected readonly canGoForward = this.store.canGoForward;
 
   /** User asked to see the collapsed middle of the trail for the current screen. */
   private readonly expanded = signal(false);
@@ -136,6 +113,18 @@ export class ReportSidePanelComponent {
 
   protected expand(): void {
     this.expanded.set(true);
+  }
+
+  protected navigate(view: PanelView): void {
+    this.store.navigate(view);
+  }
+
+  protected back(): void {
+    this.store.back();
+  }
+
+  protected forward(): void {
+    this.store.forward();
   }
 
   protected labelFor(view: PanelView): string {

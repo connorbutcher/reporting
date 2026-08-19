@@ -23,8 +23,8 @@ public class ReportRevision
     public Report? Report { get; set; }
     public RevisionKind Kind { get; set; }
     public int? VersionNumber { get; set; }
-    public int Columns { get; set; } = 12;
-    public int Rows { get; set; } = 10;
+    public int Columns { get; set; } = 48;
+    public int Rows { get; set; } = 30;
     public DateTime CreatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
 

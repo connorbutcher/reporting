@@ -1,40 +1,40 @@
 <header class="builder-toolbar">
-  <h1 class="builder-toolbar__title">{{ store.model()?.name() ?? 'Report' }}</h1>
-  <span class="builder-toolbar__meta">
-    {{ store.gridColumns() }} × {{ store.gridRows() }} grid ·
-    {{ store.widgets().length }} widgets
-    @if (store.hasMultiSelection()) {
-      · {{ store.selectedWidgetIds().length }} selected
+  <h1 class="title">{{ reportName() }}</h1>
+  <span class="meta">
+    {{ gridColumns() }} × {{ gridRows() }} grid ·
+    {{ widgets().length }} widgets
+    @if (hasMultiSelection()) {
+      · {{ selectedWidgetIds().length }} selected
     }
   </span>
 
-  <div class="builder-toolbar__history">
+  <div class="history">
     <button
       type="button"
-      class="builder-toolbar__icon-button"
+      class="icon-button"
       title="Undo (Ctrl+Z)"
       aria-label="Undo"
-      [disabled]="!store.canUndo()"
-      (click)="store.undo()"
+      [disabled]="!canUndo()"
+      (click)="undo()"
     >
       <i class="pi pi-undo" aria-hidden="true"></i>
     </button>
     <button
       type="button"
-      class="builder-toolbar__icon-button"
+      class="icon-button"
       title="Redo (Ctrl+Shift+Z)"
       aria-label="Redo"
-      [disabled]="!store.canRedo()"
-      (click)="store.redo()"
+      [disabled]="!canRedo()"
+      (click)="redo()"
     >
       <i class="pi pi-refresh" aria-hidden="true"></i>
     </button>
   </div>
 
   <span
-    class="builder-toolbar__save-status"
-    [class.builder-toolbar__save-status--error]="saveStatus().variant === 'error'"
-    [class.builder-toolbar__save-status--pending]="saveStatus().variant === 'pending'"
+    class="save-status"
+    [class.error]="saveStatus().variant === 'error'"
+    [class.pending]="saveStatus().variant === 'pending'"
     [attr.role]="saveStatus().variant === 'error' ? 'alert' : null"
   >
     <i class="pi" [class]="saveStatus().icon" aria-hidden="true"></i>
@@ -43,17 +43,15 @@
 
   <button
     type="button"
-    class="builder-toolbar__status"
-    [class.builder-toolbar__status--error]="store.errors().length > 0"
-    [class.builder-toolbar__status--warning]="
-      store.errors().length === 0 && store.warnings().length > 0
-    "
-    (click)="store.navigate({ kind: 'issues' })"
+    class="status"
+    [class.error]="errors().length > 0"
+    [class.warning]="errors().length === 0 && warnings().length > 0"
+    (click)="openIssues()"
   >
     <i
       class="pi"
-      [class.pi-check-circle]="store.issues().length === 0"
-      [class.pi-exclamation-triangle]="store.issues().length > 0"
+      [class.pi-check-circle]="issues().length === 0"
+      [class.pi-exclamation-triangle]="issues().length > 0"
       aria-hidden="true"
     ></i>
     {{ statusLabel() }}
@@ -61,7 +59,7 @@
 
   @if (reportId(); as id) {
     <a
-      class="builder-toolbar__datasets"
+      class="datasets"
       [routerLink]="['/reports', id, 'edit', 'datasets']"
       title="Manage this report's datasets"
     >
@@ -72,8 +70,8 @@
 
   <button
     type="button"
-    class="builder-toolbar__publish"
-    [disabled]="!store.hasUnpublishedChanges() || !store.isValid()"
+    class="publish"
+    [disabled]="!hasUnpublishedChanges() || !isValid()"
     [title]="publishTitle()"
     (click)="publish()"
   >

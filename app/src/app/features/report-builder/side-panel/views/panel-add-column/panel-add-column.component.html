@@ -1,0 +1,40 @@
+<div class="panel-section">
+  @if (table(); as table) {
+    @if (table.availableColumns().length === 0) {
+      <p class="panel-empty">Every dataset column is already on the table.</p>
+    } @else {
+      <input
+        pInputText
+        type="search"
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+        placeholder="Search columns…"
+        aria-label="Search dataset columns"
+      />
+
+      <p-button
+        [label]="addAllLabel()"
+        icon="pi pi-plus"
+        severity="secondary"
+        outlined
+        fluid
+        [disabled]="matches().length === 0"
+        (onClick)="addAll()"
+      />
+
+      @if (matches().length === 0) {
+        <p class="panel-empty">No columns match “{{ search() }}”.</p>
+      } @else {
+        @for (column of matches(); track column.id) {
+          <button type="button" class="panel-menu-item" (click)="add(column.id)">
+            <i class="pi pi-plus" aria-hidden="true"></i>
+            <span class="panel-menu-text">
+              <span class="panel-menu-label">{{ column.name }}</span>
+              <span class="panel-menu-hint">{{ column.type }}</span>
+            </span>
+          </button>
+        }
+      }
+    }
+  }
+</div>

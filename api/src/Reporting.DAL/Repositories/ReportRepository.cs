@@ -315,8 +315,8 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     /// </summary>
     private async Task CopyContentIntoAsync(ReportRevision target, ReportRevision? source)
     {
-        target.Columns = source?.Columns ?? 12;
-        target.Rows = source?.Rows ?? 10;
+        target.Columns = source?.Columns ?? 48;
+        target.Rows = source?.Rows ?? 30;
         target.FiltersJson = source?.FiltersJson ?? "[]";
 
         // Widget configs still reference the source's dataset primary keys here; they're remapped

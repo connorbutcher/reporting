@@ -1,0 +1,11 @@
+.panel-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.panel-menu-item.active {
+  background: var(--p-primary-50, #eef3fa);
+  border-color: var(--p-primary-200, #adc3e5);
+}

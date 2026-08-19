@@ -1,0 +1,38 @@
+@if (issues().length === 0) {
+  <p class="panel-empty">
+    <i class="pi pi-check-circle" aria-hidden="true"></i>
+    Nothing to fix — the report is valid.
+  </p>
+} @else {
+  @if (saveBlocked()) {
+    <p class="issues-blocked">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      Changes aren't being saved until the errors below are fixed.
+    </p>
+  }
+
+  <ul class="panel-issues">
+    @for (issue of issues(); track issue.id) {
+      <li>
+        <button
+          type="button"
+          class="panel-issue"
+          [class.error]="issue.severity === 'error'"
+          (click)="goToIssue(issue)"
+        >
+          <i
+            class="pi"
+            [class.pi-times-circle]="issue.severity === 'error'"
+            [class.pi-exclamation-circle]="issue.severity === 'warning'"
+            aria-hidden="true"
+          ></i>
+          <span class="text">
+            <span class="title">{{ issue.title }}</span>
+            <span class="detail">{{ issue.detail }}</span>
+          </span>
+          <i class="pi pi-angle-right" aria-hidden="true"></i>
+        </button>
+      </li>
+    }
+  </ul>
+}

@@ -1,0 +1,131 @@
+@if (band(); as band) {
+  <div class="panel-section">
+    <p class="panel-hint">
+      Values are compared against one row of a limits dataset and drawn as dashed lines on the
+      axis. Concession bounds add a second, lighter pair.
+    </p>
+
+    <app-panel-group label="Axis" icon="＋">
+      <label class="panel-field">
+        <span class="panel-field-label">Plot against</span>
+        <p-selectbutton
+          [options]="axisOptions"
+          [ngModel]="axis()"
+          optionLabel="label"
+          optionValue="value"
+          [allowEmpty]="false"
+          (ngModelChange)="axis.set($event)"
+        />
+      </label>
+    </app-panel-group>
+
+    <app-panel-group label="Limits" icon="⛁">
+      <label class="panel-field">
+        <span class="panel-field-label">Limits dataset</span>
+        <p-select
+          [options]="datasets()"
+          [ngModel]="picker.sourceDatasetId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Choose a dataset"
+          appendTo="body"
+          fluid
+          showClear
+          (onChange)="picker.selectDataset($event.value ?? null)"
+        />
+      </label>
+
+      @if (picker.sourceDatasetId()) {
+        @if (picker.loadingSource()) {
+          <p class="panel-empty">Loading…</p>
+        } @else {
+          <label class="panel-field">
+            <span class="panel-field-label">Spec row</span>
+            <p-select
+              [options]="picker.rowOptions()"
+              [ngModel]="picker.sourceRowId()"
+              optionLabel="label"
+              optionValue="id"
+              placeholder="Choose a row"
+              appendTo="body"
+              fluid
+              (onChange)="picker.sourceRowId.set($event.value ?? null)"
+            />
+          </label>
+
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">Min</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.minColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                fluid
+                (onChange)="picker.minColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Max</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.maxColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                fluid
+                (onChange)="picker.maxColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Concession lower</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.concessionLowerColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="None"
+                appendTo="body"
+                fluid
+                showClear
+                (onChange)="picker.concessionLowerColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Concession upper</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.concessionUpperColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="None"
+                appendTo="body"
+                fluid
+                showClear
+                (onChange)="picker.concessionUpperColumnId.set($event.value ?? null)"
+              />
+            </label>
+          </div>
+
+          @if (!picker.isComplete()) {
+            <p class="panel-hint">Pick a spec row plus min and max columns to draw the lines.</p>
+          }
+        }
+      }
+    </app-panel-group>
+
+    <p-button
+      label="Remove band"
+      icon="pi pi-times"
+      severity="danger"
+      outlined
+      fluid
+      (onClick)="remove()"
+    />
+  </div>
+} @else {
+  <p class="panel-empty">This band is no longer on the chart.</p>
+}

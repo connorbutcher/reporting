@@ -1,28 +1,15 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { SortDirection } from '../../../core/models/report.model';
 import { GridPreview } from '../grid.util';
-import {
-  ChartWidgetModel,
-  DataTableWidgetModel,
-  StaticTextWidgetModel,
-  WidgetModel,
-} from '../models/widget.model';
+import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
 import { ReportBuilderStore } from '../report-builder.store';
-import { ChartWidgetComponent } from '../widgets/chart-widget/chart-widget.component';
-import { DataTableWidgetComponent } from '../widgets/data-table-widget/data-table-widget.component';
-import { StaticTextWidgetComponent } from '../widgets/static-text-widget/static-text-widget.component';
+import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
 
 @Component({
   selector: 'app-widget-host',
-  imports: [
-    DataTableWidgetComponent,
-    StaticTextWidgetComponent,
-    ChartWidgetComponent,
-    WidgetDragDirective,
-    WidgetResizeDirective,
-  ],
+  imports: [WidgetOutletDirective, WidgetDragDirective, WidgetResizeDirective],
   templateUrl: './widget-host.component.html',
   styleUrl: './widget-host.component.scss',
   host: {
@@ -60,26 +47,27 @@ export class WidgetHostComponent {
   protected readonly title = computed(() => this.widget().label());
   protected readonly showTitle = computed(() => this.widget().showTitle());
 
+  /** The widget's current DTO — its config reflects live edits — for the render outlet. */
+  protected readonly widgetDto = computed(() => this.widget().toDto());
+
   // Narrowed once here rather than in the template, since Angular's control
   // flow can't infer that two separate `widget()` calls refer to the same value.
   private readonly tableModel = computed(() => {
     const widget = this.widget();
     return widget instanceof DataTableWidgetModel ? widget : null;
   });
-  private readonly textModel = computed(() => {
-    const widget = this.widget();
-    return widget instanceof StaticTextWidgetModel ? widget : null;
-  });
   private readonly chartModel = computed(() => {
     const widget = this.widget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
 
-  /** The presentational widgets stay decoupled by taking plain config objects. */
-  protected readonly tableConfig = computed(() => this.tableModel()?.toDto().config ?? null);
-  protected readonly textConfig = computed(() => this.textModel()?.toDto().config ?? null);
-  protected readonly chartConfig = computed(() => this.chartModel()?.toDto().config ?? null);
   protected readonly datasetVersion = computed(() => this.store.datasetVersion());
+
+  /** Wired by name onto the created widget's outputs; only a table emits these. */
+  protected readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
+    sortChange: (sort: { columnId: string; direction: SortDirection }) => this.onSortChange(sort),
+    columnResize: (widths: { columnId: string; width: number }[]) => this.onColumnResize(widths),
+  };
 
   /** Only the finished conditions, so a half-typed row doesn't blank the widget. */
   protected readonly widgetFilter = computed(

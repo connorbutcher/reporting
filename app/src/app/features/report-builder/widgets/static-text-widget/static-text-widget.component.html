@@ -1,10 +1,10 @@
 @if (hasContent()) {
   <div class="static-text-widget" [style]="containerStyle()">
-    <div class="static-text-widget__content" [style]="contentStyle()">{{ config().content }}</div>
+    <div class="content" [style]="contentStyle()">{{ config().content }}</div>
   </div>
 } @else {
-  <div class="static-text-widget static-text-widget--empty">
-    <p class="static-text-widget__placeholder">
+  <div class="static-text-widget empty">
+    <p class="placeholder">
       <i class="pi pi-align-left" aria-hidden="true"></i>
       Add text in the side panel.
     </p>

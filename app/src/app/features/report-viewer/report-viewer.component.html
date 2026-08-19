@@ -1,21 +1,21 @@
 <div class="report-viewer">
-  @if (store.loading()) {
-    <p class="report-viewer__status">Loading…</p>
-  } @else if (store.notFound()) {
-    <p class="report-viewer__status">Report not found.</p>
-  } @else if (store.report()) {
-    <section class="report-viewer__main app-card">
+  @if (loading()) {
+    <p class="status">Loading…</p>
+  } @else if (notFound()) {
+    <p class="status">Report not found.</p>
+  } @else if (report()) {
+    <section class="main app-card">
       <app-report-viewer-header />
 
-      @if (store.content(); as content) {
+      @if (content(); as content) {
         <app-readonly-report-grid
           [content]="content"
-          [pageFilters]="store.viewFilters()?.pageFilters ?? null"
-          [widgetFilters]="store.viewFilters()?.widgetFilters ?? null"
-          (filterWidget)="store.filterWidget($event)"
+          [pageFilters]="viewFilters()?.pageFilters ?? null"
+          [widgetFilters]="viewFilters()?.widgetFilters ?? null"
+          (filterWidget)="filterWidget($event)"
         />
       } @else {
-        <p class="report-viewer__status">
+        <p class="status">
           This report has no published version yet. Check it out to start building it.
         </p>
       }

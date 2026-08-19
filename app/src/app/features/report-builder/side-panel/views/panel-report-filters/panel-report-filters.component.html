@@ -1,0 +1,30 @@
+@if (datasetIds().length === 0) {
+  <p class="panel-empty">
+    Add a table and bind it to a dataset — report filters apply per dataset.
+  </p>
+} @else {
+  <p class="panel-hint">Applies to every table on this report using the selected dataset.</p>
+
+  @if (datasetIds().length > 1) {
+    <nav class="panel-menu">
+      @for (id of datasetIds(); track id) {
+        <button
+          type="button"
+          class="panel-menu-item"
+          [class.active]="id === activeDatasetId()"
+          (click)="select(id)"
+        >
+          <i class="pi pi-database" aria-hidden="true"></i>
+          <span class="panel-menu-text">
+            <span class="panel-menu-label">{{ datasetName(id) }}</span>
+            <span class="panel-menu-hint">{{ conditionCount(id) }}</span>
+          </span>
+        </button>
+      }
+    </nav>
+  }
+
+  @if (activeFilter(); as filter) {
+    <app-filter-builder [group]="filter.group" [hint]="'Filtering ' + filter.datasetName()" />
+  }
+}

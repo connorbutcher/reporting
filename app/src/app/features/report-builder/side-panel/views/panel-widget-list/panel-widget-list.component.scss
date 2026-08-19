@@ -1,0 +1,45 @@
+.panel-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+
+  .pi {
+    color: var(--app-navy);
+  }
+}
+
+.panel-widget-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.panel-widget-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.panel-widget-meta {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+:host ::ng-deep .panel-widget-listbox {
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+
+  .p-listbox-option {
+    padding: 8px 10px;
+  }
+
+  .p-listbox-option-selected {
+    background: var(--p-primary-50, #eef3fa);
+    box-shadow: inset 3px 0 0 var(--app-navy);
+
+    .panel-widget-name {
+      color: var(--app-navy);
+    }
+  }
+}

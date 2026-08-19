@@ -1,0 +1,38 @@
+.panel-tooltip-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  background: #fff;
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    p-select {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .remove {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    color: #94a3b8;
+    cursor: pointer;
+
+    &:hover {
+      background: #f1f5f9;
+      color: var(--app-navy);
+    }
+  }
+}

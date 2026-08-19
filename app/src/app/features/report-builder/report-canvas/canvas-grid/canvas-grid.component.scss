@@ -2,54 +2,60 @@
   flex: 1;
   min-height: 0;
   display: flex;
-}
 
-.canvas-grid__status-text {
-  margin: auto;
-  color: #64748b;
-}
+  .status-text {
+    margin: auto;
+    color: #64748b;
+  }
 
-.canvas-grid__viewport {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px;
-}
+  .viewport {
+    flex: 1;
+    min-height: 0;
+    // Columns fill the width, so the report only ever scrolls vertically.
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 18px;
+  }
 
-.canvas-grid__grid {
-  display: grid;
-  width: fit-content;
-  height: fit-content;
-  position: relative;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 8px;
-  background-color: #fbfcfe;
-  background-image:
-    repeating-linear-gradient(
-      to right,
-      rgba(15, 23, 42, 0.07) 0,
-      rgba(15, 23, 42, 0.07) 1px,
-      transparent 1px,
-      transparent var(--grid-step, 88px)
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(15, 23, 42, 0.07) 0,
-      rgba(15, 23, 42, 0.07) 1px,
-      transparent 1px,
-      transparent var(--grid-step, 88px)
-    );
-}
+  .grid {
+    display: grid;
+    // Fill the viewport width; the columns absorb the width via their 1fr tracks.
+    width: 100%;
+    box-sizing: border-box;
+    height: fit-content;
+    position: relative;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 8px;
+    background-color: #fbfcfe;
+    // Vertical lines step by the measured column pitch; horizontal lines by the
+    // fixed row pitch — the two axes now differ since cells are rectangular.
+    background-image:
+      repeating-linear-gradient(
+        to right,
+        rgba(15, 23, 42, 0.07) 0,
+        rgba(15, 23, 42, 0.07) 1px,
+        transparent 1px,
+        transparent var(--grid-step-x, 24px)
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        rgba(15, 23, 42, 0.07) 0,
+        rgba(15, 23, 42, 0.07) 1px,
+        transparent 1px,
+        transparent var(--grid-step-y, 30px)
+      );
+  }
 
-.canvas-grid__drop-preview {
-  pointer-events: none;
-  border: 2px dashed var(--app-navy);
-  border-radius: 8px;
-  background: rgba(21, 42, 85, 0.12);
-  z-index: 5;
+  .drop-preview {
+    pointer-events: none;
+    border: 2px dashed var(--app-navy);
+    border-radius: 8px;
+    background: rgba(21, 42, 85, 0.12);
+    z-index: 5;
 
-  &--invalid {
-    border-color: #e5484d;
-    background: rgba(229, 72, 77, 0.15);
+    &.invalid {
+      border-color: #e5484d;
+      background: rgba(229, 72, 77, 0.15);
+    }
   }
 }

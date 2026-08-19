@@ -1,0 +1,18 @@
+.panel-add-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-add-group + .panel-add-group {
+  margin-top: 14px;
+}
+
+.panel-add-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  padding: 0 2px;
+}

@@ -1,5 +1,11 @@
-export const CELL_SIZE = 80;
-export const GRID_GAP = 8;
+/**
+ * Rows are a fixed, short height so cells read as wide rectangles; columns instead
+ * stretch to fill the canvas width (see the grid template), so the report never
+ * scrolls horizontally. The live column width is measured at runtime and shared
+ * through the store for the drag/resize snap maths.
+ */
+export const ROW_HEIGHT = 24;
+export const GRID_GAP = 6;
 
 export interface GridRect {
   x: number;

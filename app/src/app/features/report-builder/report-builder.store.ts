@@ -58,6 +58,13 @@ export class ReportBuilderStore {
   readonly model = signal<ReportModel | null>(null);
   readonly datasets = signal<DatasetSummary[]>([]);
   readonly loading = signal(true);
+
+  /**
+   * The measured pixel width of one grid column. Columns stretch to fill the
+   * canvas, so this is only known at runtime; the canvas measures it and the
+   * drag/resize directives read it to convert pointer movement into whole cells.
+   */
+  readonly columnWidth = signal(0);
   /** True when the last save failed, so the canvas can warn instead of losing work quietly. */
   readonly saveFailed = signal(false);
   /** True while a save request is in flight, for a "Saving…" indicator. */
@@ -92,8 +99,8 @@ export class ReportBuilderStore {
   // --- report state, delegated to the model tree -----------------------------
 
   readonly widgets = computed<readonly WidgetModel[]>(() => this.model()?.widgets() ?? []);
-  readonly gridColumns = computed(() => this.model()?.gridColumns() ?? 12);
-  readonly gridRows = computed(() => this.model()?.gridRows() ?? 10);
+  readonly gridColumns = computed(() => this.model()?.gridColumns() ?? 48);
+  readonly gridRows = computed(() => this.model()?.gridRows() ?? 30);
 
   readonly issues = computed<ValidationIssue[]>(() => this.model()?.issues() ?? []);
   readonly errors = computed(() => this.model()?.errors() ?? []);

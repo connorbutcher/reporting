@@ -1,0 +1,29 @@
+<app-panel-group label="Tolerance bands" icon="⛁">
+  <p class="panel-hint">Dashed reference lines resolved from a separate limits dataset.</p>
+  @if (chart().toleranceBands().length === 0) {
+    <p class="panel-empty">No reference lines yet.</p>
+  } @else {
+    @for (band of chart().toleranceBands(); track band.id) {
+      <button
+        type="button"
+        class="panel-menu-item"
+        (click)="navigate({ kind: 'chartToleranceBand', widgetId: chart().id, bandId: band.id })"
+      >
+        <i class="pi pi-minus" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">{{ band.axis === 'x' ? 'X axis' : 'Y axis' }}</span>
+          <span class="panel-menu-hint">{{ bandSummary(band) }}</span>
+        </span>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+      </button>
+    }
+  }
+  <p-button
+    label="Add band"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    (onClick)="addToleranceBand()"
+  />
+</app-panel-group>

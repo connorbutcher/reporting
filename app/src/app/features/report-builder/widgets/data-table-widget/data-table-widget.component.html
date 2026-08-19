@@ -1,14 +1,12 @@
 @if (!config().datasetId) {
-  <div class="data-table-widget__status">
+  <div class="status">
     <i class="pi pi-database" aria-hidden="true"></i>
     Choose a dataset for this table in the side panel.
   </div>
 } @else if (error()) {
-  <div class="data-table-widget__status data-table-widget__status--error">
-    Failed to load dataset.
-  </div>
+  <div class="status error">Failed to load dataset.</div>
 } @else if (displayColumns().length === 0 && !loading()) {
-  <div class="data-table-widget__status">
+  <div class="status">
     <i class="pi pi-list" aria-hidden="true"></i>
     Add the columns you want from the side panel.
   </div>
@@ -67,7 +65,7 @@
     </ng-template>
     <ng-template #emptymessage>
       <tr>
-        <td [attr.colspan]="displayColumns().length" class="data-table-widget__empty">
+        <td [attr.colspan]="displayColumns().length" class="empty">
           {{ config().emptyMessage }}
         </td>
       </tr>
@@ -75,7 +73,7 @@
   </p-table>
 
   @if (isFiltered()) {
-    <p class="data-table-widget__count">
+    <p class="count">
       <i class="pi pi-filter" aria-hidden="true"></i>
       Showing {{ matchedRowCount() }} of {{ totalRowCount() }} rows
     </p>

@@ -1,23 +1,21 @@
 import { Component, Signal, input, output } from '@angular/core';
-import { CELL_SIZE, GRID_GAP } from '../../report-builder/grid.util';
+import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
 import { ReportRevisionContent, Widget } from '../../../core/models/report.model';
 import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, countConditions } from '../../../core/models/filter.model';
-import { ChartWidgetComponent } from '../../report-builder/widgets/chart-widget/chart-widget.component';
-import { DataTableWidgetComponent } from '../../report-builder/widgets/data-table-widget/data-table-widget.component';
-import { StaticTextWidgetComponent } from '../../report-builder/widgets/static-text-widget/static-text-widget.component';
+import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
 
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
   selector: 'app-readonly-report-grid',
-  imports: [DataTableWidgetComponent, StaticTextWidgetComponent, ChartWidgetComponent],
+  imports: [WidgetOutletDirective],
   templateUrl: './readonly-report-grid.component.html',
   styleUrl: './readonly-report-grid.component.scss',
 })
 export class ReadonlyReportGridComponent {
   readonly content = input.required<ReportRevisionContent>();
 
-  protected readonly cellSize = CELL_SIZE;
+  protected readonly rowHeight = ROW_HEIGHT;
   protected readonly gridGap = GRID_GAP;
 
   /**
@@ -47,7 +45,8 @@ export class ReadonlyReportGridComponent {
   }
 
   /** So a published report narrows rows exactly as it did in the builder. */
-  protected reportFilterFor(datasetId: number | null): FilterGroup | null {
+  protected reportFilterFor(widget: Widget): FilterGroup | null {
+    const datasetId = this.datasetIdOf(widget);
     if (!datasetId) return null;
 
     // Page filters are keyed by the stringified dataset id (see ReportViewFilters).
@@ -62,5 +61,10 @@ export class ReadonlyReportGridComponent {
     if (override) return override();
 
     return widget.type === 'dataTable' || isChartWidget(widget) ? widget.config.filter : null;
+  }
+
+  /** The dataset a widget is bound to, or null for a kind that isn't (e.g. static text). */
+  private datasetIdOf(widget: Widget): number | null {
+    return widget.type === 'dataTable' || isChartWidget(widget) ? widget.config.datasetId : null;
   }
 }

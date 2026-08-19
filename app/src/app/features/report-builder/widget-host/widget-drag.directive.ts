@@ -1,5 +1,5 @@
 import { Directive, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
-import { CELL_SIZE, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
 import { WidgetModel } from '../models/widget.model';
 import { ReportBuilderStore } from '../report-builder.store';
 
@@ -72,9 +72,13 @@ export class WidgetDragDirective {
     const dy = event.clientY - this.dragStartPointer.y;
     this.dragOffset.set({ x: dx, y: dy });
 
+    // Column width is measured live (columns fill the canvas); rows are a fixed height.
+    const columnStep = this.store.columnWidth() + GRID_GAP;
+    const rowStep = ROW_HEIGHT + GRID_GAP;
+
     // Clamp the group as a unit so its members keep their relative positions.
-    const deltaCols = this.clampGroupDelta(Math.round(dx / CELL_SIZE), 'x');
-    const deltaRows = this.clampGroupDelta(Math.round(dy / CELL_SIZE), 'y');
+    const deltaCols = this.clampGroupDelta(columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0, 'x');
+    const deltaRows = this.clampGroupDelta(Math.round(dy / rowStep), 'y');
 
     const invalid = this.groupCollides(deltaCols, deltaRows);
     this.pendingDelta = invalid ? null : { dx: deltaCols, dy: deltaRows };

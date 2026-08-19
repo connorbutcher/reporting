@@ -1,0 +1,26 @@
+.panel-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--app-card-border);
+  margin-bottom: 12px;
+}
+
+.panel-stepper-label {
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.panel-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--p-primary-200, #adc3e5);
+  border-radius: 8px;
+  background: var(--p-primary-50, #eef3fa);
+}

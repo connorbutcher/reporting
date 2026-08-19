@@ -1,19 +1,19 @@
 <div class="readonly-grid-viewport">
   <div
     class="readonly-grid"
-    [style.grid-template-columns]="'repeat(' + content().columns + ', ' + cellSize + 'px)'"
-    [style.grid-template-rows]="'repeat(' + content().rows + ', ' + cellSize + 'px)'"
+    [style.grid-template-columns]="'repeat(' + content().columns + ', minmax(0, 1fr))'"
+    [style.grid-template-rows]="'repeat(' + content().rows + ', ' + rowHeight + 'px)'"
     [style.gap.px]="gridGap"
   >
     @for (widget of content().widgets; track widget.id) {
       <div
-        class="readonly-grid__item"
+        class="item"
         [style.grid-column]="widget.x + 1 + ' / span ' + widget.w"
         [style.grid-row]="widget.y + 1 + ' / span ' + widget.h"
       >
         @if (widget.config.showTitle) {
-          <div class="readonly-grid__header">
-            <span class="readonly-grid__title">{{ widget.config.title }}</span>
+          <div class="header">
+            <span class="title">{{ widget.config.title }}</span>
           </div>
         }
 
@@ -22,39 +22,25 @@
         @if (canFilter(widget)) {
           <button
             type="button"
-            class="readonly-grid__filter"
-            [class.readonly-grid__filter--active]="conditionCount(widget) > 0"
+            class="filter"
+            [class.active]="conditionCount(widget) > 0"
             [attr.aria-label]="'Filter ' + (widget.config.title || widget.type)"
             title="Filter this widget"
             (click)="filterWidget.emit(widget.id)"
           >
             <i class="pi pi-filter" aria-hidden="true"></i>
             @if (conditionCount(widget); as count) {
-              <span class="readonly-grid__filter-count">{{ count }}</span>
+              <span class="filter-count">{{ count }}</span>
             }
           </button>
         }
 
-        <div class="readonly-grid__body">
-          @if (widget.type === 'dataTable') {
-            <app-data-table-widget
-              [config]="widget.config"
-              [reportFilter]="reportFilterFor(widget.config.datasetId)"
-              [widgetFilter]="widgetFilterFor(widget)"
-            />
-          } @else if (
-            widget.type === 'scatterChart' ||
-            widget.type === 'lineChart' ||
-            widget.type === 'barChart'
-          ) {
-            <app-chart-widget
-              [config]="widget.config"
-              [reportFilter]="reportFilterFor(widget.config.datasetId)"
-              [widgetFilter]="widgetFilterFor(widget)"
-            />
-          } @else {
-            <app-static-text-widget [config]="widget.config" />
-          }
+        <div class="body">
+          <ng-container
+            [appWidgetOutlet]="widget"
+            [reportFilter]="reportFilterFor(widget)"
+            [widgetFilter]="widgetFilterFor(widget)"
+          />
         </div>
       </div>
     }

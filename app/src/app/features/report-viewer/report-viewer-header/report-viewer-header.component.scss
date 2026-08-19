@@ -8,69 +8,69 @@
   gap: 12px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--app-card-border);
-}
 
-.report-header__heading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.report-header__title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 0;
-  min-width: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--app-navy);
-}
-
-.report-header__tag {
-  flex: 0 0 auto;
-  font-family: var(--app-font-mono);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #64748b;
-  letter-spacing: 0.01em;
-}
-
-.report-header__name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.report-header__badge {
-  flex: 0 0 auto;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: #f0f4fb;
-  color: var(--app-navy);
-  font-size: 0.75rem;
-  font-weight: 600;
-
-  &--muted {
-    background: #f1f5f9;
-    color: #64748b;
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
   }
-}
 
-.report-header__link {
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--app-navy);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
+  .title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    min-width: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--app-navy);
+  }
 
-  &:hover {
-    text-decoration: underline;
+  .tag {
+    flex: 0 0 auto;
+    font-family: var(--app-font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.01em;
+  }
+
+  .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .badge {
+    flex: 0 0 auto;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f0f4fb;
+    color: var(--app-navy);
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    &.muted {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+  }
+
+  .link {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--app-navy);
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }

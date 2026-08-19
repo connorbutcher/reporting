@@ -29,9 +29,9 @@
     <ul class="filter-rows">
       @for (condition of group().children(); track $index) {
         <li class="filter-row">
-          <div class="filter-row__head">
+          <div class="head">
             <p-select
-              styleClass="filter-row__column"
+              styleClass="filter-column"
               size="small"
               appendTo="body"
               [options]="columnOptions()"
@@ -52,7 +52,7 @@
           </div>
 
           <p-select
-            styleClass="filter-row__operator"
+            styleClass="filter-operator"
             size="small"
             appendTo="body"
             [options]="condition.availableOperators()"
@@ -64,10 +64,10 @@
           />
 
           @if (condition.operandIndexes().length > 0) {
-            <div class="filter-row__operands">
+            <div class="operands">
               @for (i of condition.operandIndexes(); track i) {
                 <input
-                  class="filter-row__value"
+                  class="value"
                   [type]="inputType(condition)"
                   [placeholder]="placeholder(condition, i)"
                   [value]="operandValue(condition, i)"

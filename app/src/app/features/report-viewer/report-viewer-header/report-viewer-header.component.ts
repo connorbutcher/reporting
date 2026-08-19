@@ -14,7 +14,10 @@ import { ReportViewerStore } from '../report-viewer.store';
   styleUrl: './report-viewer-header.component.scss',
 })
 export class ReportViewerHeaderComponent {
-  protected readonly store = inject(ReportViewerStore);
+  private readonly store = inject(ReportViewerStore);
+
+  protected readonly report = this.store.report;
+  protected readonly viewingVersion = this.store.viewingVersion;
 
   /** True while showing an older version than the latest published one. */
   protected readonly isViewingHistorical = computed(() => {
@@ -22,4 +25,12 @@ export class ReportViewerHeaderComponent {
     const version = this.store.viewingVersion();
     return !!report && version !== null && version !== report.latestVersionNumber;
   });
+
+  protected viewLatest(): void {
+    this.store.viewLatest();
+  }
+
+  protected edit(version?: number): void {
+    this.store.edit(version);
+  }
 }

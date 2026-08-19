@@ -1,0 +1,35 @@
+@if (widgets().length === 0) {
+  <p class="panel-empty">No widgets yet. Add one to get started.</p>
+} @else {
+  <p-listbox
+    styleClass="panel-widget-listbox"
+    [options]="options()"
+    [ngModel]="selectedWidgetId()"
+    optionLabel="label"
+    optionValue="id"
+    dataKey="id"
+    ariaLabel="Widgets on the canvas"
+    (onClick)="open($event.option?.id)"
+    (onChange)="open($event.value)"
+  >
+    <ng-template #item let-widget>
+      <span class="panel-widget-item">
+        <i [class]="widget.icon" aria-hidden="true"></i>
+        <span class="panel-widget-text">
+          <span class="panel-widget-name">{{ widget.label }}</span>
+          <span class="panel-widget-meta">
+            {{ widget.w }} × {{ widget.h }} at {{ widget.x }}, {{ widget.y }}
+          </span>
+        </span>
+      </span>
+    </ng-template>
+  </p-listbox>
+}
+<p-button
+  label="Add widget"
+  icon="pi pi-plus"
+  severity="secondary"
+  outlined
+  fluid
+  (onClick)="navigate({ kind: 'addWidget' })"
+/>

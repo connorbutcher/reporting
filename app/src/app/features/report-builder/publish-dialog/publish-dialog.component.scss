@@ -11,79 +11,79 @@
 .publish-dialog {
   display: flex;
   flex-direction: column;
-}
 
-.publish-dialog__header {
-  padding: 18px 20px 4px;
-}
+  .header {
+    padding: 18px 20px 4px;
+  }
 
-.publish-dialog__title {
-  margin: 0 0 4px;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--app-navy);
-}
+  .title {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--app-navy);
+  }
 
-.publish-dialog__hint {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #64748b;
-}
+  .hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #64748b;
+  }
 
-.publish-dialog__editor {
-  margin: 14px 20px;
+  .editor {
+    margin: 14px 20px;
+  }
+
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px 18px;
+    border-top: 1px solid var(--app-card-border);
+  }
+
+  .button {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.secondary {
+      border: 1px solid var(--app-card-border);
+      background: #fff;
+      color: #475569;
+
+      &:hover {
+        background: #f8fafc;
+      }
+    }
+
+    &.primary {
+      border: 1px solid var(--app-navy);
+      background: var(--app-navy);
+      color: #fff;
+
+      &:hover {
+        filter: brightness(1.1);
+      }
+    }
+  }
 }
 
 // Quill builds its toolbar/content elements itself, so Angular never stamps
 // them with this component's content attribute — ::ng-deep is the only way
 // to reach them, scoped via :host so it can't leak to other Quill uses.
-:host ::ng-deep .publish-dialog__editor .ql-toolbar {
+:host ::ng-deep .editor .ql-toolbar {
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
   border-color: var(--app-card-border);
 }
 
-:host ::ng-deep .publish-dialog__editor .ql-container {
+:host ::ng-deep .editor .ql-container {
   min-height: 140px;
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
   border-color: var(--app-card-border);
   font-size: 0.9rem;
-}
-
-.publish-dialog__footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px 18px;
-  border-top: 1px solid var(--app-card-border);
-}
-
-.publish-dialog__button {
-  padding: 7px 16px;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-
-  &--secondary {
-    border: 1px solid var(--app-card-border);
-    background: #fff;
-    color: #475569;
-
-    &:hover {
-      background: #f8fafc;
-    }
-  }
-
-  &--primary {
-    border: 1px solid var(--app-navy);
-    background: var(--app-navy);
-    color: #fff;
-
-    &:hover {
-      filter: brightness(1.1);
-    }
-  }
 }

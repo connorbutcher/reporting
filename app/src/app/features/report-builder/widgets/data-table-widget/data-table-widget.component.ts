@@ -233,9 +233,9 @@ export class DataTableWidgetComponent {
   ): string | null {
     switch (cell?.tolerance) {
       case 'fail':
-        return 'data-table-widget__cell--red';
+        return 'cell-red';
       case 'concession':
-        return 'data-table-widget__cell--orange';
+        return 'cell-orange';
       default:
         return null;
     }

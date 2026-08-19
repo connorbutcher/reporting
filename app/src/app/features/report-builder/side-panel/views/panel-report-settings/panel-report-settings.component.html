@@ -1,0 +1,34 @@
+@if (model(); as model) {
+  <div class="panel-section">
+    <app-panel-group label="Grid" icon="▦">
+      <label class="panel-field">
+        <span class="panel-field-label">Columns</span>
+        <p-inputnumber
+          [ngModel]="model.gridColumns()"
+          (ngModelChange)="model.setGridColumns($event ?? 48)"
+          [min]="1"
+          [max]="96"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+          fluid
+        />
+      </label>
+      <label class="panel-field">
+        <span class="panel-field-label">Rows</span>
+        <p-inputnumber
+          [ngModel]="model.gridRows()"
+          (ngModelChange)="model.setGridRows($event ?? 30)"
+          [min]="1"
+          [max]="200"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+          fluid
+        />
+      </label>
+    </app-panel-group>
+  </div>
+}

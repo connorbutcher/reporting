@@ -1,34 +1,30 @@
-@if (store.report(); as report) {
+@if (report(); as report) {
   <header class="report-header">
-    <div class="report-header__heading">
-      <h1 class="report-header__title">
-        <span class="report-header__tag">R-{{ report.number }}</span>
-        <span class="report-header__name">{{ report.name }}</span>
+    <div class="heading">
+      <h1 class="title">
+        <span class="tag">R-{{ report.number }}</span>
+        <span class="name">{{ report.name }}</span>
       </h1>
       @if (isViewingHistorical()) {
-        <span class="report-header__badge">Viewing v{{ store.viewingVersion() }}</span>
-        <button type="button" class="report-header__link" (click)="store.viewLatest()">
-          Back to latest
-        </button>
+        <span class="badge">Viewing v{{ viewingVersion() }}</span>
+        <button type="button" class="link" (click)="viewLatest()">Back to latest</button>
       } @else if (report.latestVersionNumber) {
-        <span class="report-header__badge">Latest: v{{ report.latestVersionNumber }}</span>
+        <span class="badge">Latest: v{{ report.latestVersionNumber }}</span>
       } @else {
-        <span class="report-header__badge report-header__badge--muted"
-          >No published versions yet</span
-        >
+        <span class="badge muted">No published versions yet</span>
       }
     </div>
 
     @if (report.hasDraft) {
-      <p-button label="Continue editing" icon="pi pi-pencil" (onClick)="store.edit()" />
+      <p-button label="Continue editing" icon="pi pi-pencil" (onClick)="edit()" />
     } @else if (isViewingHistorical()) {
       <p-button
-        [label]="'Restore v' + store.viewingVersion() + ' into a draft'"
+        [label]="'Restore v' + viewingVersion() + ' into a draft'"
         icon="pi pi-history"
-        (onClick)="store.edit(store.viewingVersion()!)"
+        (onClick)="edit(viewingVersion()!)"
       />
     } @else {
-      <p-button label="Check out to edit" icon="pi pi-pencil" (onClick)="store.edit()" />
+      <p-button label="Check out to edit" icon="pi pi-pencil" (onClick)="edit()" />
     }
   </header>
 }

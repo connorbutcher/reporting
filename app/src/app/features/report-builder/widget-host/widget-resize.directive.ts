@@ -1,5 +1,5 @@
 import { Directive, DestroyRef, inject, input, output, signal } from '@angular/core';
-import { CELL_SIZE, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
 import { WidgetModel } from '../models/widget.model';
 import { ReportBuilderStore } from '../report-builder.store';
 
@@ -47,7 +47,7 @@ export class WidgetResizeDirective {
     this.direction = direction;
     this.startCell = { w: widget.w(), h: widget.h() };
     this.startPointer = { x: event.clientX, y: event.clientY };
-    this.previewSize.set({ width: widget.w() * CELL_SIZE, height: widget.h() * CELL_SIZE });
+    this.previewSize.set(this.pixelSize(widget.w(), widget.h()));
 
     this.moveListener = (e: PointerEvent) => this.onMove(e);
     this.upListener = () => this.onEnd();
@@ -59,8 +59,9 @@ export class WidgetResizeDirective {
     const widget = this.widget();
     const dx = event.clientX - this.startPointer.x;
     const dy = event.clientY - this.startPointer.y;
-    const deltaCols = Math.round(dx / CELL_SIZE);
-    const deltaRows = Math.round(dy / CELL_SIZE);
+    const columnStep = this.store.columnWidth() + GRID_GAP;
+    const deltaCols = columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0;
+    const deltaRows = Math.round(dy / (ROW_HEIGHT + GRID_GAP));
 
     const candidateW =
       this.direction === 'bottom'
@@ -75,7 +76,7 @@ export class WidgetResizeDirective {
     this.pending = candidate;
     const invalid = this.collides(candidate);
     this.invalid.set(invalid);
-    this.previewSize.set({ width: candidateW * CELL_SIZE, height: candidateH * CELL_SIZE });
+    this.previewSize.set(this.pixelSize(candidateW, candidateH));
     this.gridPreview.emit({ ...candidate, invalid });
   }
 
@@ -88,6 +89,15 @@ export class WidgetResizeDirective {
     this.invalid.set(false);
     this.previewSize.set(null);
     this.gridPreview.emit(null);
+  }
+
+  /** The pixel footprint of a w×h span: cells plus the gaps between them. */
+  private pixelSize(w: number, h: number): { width: number; height: number } {
+    const columnStep = this.store.columnWidth() + GRID_GAP;
+    return {
+      width: Math.max(0, w * columnStep - GRID_GAP),
+      height: h * (ROW_HEIGHT + GRID_GAP) - GRID_GAP,
+    };
   }
 
   private collides(candidate: GridRect): boolean {

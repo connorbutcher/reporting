@@ -3,26 +3,26 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-}
 
-.chart-widget__canvas {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-}
+  .canvas {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+  }
 
-.chart-widget__status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 100%;
-  padding: 12px;
-  color: #64748b;
-  font-size: 0.85rem;
-  text-align: center;
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    padding: 12px;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-align: center;
 
-  &--error {
-    color: #e5484d;
+    &.error {
+      color: #e5484d;
+    }
   }
 }

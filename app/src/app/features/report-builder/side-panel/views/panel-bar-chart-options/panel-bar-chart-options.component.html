@@ -1,0 +1,19 @@
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-horizontal"
+    [ngModel]="chart().horizontal()"
+    (onChange)="chart().horizontal.set($event.checked)"
+  />
+  <label for="chart-horizontal">Horizontal bars</label>
+</div>
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-stacked"
+    [ngModel]="chart().stacked()"
+    [disabled]="!chart().seriesColumnId()"
+    (onChange)="chart().stacked.set($event.checked)"
+  />
+  <label for="chart-stacked">Stack series</label>
+</div>

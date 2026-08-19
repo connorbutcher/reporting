@@ -1,27 +1,13 @@
 <div class="publish-dialog">
-  <header class="publish-dialog__header">
-    <h2 class="publish-dialog__title">Publish version</h2>
-    <p class="publish-dialog__hint">
-      Describe what changed — this is shown in the report's version history.
-    </p>
+  <header class="header">
+    <h2 class="title">Publish version</h2>
+    <p class="hint">Describe what changed — this is shown in the report's version history.</p>
   </header>
 
-  <div class="publish-dialog__editor" #editor></div>
+  <div class="editor" #editor></div>
 
-  <footer class="publish-dialog__footer">
-    <button
-      type="button"
-      class="publish-dialog__button publish-dialog__button--secondary"
-      (click)="cancel()"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      class="publish-dialog__button publish-dialog__button--primary"
-      (click)="publish()"
-    >
-      Publish
-    </button>
+  <footer class="footer">
+    <button type="button" class="button secondary" (click)="cancel()">Cancel</button>
+    <button type="button" class="button primary" (click)="publish()">Publish</button>
   </footer>
 </div>

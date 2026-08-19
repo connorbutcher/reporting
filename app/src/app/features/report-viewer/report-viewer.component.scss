@@ -24,20 +24,20 @@
   min-height: 0;
   padding: 16px;
   box-sizing: border-box;
-}
 
-.report-viewer__main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
+  .main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
 
-.report-viewer__status {
-  margin: auto;
-  padding: 24px;
-  color: #64748b;
-  text-align: center;
+  .status {
+    margin: auto;
+    padding: 24px;
+    color: #64748b;
+    text-align: center;
+  }
 }

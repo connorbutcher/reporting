@@ -1,0 +1,13 @@
+.panel-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.panel-menu-item.has-error {
+  border-color: #fecaca;
+
+  > .pi:first-child {
+    color: #dc2626;
+  }
+}

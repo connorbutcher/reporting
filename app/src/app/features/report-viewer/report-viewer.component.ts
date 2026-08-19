@@ -18,5 +18,15 @@ import { ReportViewerStore } from './report-viewer.store';
   providers: [ReportViewerStore],
 })
 export class ReportViewerComponent {
-  protected readonly store = inject(ReportViewerStore);
+  private readonly store = inject(ReportViewerStore);
+
+  protected readonly loading = this.store.loading;
+  protected readonly notFound = this.store.notFound;
+  protected readonly report = this.store.report;
+  protected readonly content = this.store.content;
+  protected readonly viewFilters = this.store.viewFilters;
+
+  protected filterWidget(widgetId: string): void {
+    this.store.filterWidget(widgetId);
+  }
 }

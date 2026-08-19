@@ -13,7 +13,15 @@ import { ReportViewerStore } from '../report-viewer.store';
   styleUrl: './version-history.component.scss',
 })
 export class VersionHistoryComponent {
-  protected readonly store = inject(ReportViewerStore);
+  private readonly store = inject(ReportViewerStore);
+
+  protected readonly versions = this.store.versions;
+  protected readonly viewingVersion = this.store.viewingVersion;
+  protected readonly report = this.store.report;
+
+  protected viewVersion(versionNumber: number): void {
+    this.store.viewVersion(versionNumber);
+  }
 
   /** Plain-text summary for the compact list, stripped of the notes' HTML. */
   protected previewText(html: string): string {

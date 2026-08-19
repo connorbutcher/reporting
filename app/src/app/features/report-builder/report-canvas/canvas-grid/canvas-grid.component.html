@@ -1,21 +1,23 @@
-@if (store.loading()) {
-  <p class="canvas-grid__status-text">Loading report…</p>
+@if (loading()) {
+  <p class="status-text">Loading report…</p>
 } @else {
-  <div class="canvas-grid__viewport" (pointerdown)="onCanvasPointerDown($event)">
+  <div class="viewport" (pointerdown)="onCanvasPointerDown($event)">
     <div
-      class="canvas-grid__grid"
-      [style.grid-template-columns]="'repeat(' + store.gridColumns() + ', ' + cellSize + 'px)'"
-      [style.grid-template-rows]="'repeat(' + store.gridRows() + ', ' + cellSize + 'px)'"
+      #grid
+      class="grid"
+      [style.grid-template-columns]="'repeat(' + gridColumns() + ', minmax(0, 1fr))'"
+      [style.grid-template-rows]="'repeat(' + gridRows() + ', ' + rowHeight + 'px)'"
       [style.gap.px]="gridGap"
-      [style.--grid-step.px]="cellSize + gridGap"
+      [style.--grid-step-x.px]="columnStep()"
+      [style.--grid-step-y.px]="rowStep"
     >
-      @for (widget of store.widgets(); track widget.id) {
+      @for (widget of widgets(); track widget.id) {
         <app-widget-host [widget]="widget" (gridPreview)="onDropPreview($event)" />
       }
       @if (dropPreview(); as preview) {
         <div
-          class="canvas-grid__drop-preview"
-          [class.canvas-grid__drop-preview--invalid]="preview.invalid"
+          class="drop-preview"
+          [class.invalid]="preview.invalid"
           [style.grid-column]="preview.x + 1 + ' / span ' + preview.w"
           [style.grid-row]="preview.y + 1 + ' / span ' + preview.h"
         ></div>

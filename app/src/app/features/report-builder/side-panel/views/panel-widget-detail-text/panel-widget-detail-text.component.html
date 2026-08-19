@@ -1,0 +1,25 @@
+<app-panel-group label="Content" icon="▤">
+  <label class="panel-field">
+    <span class="panel-field-label">Content</span>
+    <textarea
+      pTextarea
+      rows="6"
+      [ngModel]="text().content()"
+      (ngModelChange)="text().content.set($event)"
+      placeholder="Type the text this widget should show…"
+    ></textarea>
+  </label>
+</app-panel-group>
+
+<button
+  type="button"
+  class="panel-menu-item"
+  (click)="navigate({ kind: 'textStyle', widgetId: text().id })"
+>
+  <i class="pi pi-palette" aria-hidden="true"></i>
+  <span class="panel-menu-text">
+    <span class="panel-menu-label">Style</span>
+    <span class="panel-menu-hint">Font, colour, alignment</span>
+  </span>
+  <i class="pi pi-angle-right" aria-hidden="true"></i>
+</button>

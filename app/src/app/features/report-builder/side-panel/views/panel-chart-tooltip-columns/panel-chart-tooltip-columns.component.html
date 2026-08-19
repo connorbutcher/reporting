@@ -1,0 +1,56 @@
+<app-panel-group label="Tooltip" icon="◐">
+  <p class="panel-hint">Shown when hovering a point, alongside X and Y.</p>
+  @for (col of chart().tooltipColumns(); track col.columnId) {
+    <div class="panel-tooltip-row">
+      <div class="head">
+        <p-select
+          [options]="chart().schema()?.columns ?? []"
+          [ngModel]="col.columnId"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Column"
+          appendTo="body"
+          fluid
+          (onChange)="chart().replaceTooltipColumn(col.columnId, $event.value)"
+        />
+        <button
+          type="button"
+          class="remove"
+          aria-label="Remove tooltip column"
+          (click)="chart().removeTooltipColumn(col.columnId)"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="panel-grid-fields">
+        <label class="panel-field">
+          <span class="panel-field-label">Prefix</span>
+          <input
+            pInputText
+            [ngModel]="col.prefix ?? ''"
+            (ngModelChange)="chart().updateTooltipColumn(col.columnId, { prefix: $event })"
+            placeholder="Job "
+          />
+        </label>
+        <label class="panel-field">
+          <span class="panel-field-label">Suffix</span>
+          <input
+            pInputText
+            [ngModel]="col.suffix ?? ''"
+            (ngModelChange)="chart().updateTooltipColumn(col.columnId, { suffix: $event })"
+            placeholder=" mm"
+          />
+        </label>
+      </div>
+    </div>
+  }
+  <p-button
+    label="Add column"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    [disabled]="!chart().datasetId() || tooltipColumnsExhausted()"
+    (onClick)="chart().addTooltipColumn()"
+  />
+</app-panel-group>

@@ -15,11 +15,25 @@ import { ReportBuilderStore } from '../../report-builder.store';
   styleUrl: './builder-toolbar.component.scss',
 })
 export class BuilderToolbarComponent {
-  protected readonly store = inject(ReportBuilderStore);
+  private readonly store = inject(ReportBuilderStore);
   private readonly dialog = inject(Dialog);
 
   /** This report's id, for the link to its dataset editor. */
   protected readonly reportId = computed(() => this.store.model()?.reportId ?? null);
+  protected readonly reportName = computed(() => this.store.model()?.name() ?? 'Report');
+
+  protected readonly gridColumns = this.store.gridColumns;
+  protected readonly gridRows = this.store.gridRows;
+  protected readonly widgets = this.store.widgets;
+  protected readonly hasMultiSelection = this.store.hasMultiSelection;
+  protected readonly selectedWidgetIds = this.store.selectedWidgetIds;
+  protected readonly canUndo = this.store.canUndo;
+  protected readonly canRedo = this.store.canRedo;
+  protected readonly errors = this.store.errors;
+  protected readonly warnings = this.store.warnings;
+  protected readonly issues = this.store.issues;
+  protected readonly hasUnpublishedChanges = this.store.hasUnpublishedChanges;
+  protected readonly isValid = this.store.isValid;
 
   protected readonly statusLabel = computed(() => {
     if (this.store.saveBlocked()) return 'Not saving — fix errors';
@@ -46,6 +60,18 @@ export class BuilderToolbarComponent {
       return { label: 'Unsaved changes', icon: 'pi-circle-fill', variant: 'pending' };
     return { label: 'Saved', icon: 'pi-check', variant: 'ok' };
   });
+
+  protected undo(): void {
+    this.store.undo();
+  }
+
+  protected redo(): void {
+    this.store.redo();
+  }
+
+  protected openIssues(): void {
+    this.store.navigate({ kind: 'issues' });
+  }
 
   protected publish(): void {
     const ref = this.dialog.open<string | null>(PublishDialogComponent);

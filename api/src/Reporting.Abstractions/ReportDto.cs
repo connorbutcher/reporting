@@ -42,8 +42,8 @@ public class ReportRevisionDto
 {
     public int ReportId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public int Columns { get; set; } = 12;
-    public int Rows { get; set; } = 10;
+    public int Columns { get; set; } = 48;
+    public int Rows { get; set; } = 30;
     public List<WidgetDto> Widgets { get; set; } = new();
 
     /// <summary>Rich-text (HTML) description of what changed. Null for drafts and unpublished content.</summary>

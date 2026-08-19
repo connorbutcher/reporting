@@ -1,0 +1,52 @@
+<nav class="panel-menu">
+  <button type="button" class="panel-menu-item" (click)="navigate({ kind: 'report' })">
+    <i class="pi pi-th-large" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Report settings</span>
+      <span class="panel-menu-hint">{{ gridColumns() }} × {{ gridRows() }} grid</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="panel-menu-item" (click)="navigate({ kind: 'widgets' })">
+    <i class="pi pi-objects-column" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Widgets</span>
+      <span class="panel-menu-hint">{{ widgetCount() }} on canvas</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="panel-menu-item" (click)="navigate({ kind: 'reportFilters' })">
+    <i class="pi pi-filter" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Report filters</span>
+      <span class="panel-menu-hint">{{ reportFilterSummary() }}</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+  <button type="button" class="panel-menu-item" (click)="navigate({ kind: 'addWidget' })">
+    <i class="pi pi-plus-circle" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Add widget</span>
+      <span class="panel-menu-hint">Place a new widget on the canvas</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+  <button
+    type="button"
+    class="panel-menu-item"
+    [class.has-error]="errors().length > 0"
+    (click)="navigate({ kind: 'issues' })"
+  >
+    <i
+      class="pi"
+      [class.pi-check-circle]="issues().length === 0"
+      [class.pi-exclamation-triangle]="issues().length > 0"
+      aria-hidden="true"
+    ></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Issues</span>
+      <span class="panel-menu-hint">{{ issueSummary() }}</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+</nav>
