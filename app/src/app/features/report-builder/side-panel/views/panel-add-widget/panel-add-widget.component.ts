@@ -9,6 +9,8 @@ import { ReportBuilderStore } from '../../../report-builder.store';
   styleUrl: './panel-add-widget.component.scss',
 })
 export class PanelAddWidgetComponent {
+  static readonly title = 'Add widget';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly groups = widgetTypesByGroup();

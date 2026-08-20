@@ -8,6 +8,8 @@ import { ValidationIssue } from '../../../models/validation-issue';
   styleUrl: './panel-issues.component.scss',
 })
 export class PanelIssuesComponent {
+  static readonly title = 'Report issues';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly issues = this.store.issues;

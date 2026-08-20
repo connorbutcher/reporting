@@ -1,33 +1,27 @@
 @if (pageEntries().length === 0) {
-  <p class="view-filters__empty">This version has no tables to filter.</p>
+  <p class="empty">This version has no tables to filter.</p>
 } @else {
-  <p class="view-filters__hint">
-    Changes here apply to your view only — they aren't saved to the report.
-  </p>
+  <p class="hint">Changes here apply to your view only — they aren't saved to the report.</p>
 
-  <section class="view-filters__section">
-    <h3 class="view-filters__heading">Page filters</h3>
+  <section class="section">
+    <h3 class="heading">Page filters</h3>
     @for (entry of pageEntries(); track entry.key) {
-      <div class="view-filters__entry">
-        <button type="button" class="view-filters__row" (click)="toggle(entry)">
+      <div class="entry">
+        <button type="button" class="row" (click)="toggle(entry)">
           <i class="pi pi-database" aria-hidden="true"></i>
-          <span class="view-filters__text">
-            <span class="view-filters__label">{{ entry.label() }}</span>
-            <span class="view-filters__summary">
+          <span class="text">
+            <span class="label">{{ entry.label() }}</span>
+            <span class="summary">
               {{ summary(entry) }}
               @if (isChanged(entry)) {
-                <span class="view-filters__changed">· changed</span>
+                <span class="changed">· changed</span>
               }
             </span>
           </span>
-          <i
-            class="pi"
-            [class.pi-angle-down]="isOpen(entry)"
-            [class.pi-angle-right]="!isOpen(entry)"
-          ></i>
+          <i class="pi" [class.pi-angle-down]="isOpen(entry)" [class.pi-angle-right]="!isOpen(entry)"></i>
         </button>
         @if (isOpen(entry)) {
-          <div class="view-filters__builder">
+          <div class="builder">
             <app-filter-builder [group]="entry.group" />
           </div>
         }
@@ -35,29 +29,25 @@
     }
   </section>
 
-  <section class="view-filters__section">
-    <h3 class="view-filters__heading">Widget filters</h3>
+  <section class="section">
+    <h3 class="heading">Widget filters</h3>
     @for (entry of widgetEntries(); track entry.key) {
-      <div class="view-filters__entry">
-        <button type="button" class="view-filters__row" (click)="toggle(entry)">
+      <div class="entry">
+        <button type="button" class="row" (click)="toggle(entry)">
           <i [class]="entry.icon" aria-hidden="true"></i>
-          <span class="view-filters__text">
-            <span class="view-filters__label">{{ entry.label() }}</span>
-            <span class="view-filters__summary">
+          <span class="text">
+            <span class="label">{{ entry.label() }}</span>
+            <span class="summary">
               {{ summary(entry) }}
               @if (isChanged(entry)) {
-                <span class="view-filters__changed">· changed</span>
+                <span class="changed">· changed</span>
               }
             </span>
           </span>
-          <i
-            class="pi"
-            [class.pi-angle-down]="isOpen(entry)"
-            [class.pi-angle-right]="!isOpen(entry)"
-          ></i>
+          <i class="pi" [class.pi-angle-down]="isOpen(entry)" [class.pi-angle-right]="!isOpen(entry)"></i>
         </button>
         @if (isOpen(entry)) {
-          <div class="view-filters__builder">
+          <div class="builder">
             <app-filter-builder [group]="entry.group" />
           </div>
         }

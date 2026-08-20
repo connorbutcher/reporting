@@ -6,23 +6,23 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../../core/models/report.model';
 import { StaticTextWidgetModel } from '../../../models/widget.model';
 import { ReportBuilderStore } from '../../../report-builder.store';
+import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-const FONT_WEIGHT_OPTIONS: { label: string; value: TextFontWeight }[] = [
+const FONT_WEIGHT_OPTIONS: SelectOption<TextFontWeight>[] = [
   { label: 'Normal', value: 'normal' },
   { label: 'Medium', value: 'medium' },
   { label: 'Semibold', value: 'semibold' },
   { label: 'Bold', value: 'bold' },
 ];
 
-const TEXT_ALIGN_OPTIONS: { label: string; value: TextAlign }[] = [
-  { label: 'Left', value: 'left' },
-  { label: 'Centre', value: 'center' },
-  { label: 'Right', value: 'right' },
+// The shared Left/Centre/Right, plus Justify which only text supports.
+const TEXT_ALIGN_OPTIONS: SelectOption<TextAlign>[] = [
+  ...HORIZONTAL_ALIGN_OPTIONS,
   { label: 'Justify', value: 'justify' },
 ];
 
-const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
+const VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
   { label: 'Top', value: 'top' },
   { label: 'Middle', value: 'middle' },
   { label: 'Bottom', value: 'bottom' },
@@ -41,6 +41,8 @@ const VERTICAL_ALIGN_OPTIONS: { label: string; value: TextVerticalAlign }[] = [
   styleUrl: './panel-text-style.component.scss',
 })
 export class PanelTextStyleComponent {
+  static readonly title = 'Style';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly fontWeightOptions = FONT_WEIGHT_OPTIONS;

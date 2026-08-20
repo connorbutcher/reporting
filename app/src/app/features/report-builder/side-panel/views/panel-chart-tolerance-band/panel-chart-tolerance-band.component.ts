@@ -25,6 +25,8 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
   templateUrl: './panel-chart-tolerance-band.component.html',
 })
 export class PanelChartToleranceBandComponent {
+  static readonly title = 'Tolerance band';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly datasets = this.store.datasets;

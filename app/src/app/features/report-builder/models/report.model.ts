@@ -26,6 +26,14 @@ const MIN_GRID_SIZE = 1;
 // Columns fill the canvas width, so a fine column count is normal now; rows can
 // run long since the report scrolls vertically.
 const MAX_GRID_SIZE = 200;
+
+/**
+ * The grid a brand-new (or unspecified) report falls back to. Exported so the
+ * store and the settings panel default to the same size the model does, instead
+ * of each repeating the literals.
+ */
+export const DEFAULT_GRID_COLUMNS = 48;
+export const DEFAULT_GRID_ROWS = 30;
 // Sized for the default ~48-column grid: roughly a quarter width, a useful height.
 const DEFAULT_WIDGET_W = 12;
 const DEFAULT_WIDGET_H = 8;
@@ -38,8 +46,8 @@ const DEFAULT_WIDGET_H = 8;
 export class ReportModel extends EditorNode {
   readonly reportId: number;
   readonly name = signal('');
-  readonly gridColumns = signal(48);
-  readonly gridRows = signal(30);
+  readonly gridColumns = signal(DEFAULT_GRID_COLUMNS);
+  readonly gridRows = signal(DEFAULT_GRID_ROWS);
   readonly widgets = signal<readonly WidgetModel[]>([]);
 
   /** Report-level filters, one per dataset, layered over each widget's own. */

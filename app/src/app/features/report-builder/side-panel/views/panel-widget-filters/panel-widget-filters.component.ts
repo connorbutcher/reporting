@@ -8,6 +8,8 @@ import { FilterBuilderComponent } from '../../filter-builder/filter-builder.comp
   templateUrl: './panel-widget-filters.component.html',
 })
 export class PanelWidgetFiltersComponent {
+  static readonly title = 'Filters';
+
   private readonly store = inject(ReportBuilderStore);
   protected readonly widget = this.store.selectedFilterableWidget;
 }

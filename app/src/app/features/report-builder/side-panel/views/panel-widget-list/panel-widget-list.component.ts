@@ -13,6 +13,8 @@ import { PanelView } from '../../panel-view';
   styleUrl: './panel-widget-list.component.scss',
 })
 export class PanelWidgetListComponent {
+  static readonly title = 'Widgets';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly widgets = this.store.widgets;

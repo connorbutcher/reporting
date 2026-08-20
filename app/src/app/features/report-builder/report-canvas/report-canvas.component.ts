@@ -3,8 +3,9 @@ import { ActivatedRoute } from '@angular/router';
 import { ReportBuilderStore } from '../report-builder.store';
 import { ReportSidePanelComponent } from '../side-panel/report-side-panel.component';
 import { BuilderShortcutsDirective } from './builder-shortcuts.directive';
-import { BuilderToolbarComponent } from './builder-toolbar/builder-toolbar.component';
+import { BuilderTopbarComponent } from './builder-topbar/builder-topbar.component';
 import { CanvasGridComponent } from './canvas-grid/canvas-grid.component';
+import { CanvasStatusComponent } from './canvas-status/canvas-status.component';
 
 /**
  * The report builder screen. A thin shell: it provides the
@@ -15,8 +16,9 @@ import { CanvasGridComponent } from './canvas-grid/canvas-grid.component';
 @Component({
   selector: 'app-report-canvas',
   imports: [
-    BuilderToolbarComponent,
+    BuilderTopbarComponent,
     CanvasGridComponent,
+    CanvasStatusComponent,
     ReportSidePanelComponent,
     BuilderShortcutsDirective,
   ],

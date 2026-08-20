@@ -27,6 +27,8 @@ const DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
   templateUrl: './panel-table-appearance.component.html',
 })
 export class PanelTableAppearanceComponent {
+  static readonly title = 'Appearance';
+
   private readonly store = inject(ReportBuilderStore);
   protected readonly densityOptions = DENSITY_OPTIONS;
 

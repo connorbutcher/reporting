@@ -2,7 +2,7 @@
   display: block;
 }
 
-.version-history__status {
+.status {
   margin: auto;
   padding: 24px;
   color: #64748b;
@@ -16,73 +16,73 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
 
-.version-history__version {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: none;
-  font: inherit;
-  font-size: 0.8rem;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
+  .version {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-size: 0.8rem;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 
-  &:hover {
-    background: #f8fafc;
+    &:hover {
+      background: #f8fafc;
+    }
+
+    &.active {
+      background: var(--p-primary-50, #eef3fa);
+      border-color: var(--p-primary-200, #adc3e5);
+      font-weight: 600;
+      color: var(--app-navy);
+    }
   }
 
-  &--active {
-    background: var(--p-primary-50, #eef3fa);
-    border-color: var(--p-primary-200, #adc3e5);
-    font-weight: 600;
-    color: var(--app-navy);
+  .version-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
   }
-}
 
-.version-history__version-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
+  .version-date {
+    color: #64748b;
+    font-size: 0.72rem;
+  }
 
-.version-history__version-date {
-  color: #64748b;
-  font-size: 0.72rem;
-}
+  .version-notes {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #64748b;
+    font-size: 0.72rem;
+    font-weight: 400;
 
-.version-history__version-notes {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 400;
-
-  // The active version's notes are the full change description, not a
-  // scanning aid for the list, so they get room to wrap instead of clipping.
-  &--full {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    margin-top: 2px;
-    color: #334155;
+    // The active version's notes are the full change description, not a
+    // scanning aid for the list, so they get room to wrap instead of clipping.
+    &.full {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+      margin-top: 2px;
+      color: #334155;
+    }
   }
 }
 
 // Notes render via [innerHTML], so their <p> tags never get this component's
 // content attribute — ::ng-deep is needed to reach them.
-:host ::ng-deep .version-history__version-notes--full p:first-child {
+:host ::ng-deep .version-notes.full p:first-child {
   margin-top: 0;
 }
 
-:host ::ng-deep .version-history__version-notes--full p:last-child {
+:host ::ng-deep .version-notes.full p:last-child {
   margin-bottom: 0;
 }

@@ -3,45 +3,20 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
 import { ReportBuilderStore } from '../report-builder.store';
-import { PANEL_COMPONENTS } from './panel-component.registry';
+import { PANEL_VIEWS, panelComponentFor, parentOf } from './panel-component.registry';
 import { PanelView } from './panel-view';
 
 /**
- * Where a view sits in the panel's logical hierarchy — independent of how the
- * user actually got there. Chronological history (back/forward) can jump
- * sideways between unrelated widgets; this is what the breadcrumb walks
- * instead, so it always reflects "what's this screen part of", not "what did
- * I look at right before this".
+ * A stable, collision-free key for `@for` tracking. Built field by field — not
+ * from `Object.values`, whose ordering isn't guaranteed — and prefixed by kind,
+ * so two different views can never collapse to the same key.
  */
-function parentOf(view: PanelView): PanelView | null {
-  switch (view.kind) {
-    case 'root':
-      return null;
-    case 'report':
-    case 'widgets':
-    case 'reportFilters':
-    case 'addWidget':
-    case 'issues':
-      return { kind: 'root' };
-    case 'widget':
-      return { kind: 'widgets' };
-    case 'widgetColumns':
-    case 'tableAppearance':
-    case 'textStyle':
-    case 'widgetFilters':
-    case 'chartToleranceBand':
-      return { kind: 'widget', widgetId: view.widgetId };
-    case 'addColumn':
-    case 'columnSettings':
-      return { kind: 'widgetColumns', widgetId: view.widgetId };
-    case 'columnTolerance':
-      return { kind: 'columnSettings', widgetId: view.widgetId, columnId: view.columnId };
-  }
-}
-
-/** A stable string for `@for` tracking — cheaper than JSON.stringify per view. */
 function viewKey(view: PanelView): string {
-  return Object.values(view).join(':');
+  const parts: string[] = [view.kind];
+  if ('widgetId' in view) parts.push(view.widgetId);
+  if ('columnId' in view) parts.push(view.columnId);
+  if ('bandId' in view) parts.push(view.bandId);
+  return parts.join('/');
 }
 
 /** Stands in for the ancestors hidden between the first and last couple of crumbs. */
@@ -64,7 +39,7 @@ export class ReportSidePanelComponent {
   protected readonly ellipsis = ELLIPSIS;
 
   /** The component to render for the current view — replaces a per-kind template switch. */
-  protected readonly currentPanel = computed(() => PANEL_COMPONENTS[this.store.view().kind]);
+  protected readonly currentPanel = computed(() => panelComponentFor(this.store.view()));
 
   // Narrow pass-throughs so the template binds only to this component's own API,
   // never to the store directly.
@@ -127,38 +102,21 @@ export class ReportSidePanelComponent {
     this.store.forward();
   }
 
+  /**
+   * The heading for a view. Each panel names itself through its `static title`
+   * (see {@link PANEL_VIEWS}); the two data-derived screens refine that default
+   * with the live widget/column name, falling back to the panel's own title
+   * when there's no selection to show.
+   */
   protected labelFor(view: PanelView): string {
+    const fallback = PANEL_VIEWS[view.kind].component.title;
     switch (view.kind) {
-      case 'root':
-        return 'Report builder';
-      case 'report':
-        return 'Report settings';
-      case 'widgets':
-        return 'Widgets';
-      case 'addWidget':
-        return 'Add widget';
-      case 'widgetColumns':
-        return 'Columns';
-      case 'addColumn':
-        return 'Add column';
-      case 'tableAppearance':
-        return 'Appearance';
-      case 'textStyle':
-        return 'Style';
-      case 'widgetFilters':
-        return 'Filters';
-      case 'reportFilters':
-        return 'Report filters';
-      case 'issues':
-        return 'Report issues';
       case 'columnSettings':
-        return this.store.selectedTableWidget()?.column(view.columnId)?.label() ?? 'Column';
-      case 'columnTolerance':
-        return 'Tolerance limits';
-      case 'chartToleranceBand':
-        return 'Tolerance band';
+        return this.store.selectedTableWidget()?.column(view.columnId)?.label() ?? fallback;
       case 'widget':
-        return this.store.selectedWidget()?.label() ?? 'Widget';
+        return this.store.selectedWidget()?.label() ?? fallback;
+      default:
+        return fallback;
     }
   }
 }

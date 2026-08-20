@@ -13,6 +13,8 @@ import { FilterBuilderComponent } from '../../filter-builder/filter-builder.comp
   styleUrl: './panel-report-filters.component.scss',
 })
 export class PanelReportFiltersComponent {
+  static readonly title = 'Report filters';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly datasetIds = computed(() => this.store.model()?.usedDatasetIds() ?? []);

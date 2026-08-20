@@ -1,17 +1,13 @@
-import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DestroyRef, Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
-import { DatasetSchemaCacheService } from '../../core/services/dataset-schema-cache.service';
-import { OperatorCatalogue } from '../../core/models/filter.model';
 import { DatasetColumnConfiguration, DatasetSummary } from '../../core/models/dataset.model';
+import { OperatorCatalogue } from '../../core/models/filter.model';
 import { ReportRevisionContent, WidgetType } from '../../core/models/report.model';
-import { fitsWithoutCollision } from './grid.util';
-import { ReportModel } from './models/report.model';
-import { UndoHistory } from './models/undo-history';
+import { DatasetSchemaCacheService } from '../../core/services/dataset-schema-cache.service';
+import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from './models/report.model';
 import { ValidationIssue } from './models/validation-issue';
 import {
   ChartWidgetModel,
@@ -20,23 +16,30 @@ import {
   WidgetModel,
 } from './models/widget.model';
 import { PanelView } from './side-panel/panel-view';
+import { DatasetSchema } from './state/dataset-schema';
+import { ReportAutosave } from './state/report-autosave';
+import { ReportLifecycle } from './state/report-lifecycle';
 import { SidePanelNavigation } from './state/side-panel-navigation';
+import { WidgetCommands } from './state/widget-commands';
 import { WidgetSelection } from './state/widget-selection';
-
-const SAVE_DEBOUNCE_MS = 250;
-/** Long enough that a burst of typing collapses into one undo step. */
-const HISTORY_DEBOUNCE_MS = 400;
 
 /**
  * Session state for the report builder screen: what is loaded, what is
  * selected, where the panel is, and talking to the API.
  *
  * The report's own state lives in the {@link ReportModel} tree — every edit
- * goes through those instance classes, and their aggregated validity and
- * dirty state is what drives saving here. Side-panel navigation and widget
- * selection are each their own small collaborator ({@link SidePanelNavigation},
- * {@link WidgetSelection}); this store composes them behind the same API it
- * always had, so callers don't need to know they exist.
+ * goes through those instance classes. This store is a thin facade that owns the
+ * shared session signals and composes a handful of focused collaborators, each
+ * one responsible for a single concern:
+ *
+ * - {@link SidePanelNavigation} / {@link WidgetSelection} — panel history and canvas selection;
+ * - {@link ReportAutosave} — writing edits back and the undo stack;
+ * - {@link ReportLifecycle} — loading and publishing;
+ * - {@link WidgetCommands} — add / remove / duplicate / move;
+ * - {@link DatasetSchema} — dataset schemas and column configuration.
+ *
+ * Everything is re-exposed behind the same API the store always had, so callers
+ * never need to know the collaborators exist.
  */
 @Injectable()
 export class ReportBuilderStore {
@@ -45,19 +48,17 @@ export class ReportBuilderStore {
   private readonly filterApi = inject(FilterApiService);
   private readonly router = inject(Router);
   private readonly schemaCache = inject(DatasetSchemaCacheService);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
-  private readonly saveQueue = new Subject<void>();
-  private readonly historyQueue = new Subject<void>();
-  private readonly history = new UndoHistory();
-  private readonly navigation = new SidePanelNavigation();
-  private readonly selection = new WidgetSelection();
-
-  readonly canUndo = this.history.canUndo;
-  readonly canRedo = this.history.canRedo;
+  // --- shared session state --------------------------------------------------
 
   readonly model = signal<ReportModel | null>(null);
   readonly datasets = signal<DatasetSummary[]>([]);
   readonly loading = signal(true);
+
+  /** Filter operators per column type; static for the server's lifetime. */
+  readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
 
   /**
    * The measured pixel width of one grid column. Columns stretch to fill the
@@ -65,13 +66,6 @@ export class ReportBuilderStore {
    * drag/resize directives read it to convert pointer movement into whole cells.
    */
   readonly columnWidth = signal(0);
-  /** True when the last save failed, so the canvas can warn instead of losing work quietly. */
-  readonly saveFailed = signal(false);
-  /** True while a save request is in flight, for a "Saving…" indicator. */
-  readonly saving = signal(false);
-
-  /** Filter operators per column type; static for the server's lifetime. */
-  readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
 
   /** The look-ups every model node validates and describes itself against. */
   private readonly sources: ModelSources = {
@@ -79,8 +73,10 @@ export class ReportBuilderStore {
     catalogue: this.operatorCatalogue.asReadonly(),
   };
 
-  /** Bumped when a column's configuration changes, so widgets re-read it. */
-  readonly datasetVersion = signal(0);
+  private readonly navigation = new SidePanelNavigation();
+  private readonly selection = new WidgetSelection();
+
+  // --- panel navigation and selection (delegated) ----------------------------
 
   readonly view = this.navigation.view;
   readonly canGoBack = this.navigation.canGoBack;
@@ -99,8 +95,8 @@ export class ReportBuilderStore {
   // --- report state, delegated to the model tree -----------------------------
 
   readonly widgets = computed<readonly WidgetModel[]>(() => this.model()?.widgets() ?? []);
-  readonly gridColumns = computed(() => this.model()?.gridColumns() ?? 48);
-  readonly gridRows = computed(() => this.model()?.gridRows() ?? 30);
+  readonly gridColumns = computed(() => this.model()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
+  readonly gridRows = computed(() => this.model()?.gridRows() ?? DEFAULT_GRID_ROWS);
 
   readonly issues = computed<ValidationIssue[]>(() => this.model()?.issues() ?? []);
   readonly errors = computed(() => this.model()?.errors() ?? []);
@@ -109,29 +105,6 @@ export class ReportBuilderStore {
   readonly dirty = computed(() => this.model()?.dirty() ?? false);
   readonly saveBlocked = computed(() => this.dirty() && !this.isValid());
 
-  /**
-   * Whether leaving right now could lose work: an edit hasn't reached the
-   * server yet, or the last attempt to send it failed. Shared by the
-   * beforeunload handler and the route guard so both agree on the risk.
-   */
-  readonly hasUnsavedRisk = computed(() => this.dirty() || this.saveFailed());
-
-  /**
-   * The normalised snapshot the draft had when it was loaded (or last
-   * published), for detecting whether there's anything new to publish.
-   * `model.dirty()` can't answer that: it clears the moment autosave catches
-   * up, and the model even starts "dirty" on load (see EditorNode.dirty)
-   * purely to push its own normalisation to the server — neither of those
-   * is a real edit worth unblocking Publish for.
-   */
-  private loadBaseline: string | null = null;
-
-  /** Whether this draft differs from what was loaded (or last published). */
-  readonly hasUnpublishedChanges = computed(() => {
-    const model = this.model();
-    if (!model || this.loadBaseline === null) return false;
-    return JSON.stringify(model.toDto()) !== this.loadBaseline;
-  });
   readonly issuesByWidget = computed<Map<string, ValidationIssue[]>>(
     () => this.model()?.issuesByWidget() ?? new Map(),
   );
@@ -172,114 +145,80 @@ export class ReportBuilderStore {
     },
   );
 
-  constructor() {
-    // Any change anywhere in the tree shows up as a new snapshot here, so this
-    // one effect covers every edit without each caller remembering to save.
-    // Reading isValid too means fixing an error re-triggers the held-back save.
-    effect(() => {
-      const model = this.model();
-      if (!model) return;
+  // --- concern collaborators -------------------------------------------------
 
-      const dirty = model.dirty();
-      const valid = model.isValid();
-      if (!dirty || !valid) return;
+  private readonly autosave = new ReportAutosave(
+    this.model,
+    this.reportApi,
+    this.injector,
+    this.destroyRef,
+  );
 
-      untracked(() => this.saveQueue.next());
-    });
+  private readonly schema = new DatasetSchema(
+    this.schemaCache,
+    this.selectedTableWidget,
+    this.widgets,
+    this.injector,
+  );
 
-    // Undo steps are captured from the same snapshot the save uses, so the two
-    // always agree on what "the current state" is.
-    effect(() => {
-      const model = this.model();
-      if (!model) return;
+  private readonly lifecycle = new ReportLifecycle(
+    this.reportApi,
+    this.datasetApi,
+    this.filterApi,
+    this.router,
+    this.model,
+    this.operatorCatalogue,
+    this.datasets,
+    this.loading,
+    this.sources,
+    this.autosave,
+  );
 
-      model.toDto();
-      untracked(() => this.historyQueue.next());
-    });
+  private readonly commands = new WidgetCommands(
+    this.model,
+    this.selection,
+    this.selectedWidgets,
+    (view) => this.navigate(view),
+    (view) => this.replace(view),
+  );
 
-    this.historyQueue
-      .pipe(debounceTime(HISTORY_DEBOUNCE_MS), takeUntilDestroyed())
-      .subscribe(() => {
-        const model = this.model();
-        if (model) this.history.capture(model.toDto());
-      });
+  // --- collaborator pass-throughs --------------------------------------------
 
-    // Every referenced dataset is needed, not just the selected one, so column
-    // validation can tell a missing column from a schema that hasn't loaded.
-    effect(() => {
-      for (const widget of this.widgets()) {
-        if (widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel) {
-          const datasetId = widget.datasetId();
-          if (datasetId) this.schemaCache.ensure(datasetId);
-        }
-      }
-    });
+  /** True while a save request is in flight, for a "Saving…" indicator. */
+  readonly saving = this.autosave.saving;
+  /** True when the last save failed, so the canvas can warn instead of losing work quietly. */
+  readonly saveFailed = this.autosave.saveFailed;
+  readonly canUndo = this.autosave.canUndo;
+  readonly canRedo = this.autosave.canRedo;
 
-    // Saves are coalesced so dragging, typing and toggling stay responsive;
-    // switchMap drops superseded writes rather than racing them.
-    this.saveQueue
-      .pipe(
-        debounceTime(SAVE_DEBOUNCE_MS),
-        // A broken report is never written; the effect above re-queues once fixed.
-        filter(() => this.isValid()),
-        tap(() => this.saving.set(true)),
-        switchMap(() => {
-          const model = this.model();
-          if (!model) return EMPTY;
+  /** Whether this draft differs from what was loaded (or last published). */
+  readonly hasUnpublishedChanges = this.lifecycle.hasUnpublishedChanges;
 
-          return this.reportApi.updateDraft(model.reportId, model.toDto()).pipe(
-            map(() => model),
-            // Catch inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and silently stop all saving.
-            catchError((error: unknown) => {
-              console.error('Failed to save report', error);
-              this.saveFailed.set(true);
-              this.saving.set(false);
-              return EMPTY;
-            }),
-          );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe((model) => {
-        this.saveFailed.set(false);
-        this.saving.set(false);
-        // Any edit made while the request was in flight has already queued a
-        // fresh save, which cancels this one before it can mark it clean.
-        model.markPristine();
-      });
-  }
+  /** Bumped when a column's configuration changes, so widgets re-read it. */
+  readonly datasetVersion = this.schema.datasetVersion;
+  /** Columns of the selected table's dataset, or empty until they arrive. */
+  readonly activeSchemaColumns = this.schema.activeSchemaColumns;
+  /** A table needs a dataset before columns can be chosen. */
+  readonly hasDataset = this.schema.hasDataset;
 
   /**
-   * Loads the draft checked out for the given report. The report viewer is
-   * responsible for checking a draft out before routing here; if none exists
-   * (e.g. a direct navigation or a page refresh mid-edit) one is checked out
-   * on the fly so the canvas still has something to edit.
+   * Whether leaving right now could lose work: an edit hasn't reached the
+   * server yet, or the last attempt to send it failed. Shared by the
+   * beforeunload handler and the route guard so both agree on the risk.
    */
+  readonly hasUnsavedRisk = computed(() => this.dirty() || this.saveFailed());
+
+  // --- loading / publishing --------------------------------------------------
+
   load(reportId: number): void {
-    this.loading.set(true);
-    this.datasetApi.listForReport(reportId).subscribe((datasets) => this.datasets.set(datasets));
-    this.filterApi.operators().subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
-
-    this.reportApi.getDraft(reportId).subscribe({
-      next: (content) => this.setLoadedReport(content),
-      error: () =>
-        this.reportApi.checkout(reportId).subscribe((content) => this.setLoadedReport(content)),
-    });
+    this.lifecycle.load(reportId);
   }
 
-  /** Publishes the checked-out draft as a new version, then returns to the viewer. */
   publish(notes: string | null): void {
-    const model = this.model();
-    if (!model) return;
-
-    this.reportApi.publish(model.reportId, notes).subscribe(() => {
-      this.loadBaseline = JSON.stringify(model.toDto());
-      this.router.navigate(['/reports', model.reportId]);
-    });
+    this.lifecycle.publish(notes);
   }
 
-  // --- navigation -----------------------------------------------------------
+  // --- navigation ------------------------------------------------------------
 
   navigate(view: PanelView): void {
     this.navigation.navigate(view);
@@ -334,80 +273,55 @@ export class ReportBuilderStore {
     this.selection.set([widgetId]);
   }
 
-  stepWidget(offset: number): void {
-    const widgets = this.widgets();
-    const index = widgets.findIndex((w) => w.id === this.selectedWidgetId());
-    const next = widgets[index + offset];
-    if (!next) return;
-    this.replace({ kind: 'widget', widgetId: next.id });
-  }
-
   /** Takes the user to whatever the issue is about. */
   goToIssue(issue: ValidationIssue): void {
     if (issue.widgetId) this.selection.set([issue.widgetId]);
     this.navigate(issue.view);
   }
 
-  // --- widget lifecycle -----------------------------------------------------
+  private syncSelectionToView(): void {
+    const view = this.view();
+    // Panel navigation always focuses a single widget; canvas multi-selection
+    // is only replaced when the panel actually moves to a different one.
+    if ('widgetId' in view && !this.selectedWidgetIds().includes(view.widgetId)) {
+      this.selection.select(view.widgetId);
+    }
+  }
+
+  // --- widget lifecycle (delegated) ------------------------------------------
 
   addWidget(type: WidgetType): void {
-    const widget = this.model()?.addWidget(type);
-    if (widget) this.selectWidget(widget.id);
+    this.commands.addWidget(type);
   }
 
   removeWidget(widgetId: string): void {
-    this.removeWidgets([widgetId]);
+    this.commands.removeWidget(widgetId);
   }
 
-  /** Removes every given widget, then drops them from the selection. */
   removeWidgets(widgetIds: readonly string[]): void {
-    if (widgetIds.length === 0) return;
-    this.model()?.removeWidgets(widgetIds);
-
-    this.selection.filterOut(widgetIds);
-    if (this.selectedWidgetIds().length === 0) this.navigate({ kind: 'widgets' });
+    this.commands.removeWidgets(widgetIds);
   }
 
-  /** Copies the current selection, and selects the copies. */
   duplicateSelection(): void {
-    const model = this.model();
-    const ids = this.selectedWidgetIds();
-    if (!model || ids.length === 0) return;
-
-    const copies = ids.map((id) => model.duplicateWidget(id)).filter((w): w is WidgetModel => !!w);
-    if (copies.length === 0) return;
-
-    this.selection.set(copies.map((w) => w.id));
-    this.navigate({ kind: 'widget', widgetId: copies[copies.length - 1].id });
+    this.commands.duplicateSelection();
   }
 
-  /** Nudges every selected widget, refusing the move if any would collide. */
   nudgeSelection(dx: number, dy: number): void {
-    const model = this.model();
-    const widgets = this.selectedWidgets();
-    if (!model || widgets.length === 0) return;
-
-    const moving = new Set(widgets.map((w) => w.id));
-    const others = model.widgets().filter((w) => !moving.has(w.id));
-
-    const targets = widgets.map((widget) => ({
-      widget,
-      rect: { x: widget.x() + dx, y: widget.y() + dy, w: widget.w(), h: widget.h() },
-    }));
-
-    if (!fitsWithoutCollision(targets, others, model.gridColumns(), model.gridRows())) return;
-
-    for (const { widget, rect } of targets) widget.moveTo(rect.x, rect.y);
+    this.commands.nudgeSelection(dx, dy);
   }
 
-  // --- undo / redo ----------------------------------------------------------
+  stepWidget(offset: number): void {
+    this.commands.stepWidget(offset);
+  }
+
+  // --- undo / redo -----------------------------------------------------------
 
   undo(): void {
-    this.restore(this.history.undo());
+    this.restore(this.autosave.undo());
   }
 
   redo(): void {
-    this.restore(this.history.redo());
+    this.restore(this.autosave.redo());
   }
 
   /**
@@ -423,42 +337,13 @@ export class ReportBuilderStore {
     this.selection.set(this.selectedWidgetIds().filter((id) => present.has(id)));
   }
 
-  private setLoadedReport(report: ReportRevisionContent): void {
-    const model = ReportModel.fromDto(report, this.sources);
-    this.model.set(model);
-    this.loadBaseline = JSON.stringify(model.toDto());
-    // Seeded from the model, not the server payload: the model normalises
-    // defaults and key order, so anything else would look like a change and
-    // leave an undo step available before the user has done anything.
-    this.history.reset(model.toDto());
-    this.loading.set(false);
-  }
-
-  // --- dataset schema -------------------------------------------------------
-
-  /** Columns of the selected table's dataset, or empty until they arrive. */
-  readonly activeSchemaColumns = computed(
-    () => this.selectedTableWidget()?.schema()?.columns ?? [],
-  );
-
-  /** A table needs a dataset before columns can be chosen. */
-  readonly hasDataset = computed(() => !!this.selectedTableWidget()?.datasetId());
+  // --- dataset schema (delegated) --------------------------------------------
 
   updateColumnConfiguration(
     datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,
   ): void {
-    this.schemaCache.updateColumnConfiguration(datasetId, columnId, configuration);
-    this.datasetVersion.update((v) => v + 1);
-  }
-
-  private syncSelectionToView(): void {
-    const view = this.view();
-    // Panel navigation always focuses a single widget; canvas multi-selection
-    // is only replaced when the panel actually moves to a different one.
-    if ('widgetId' in view && !this.selectedWidgetIds().includes(view.widgetId)) {
-      this.selection.select(view.widgetId);
-    }
+    this.schema.updateColumnConfiguration(datasetId, columnId, configuration);
   }
 }

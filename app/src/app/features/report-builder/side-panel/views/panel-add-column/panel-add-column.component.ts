@@ -10,6 +10,8 @@ import { ReportBuilderStore } from '../../../report-builder.store';
   templateUrl: './panel-add-column.component.html',
 })
 export class PanelAddColumnComponent {
+  static readonly title = 'Add column';
+
   private readonly store = inject(ReportBuilderStore);
   protected readonly table = this.store.selectedTableWidget;
 

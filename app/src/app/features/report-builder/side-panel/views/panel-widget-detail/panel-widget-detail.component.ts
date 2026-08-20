@@ -26,6 +26,9 @@ import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/pane
   styleUrl: './panel-widget-detail.component.scss',
 })
 export class PanelWidgetDetailComponent {
+  /** Fallback heading; the chrome shows the selected widget's own name when there is one. */
+  static readonly title = 'Widget';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly hasMultiSelection = this.store.hasMultiSelection;

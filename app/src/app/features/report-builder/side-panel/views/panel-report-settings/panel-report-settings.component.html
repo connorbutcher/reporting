@@ -5,7 +5,7 @@
         <span class="panel-field-label">Columns</span>
         <p-inputnumber
           [ngModel]="model.gridColumns()"
-          (ngModelChange)="model.setGridColumns($event ?? 48)"
+          (ngModelChange)="model.setGridColumns($event ?? defaultColumns)"
           [min]="1"
           [max]="96"
           [showButtons]="true"
@@ -19,7 +19,7 @@
         <span class="panel-field-label">Rows</span>
         <p-inputnumber
           [ngModel]="model.gridRows()"
-          (ngModelChange)="model.setGridRows($event ?? 30)"
+          (ngModelChange)="model.setGridRows($event ?? defaultRows)"
           [min]="1"
           [max]="200"
           [showButtons]="true"

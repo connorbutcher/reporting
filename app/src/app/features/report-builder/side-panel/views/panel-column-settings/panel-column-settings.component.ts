@@ -1,3 +1,4 @@
+import { formatDate } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -10,22 +11,30 @@ import { DatasetColumn, DatasetColumnConfiguration } from '../../../../../core/m
 import { ColumnAlign } from '../../../../../core/models/report.model';
 import { TableColumnModel } from '../../../models/table-column.model';
 import { ReportBuilderStore } from '../../../report-builder.store';
+import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-export const DATE_FORMAT_OPTIONS = [
-  { label: '31/12/2026', value: 'dd/MM/yyyy' },
-  { label: '12/31/2026', value: 'MM/dd/yyyy' },
-  { label: '2026-12-31', value: 'yyyy-MM-dd' },
-  { label: '31 Dec 2026', value: 'd MMM yyyy' },
-  { label: '31 December 2026', value: 'd MMMM yyyy' },
-  { label: '31/12/2026 14:30', value: 'dd/MM/yyyy HH:mm' },
+const DATE_FORMAT_PATTERNS = [
+  'dd/MM/yyyy',
+  'MM/dd/yyyy',
+  'yyyy-MM-dd',
+  'd MMM yyyy',
+  'd MMMM yyyy',
+  'dd/MM/yyyy HH:mm',
 ];
 
-const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
-  { label: 'Left', value: 'left' },
-  { label: 'Centre', value: 'center' },
-  { label: 'Right', value: 'right' },
-];
+/**
+ * A preview of each date pattern, labelled with a sample. The sample is the 31st
+ * of December in the *current* year: fixed to the 31st so day/month can't be read
+ * as month/day, but the year tracks today so the previews never look stale.
+ */
+export const DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
+  const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
+  return DATE_FORMAT_PATTERNS.map((value) => ({
+    label: formatDate(sample, value, 'en-US'),
+    value,
+  }));
+})();
 
 @Component({
   selector: 'app-panel-column-settings',
@@ -42,10 +51,13 @@ const ALIGN_OPTIONS: { label: string; value: ColumnAlign }[] = [
   templateUrl: './panel-column-settings.component.html',
 })
 export class PanelColumnSettingsComponent {
+  /** Fallback heading; the chrome shows the selected column's own label when there is one. */
+  static readonly title = 'Column';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly dateFormats = DATE_FORMAT_OPTIONS;
-  protected readonly alignOptions = ALIGN_OPTIONS;
+  protected readonly alignOptions = HORIZONTAL_ALIGN_OPTIONS;
 
   private readonly table = this.store.selectedTableWidget;
 

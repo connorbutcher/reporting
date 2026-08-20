@@ -9,6 +9,8 @@ import { ReportBuilderStore } from '../../../report-builder.store';
   styleUrl: './panel-column-list.component.scss',
 })
 export class PanelColumnListComponent {
+  static readonly title = 'Columns';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly table = this.store.selectedTableWidget;

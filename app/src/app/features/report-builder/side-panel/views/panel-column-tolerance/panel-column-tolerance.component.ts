@@ -19,6 +19,8 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-column-tolerance.component.html',
 })
 export class PanelColumnToleranceComponent {
+  static readonly title = 'Tolerance limits';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly datasets = this.store.datasets;

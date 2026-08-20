@@ -8,6 +8,8 @@ import { PanelView } from '../../panel-view';
   styleUrl: './panel-root.component.scss',
 })
 export class PanelRootComponent {
+  static readonly title = 'Report builder';
+
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly gridColumns = this.store.gridColumns;

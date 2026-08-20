@@ -1,32 +1,27 @@
-@if (store.versions().length === 0) {
-  <p class="version-history__status">No published versions yet.</p>
+@if (versions().length === 0) {
+  <p class="status">No published versions yet.</p>
 } @else {
   <ul class="version-history">
-    @for (version of store.versions(); track version.versionNumber) {
+    @for (version of versions(); track version.versionNumber) {
       @let isActive =
-        store.viewingVersion() === version.versionNumber ||
-        (!store.viewingVersion() && version.versionNumber === store.report()?.latestVersionNumber);
+        viewingVersion() === version.versionNumber ||
+        (!viewingVersion() && version.versionNumber === report()?.latestVersionNumber);
       <li>
         <button
           type="button"
-          class="version-history__version"
-          [class.version-history__version--active]="isActive"
-          (click)="store.viewVersion(version.versionNumber)"
+          class="version"
+          [class.active]="isActive"
+          (click)="viewVersion(version.versionNumber)"
         >
-          <span class="version-history__version-row">
+          <span class="version-row">
             <span>v{{ version.versionNumber }}</span>
-            <span class="version-history__version-date">{{
-              version.publishedAt | date: 'short'
-            }}</span>
+            <span class="version-date">{{ version.publishedAt | date: 'short' }}</span>
           </span>
           @if (version.notes; as notes) {
             @if (isActive) {
-              <div
-                class="version-history__version-notes version-history__version-notes--full"
-                [innerHTML]="notes"
-              ></div>
+              <div class="version-notes full" [innerHTML]="notes"></div>
             } @else {
-              <span class="version-history__version-notes">{{ previewText(notes) }}</span>
+              <span class="version-notes">{{ previewText(notes) }}</span>
             }
           }
         </button>
