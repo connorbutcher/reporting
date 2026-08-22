@@ -1,0 +1,70 @@
+// Fields flow into the source panel's wrapping row.
+:host {
+  display: contents;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.phases {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: var(--app-navy);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+
+  &:hover {
+    background: #dbe3ee;
+    color: #b42318;
+  }
+
+  .pi {
+    font-size: 0.65rem;
+  }
+}
+
+.new-phase {
+  display: flex;
+  gap: 6px;
+
+  input {
+    width: 130px;
+  }
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}

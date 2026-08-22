@@ -149,7 +149,12 @@ public static class DbSeeder
 
     private static Dataset BuildEngineBuilds(List<PendingCell> pending)
     {
-        var dataset = new Dataset { Name = "Engine Builds" };
+        var dataset = new Dataset
+        {
+            Name = "Engine Builds",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":4471,\"phaseIds\":[1,2,3]}",
+        };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
@@ -215,7 +220,12 @@ public static class DbSeeder
 
     private static Dataset BuildTestRuns(List<PendingCell> pending)
     {
-        var dataset = new Dataset { Name = "Engine Test Runs" };
+        var dataset = new Dataset
+        {
+            Name = "Engine Test Runs",
+            DatasetSourceId = DatasetSourceIds.Disassembly,
+            SourceConfigJson = "{\"source\":\"disassembly\",\"typeId\":5120,\"phaseIds\":[7,8]}",
+        };
 
         var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
         var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);

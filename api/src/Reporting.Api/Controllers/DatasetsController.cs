@@ -22,6 +22,12 @@ public class DatasetsController(
     WidgetQueryRepository widgetQueries,
     PermissionService permissions) : ControllerBase
 {
+    // --- source reference data ------------------------------------------------
+
+    /// <summary>The fixed set of source systems a dataset can draw from, for the source pickers.</summary>
+    [HttpGet("~/api/dataset-sources")]
+    public Task<List<DatasetSourceDto>> GetSources() => datasets.GetSourcesAsync();
+
     // --- report-scoped list & create (the draft revision) ---------------------
 
     [HttpGet("~/api/reports/{reportId:int}/datasets")]
@@ -36,7 +42,7 @@ public class DatasetsController(
     }
 
     [HttpPost("~/api/reports/{reportId:int}/datasets")]
-    public async Task<ActionResult<DatasetSummaryDto>> Create(int reportId, SaveDatasetDto dto)
+    public async Task<ActionResult<DatasetSummaryDto>> Create(int reportId, CreateDatasetDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
 
@@ -46,7 +52,8 @@ public class DatasetsController(
         if (level < AccessLevel.Viewer) return NotFound();
         if (level < AccessLevel.Editor) return StatusCode(StatusCodes.Status403Forbidden);
 
-        var dataset = await datasets.CreateAsync(context.RevisionId, dto.Name.Trim());
+        var dataset = await datasets.CreateAsync(context.RevisionId, dto.Name.Trim(), dto.SourceId);
+        if (dataset is null) return BadRequest("Unknown dataset source.");
         return CreatedAtAction(nameof(GetSchema), new { id = dataset.Id }, dataset);
     }
 
@@ -68,6 +75,20 @@ public class DatasetsController(
 
         var data = await rows.GetDataAsync(id);
         return data is null ? NotFound() : data;
+    }
+
+    /// <summary>
+    /// A window of the dataset's rows for the editor grid's lazy virtual scroll:
+    /// <paramref name="count"/> rows starting at <paramref name="first"/>, plus the
+    /// total row count. Keeps a large dataset from loading into the editor at once.
+    /// </summary>
+    [HttpGet("{id:int}/rows")]
+    public async Task<ActionResult<DatasetRowWindowDto>> GetRowWindow(int id, int first = 0, int count = 100)
+    {
+        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
+
+        var window = await rows.GetRowWindowAsync(id, first, count);
+        return window is null ? NotFound() : window;
     }
 
     /// <summary>
@@ -182,11 +203,58 @@ public class DatasetsController(
         return dataset is null ? NotFound() : dataset;
     }
 
+    /// <summary>Deep-copies a dataset within its report's draft, under a caller-supplied name.</summary>
+    [HttpPost("{id:int}/clone")]
+    public async Task<ActionResult<DatasetSummaryDto>> Clone(int id, SaveDatasetDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
+        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
+
+        var dataset = await datasets.CloneAsync(id, dto.Name.Trim());
+        return dataset is null ? NotFound() : CreatedAtAction(nameof(GetSchema), new { id = dataset.Id }, dataset);
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
         if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
         return await datasets.DeleteAsync(id) ? NoContent() : NotFound();
+    }
+
+    // --- source & source configuration ----------------------------------------
+
+    /// <summary>Repoints a dataset at a different source; its configuration resets to that source's default.</summary>
+    [HttpPut("{id:int}/source")]
+    public async Task<ActionResult<DatasetSchemaDto>> SetSource(int id, SetDatasetSourceDto dto)
+    {
+        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
+
+        try
+        {
+            var schema = await datasets.SetSourceAsync(id, dto.SourceId);
+            return schema is null ? NotFound() : schema;
+        }
+        catch (DataValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>Replaces a dataset's source configuration. The body's source must match the dataset's.</summary>
+    [HttpPut("{id:int}/source-config")]
+    public async Task<ActionResult<DatasetSchemaDto>> UpdateSourceConfig(int id, DatasetSourceConfig config)
+    {
+        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
+
+        try
+        {
+            var schema = await datasets.UpdateSourceConfigAsync(id, config);
+            return schema is null ? NotFound() : schema;
+        }
+        catch (DataValidationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     // --- columns --------------------------------------------------------------

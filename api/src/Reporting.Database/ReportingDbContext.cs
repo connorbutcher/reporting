@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Reporting.Abstractions;
 
 namespace Reporting.Database;
 
@@ -13,6 +14,7 @@ public class ReportingDbContext : DbContext
     public DbSet<ReportRevision> ReportRevisions => Set<ReportRevision>();
     public DbSet<Widget> Widgets => Set<Widget>();
     public DbSet<Dataset> Datasets => Set<Dataset>();
+    public DbSet<DatasetSource> DatasetSources => Set<DatasetSource>();
     public DbSet<DatasetColumn> DatasetColumns => Set<DatasetColumn>();
     public DbSet<DatasetRow> DatasetRows => Set<DatasetRow>();
     public DbSet<DatasetCell> DatasetCells => Set<DatasetCell>();
@@ -95,6 +97,29 @@ public class ReportingDbContext : DbContext
             .WithOne(d => d.ReportRevision)
             .HasForeignKey(d => d.ReportRevisionId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Dataset sources are a fixed reference set with stable ids, seeded here so datasets can
+        // carry a required FK to them. The key is stored as text and kept unique.
+        modelBuilder.Entity<DatasetSource>().Property(s => s.Id).ValueGeneratedNever();
+        modelBuilder.Entity<DatasetSource>().Property(s => s.Key).HasConversion<string>();
+        modelBuilder.Entity<DatasetSource>().HasIndex(s => s.Key).IsUnique();
+        modelBuilder.Entity<DatasetSource>().HasData(
+            new DatasetSource { Id = DatasetSourceIds.Assembly, Key = DatasetSourceKey.Assembly, Name = "Assembly" },
+            new DatasetSource { Id = DatasetSourceIds.Disassembly, Key = DatasetSourceKey.Disassembly, Name = "Disassembly" },
+            new DatasetSource { Id = DatasetSourceIds.Specification, Key = DatasetSourceKey.Specification, Name = "Specification" });
+
+        // Every dataset draws from exactly one source; a source can't be deleted while datasets use it.
+        modelBuilder.Entity<Dataset>()
+            .HasOne(d => d.Source)
+            .WithMany()
+            .HasForeignKey(d => d.DatasetSourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The source config blob defaults to an empty object; the DAL reads that as the source's
+        // default config and writes a proper discriminated blob on the first real edit.
+        modelBuilder.Entity<Dataset>()
+            .Property(d => d.SourceConfigJson)
+            .HasDefaultValue("{}");
 
         modelBuilder.Entity<Dataset>()
             .HasMany(d => d.Columns)

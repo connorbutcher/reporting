@@ -37,10 +37,18 @@ public class DatasetRepository(ReportingDbContext db)
 
     // --- reads ----------------------------------------------------------------
 
+    /// <summary>The fixed set of source systems a dataset can draw from, for the source pickers.</summary>
+    public async Task<List<DatasetSourceDto>> GetSourcesAsync()
+    {
+        var sources = await db.DatasetSources.OrderBy(s => s.Id).ToListAsync();
+        return sources.Select(s => s.ToDto()).ToList();
+    }
+
     /// <summary>Every dataset owned by one revision (a report's draft), for the builder's dataset pickers.</summary>
     public async Task<List<DatasetSummaryDto>> GetAllForRevisionAsync(int revisionId)
     {
         var datasets = await db.Datasets
+            .Include(d => d.Source)
             .Where(d => d.ReportRevisionId == revisionId)
             .OrderBy(d => d.Name)
             .ToListAsync();
@@ -50,6 +58,7 @@ public class DatasetRepository(ReportingDbContext db)
     public async Task<DatasetSchemaDto?> GetSchemaAsync(int id)
     {
         var dataset = await db.Datasets
+            .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
         return dataset?.ToSchemaDto();
@@ -105,22 +114,147 @@ public class DatasetRepository(ReportingDbContext db)
 
     // --- dataset management ---------------------------------------------------
 
-    public async Task<DatasetSummaryDto> CreateAsync(int revisionId, string name)
+    /// <summary>
+    /// Creates a dataset on a revision, pointed at <paramref name="sourceId"/> with that source's
+    /// default configuration. Null when the source id isn't one of the known sources.
+    /// </summary>
+    public async Task<DatasetSummaryDto?> CreateAsync(int revisionId, string name, int sourceId)
     {
-        var dataset = new Dataset { ReportRevisionId = revisionId, Name = name };
+        var source = await db.DatasetSources.FirstOrDefaultAsync(s => s.Id == sourceId);
+        if (source is null) return null;
+
+        var dataset = new Dataset { ReportRevisionId = revisionId, Name = name, Source = source };
+        dataset.SetSourceConfig(DatasetSourceConfigs.Default(source.Key));
         db.Datasets.Add(dataset);
         await db.SaveChangesAsync();
         return dataset.ToSummaryDto();
     }
 
+    /// <summary>
+    /// Deep-copies a dataset within the same revision — its source, config, columns, rows and
+    /// cells — under <paramref name="name"/>. Column and row RefIds are regenerated so the copy is
+    /// fully independent. Null when the dataset doesn't exist.
+    /// </summary>
+    public async Task<DatasetSummaryDto?> CloneAsync(int id, string name)
+    {
+        var source = await db.Datasets
+            .Include(d => d.Source)
+            .Include(d => d.Columns)
+            .Include(d => d.Rows).ThenInclude(r => r.Cells)
+            .FirstOrDefaultAsync(d => d.Id == id);
+        if (source is null) return null;
+
+        var copy = new Dataset
+        {
+            ReportRevisionId = source.ReportRevisionId,
+            Name = name,
+            DatasetSourceId = source.DatasetSourceId,
+            Source = source.Source,
+            SourceConfigJson = source.SourceConfigJson,
+        };
+
+        // Copy columns, tracking old-column-id -> new-column so cells can be remapped once
+        // the copies have database-assigned ids (the same two-phase the seeder/checkout use).
+        var columnByOldId = new Dictionary<int, DatasetColumn>();
+        foreach (var column in source.Columns)
+        {
+            var columnCopy = new DatasetColumn
+            {
+                RefId = Guid.NewGuid(),
+                Name = column.Name,
+                Type = column.Type,
+                Order = column.Order,
+                ConfigurationJson = column.ConfigurationJson,
+            };
+            copy.Columns.Add(columnCopy);
+            columnByOldId[column.Id] = columnCopy;
+        }
+
+        var rowPairs = new List<(DatasetRow Source, DatasetRow Copy)>();
+        foreach (var row in source.Rows)
+        {
+            var rowCopy = new DatasetRow { RefId = Guid.NewGuid() };
+            copy.Rows.Add(rowCopy);
+            rowPairs.Add((row, rowCopy));
+        }
+
+        db.Datasets.Add(copy);
+        await db.SaveChangesAsync();
+
+        foreach (var (sourceRow, rowCopy) in rowPairs)
+        {
+            foreach (var cell in sourceRow.Cells)
+            {
+                if (!columnByOldId.TryGetValue(cell.ColumnId, out var newColumn)) continue;
+                db.DatasetCells.Add(new DatasetCell
+                {
+                    RowId = rowCopy.Id,
+                    ColumnId = newColumn.Id,
+                    StringValue = cell.StringValue,
+                    NumberValue = cell.NumberValue,
+                    BoolValue = cell.BoolValue,
+                    DateValue = cell.DateValue,
+                });
+            }
+        }
+        await db.SaveChangesAsync();
+        return copy.ToSummaryDto();
+    }
+
     public async Task<DatasetSummaryDto?> RenameAsync(int id, string name)
     {
-        var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Source).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         dataset.Name = name;
         await db.SaveChangesAsync();
         return dataset.ToSummaryDto();
+    }
+
+    /// <summary>
+    /// Repoints a dataset at a different source and resets its configuration to that source's
+    /// default — the old config's shape no longer applies. Null when the dataset doesn't exist;
+    /// throws <see cref="DataValidationException"/> for an unknown source id.
+    /// </summary>
+    public async Task<DatasetSchemaDto?> SetSourceAsync(int id, int sourceId)
+    {
+        var dataset = await db.Datasets
+            .Include(d => d.Source)
+            .Include(d => d.Columns)
+            .FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var source = await db.DatasetSources.FirstOrDefaultAsync(s => s.Id == sourceId);
+        if (source is null) throw new DataValidationException("Unknown dataset source.");
+
+        dataset.Source = source;
+        dataset.DatasetSourceId = source.Id;
+        dataset.SetSourceConfig(DatasetSourceConfigs.Default(source.Key));
+        await db.SaveChangesAsync();
+        return dataset.ToSchemaDto();
+    }
+
+    /// <summary>
+    /// Replaces a dataset's source configuration. Null when the dataset doesn't exist; throws
+    /// <see cref="DataValidationException"/> when the config's source doesn't match the dataset's.
+    /// </summary>
+    public async Task<DatasetSchemaDto?> UpdateSourceConfigAsync(int id, DatasetSourceConfig config)
+    {
+        var dataset = await db.Datasets
+            .Include(d => d.Source)
+            .Include(d => d.Columns)
+            .FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        if (config.SourceKey != dataset.Source!.Key)
+        {
+            throw new DataValidationException(
+                $"Configuration for '{config.SourceKey}' doesn't match the dataset's source '{dataset.Source.Key}'.");
+        }
+
+        dataset.SetSourceConfig(config);
+        await db.SaveChangesAsync();
+        return dataset.ToSchemaDto();
     }
 
     public async Task<bool> DeleteAsync(int id)
@@ -194,7 +328,10 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetSchemaDto?> ReorderColumnsAsync(int id, List<Guid> columnIds)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets
+            .Include(d => d.Source)
+            .Include(d => d.Columns)
+            .FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         for (var i = 0; i < columnIds.Count; i++)

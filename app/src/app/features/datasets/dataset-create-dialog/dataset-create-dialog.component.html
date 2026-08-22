@@ -1,0 +1,57 @@
+<div class="dialog">
+  <header class="header">
+    <h2 class="title">New dataset</h2>
+  </header>
+
+  <div class="body">
+    <div class="field">
+      <span class="label">Source system</span>
+      <div class="sources" role="radiogroup" aria-label="Source system">
+        @for (source of data.sources; track source.id) {
+          <button
+            type="button"
+            class="source"
+            role="radio"
+            [attr.aria-checked]="source.id === form.sourceId().value()"
+            [class.active]="source.id === form.sourceId().value()"
+            (click)="selectSource(source.id)"
+          >
+            <i [class]="icon(source.key)" aria-hidden="true"></i>
+            {{ source.name }}
+          </button>
+        }
+      </div>
+      <p class="hint">{{ hint() }}</p>
+    </div>
+
+    <div class="field">
+      <span class="label">Name</span>
+      <input
+        #nameInput
+        class="input"
+        [formField]="form.name"
+        (keyup.enter)="create()"
+        placeholder="Dataset name"
+        aria-label="Dataset name"
+      />
+    </div>
+  </div>
+
+  <footer class="footer">
+    <button
+      type="button"
+      class="button secondary"
+      (click)="cancel()"
+    >
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="button primary"
+      [disabled]="!form().valid()"
+      (click)="create()"
+    >
+      Create
+    </button>
+  </footer>
+</div>

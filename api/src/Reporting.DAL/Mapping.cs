@@ -143,18 +143,58 @@ public static class Mapping
         return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);
     }
 
+    public static DatasetSourceDto ToDto(this DatasetSource source) => new()
+    {
+        Id = source.Id,
+        Key = source.Key,
+        Name = source.Name
+    };
+
+    /// <summary>Assumes <see cref="Dataset.Source"/> is loaded.</summary>
     public static DatasetSummaryDto ToSummaryDto(this Dataset dataset) => new()
     {
         Id = dataset.Id,
-        Name = dataset.Name
+        Name = dataset.Name,
+        Source = dataset.Source!.Key
     };
 
+    /// <summary>Assumes <see cref="Dataset.Source"/> and <see cref="Dataset.Columns"/> are loaded.</summary>
     public static DatasetSchemaDto ToSchemaDto(this Dataset dataset) => new()
     {
         Id = dataset.Id,
         Name = dataset.Name,
+        SourceId = dataset.DatasetSourceId,
+        Source = dataset.Source!.Key,
+        SourceConfig = dataset.GetSourceConfig(),
         Columns = dataset.Columns.OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
     };
+
+    /// <summary>
+    /// The dataset's source configuration, deserialized from its blob. A blank blob (a freshly
+    /// created or backfilled dataset) or one that doesn't match the current source falls back to
+    /// that source's default config — assumes <see cref="Dataset.Source"/> is loaded.
+    /// </summary>
+    public static DatasetSourceConfig GetSourceConfig(this Dataset dataset)
+    {
+        if (!string.IsNullOrWhiteSpace(dataset.SourceConfigJson))
+        {
+            try
+            {
+                var config = JsonSerializer.Deserialize<DatasetSourceConfig>(dataset.SourceConfigJson, ConfigJsonOptions);
+                if (config is not null && config.SourceKey == dataset.Source!.Key) return config;
+            }
+            catch (Exception ex) when (ex is JsonException or NotSupportedException)
+            {
+                // A blank object ("{}") has no discriminator (NotSupportedException) and a malformed
+                // blob is a JsonException — either way, fall through to the source's default below.
+            }
+        }
+
+        return DatasetSourceConfigs.Default(dataset.Source!.Key);
+    }
+
+    public static void SetSourceConfig(this Dataset dataset, DatasetSourceConfig config) =>
+        dataset.SourceConfigJson = JsonSerializer.Serialize(config, typeof(DatasetSourceConfig), ConfigJsonOptions);
 
     public static DatasetColumnDto ToDto(this DatasetColumn column) => new()
     {

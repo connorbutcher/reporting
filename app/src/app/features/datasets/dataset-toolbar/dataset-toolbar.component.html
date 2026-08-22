@@ -1,0 +1,26 @@
+@if (selected(); as dataset) {
+  <input
+    pInputText
+    class="name"
+    [ngModel]="dataset.name"
+    (blur)="onNameBlur($event)"
+    aria-label="Dataset name"
+  />
+  <app-save-status [saving]="saving()" [saveFailed]="saveFailed()" />
+  <p-button
+    label="Duplicate"
+    icon="pi pi-copy"
+    severity="secondary"
+    outlined
+    size="small"
+    (onClick)="cloneDataset()"
+  />
+  <p-button
+    label="Delete dataset"
+    icon="pi pi-trash"
+    severity="danger"
+    outlined
+    size="small"
+    (onClick)="deleteDataset()"
+  />
+}

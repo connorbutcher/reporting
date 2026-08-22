@@ -1,0 +1,118 @@
+<div class="header">
+  <h2 class="heading">
+    <i class="pi pi-list" aria-hidden="true"></i>
+    Rows
+    @if (rowsTotal() > 0) {
+      <span class="count">{{ rowsTotal() }}</span>
+    }
+  </h2>
+  <div class="actions-bar">
+    <p-button
+      label="Export CSV"
+      icon="pi pi-download"
+      severity="secondary"
+      text
+      size="small"
+      [disabled]="columns().length === 0 || rowsTotal() === 0"
+      (onClick)="exportCsv()"
+    />
+    <p-button
+      label="Add row"
+      icon="pi pi-plus"
+      severity="secondary"
+      outlined
+      size="small"
+      [disabled]="columns().length === 0"
+      (onClick)="addRow()"
+    />
+  </div>
+</div>
+
+@if (columns().length === 0) {
+  <p class="empty">Add a column before entering data.</p>
+} @else if (!rowsReady()) {
+  <div class="skeleton">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton height="2rem" borderRadius="4px" />
+    }
+  </div>
+} @else {
+  <!-- Mounted only once the first window has loaded, so the virtual scroller
+       starts with the correct total instead of trying to grow from zero. -->
+  <p-table
+    class="grid"
+    [value]="rows()"
+    [lazy]="true"
+    [loading]="rowsLoading()"
+    [scrollable]="true"
+    scrollHeight="flex"
+    [virtualScroll]="true"
+    [virtualScrollItemSize]="rowHeight"
+    [rows]="rowWindow"
+    [totalRecords]="rowsTotal()"
+    (onLazyLoad)="onLazyLoad($event)"
+  >
+      <ng-template #header>
+        <tr>
+          @for (column of columns(); track column.id) {
+            <th>{{ column.name }}</th>
+          }
+          <th class="actions"><span class="sr-only">Actions</span></th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-row>
+        <tr [style.height.px]="rowHeight">
+          @for (column of columns(); track column.id) {
+            <td>
+              @if (isBool(column)) {
+                <select
+                  class="cell"
+                  [value]="row.values[column.id] ?? 'False'"
+                  [attr.aria-label]="column.name"
+                  (change)="setCell(row, column.id, $any($event.target).value)"
+                >
+                  <option value="True">Yes</option>
+                  <option value="False">No</option>
+                </select>
+              } @else {
+                <input
+                  class="cell"
+                  [type]="inputType(column.type)"
+                  [value]="cellValue(row, column)"
+                  [attr.aria-label]="column.name"
+                  (change)="setCell(row, column.id, $any($event.target).value)"
+                />
+              }
+            </td>
+          }
+          <td class="actions">
+            <p-button
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              size="small"
+              ariaLabel="Delete row"
+              (onClick)="deleteRow(row)"
+            />
+          </td>
+        </tr>
+      </ng-template>
+
+      <!-- Rows in a window still loading (or not yet scrolled to) show as skeletons. -->
+      <ng-template #loadingbody>
+        <tr [style.height.px]="rowHeight">
+          @for (column of columns(); track column.id) {
+            <td><p-skeleton height="1rem" /></td>
+          }
+          <td class="actions"></td>
+        </tr>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <tr>
+          <td [attr.colspan]="columns().length + 1" class="empty-cell">No rows yet.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+}

@@ -1,0 +1,99 @@
+<h2 class="heading">
+  <i class="pi pi-table" aria-hidden="true"></i>
+  Columns
+</h2>
+
+@if (loading()) {
+  <div class="skeleton">
+    @for (i of [1, 2, 3]; track i) {
+      <p-skeleton height="2.1rem" borderRadius="6px" />
+    }
+  </div>
+} @else if (columns().length === 0) {
+  <p class="empty">No columns yet — add one below.</p>
+} @else {
+  <ul class="list">
+    @for (column of columns(); track column.id; let i = $index) {
+      <li class="row">
+        <i
+          class="type-icon"
+          [class]="typeIcon(column.type)"
+          [attr.title]="column.type"
+          aria-hidden="true"
+        ></i>
+        <input
+          pInputText
+          [ngModel]="column.name"
+          (blur)="onRenameBlur(column, $event)"
+          [attr.aria-label]="'Name of column ' + column.name"
+        />
+        <p-select
+          [options]="columnTypes"
+          [ngModel]="column.type"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [ariaLabel]="'Type of column ' + column.name"
+          (onChange)="retype(column, $event.value)"
+        />
+        <p-button
+          icon="pi pi-chevron-up"
+          severity="secondary"
+          text
+          size="small"
+          [ariaLabel]="'Move ' + column.name + ' up'"
+          [disabled]="i === 0"
+          (onClick)="move(i, -1)"
+        />
+        <p-button
+          icon="pi pi-chevron-down"
+          severity="secondary"
+          text
+          size="small"
+          [ariaLabel]="'Move ' + column.name + ' down'"
+          [disabled]="i === columns().length - 1"
+          (onClick)="move(i, 1)"
+        />
+        <p-button
+          icon="pi pi-times"
+          severity="danger"
+          text
+          size="small"
+          [ariaLabel]="'Delete column ' + column.name"
+          (onClick)="remove(column)"
+        />
+      </li>
+    }
+  </ul>
+}
+
+<div class="new">
+  <input
+    pInputText
+    [formField]="addForm.name"
+    (keyup.enter)="add()"
+    placeholder="New column name"
+    aria-label="New column name"
+  />
+  <p-select
+    [options]="columnTypes"
+    [ngModel]="addForm.type().value()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    ariaLabel="New column type"
+    (onChange)="addForm.type().value.set($event.value)"
+  />
+  <p-button
+    label="Add column"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    [disabled]="!addForm().valid()"
+    (onClick)="add()"
+  />
+</div>
+
+@if (addNameError() ?? renameError(); as message) {
+  <p class="error">{{ message }}</p>
+}

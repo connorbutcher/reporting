@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { ReportBuilderStore } from '../../report-builder.store';
-import { SaveStatusComponent } from '../save-status/save-status.component';
+import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
 
 /**
  * The slim strip along the bottom of the canvas — an editor-style status bar for
@@ -20,7 +20,7 @@ import { SaveStatusComponent } from '../save-status/save-status.component';
         <span>{{ selectedCount() }} selected</span>
       }
       <span class="spacer"></span>
-      <app-save-status variant="dot" />
+      <app-save-status variant="dot" [saving]="saving()" [saveFailed]="saveFailed()" [dirty]="dirty()" />
     </div>
   `,
   styles: [
@@ -53,4 +53,7 @@ export class CanvasStatusComponent {
   protected readonly hasMultiSelection = this.store.hasMultiSelection;
   protected readonly widgetCount = computed(() => this.store.widgets().length);
   protected readonly selectedCount = computed(() => this.store.selectedWidgetIds().length);
+  protected readonly saving = this.store.saving;
+  protected readonly saveFailed = this.store.saveFailed;
+  protected readonly dirty = this.store.dirty;
 }

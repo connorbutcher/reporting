@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
-import { SaveStatusComponent } from '../save-status/save-status.component';
+import { Component, inject } from '@angular/core';
+import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
+import { ReportBuilderStore } from '../../report-builder.store';
 import { BuilderIdentityComponent } from './builder-identity.component';
 import { DatasetsLinkComponent } from './datasets-link.component';
 import { HistoryControlsComponent } from './history-controls.component';
@@ -26,7 +27,7 @@ import { PublishButtonComponent } from './publish-button.component';
     <header class="topbar">
       <div class="identity">
         <app-builder-identity />
-        <app-save-status />
+        <app-save-status [saving]="saving()" [saveFailed]="saveFailed()" [dirty]="dirty()" />
       </div>
 
       <div class="actions">
@@ -68,4 +69,10 @@ import { PublishButtonComponent } from './publish-button.component';
     `,
   ],
 })
-export class BuilderTopbarComponent {}
+export class BuilderTopbarComponent {
+  private readonly store = inject(ReportBuilderStore);
+
+  protected readonly saving = this.store.saving;
+  protected readonly saveFailed = this.store.saveFailed;
+  protected readonly dirty = this.store.dirty;
+}

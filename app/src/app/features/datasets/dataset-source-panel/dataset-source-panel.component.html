@@ -1,0 +1,23 @@
+<h2 class="heading">
+  <i class="pi pi-server" aria-hidden="true"></i>
+  Source
+</h2>
+
+<div class="body">
+  <label class="field">
+    <span class="panel-field-label">Source system</span>
+    <p-select
+      [options]="sources()"
+      [ngModel]="sourceId()"
+      optionLabel="name"
+      optionValue="id"
+      appendTo="body"
+      ariaLabel="Dataset source system"
+      (onChange)="setSource($event.value)"
+    />
+  </label>
+
+  @if (configComponent(); as component) {
+    <ng-container *ngComponentOutlet="component" />
+  }
+</div>

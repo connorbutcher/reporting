@@ -72,6 +72,9 @@ namespace Reporting.Database.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("DatasetSourceId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -79,7 +82,15 @@ namespace Reporting.Database.Migrations
                     b.Property<int>("ReportRevisionId")
                         .HasColumnType("int");
 
+                    b.Property<string>("SourceConfigJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("{}");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("DatasetSourceId");
 
                     b.HasIndex("ReportRevisionId");
 
@@ -186,6 +197,47 @@ namespace Reporting.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("DatasetRows");
+                });
+
+            modelBuilder.Entity("Reporting.Database.DatasetSource", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("DatasetSources");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Key = "Assembly",
+                            Name = "Assembly"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Key = "Disassembly",
+                            Name = "Disassembly"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Key = "Specification",
+                            Name = "Specification"
+                        });
                 });
 
             modelBuilder.Entity("Reporting.Database.Folder", b =>
@@ -488,6 +540,12 @@ namespace Reporting.Database.Migrations
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>
                 {
+                    b.HasOne("Reporting.Database.DatasetSource", "Source")
+                        .WithMany()
+                        .HasForeignKey("DatasetSourceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Reporting.Database.ReportRevision", "ReportRevision")
                         .WithMany("Datasets")
                         .HasForeignKey("ReportRevisionId")
@@ -495,6 +553,8 @@ namespace Reporting.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("ReportRevision");
+
+                    b.Navigation("Source");
                 });
 
             modelBuilder.Entity("Reporting.Database.DatasetCell", b =>

@@ -1,0 +1,57 @@
+@if (config(); as config) {
+  <label class="field">
+    <span class="panel-field-label">Type id</span>
+    <input
+      pInputText
+      type="number"
+      [ngModel]="config.typeId"
+      (change)="setTypeId($any($event.target).value)"
+      placeholder="e.g. 4471"
+      aria-label="Assembly type id"
+    />
+  </label>
+
+  <div class="field">
+    <span class="panel-field-label">Phase ids</span>
+    @if (config.phaseIds.length) {
+      <ul class="phases">
+        @for (phase of config.phaseIds; track phase) {
+          <li class="phase">
+            {{ phase }}
+            <button
+              type="button"
+              class="phase-remove"
+              [attr.aria-label]="'Remove phase ' + phase"
+              (click)="removePhase(phase)"
+            >
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty">No phases yet.</p>
+    }
+    <div class="new-phase">
+      <input
+        pInputText
+        type="text"
+        inputmode="numeric"
+        [ngModel]="newPhaseId()"
+        (ngModelChange)="newPhaseId.set($event)"
+        (keyup.enter)="addPhase()"
+        placeholder="Add phase id"
+        aria-label="New assembly phase id"
+      />
+      <p-button
+        icon="pi pi-plus"
+        severity="secondary"
+        outlined
+        size="small"
+        ariaLabel="Add phase"
+        [disabled]="!newPhaseId().trim()"
+        (onClick)="addPhase()"
+      />
+    </div>
+  </div>
+}

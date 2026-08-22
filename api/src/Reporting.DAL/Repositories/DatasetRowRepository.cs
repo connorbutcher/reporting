@@ -16,6 +16,35 @@ public class DatasetRowRepository(ReportingDbContext db)
         return dataset?.ToDataDto();
     }
 
+    /// <summary>
+    /// A window of a dataset's rows for the editor grid's lazy virtual scroll:
+    /// <paramref name="count"/> rows ordered by insertion (their primary key)
+    /// starting at <paramref name="first"/>, plus the dataset's total row count.
+    /// Only the window's cells are loaded, so a large dataset never materialises
+    /// in full. Returns null if the dataset doesn't exist.
+    /// </summary>
+    public async Task<DatasetRowWindowDto?> GetRowWindowAsync(int id, int first, int count)
+    {
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var total = await db.DatasetRows.CountAsync(r => r.DatasetId == id);
+        var rows = await db.DatasetRows
+            .Where(r => r.DatasetId == id)
+            .OrderBy(r => r.Id)
+            .Skip(Math.Max(first, 0))
+            .Take(Math.Clamp(count, 0, 500))
+            .Include(r => r.Cells)
+            .ToListAsync();
+
+        var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+        return new DatasetRowWindowDto
+        {
+            Total = total,
+            Rows = rows.Select(r => r.ToDto(columnRefById)).ToList(),
+        };
+    }
+
     public async Task<DatasetRowDto?> AddRowAsync(int id, Dictionary<Guid, string> values)
     {
         var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);

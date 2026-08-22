@@ -1,0 +1,68 @@
+<header class="header">
+  <a
+    class="back"
+    [routerLink]="['/reports', reportId(), 'edit']"
+    aria-label="Back to report"
+  >
+    <i class="pi pi-arrow-left" aria-hidden="true"></i>
+    Back to report
+  </a>
+  <h1 class="heading">Datasets</h1>
+</header>
+
+<div class="toolbar">
+  <input
+    pInputText
+    class="search"
+    [ngModel]="filter()"
+    (ngModelChange)="filter.set($event)"
+    placeholder="Search datasets…"
+    aria-label="Search datasets"
+  />
+  <p-button
+    icon="pi pi-plus"
+    size="small"
+    ariaLabel="New dataset"
+    [disabled]="!canCreate()"
+    (onClick)="openCreate()"
+  />
+</div>
+
+@if (actionError() && selectedId() === null) {
+  <p class="error" role="alert">{{ actionError() }}</p>
+}
+
+@if (error(); as message) {
+  <p class="error">{{ message }}</p>
+} @else if (loading()) {
+  <div class="skeleton">
+    @for (i of [1, 2, 3, 4]; track i) {
+      <p-skeleton height="2.3rem" borderRadius="8px" />
+    }
+  </div>
+} @else if (datasets().length === 0) {
+  <div class="blank">
+    <i class="pi pi-database" aria-hidden="true"></i>
+    <p class="blank-title">No datasets yet</p>
+    <p class="blank-hint">Create one to start building this report's data.</p>
+  </div>
+} @else if (filteredDatasets().length === 0) {
+  <p class="empty">No datasets match “{{ filter() }}”.</p>
+} @else {
+  <ul class="items">
+    @for (dataset of filteredDatasets(); track dataset.id) {
+      <li>
+        <button
+          type="button"
+          class="item"
+          [class.active]="dataset.id === selectedId()"
+          (click)="select(dataset.id)"
+        >
+          <i class="pi pi-database" aria-hidden="true"></i>
+          <span class="item-name">{{ dataset.name }}</span>
+          <span class="item-source">{{ dataset.source }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}

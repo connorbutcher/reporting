@@ -346,7 +346,12 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         {
             foreach (var sourceDataset in source.Datasets)
             {
-                var copy = new Dataset { Name = sourceDataset.Name };
+                var copy = new Dataset
+                {
+                    Name = sourceDataset.Name,
+                    DatasetSourceId = sourceDataset.DatasetSourceId,
+                    SourceConfigJson = sourceDataset.SourceConfigJson,
+                };
 
                 var columnPairs = new List<(DatasetColumn Source, DatasetColumn Copy)>();
                 foreach (var column in sourceDataset.Columns)

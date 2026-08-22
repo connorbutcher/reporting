@@ -1,14 +1,17 @@
-import { httpResource } from '@angular/common/http';
-import { Injectable, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
-import { DatasetApiService } from '../../core/api/dataset-api.service';
+import { Injectable, inject } from '@angular/core';
 import {
   DatasetColumn,
   DatasetColumnType,
-  DatasetData,
   DatasetRow,
-  DatasetSchema,
-  DatasetSummary,
+  DatasetSourceConfig,
 } from '../../core/models/dataset.model';
+import { DatasetAutosave } from './state/dataset-autosave';
+import { DatasetCollection } from './state/dataset-collection';
+import { DatasetColumnCommands } from './state/dataset-column-commands';
+import { DatasetRowCommands } from './state/dataset-row-commands';
+import { DatasetRowWindow } from './state/dataset-row-window';
+import { DatasetSchemaState } from './state/dataset-schema-state';
+import { DatasetSourceCommands } from './state/dataset-source-commands';
 
 /**
  * State and CRUD for the datasets screen. Datasets belong to a report's draft
@@ -16,189 +19,136 @@ import {
  * route). Provided at the page so the list sidebar and the editor share one
  * instance, keeping every mutation in one place while the components stay
  * presentational.
+ *
+ * This is a thin facade: the work is split across focused, component-provided
+ * collaborator services — {@link DatasetAutosave} (save status),
+ * {@link DatasetCollection} (list, selection, dataset lifecycle),
+ * {@link DatasetSchemaState} (the selected dataset's editable schema and rows),
+ * and the {@link DatasetColumnCommands} / {@link DatasetRowCommands} /
+ * {@link DatasetSourceCommands} command services. The store re-exposes their
+ * signals and methods verbatim so every consumer still injects only
+ * {@link DatasetsStore}. The collaborators are provided alongside it on the page
+ * (see the page's `providers`) and injected here — never `new`'d — so each is a
+ * first-class service Angular constructs and can inject its own dependencies.
  */
 @Injectable()
 export class DatasetsStore {
-  private readonly api = inject(DatasetApiService);
+  private readonly autosave = inject(DatasetAutosave);
+  private readonly collection = inject(DatasetCollection);
+  private readonly schema = inject(DatasetSchemaState);
+  private readonly rowWindow = inject(DatasetRowWindow);
+  private readonly columnCommands = inject(DatasetColumnCommands);
+  private readonly rowCommands = inject(DatasetRowCommands);
+  private readonly sourceCommands = inject(DatasetSourceCommands);
 
-  /** The report whose draft datasets are being edited; set by the page from the route. */
-  private readonly reportId = signal<number | null>(null);
+  // --- list & selection (DatasetCollection) ---------------------------------
+  readonly sources = this.collection.sources;
+  readonly datasets = this.collection.datasets;
+  readonly datasetsLoading = this.collection.datasetsLoading;
+  readonly listError = this.collection.listError;
+  readonly selectedId = this.collection.selectedId;
+  readonly selected = this.collection.selected;
+  readonly actionError = this.collection.actionError;
 
-  private readonly datasetsResource = httpResource<DatasetSummary[]>(
-    () => (this.reportId() !== null ? `/api/reports/${this.reportId()}/datasets` : undefined),
-    { defaultValue: [] },
-  );
-  readonly datasets = this.datasetsResource.value;
+  // --- selected dataset's schema (DatasetSchemaState) ------------------------
+  readonly columns = this.schema.columns;
+  readonly source = this.schema.source;
+  readonly sourceId = this.schema.sourceId;
+  readonly sourceConfig = this.schema.sourceConfig;
+  readonly schemaLoading = this.schema.schemaLoading;
+  readonly error = this.schema.error;
 
-  readonly selectedId = signal<number | null>(null);
+  // --- selected dataset's rows, lazily windowed (DatasetRowWindow) -----------
+  /** The sparse row array bound to the grid's lazy virtual scroll; loaded windows are filled in. */
+  readonly rows = this.rowWindow.rows;
+  /** The dataset's full row count, for the grid's scrollbar. */
+  readonly rowsTotal = this.rowWindow.total;
+  /** True while a row window is loading, for the grid's loading overlay. */
+  readonly rowsLoading = this.rowWindow.loading;
+  /** True once the first window has loaded, so the grid can mount with a known total. */
+  readonly rowsReady = this.rowWindow.ready;
+  /** A row index the grid should scroll into view (e.g. a newly added row); null when none. */
+  readonly rowScrollTo = this.rowWindow.scrollTo;
 
-  readonly selected = computed(
-    () => this.datasets().find((d) => d.id === this.selectedId()) ?? null,
-  );
+  // --- save status (DatasetAutosave) ----------------------------------------
+  readonly saving = this.autosave.saving;
+  readonly saveFailed = this.autosave.saveFailed;
 
-  // The selected dataset's schema and rows refetch automatically whenever the selection changes.
-  private readonly schemaResource = httpResource<DatasetSchema>(() =>
-    this.selectedId() ? `/api/datasets/${this.selectedId()}/schema` : undefined,
-  );
-  private readonly dataResource = httpResource<DatasetData>(() =>
-    this.selectedId() ? `/api/datasets/${this.selectedId()}/data` : undefined,
-  );
-
-  // Seeded from the server but locally writable, so edits appear immediately and reset to the
-  // server's copy when the selection reloads. hasValue() guards the read — value() throws while a
-  // resource is loading or errored.
-  readonly columns = linkedSignal(() =>
-    this.schemaResource.hasValue() ? this.schemaResource.value().columns : [],
-  );
-  readonly rows = linkedSignal(() =>
-    this.dataResource.hasValue() ? this.dataResource.value().rows : [],
-  );
-
-  readonly loading = computed(
-    () => this.schemaResource.isLoading() || this.dataResource.isLoading(),
-  );
-  readonly error = computed(() => {
-    if (this.datasetsResource.error()) return 'Could not load datasets.';
-    if (this.schemaResource.error() || this.dataResource.error()) return 'Could not load that dataset.';
-    return null;
-  });
-
-  constructor() {
-    // Default to the first dataset once the list arrives; never override a live selection.
-    effect(() => {
-      const list = this.datasets();
-      untracked(() => {
-        if (this.selectedId() === null && list.length) this.selectedId.set(list[0].id);
-      });
-    });
-  }
-
-  /** Points the store at a report's draft datasets; the list refetches reactively. */
+  // --- dataset lifecycle (DatasetCollection) --------------------------------
   setReport(reportId: number): void {
-    if (reportId === this.reportId()) return;
-    this.reportId.set(reportId);
-    this.selectedId.set(null);
+    this.collection.setReport(reportId);
   }
 
   select(id: number): void {
-    this.selectedId.set(id);
+    this.collection.select(id);
   }
 
-  // --- datasets -------------------------------------------------------------
-
-  createDataset(name: string): void {
-    const trimmed = name.trim();
-    const reportId = this.reportId();
-    if (!trimmed || reportId === null) return;
-    this.api.create(reportId, trimmed).subscribe((dataset) => {
-      this.selectedId.set(dataset.id);
-      this.datasetsResource.reload();
-    });
+  createDataset(name: string, sourceId: number): void {
+    this.collection.createDataset(name, sourceId);
   }
 
   renameDataset(name: string): void {
-    const id = this.selectedId();
-    if (!id || !name.trim()) return;
-    this.api.rename(id, name.trim()).subscribe(() => this.datasetsResource.reload());
+    this.collection.renameDataset(name);
+  }
+
+  cloneDataset(): void {
+    this.collection.cloneDataset();
   }
 
   deleteDataset(): void {
-    const id = this.selectedId();
-    if (!id) return;
-
-    this.api.remove(id).subscribe(() => {
-      this.selectedId.set(null);
-      this.datasetsResource.reload();
-    });
+    this.collection.deleteDataset();
   }
 
-  // --- columns --------------------------------------------------------------
+  // --- source (DatasetSourceCommands) ---------------------------------------
+  setSource(sourceId: number): void {
+    this.sourceCommands.setSource(sourceId);
+  }
 
+  updateSourceConfig(config: DatasetSourceConfig): void {
+    this.sourceCommands.updateSourceConfig(config);
+  }
+
+  // --- columns (DatasetColumnCommands) --------------------------------------
   addColumn(name: string, type: DatasetColumnType): void {
-    const id = this.selectedId();
-    const trimmed = name.trim();
-    if (!id || !trimmed) return;
-
-    this.api.addColumn(id, trimmed, type).subscribe((column) => {
-      this.columns.update((columns) => [...columns, column]);
-    });
+    this.columnCommands.addColumn(name, type);
   }
 
   renameColumn(column: DatasetColumn, name: string): void {
-    const id = this.selectedId();
-    if (!id || !name.trim() || name === column.name) return;
-    this.api.updateColumn(id, column.id, name.trim(), column.type).subscribe((updated) => {
-      this.columns.update((columns) => columns.map((c) => (c.id === updated.id ? updated : c)));
-    });
+    this.columnCommands.renameColumn(column, name);
   }
 
   retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
-    const id = this.selectedId();
-    if (!id || type === column.type) return;
-    this.api.updateColumn(id, column.id, column.name, type).subscribe((updated) => {
-      this.columns.update((columns) => columns.map((c) => (c.id === updated.id ? updated : c)));
-    });
+    this.columnCommands.retypeColumn(column, type);
   }
 
   deleteColumn(column: DatasetColumn): void {
-    const id = this.selectedId();
-    if (!id) return;
-
-    this.api.removeColumn(id, column.id).subscribe(() => {
-      this.columns.update((columns) => columns.filter((c) => c.id !== column.id));
-      // The server strips the value too, so mirror that locally.
-      this.rows.update((rows) =>
-        rows.map((row) => {
-          const { [column.id]: _removed, ...rest } = row.values;
-          return { ...row, values: rest };
-        }),
-      );
-    });
+    this.columnCommands.deleteColumn(column);
   }
 
   moveColumn(index: number, offset: number): void {
-    const id = this.selectedId();
-    const columns = [...this.columns()];
-    const target = index + offset;
-    if (!id || target < 0 || target >= columns.length) return;
-
-    [columns[index], columns[target]] = [columns[target], columns[index]];
-    this.columns.set(columns);
-    this.api
-      .reorderColumns(
-        id,
-        columns.map((c) => c.id),
-      )
-      .subscribe((schema) => {
-        this.columns.set(schema.columns);
-      });
+    this.columnCommands.moveColumn(index, offset);
   }
 
-  // --- rows -----------------------------------------------------------------
+  // --- rows (DatasetRowWindow + DatasetRowCommands) -------------------------
+  /** Loads the row window the grid is scrolled to; driven by the table's lazy-load event. */
+  loadRows(first: number, count: number): void {
+    this.rowWindow.load(first, count);
+  }
+
+  /** Clears the pending scroll-to request once the grid has honoured it. */
+  clearRowScroll(): void {
+    this.rowWindow.scrollTo.set(null);
+  }
 
   addRow(): void {
-    const id = this.selectedId();
-    if (!id) return;
-    this.api.addRow(id, {}).subscribe((row) => this.rows.update((rows) => [...rows, row]));
+    this.rowCommands.addRow();
   }
 
   setCell(row: DatasetRow, columnId: string, value: string): void {
-    const id = this.selectedId();
-    if (!id) return;
-
-    const values = { ...row.values, [columnId]: value };
-    // Show the edit straight away; the server response then confirms it.
-    this.rows.update((rows) => rows.map((r) => (r.id === row.id ? { ...r, values } : r)));
-    this.api.updateRow(id, row.id, values).subscribe((updated) => {
-      this.rows.update((rows) => rows.map((r) => (r.id === updated.id ? updated : r)));
-    });
+    this.rowCommands.setCell(row, columnId, value);
   }
 
   deleteRow(row: DatasetRow): void {
-    const id = this.selectedId();
-    if (!id) return;
-    this.api.removeRow(id, row.id).subscribe(() => {
-      this.rows.update((rows) => rows.filter((r) => r.id !== row.id));
-    });
+    this.rowCommands.deleteRow(row);
   }
 }

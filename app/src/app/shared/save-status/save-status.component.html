@@ -1,0 +1,19 @@
+<span
+  class="save"
+  [class.ok]="state().tone === 'ok'"
+  [class.pending]="state().tone === 'pending'"
+  [class.error]="state().tone === 'error'"
+  [class.is-dot]="variant() === 'dot'"
+  [attr.role]="state().tone === 'error' ? 'alert' : null"
+  [attr.title]="
+    state().tone === 'error'
+      ? 'Your last change could not be saved — check your connection and try again.'
+      : null
+  "
+>
+  @if (variant() === 'dot') {
+    <span class="dot" aria-hidden="true"></span>{{ state().short }}
+  } @else {
+    <i class="pi" [class]="state().icon" aria-hidden="true"></i>{{ state().full }}
+  }
+</span>

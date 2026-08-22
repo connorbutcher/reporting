@@ -7,7 +7,10 @@ import {
   DatasetColumnType,
   DatasetData,
   DatasetRow,
+  DatasetRowWindow,
   DatasetSchema,
+  DatasetSource,
+  DatasetSourceConfig,
   DatasetSummary,
 } from '../models/dataset.model';
 import { DatasetQueryResult, FilterGroup } from '../models/filter.model';
@@ -24,6 +27,11 @@ import {
 export class DatasetApiService {
   private readonly http = inject(HttpClient);
 
+  /** The fixed set of source systems a dataset can draw from. */
+  listSources(): Observable<DatasetSource[]> {
+    return this.http.get<DatasetSource[]>('/api/dataset-sources');
+  }
+
   /** The datasets owned by a report's checked-out draft revision. */
   listForReport(reportId: number): Observable<DatasetSummary[]> {
     return this.http.get<DatasetSummary[]>(`/api/reports/${reportId}/datasets`);
@@ -35,6 +43,17 @@ export class DatasetApiService {
 
   getData(id: number): Observable<DatasetData> {
     return this.http.get<DatasetData>(`/api/datasets/${id}/data`);
+  }
+
+  /**
+   * A window of a dataset's rows for the editor grid's lazy virtual scroll:
+   * `count` rows from `first`, plus the total row count. Keeps a large dataset
+   * from loading into the editor all at once.
+   */
+  getRowWindow(id: number, first: number, count: number): Observable<DatasetRowWindow> {
+    return this.http.get<DatasetRowWindow>(
+      `/api/datasets/${id}/rows?first=${first}&count=${count}`,
+    );
   }
 
   /**
@@ -82,13 +101,28 @@ export class DatasetApiService {
 
   // --- dataset management ---------------------------------------------------
 
-  /** Creates a dataset on a report's draft revision. */
-  create(reportId: number, name: string): Observable<DatasetSummary> {
-    return this.http.post<DatasetSummary>(`/api/reports/${reportId}/datasets`, { name });
+  /** Creates a dataset on a report's draft revision, drawing from the given source. */
+  create(reportId: number, name: string, sourceId: number): Observable<DatasetSummary> {
+    return this.http.post<DatasetSummary>(`/api/reports/${reportId}/datasets`, { name, sourceId });
   }
 
   rename(id: number, name: string): Observable<DatasetSummary> {
     return this.http.put<DatasetSummary>(`/api/datasets/${id}`, { name });
+  }
+
+  /** Deep-copies a dataset (columns, rows and data) within its report's draft, under a new name. */
+  clone(id: number, name: string): Observable<DatasetSummary> {
+    return this.http.post<DatasetSummary>(`/api/datasets/${id}/clone`, { name });
+  }
+
+  /** Repoints a dataset at a different source; its config resets to that source's default. */
+  setSource(id: number, sourceId: number): Observable<DatasetSchema> {
+    return this.http.put<DatasetSchema>(`/api/datasets/${id}/source`, { sourceId });
+  }
+
+  /** Replaces a dataset's source configuration; the config's source must match the dataset's. */
+  updateSourceConfig(id: number, config: DatasetSourceConfig): Observable<DatasetSchema> {
+    return this.http.put<DatasetSchema>(`/api/datasets/${id}/source-config`, config);
   }
 
   remove(id: number): Observable<void> {

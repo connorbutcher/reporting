@@ -1,0 +1,124 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--app-navy);
+
+  .pi {
+    font-size: 0.85rem;
+    color: #94a3b8;
+  }
+}
+
+.count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// The lazy virtual-scroll table fills the panel's remaining height; its own
+// scrollable body (scrollHeight="flex") then virtualises the rows within it.
+.grid {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .p-datatable {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  font-size: 0.82rem;
+
+  th,
+  td {
+    white-space: nowrap;
+    border-bottom: 1px solid var(--app-card-border);
+  }
+
+  th {
+    padding: 8px 10px;
+    background: #f8fafc;
+    color: var(--app-navy);
+    font-weight: 600;
+    text-align: left;
+  }
+
+  // The cell input owns the padding so it fills the whole cell and stays editable
+  // right to the edges.
+  td {
+    padding: 0;
+  }
+}
+
+.cell {
+  width: 100%;
+  min-width: 120px;
+  padding: 7px 10px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+
+  &:focus {
+    outline: 2px solid var(--p-primary-400, #527ac0);
+    outline-offset: -2px;
+  }
+}
+
+.actions {
+  width: 44px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.empty {
+  margin: 0;
+  padding: 12px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.empty-cell {
+  padding: 12px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

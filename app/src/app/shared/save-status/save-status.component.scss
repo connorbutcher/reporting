@@ -1,0 +1,31 @@
+.save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.save.ok {
+  color: #94a3b8;
+}
+
+.save.ok.is-dot {
+  color: #15803d;
+}
+
+.save.pending {
+  color: #64748b;
+}
+
+.save.error {
+  color: #b42318;
+  font-weight: 600;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
