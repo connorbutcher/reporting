@@ -10,7 +10,7 @@ import {
   SetInheritance,
   UserGroupSummary,
   UserSummary,
-} from '../models/permission.model';
+} from '../models/permission';
 
 /** The `/permissions` API for folders and reports, plus the subject pickers. */
 @Service()

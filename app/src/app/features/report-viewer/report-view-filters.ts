@@ -1,7 +1,7 @@
 import { Signal, computed } from '@angular/core';
-import { DatasetColumn, DatasetSchema } from '../../core/models/dataset.model';
-import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter.model';
-import { ReportRevisionContent, WidgetType, readChartBindings } from '../../core/models/report.model';
+import { DatasetColumn, DatasetSchema } from '../../core/models/dataset';
+import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter';
+import { ReportRevisionContent, WidgetType, readChartBindings } from '../../core/models/report';
 import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
 import { FilterGroupModel } from '../report-builder/models/filter.model';
 

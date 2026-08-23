@@ -2,7 +2,7 @@ import { DestroyRef, Injector, Signal, effect, signal, untracked } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap } from 'rxjs';
 import { ReportApiService } from '../../../core/api/report-api.service';
-import { ReportRevisionContent } from '../../../core/models/report.model';
+import { ReportRevisionContent } from '../../../core/models/report';
 import { ReportModel } from '../models/report.model';
 import { UndoHistory } from '../models/undo-history';
 

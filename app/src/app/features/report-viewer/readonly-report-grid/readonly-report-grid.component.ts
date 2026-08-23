@@ -1,8 +1,8 @@
 import { Component, Signal, computed, input, output } from '@angular/core';
 import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
-import { ReportRevisionContent, Widget, readChartBindings } from '../../../core/models/report.model';
+import { ReportRevisionContent, Widget, readChartBindings } from '../../../core/models/report';
 import { isChartWidget } from '../../../core/models/widget-catalog';
-import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter.model';
+import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
 import { chartBindingKey } from '../report-view-filters';
 

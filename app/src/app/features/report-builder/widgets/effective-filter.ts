@@ -1,4 +1,4 @@
-import { FilterGroup, combineFilters } from '../../../core/models/filter.model';
+import { FilterGroup, combineFilters } from '../../../core/models/filter';
 
 /**
  * The single filter tree a widget sends to the server: its own filter layered

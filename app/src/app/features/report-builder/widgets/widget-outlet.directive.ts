@@ -11,8 +11,8 @@ import {
   untracked,
   ViewContainerRef,
 } from '@angular/core';
-import { FilterGroup } from '../../../core/models/filter.model';
-import { Widget, WidgetType } from '../../../core/models/report.model';
+import { FilterGroup } from '../../../core/models/filter';
+import { Widget, WidgetType } from '../../../core/models/report';
 import { WIDGET_COMPONENTS } from './widget-component.registry';
 
 /**

@@ -6,7 +6,7 @@ import {
   ReportSearchResult,
   ReportSummary,
   ReportVersionSummary,
-} from '../models/report.model';
+} from '../models/report';
 
 @Service()
 export class ReportApiService {

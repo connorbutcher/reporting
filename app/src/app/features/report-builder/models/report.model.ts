@@ -8,8 +8,8 @@ import {
   ReportRevisionContent,
   Widget,
   WidgetType,
-} from '../../../core/models/report.model';
-import { FilterGroup, ReportFilter } from '../../../core/models/filter.model';
+} from '../../../core/models/report';
+import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { clamp, rectsOverlap } from '../grid.util';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter.model';

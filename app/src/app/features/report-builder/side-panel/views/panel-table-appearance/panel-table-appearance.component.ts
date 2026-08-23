@@ -4,7 +4,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { TableDensity } from '../../../../../core/models/report.model';
+import { TableDensity } from '../../../../../core/models/report';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { PanelGroupComponent } from '../../panel-group.component';
 

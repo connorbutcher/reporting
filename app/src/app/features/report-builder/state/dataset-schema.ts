@@ -1,5 +1,5 @@
 import { Injector, Signal, computed, effect, signal } from '@angular/core';
-import { DatasetColumnConfiguration } from '../../../core/models/dataset.model';
+import { DatasetColumnConfiguration } from '../../../core/models/dataset';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
 import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
 

@@ -5,14 +5,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
-import { DatasetSchema } from '../../core/models/dataset.model';
-import { OperatorCatalogue } from '../../core/models/filter.model';
+import { DatasetSchema } from '../../core/models/dataset';
+import { OperatorCatalogue } from '../../core/models/filter';
 import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
   readChartBindings,
-} from '../../core/models/report.model';
+} from '../../core/models/report';
 import { isChartWidget } from '../../core/models/widget-catalog';
 import { NotificationService } from '../../core/services/notification.service';
 import { ReportViewFilters } from './report-view-filters';

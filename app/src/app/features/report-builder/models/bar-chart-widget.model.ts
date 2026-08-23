@@ -4,7 +4,7 @@ import {
   BarChartWidget,
   BarChartWidgetConfig,
   DEFAULT_BAR_CHART_CONFIG,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';

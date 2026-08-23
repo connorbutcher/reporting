@@ -2,7 +2,7 @@ import {
   DEFAULT_SCATTER_CHART_CONFIG,
   ScatterChartWidget,
   ScatterChartWidgetConfig,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './widget-model-base';

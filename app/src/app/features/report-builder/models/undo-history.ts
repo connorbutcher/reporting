@@ -1,5 +1,5 @@
 import { computed, signal } from '@angular/core';
-import { ReportRevisionContent } from '../../../core/models/report.model';
+import { ReportRevisionContent } from '../../../core/models/report';
 
 /** Plenty for a working session without holding on to unbounded memory. */
 const MAX_ENTRIES = 60;

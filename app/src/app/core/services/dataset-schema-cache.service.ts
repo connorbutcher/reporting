@@ -1,6 +1,6 @@
 import { inject, Service, signal } from '@angular/core';
 import { DatasetApiService } from '../api/dataset-api.service';
-import { DatasetColumnConfiguration, DatasetSchema } from '../models/dataset.model';
+import { DatasetColumnConfiguration, DatasetSchema } from '../models/dataset';
 
 /**
  * Dataset schemas fetched by the report builder, cached for the rest of the

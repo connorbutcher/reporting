@@ -2,7 +2,7 @@ import { Signal, effect, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, Observable, Subject, catchError, debounceTime, merge, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { DatasetColumn } from '../../../core/models/dataset.model';
+import { DatasetColumn } from '../../../core/models/dataset';
 
 export interface WidgetDataSourceOptions<T> {
   /** The dataset to load, or null when the widget isn't configured yet. */

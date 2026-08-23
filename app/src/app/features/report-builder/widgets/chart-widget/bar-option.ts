@@ -1,11 +1,11 @@
 import type { EChartsCoreOption } from 'echarts/core';
-import { DatasetColumn } from '../../../../core/models/dataset.model';
+import { DatasetColumn } from '../../../../core/models/dataset';
 import {
   Aggregate,
   BarChartWidgetConfig,
   readChartBindings,
-} from '../../../../core/models/report.model';
-import { BarChartQueryResult } from '../../../../core/models/widget-query.model';
+} from '../../../../core/models/report';
+import { BarChartQueryResult } from '../../../../core/models/widget-query';
 import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
 
 /**

@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset.model';
-import { ToleranceConfig } from '../../../core/models/report.model';
+import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset';
+import { ToleranceConfig } from '../../../core/models/report';
 
 /** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
 export interface ToleranceSeed {

@@ -1,10 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   ColumnAlign,
   DataTableColumnSetting,
   ToleranceConfig,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
 

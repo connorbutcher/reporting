@@ -1,5 +1,5 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   FilterCondition,
   FilterGroup,
@@ -9,7 +9,7 @@ import {
   OperatorCatalogue,
   OperatorDescriptor,
   ReportFilter,
-} from '../../../core/models/filter.model';
+} from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { PanelView } from '../side-panel/panel-view';
 import { ValidationIssue } from './validation-issue';

@@ -13,7 +13,7 @@ import {
   SecurableKind,
   UserGroupSummary,
   UserSummary,
-} from '../../../core/models/permission.model';
+} from '../../../core/models/permission';
 
 export interface PermissionsDialogData {
   kind: SecurableKind;

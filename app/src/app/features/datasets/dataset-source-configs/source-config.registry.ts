@@ -1,5 +1,5 @@
 import { Type } from '@angular/core';
-import { DatasetSourceKey } from '../../../core/models/dataset.model';
+import { DatasetSourceKey } from '../../../core/models/dataset';
 import { AssemblySourceConfigComponent } from './assembly-source-config/assembly-source-config.component';
 import { DisassemblySourceConfigComponent } from './disassembly-source-config/disassembly-source-config.component';
 import { SpecificationSourceConfigComponent } from './specification-source-config/specification-source-config.component';

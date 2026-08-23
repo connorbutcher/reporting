@@ -1,7 +1,7 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetRow } from '../../../core/models/dataset.model';
+import { DatasetRow } from '../../../core/models/dataset';
 import { DatasetCollection } from './dataset-collection';
 
 /** Rows fetched per window; also the first window loaded eagerly when a dataset is selected. */

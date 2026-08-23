@@ -3,7 +3,7 @@ import {
   DEFAULT_TEXT_CONFIG,
   StaticTextWidget,
   StaticTextWidgetConfig,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { TextStyleModel } from './text-style.model';
 import { ValidationIssue } from './validation-issue';

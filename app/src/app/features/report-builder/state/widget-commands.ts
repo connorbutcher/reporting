@@ -1,5 +1,5 @@
 import { Signal } from '@angular/core';
-import { WidgetType } from '../../../core/models/report.model';
+import { WidgetType } from '../../../core/models/report';
 import { fitsWithoutCollision } from '../grid.util';
 import { ReportModel } from '../models/report.model';
 import { WidgetModel } from '../models/widget.model';

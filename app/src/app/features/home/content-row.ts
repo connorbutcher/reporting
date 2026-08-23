@@ -1,5 +1,5 @@
 import { Folder } from '../../core/models/folder.model';
-import { ReportSummary } from '../../core/models/report.model';
+import { ReportSummary } from '../../core/models/report';
 
 /** A row plus the mouse event that triggered its context menu, emitted up to the page which owns the shared menu. */
 export interface RowAction {

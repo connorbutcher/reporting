@@ -1,20 +1,4 @@
-/** Ordered access ladder; a higher level includes everything below it. */
-export type AccessLevel = 'none' | 'viewer' | 'editor' | 'manager';
-
-export type GrantSubjectType = 'user' | 'group' | 'everyone';
-
-export interface UserSummary {
-  id: string;
-  displayName: string;
-  email: string;
-  isGlobalAdmin: boolean;
-}
-
-export interface UserGroupSummary {
-  id: string;
-  name: string;
-  memberCount: number;
-}
+import { AccessLevel, GrantSubjectType } from './subjects.model';
 
 /** One grant, for display and editing. `subjectId` is a user/group RefId, or null for Everyone. */
 export interface AccessGrant {
@@ -52,6 +36,3 @@ export interface SetInheritance {
   /** When breaking inheritance, copy the currently-effective grants down first so no one loses access. */
   copyDown: boolean;
 }
-
-/** The kind of securable a permission edit targets. */
-export type SecurableKind = 'folder' | 'report';

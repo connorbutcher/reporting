@@ -6,7 +6,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { BarChartWidgetModel, ChartWidgetModel, LineChartWidgetModel } from '../../../models/widget.model';
-import { Aggregate } from '../../../../../core/models/report.model';
+import { Aggregate } from '../../../../../core/models/report';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';

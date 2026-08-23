@@ -1,11 +1,11 @@
 import type { EChartsCoreOption } from 'echarts/core';
-import { DatasetColumn } from '../../../../core/models/dataset.model';
+import { DatasetColumn } from '../../../../core/models/dataset';
 import {
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
   readChartBindings,
-} from '../../../../core/models/report.model';
-import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
+} from '../../../../core/models/report';
+import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query';
 import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
 
 /** The two chart kinds that plot raw rows as points, as opposed to aggregated bars. */

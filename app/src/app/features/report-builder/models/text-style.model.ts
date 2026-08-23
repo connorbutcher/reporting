@@ -4,7 +4,7 @@ import {
   TextAlign,
   TextFontWeight,
   TextVerticalAlign,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
 

@@ -1,7 +1,7 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetSchema } from '../../../core/models/dataset.model';
-import { Widget, WidgetType } from '../../../core/models/report.model';
-import { OperatorCatalogue } from '../../../core/models/filter.model';
+import { DatasetSchema } from '../../../core/models/dataset';
+import { Widget, WidgetType } from '../../../core/models/report';
+import { OperatorCatalogue } from '../../../core/models/filter';
 import { GridRect } from '../grid.util';
 import { EditorNode } from './editor-node';
 

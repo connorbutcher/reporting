@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetSourceConfig } from '../../../core/models/dataset.model';
+import { DatasetSourceConfig } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
 import { DatasetSchemaState } from './dataset-schema-state';

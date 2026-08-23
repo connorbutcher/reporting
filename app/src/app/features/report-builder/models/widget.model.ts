@@ -1,4 +1,4 @@
-import { Widget } from '../../../core/models/report.model';
+import { Widget } from '../../../core/models/report';
 import { BarChartWidgetModel } from './bar-chart-widget.model';
 import { DataTableWidgetModel } from './data-table-widget.model';
 import { LineChartWidgetModel } from './line-chart-widget.model';

@@ -1,5 +1,5 @@
 import { Type } from '@angular/core';
-import { WidgetType } from '../../../core/models/report.model';
+import { WidgetType } from '../../../core/models/report';
 import { ChartWidgetComponent } from './chart-widget/chart-widget.component';
 import { DataTableWidgetComponent } from './data-table-widget/data-table-widget.component';
 import { StaticTextWidgetComponent } from './static-text-widget/static-text-widget.component';

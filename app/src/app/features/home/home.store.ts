@@ -9,7 +9,7 @@ import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder.model';
-import { ReportSearchResult, ReportSummary } from '../../core/models/report.model';
+import { ReportSearchResult, ReportSummary } from '../../core/models/report';
 import { ContentRow, FolderRow, ReportRow, folderToRow, reportToRow } from './content-row';
 import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';
 import { HomeItemActionsService } from './home-item-actions.service';

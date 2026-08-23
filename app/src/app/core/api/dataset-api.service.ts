@@ -12,8 +12,8 @@ import {
   DatasetSource,
   DatasetSourceConfig,
   DatasetSummary,
-} from '../models/dataset.model';
-import { DatasetQueryResult, FilterGroup } from '../models/filter.model';
+} from '../models/dataset';
+import { DatasetQueryResult, FilterGroup } from '../models/filter';
 import {
   BarChartQueryRequest,
   BarChartQueryResult,
@@ -21,7 +21,7 @@ import {
   ChartQueryResult,
   TableQueryRequest,
   TableQueryResult,
-} from '../models/widget-query.model';
+} from '../models/widget-query';
 
 @Service()
 export class DatasetApiService {

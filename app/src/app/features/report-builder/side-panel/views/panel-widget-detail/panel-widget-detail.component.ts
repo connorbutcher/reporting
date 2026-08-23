@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
-import { WidgetType } from '../../../../../core/models/report.model';
+import { WidgetType } from '../../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog';
 import { ChartWidgetModel, StaticTextWidgetModel } from '../../../models/widget.model';
 import { ReportBuilderStore } from '../../../report-builder.store';

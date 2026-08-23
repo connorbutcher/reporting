@@ -4,7 +4,7 @@ import {
   DatasetColumnType,
   DatasetRow,
   DatasetSourceConfig,
-} from '../../core/models/dataset.model';
+} from '../../core/models/dataset';
 import { DatasetAutosave } from './state/dataset-autosave';
 import { DatasetCollection } from './state/dataset-collection';
 import { DatasetColumnCommands } from './state/dataset-column-commands';

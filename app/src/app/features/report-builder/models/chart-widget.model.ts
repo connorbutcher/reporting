@@ -1,5 +1,5 @@
 import { Signal, WritableSignal, computed, signal } from '@angular/core';
-import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   ChartToleranceBand,
@@ -8,7 +8,7 @@ import {
   ChartWidgetConfigBase,
   EMPTY_CHART_BINDING,
   readChartBindings,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter.model';
 import { ValidationIssue } from './validation-issue';

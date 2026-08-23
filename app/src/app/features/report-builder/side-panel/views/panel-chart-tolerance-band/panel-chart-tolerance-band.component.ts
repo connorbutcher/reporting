@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartAxis } from '../../../../../core/models/report.model';
+import { ChartAxis } from '../../../../../core/models/report';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';

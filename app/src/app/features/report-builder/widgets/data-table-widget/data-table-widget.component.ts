@@ -11,15 +11,15 @@ import {
 } from '@angular/core';
 import { TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset.model';
-import { FilterGroup } from '../../../../core/models/filter.model';
+import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
+import { FilterGroup } from '../../../../core/models/filter';
 import {
   ColumnAlign,
   DataTableColumnSetting,
   DataTableWidgetConfig,
   SortDirection,
-} from '../../../../core/models/report.model';
-import { TableQueryResult } from '../../../../core/models/widget-query.model';
+} from '../../../../core/models/report';
+import { TableQueryResult } from '../../../../core/models/widget-query';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 

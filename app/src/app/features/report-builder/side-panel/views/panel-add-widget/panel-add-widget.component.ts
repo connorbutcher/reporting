@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { widgetTypesByGroup } from '../../../../../core/models/widget-catalog';
-import { WidgetType } from '../../../../../core/models/report.model';
+import { WidgetType } from '../../../../../core/models/report';
 import { ReportBuilderStore } from '../../../report-builder.store';
 
 @Component({

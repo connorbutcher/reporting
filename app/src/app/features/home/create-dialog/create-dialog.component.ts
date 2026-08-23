@@ -12,7 +12,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { Folder } from '../../../core/models/folder.model';
-import { ReportSummary } from '../../../core/models/report.model';
+import { ReportSummary } from '../../../core/models/report';
 import { groupByParent } from '../group-by-parent.util';
 
 export type CreateKind = 'folder' | 'report';

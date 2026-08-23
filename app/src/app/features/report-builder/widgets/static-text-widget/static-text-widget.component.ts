@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { StaticTextWidgetConfig, TextFontWeight } from '../../../../core/models/report.model';
+import { StaticTextWidgetConfig, TextFontWeight } from '../../../../core/models/report';
 
 @Component({
   selector: 'app-static-text-widget',

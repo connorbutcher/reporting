@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetSource, DatasetSummary } from '../../../core/models/dataset.model';
+import { DatasetSource, DatasetSummary } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
 
 /**

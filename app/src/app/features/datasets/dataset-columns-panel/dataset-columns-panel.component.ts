@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
-import { DatasetColumn, DatasetColumnType } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetColumnType } from '../../../core/models/dataset';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,

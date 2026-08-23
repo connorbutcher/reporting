@@ -1,16 +1,16 @@
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { FilterGroup } from '../../../../core/models/filter.model';
+import { FilterGroup } from '../../../../core/models/filter';
 import {
   ChartSeriesBinding,
   ChartWidgetConfig,
   readChartBindings,
-} from '../../../../core/models/report.model';
+} from '../../../../core/models/report';
 import {
   BarChartQueryResult,
   ChartQueryResult,
   ChartSeriesResult,
-} from '../../../../core/models/widget-query.model';
+} from '../../../../core/models/widget-query';
 
 /** One binding's point-chart response, tagged with the binding it came from. */
 interface ChartQueryPart {

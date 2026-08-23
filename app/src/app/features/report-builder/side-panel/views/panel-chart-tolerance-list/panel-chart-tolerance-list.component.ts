@@ -1,6 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { ChartToleranceBand } from '../../../../../core/models/report.model';
+import { ChartToleranceBand } from '../../../../../core/models/report';
 import { ChartWidgetModel } from '../../../models/widget.model';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { PanelView } from '../../panel-view';

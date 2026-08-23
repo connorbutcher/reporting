@@ -1,11 +1,11 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetSchema } from '../../../core/models/dataset.model';
+import { DatasetSchema } from '../../../core/models/dataset';
 import {
   DEFAULT_TABLE_CONFIG,
   DataTableWidget,
   DataTableWidgetConfig,
   SortDirection,
-} from '../../../core/models/report.model';
+} from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter.model';
 import { ModelSources, WidgetModel } from './widget-model-base';

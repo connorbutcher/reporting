@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import { FilterGroup, combineFilters } from '../../../core/models/filter.model';
-import { SortDirection } from '../../../core/models/report.model';
+import { FilterGroup, combineFilters } from '../../../core/models/filter';
+import { SortDirection } from '../../../core/models/report';
 import { GridPreview } from '../grid.util';
 import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
 import { ReportBuilderStore } from '../report-builder.store';

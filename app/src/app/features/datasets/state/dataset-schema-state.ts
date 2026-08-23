@@ -4,7 +4,7 @@ import {
   DatasetSchema,
   DatasetSourceConfig,
   DatasetSourceKey,
-} from '../../../core/models/dataset.model';
+} from '../../../core/models/dataset';
 import { DatasetCollection } from './dataset-collection';
 
 /**

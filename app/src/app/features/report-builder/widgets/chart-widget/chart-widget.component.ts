@@ -2,10 +2,10 @@ import { Component, computed, effect, inject, input, untracked } from '@angular/
 import type { EChartsCoreOption } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { FilterGroup } from '../../../../core/models/filter.model';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report.model';
+import { FilterGroup } from '../../../../core/models/filter';
+import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/widget-query.model';
+import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
 import { WidgetDataSource } from '../widget-data-source';
 import { buildBarOption } from './bar-option';
 import { buildChartQuery } from './chart-query';

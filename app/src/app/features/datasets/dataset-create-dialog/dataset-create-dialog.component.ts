@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormField, form, required } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { DatasetSource, DatasetSourceKey } from '../../../core/models/dataset.model';
+import { DatasetSource, DatasetSourceKey } from '../../../core/models/dataset';
 
 export interface DatasetCreateDialogData {
   sources: DatasetSource[];

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetRow } from '../../../core/models/dataset.model';
+import { DatasetRow } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
 import { DatasetRowWindow } from './dataset-row-window';

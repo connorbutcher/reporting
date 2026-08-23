@@ -77,22 +77,6 @@ public class FilterConditionDto : FilterNodeDto
     public List<string> Values { get; set; } = new();
 }
 
-// --- operator catalogue ----------------------------------------------------
-
-public class FilterOperatorDto
-{
-    public FilterOperator Value { get; set; }
-    public string Label { get; set; } = string.Empty;
-    public int OperandCount { get; set; }
-    public FilterOperandKind OperandKind { get; set; }
-}
-
-public class FilterOperatorsForTypeDto
-{
-    public DatasetColumnType Type { get; set; }
-    public List<FilterOperatorDto> Operators { get; set; } = new();
-}
-
 /// <summary>
 /// A report-level filter: applies to every data-table widget bound to
 /// <see cref="DatasetId"/>, combined with that widget's own filter using AND.
@@ -101,23 +85,4 @@ public class ReportFilterDto
 {
     public int DatasetId { get; set; }
     public FilterGroupDto Filter { get; set; } = new();
-}
-
-// --- query -----------------------------------------------------------------
-
-public class DatasetQueryDto
-{
-    /// <summary>Null or an empty group means "no filtering".</summary>
-    public FilterGroupDto? Filter { get; set; }
-}
-
-public class DatasetQueryResultDto
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public List<DatasetRowDto> Rows { get; set; } = new();
-
-    /// <summary>Rows in the dataset before filtering, so the widget can show "142 of 1,203".</summary>
-    public int TotalRowCount { get; set; }
-    public int MatchedRowCount { get; set; }
 }

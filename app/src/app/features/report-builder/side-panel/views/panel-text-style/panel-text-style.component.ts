@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../../core/models/report.model';
+import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../../core/models/report';
 import { StaticTextWidgetModel } from '../../../models/widget.model';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';

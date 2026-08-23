@@ -1,5 +1,5 @@
-import { DatasetColumn } from '../../../../core/models/dataset.model';
-import { ResolvedToleranceBand } from '../../../../core/models/widget-query.model';
+import { DatasetColumn } from '../../../../core/models/dataset';
+import { ResolvedToleranceBand } from '../../../../core/models/widget-query';
 
 /** Cycles if there are more series than colours. */
 export const SERIES_COLORS = [

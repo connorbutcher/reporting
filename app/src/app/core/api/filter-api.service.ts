@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable, map, shareReplay } from 'rxjs';
-import { DatasetColumnType } from '../models/dataset.model';
-import { OperatorCatalogue, OperatorsForType } from '../models/filter.model';
+import { DatasetColumnType } from '../models/dataset';
+import { OperatorCatalogue, OperatorsForType } from '../models/filter';
 
 @Service()
 export class FilterApiService {

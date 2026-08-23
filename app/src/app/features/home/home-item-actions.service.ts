@@ -4,7 +4,7 @@ import { Observable, defer, filter, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { Folder } from '../../core/models/folder.model';
-import { ReportSummary } from '../../core/models/report.model';
+import { ReportSummary } from '../../core/models/report';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,

@@ -1,4 +1,4 @@
-import { ChartWidget, Widget, WidgetType } from './report.model';
+import { ChartWidget, Widget, WidgetType } from './report';
 
 /**
  * The catalogue of widget types the builder can place — the single source of

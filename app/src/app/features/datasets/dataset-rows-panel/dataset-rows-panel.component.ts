@@ -2,7 +2,7 @@ import { Component, ElementRef, effect, inject, viewChild } from '@angular/core'
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { DatasetColumn, DatasetColumnType, DatasetRow } from '../../../core/models/dataset.model';
+import { DatasetColumn, DatasetColumnType, DatasetRow } from '../../../core/models/dataset';
 import { DatasetsStore } from '../datasets.store';
 
 /** How many rows the grid pulls per lazy window, and each row's pixel height for the virtual scroller. */
