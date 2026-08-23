@@ -3,7 +3,7 @@
   display: contents;
 }
 
-.home__tree {
+.home-tree {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -23,23 +23,23 @@
   }
 }
 
-.home__tree-header {
+.home-tree-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 4px;
 
-  .home__tree--collapsed & {
+  .home-tree--collapsed & {
     justify-content: center;
   }
 }
 
-.home__tree--collapsed .home__heading {
+.home-tree--collapsed .home-heading {
   display: none;
 }
 
-.home__tree-toggle {
+.home-tree-toggle {
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
@@ -58,18 +58,18 @@
   }
 }
 
-.home__heading {
+.home-heading {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--app-navy);
 }
 
-.home__tree-widget {
+.home-tree-widget {
   display: block;
 }
 
-.home__tree-skeleton {
+.home-tree-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;

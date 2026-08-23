@@ -1,4 +1,5 @@
 import { Component, computed, inject, input, output } from '@angular/core';
+import { FilterGroup, combineFilters } from '../../../core/models/filter.model';
 import { SortDirection } from '../../../core/models/report.model';
 import { GridPreview } from '../grid.util';
 import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
@@ -69,17 +70,38 @@ export class WidgetHostComponent {
     columnResize: (widths: { columnId: string; width: number }[]) => this.onColumnResize(widths),
   };
 
-  /** Only the finished conditions, so a half-typed row doesn't blank the widget. */
-  protected readonly widgetFilter = computed(
-    () => this.tableModel()?.filter.toQueryDto() ?? this.chartModel()?.filter.toQueryDto() ?? null,
-  );
+  /** Only the finished conditions, so a half-typed row doesn't blank the table. */
+  protected readonly widgetFilter = computed(() => this.tableModel()?.filter.toQueryDto() ?? null);
 
-  /** The report-level filter for this widget's dataset, layered over its own. */
+  /** The report-level filter for a table's dataset, layered over its own. */
   protected readonly reportFilter = computed(() => {
-    const datasetId = this.tableModel()?.datasetId() ?? this.chartModel()?.datasetId();
+    const datasetId = this.tableModel()?.datasetId();
+    if (!datasetId) return null;
+    return this.reportFilterFor(datasetId);
+  });
+
+  /**
+   * Each chart binding's resolved, query-safe filter — the report filter for the
+   * binding's dataset layered under the binding's own finished conditions — keyed
+   * by binding id, so every overlaid dataset narrows its own rows.
+   */
+  protected readonly bindingFilters = computed(() => {
+    const chart = this.chartModel();
+    if (!chart) return null;
+
+    const filters: Record<string, FilterGroup | null> = {};
+    for (const binding of chart.bindings()) {
+      const own = binding.filter.toQueryDto();
+      const report = this.reportFilterFor(binding.datasetId());
+      filters[binding.id] = combineFilters(report, own);
+    }
+    return filters;
+  });
+
+  private reportFilterFor(datasetId: number | null): FilterGroup | null {
     if (!datasetId) return null;
     return this.store.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
-  });
+  }
 
   /** Ctrl/⌘ or shift extends the selection; a plain click replaces it. */
   protected select(event: PointerEvent | MouseEvent): void {

@@ -1,5 +1,6 @@
-import { computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset.model';
 import { ToleranceConfig } from '../../../core/models/report.model';
 
@@ -19,7 +20,12 @@ export interface ToleranceSeed {
  * row" sub-widget shared by a table column's tolerance panel and a chart's
  * tolerance-band panel. Resolution of the actual bounds happens where the
  * widget renders; this only records and edits the pointers.
+ *
+ * Provided per-panel (in each tolerance panel's `providers`) so every panel
+ * instance gets its own picker state, and injected there rather than the panel
+ * reaching for the dataset API itself.
  */
+@Injectable()
 export class ToleranceSourcePicker {
   readonly sourceDatasetId = signal<number | null>(null);
   readonly sourceRowId = signal<string | null>(null);
@@ -44,7 +50,8 @@ export class ToleranceSourcePicker {
     () => !!this.sourceRowId() && !!this.minColumnId() && !!this.maxColumnId(),
   );
 
-  constructor(private readonly datasetApi: DatasetApiService) {}
+  private readonly datasetApi = inject(DatasetApiService);
+  private readonly notify = inject(NotificationService);
 
   /** Seeds the draft from a saved pointer (or clears it for none), loading its source dataset. */
   seed(pointer: ToleranceSeed | null): void {
@@ -104,13 +111,19 @@ export class ToleranceSourcePicker {
     if (!datasetId) return;
 
     this.loadingSource.set(true);
-    this.datasetApi.getSchema(datasetId).subscribe((schema) => this.sourceSchema.set(schema));
+    this.datasetApi.getSchema(datasetId).subscribe({
+      next: (schema) => this.sourceSchema.set(schema),
+      error: () => this.notify.error("Couldn't load the limits dataset's columns. Please try again."),
+    });
     this.datasetApi.getData(datasetId).subscribe({
       next: (data) => {
         this.sourceData.set(data);
         this.loadingSource.set(false);
       },
-      error: () => this.loadingSource.set(false),
+      error: () => {
+        this.loadingSource.set(false);
+        this.notify.error("Couldn't load the limits dataset's rows. Please try again.");
+      },
     });
   }
 }

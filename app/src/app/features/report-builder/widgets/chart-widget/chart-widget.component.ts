@@ -3,10 +3,9 @@ import type { EChartsCoreOption } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter.model';
-import { ChartWidgetConfig } from '../../../../core/models/report.model';
+import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report.model';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/widget-query.model';
-import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { buildBarOption } from './bar-option';
 import { buildChartQuery } from './chart-query';
@@ -28,33 +27,39 @@ export class ChartWidgetComponent {
   readonly config = input.required<ChartWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   readonly datasetVersion = input(0);
-  /** The report-level filter for this chart's dataset, if any. */
-  readonly reportFilter = input<FilterGroup | null>(null);
   /**
-   * The widget's own filter, supplied by the host rather than read from
-   * {@link config} so the builder can leave out conditions the user hasn't
-   * finished typing. Defaults to whatever the config carries.
+   * Each binding's fully-resolved, query-safe filter (the report-level filter for
+   * its dataset layered under the binding's own), keyed by binding id. Resolved by
+   * the host so the builder can drop conditions the user is still typing; a binding
+   * absent from the map plots unfiltered.
    */
-  readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
+  readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
 
   private readonly datasetApi = inject(DatasetApiService);
 
-  protected readonly datasetId = computed(() => this.config().datasetId);
+  /**
+   * The first *bound* binding's dataset drives the loaded schema — it names the
+   * shared axes. Using the first bound one (not strictly bindings[0]) means the
+   * chart still renders when an earlier binding is left unconfigured.
+   */
+  protected readonly datasetId = computed(
+    () => readChartBindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
+  );
 
   /** Icon for the empty state, so each chart kind shows its own glyph. */
   protected readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
 
-  /** Report-level and widget-level filters, as the single tree sent to the API. */
-  private readonly effectiveFilter = computed(() =>
-    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
-  );
+  /** Per-binding response cache so editing one binding doesn't refetch the others. */
+  private readonly queryCache = new Map<string, ChartQueryResult>();
+  /** Tracks the dataset version the cache was built at, to drop it when columns change. */
+  private cacheVersion = -1;
 
   private readonly source = new WidgetDataSource<ChartQueryResult | BarChartQueryResult>({
     datasetId: this.datasetId,
     version: this.datasetVersion,
     api: this.datasetApi,
     fetch: () =>
-      buildChartQuery(this.datasetApi, this.datasetId(), this.config(), this.effectiveFilter()),
+      buildChartQuery(this.datasetApi, this.config(), this.bindingFilters(), this.queryCache),
   });
 
   protected readonly loading = this.source.loading;
@@ -71,20 +76,22 @@ export class ChartWidgetComponent {
   });
 
   constructor() {
-    // Points reload whenever the dataset, its axes, the aggregate, either filter,
-    // the tolerance bands, or the tooltip columns change — the server needs all
-    // of these to build a response.
+    // Reloads whenever anything the server needs changes: the bindings (dataset,
+    // axes, colour-by, aggregate), the tolerance bands, or the tooltip columns —
+    // all carried on `config`, which is a fresh object on every edit — or the
+    // resolved per-binding filters.
     effect(() => {
       const config = this.config();
       const datasetId = this.datasetId();
-      config.xColumnId;
-      config.yColumnId;
-      config.seriesColumnId;
-      config.toleranceBands;
-      config.tooltipColumns;
-      if (config.type === 'barChart') config.aggregate;
-      this.effectiveFilter();
-      this.datasetVersion();
+      this.bindingFilters();
+      const version = this.datasetVersion();
+
+      // A column-configuration change can alter query results, so the cache built
+      // at an older version is no longer trustworthy — drop it.
+      if (version !== this.cacheVersion) {
+        this.cacheVersion = version;
+        untracked(() => this.queryCache.clear());
+      }
 
       if (!datasetId) {
         untracked(() => {

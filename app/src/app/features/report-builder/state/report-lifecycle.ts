@@ -6,6 +6,7 @@ import { ReportApiService } from '../../../core/api/report-api.service';
 import { DatasetSummary } from '../../../core/models/dataset.model';
 import { OperatorCatalogue } from '../../../core/models/filter.model';
 import { ReportRevisionContent } from '../../../core/models/report.model';
+import { NotificationService } from '../../../core/services/notification.service';
 import { ReportModel } from '../models/report.model';
 import { ModelSources } from '../models/widget.model';
 import { ReportAutosave } from './report-autosave';
@@ -42,6 +43,7 @@ export class ReportLifecycle {
     private readonly loading: WritableSignal<boolean>,
     private readonly sources: ModelSources,
     private readonly autosave: ReportAutosave,
+    private readonly notify: NotificationService,
   ) {}
 
   /**
@@ -57,8 +59,17 @@ export class ReportLifecycle {
 
     this.reportApi.getDraft(reportId).subscribe({
       next: (content) => this.setLoadedReport(content),
+      // No draft yet — check one out on the fly. If that fails too there's
+      // nothing to edit, so stop the skeleton and say so rather than hanging on
+      // it forever.
       error: () =>
-        this.reportApi.checkout(reportId).subscribe((content) => this.setLoadedReport(content)),
+        this.reportApi.checkout(reportId).subscribe({
+          next: (content) => this.setLoadedReport(content),
+          error: () => {
+            this.loading.set(false);
+            this.notify.error("This report couldn't be opened for editing. Please try again.");
+          },
+        }),
     });
   }
 
@@ -67,9 +78,13 @@ export class ReportLifecycle {
     const model = this.model();
     if (!model) return;
 
-    this.reportApi.publish(model.reportId, notes).subscribe(() => {
-      this.loadBaseline = JSON.stringify(model.toDto());
-      this.router.navigate(['/reports', model.reportId]);
+    this.reportApi.publish(model.reportId, notes).subscribe({
+      next: () => {
+        this.loadBaseline = JSON.stringify(model.toDto());
+        this.router.navigate(['/reports', model.reportId]);
+        this.notify.success('Report published.');
+      },
+      error: () => this.notify.error("The report couldn't be published. Please try again."),
     });
   }
 

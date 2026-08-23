@@ -1,6 +1,10 @@
 import type { EChartsCoreOption } from 'echarts/core';
 import { DatasetColumn } from '../../../../core/models/dataset.model';
-import { Aggregate, BarChartWidgetConfig } from '../../../../core/models/report.model';
+import {
+  Aggregate,
+  BarChartWidgetConfig,
+  readChartBindings,
+} from '../../../../core/models/report.model';
 import { BarChartQueryResult } from '../../../../core/models/widget-query.model';
 import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
 
@@ -13,13 +17,15 @@ export function buildBarOption(
   data: BarChartQueryResult | null,
   columns: DatasetColumn[],
 ): EChartsCoreOption | null {
-  const categoryColumn = columnById(columns, config.xColumnId);
+  // A bar chart is single-binding; its one binding holds the category/value axes.
+  const primary = readChartBindings(config)[0];
+  const categoryColumn = columnById(columns, primary?.xColumnId ?? null);
   if (!categoryColumn) return null;
 
   const categories = data?.categories ?? [];
   const series = data?.series ?? [];
 
-  const valueColumn = columnById(columns, config.yColumnId);
+  const valueColumn = columnById(columns, primary?.yColumnId ?? null);
   const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
   const valueLabel =
     config.yAxisLabel.trim() || valueColumn?.name || aggregateLabel(config.aggregate);

@@ -2,6 +2,7 @@ import { computed, signal } from '@angular/core';
 import { TreeNode } from 'primeng/api';
 import { TreeNodeExpandEvent } from 'primeng/tree';
 import { FolderApiService } from '../../core/api/folder-api.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder.model';
 
 /** Key used for the synthetic root node, since folder ids are never this string. */
@@ -34,7 +35,10 @@ export class FolderTreeStore {
     this.buildTreeNode(ROOT_KEY, 'Home', 'pi pi-home', true),
   ]);
 
-  constructor(private readonly folderApi: FolderApiService) {}
+  constructor(
+    private readonly folderApi: FolderApiService,
+    private readonly notify: NotificationService,
+  ) {}
 
   /**
    * Whether a parent's children have been fetched yet — for a key (ROOT_KEY or a stringified
@@ -49,13 +53,25 @@ export class FolderTreeStore {
   /** Loads a parent's children into the tree; returns the subscription so callers can chain teardown. */
   fetchChildren(parentId: number | null, key: string) {
     this.loadingKeys.update((s) => new Set(s).add(key));
-    return this.folderApi.children(parentId).subscribe((children) => {
-      this.merge(key, children);
-      this.loadingKeys.update((s) => {
-        const next = new Set(s);
-        next.delete(key);
-        return next;
-      });
+    return this.folderApi.children(parentId).subscribe({
+      next: (children) => {
+        this.merge(key, children);
+        this.clearLoading(key);
+      },
+      // Clear the key either way, so a failed expand stops spinning instead of
+      // hanging on its loading indicator forever.
+      error: () => {
+        this.clearLoading(key);
+        this.notify.error("Couldn't load that folder's contents. Please try again.");
+      },
+    });
+  }
+
+  private clearLoading(key: string): void {
+    this.loadingKeys.update((s) => {
+      const next = new Set(s);
+      next.delete(key);
+      return next;
     });
   }
 

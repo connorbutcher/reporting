@@ -13,11 +13,11 @@
   flex-direction: column;
 }
 
-.rename-dialog__header {
+.rename-dialog-header {
   padding: 18px 20px 4px;
 }
 
-.rename-dialog__title {
+.rename-dialog-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
@@ -25,11 +25,11 @@
   text-transform: capitalize;
 }
 
-.rename-dialog__body {
+.rename-dialog-body {
   padding: 14px 20px;
 }
 
-.rename-dialog__input {
+.rename-dialog-input {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--app-card-border);
@@ -44,7 +44,7 @@
   }
 }
 
-.rename-dialog__footer {
+.rename-dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -52,7 +52,7 @@
   border-top: 1px solid var(--app-card-border);
 }
 
-.rename-dialog__button {
+.rename-dialog-button {
   padding: 7px 16px;
   border-radius: 8px;
   font: inherit;

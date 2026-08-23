@@ -67,7 +67,7 @@ export class MoveDialogComponent {
         icon: 'pi pi-folder',
         expanded: true,
         selectable: !disabled,
-        styleClass: disabled ? 'move-dialog__node--disabled' : undefined,
+        styleClass: disabled ? 'move-dialog-node--disabled' : undefined,
         children: this.childNodes(folder.id),
       };
     });

@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { ChartAxis } from '../../../../../core/models/report.model';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
@@ -23,6 +22,7 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
   selector: 'app-panel-chart-tolerance-band',
   imports: [FormsModule, ButtonModule, SelectModule, SelectButtonModule, PanelGroupComponent],
   templateUrl: './panel-chart-tolerance-band.component.html',
+  providers: [ToleranceSourcePicker],
 })
 export class PanelChartToleranceBandComponent {
   static readonly title = 'Tolerance band';
@@ -31,7 +31,7 @@ export class PanelChartToleranceBandComponent {
 
   protected readonly datasets = this.store.datasets;
   protected readonly axisOptions = AXIS_OPTIONS;
-  protected readonly picker = new ToleranceSourcePicker(inject(DatasetApiService));
+  protected readonly picker = inject(ToleranceSourcePicker);
 
   private readonly chart = this.store.selectedChartWidget;
 

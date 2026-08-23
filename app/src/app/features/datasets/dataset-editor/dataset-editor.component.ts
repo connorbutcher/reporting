@@ -26,5 +26,4 @@ export class DatasetEditorComponent {
 
   protected readonly selected = this.store.selected;
   protected readonly error = this.store.error;
-  protected readonly actionError = this.store.actionError;
 }

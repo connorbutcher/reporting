@@ -7,6 +7,7 @@ import { DatasetColumnConfiguration, DatasetSummary } from '../../core/models/da
 import { OperatorCatalogue } from '../../core/models/filter.model';
 import { ReportRevisionContent, WidgetType } from '../../core/models/report.model';
 import { DatasetSchemaCacheService } from '../../core/services/dataset-schema-cache.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from './models/report.model';
 import { ValidationIssue } from './models/validation-issue';
 import {
@@ -48,6 +49,7 @@ export class ReportBuilderStore {
   private readonly filterApi = inject(FilterApiService);
   private readonly router = inject(Router);
   private readonly schemaCache = inject(DatasetSchemaCacheService);
+  private readonly notify = inject(NotificationService);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -172,6 +174,7 @@ export class ReportBuilderStore {
     this.loading,
     this.sources,
     this.autosave,
+    this.notify,
   );
 
   private readonly commands = new WidgetCommands(

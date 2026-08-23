@@ -1,9 +1,9 @@
-@if (widget(); as widget) {
-  @if (!widget.datasetId()) {
+@if (target(); as target) {
+  @if (!target.datasetId()) {
     <p class="panel-empty">Pick a dataset for this widget before adding filters.</p>
   } @else {
     <app-filter-builder
-      [group]="widget.filter"
+      [group]="target.filter"
       hint="Narrows the rows this widget shows. Report filters apply on top of these."
     />
   }

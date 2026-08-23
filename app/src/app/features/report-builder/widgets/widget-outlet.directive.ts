@@ -42,10 +42,12 @@ export class WidgetOutletDirective {
   /** The widget to render; its `type` selects the component, its `config` seeds it. */
   readonly widget = input.required<Widget>({ alias: 'appWidgetOutlet' });
 
-  /** The report-level filter for this widget's dataset, layered over its own. */
+  /** The report-level filter for this widget's dataset, layered over its own (table only). */
   readonly reportFilter = input<FilterGroup | null>(null);
-  /** This widget's own filter. */
+  /** This widget's own filter (table only). */
   readonly widgetFilter = input<FilterGroup | null>(null);
+  /** A chart's per-binding resolved filters, keyed by binding id (chart only). */
+  readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
   /** Bumped when column configuration changes, so the widget refetches (builder only). */
   readonly datasetVersion = input(0);
   /** Handlers for the widget's outputs, keyed by output name (builder edits only). */
@@ -69,6 +71,7 @@ export class WidgetOutletDirective {
       this.ref!.setInput('config', widget.config);
       this.setOptionalInput('reportFilter', this.reportFilter());
       this.setOptionalInput('widgetFilter', this.widgetFilter());
+      this.setOptionalInput('bindingFilters', this.bindingFilters());
       this.setOptionalInput('datasetVersion', this.datasetVersion());
     });
   }

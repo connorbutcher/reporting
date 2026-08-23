@@ -12,13 +12,13 @@ import { Component, input } from '@angular/core';
   imports: [],
   template: `
     <details class="panel-group" open>
-      <summary class="panel-group__head">
+      <summary class="panel-group-head">
         @if (icon()) {
-          <span class="panel-group__icon" aria-hidden="true">{{ icon() }}</span>
+          <span class="panel-group-icon" aria-hidden="true">{{ icon() }}</span>
         }
         {{ label() }}
       </summary>
-      <div class="panel-group__body">
+      <div class="panel-group-body">
         <ng-content />
       </div>
     </details>

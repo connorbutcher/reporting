@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
-import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { ReportBuilderStore } from '../../../report-builder.store';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';
@@ -17,6 +16,7 @@ import { PanelGroupComponent } from '../../panel-group.component';
   selector: 'app-panel-column-tolerance',
   imports: [FormsModule, ButtonModule, SelectModule, PanelGroupComponent],
   templateUrl: './panel-column-tolerance.component.html',
+  providers: [ToleranceSourcePicker],
 })
 export class PanelColumnToleranceComponent {
   static readonly title = 'Tolerance limits';
@@ -24,7 +24,7 @@ export class PanelColumnToleranceComponent {
   private readonly store = inject(ReportBuilderStore);
 
   protected readonly datasets = this.store.datasets;
-  protected readonly picker = new ToleranceSourcePicker(inject(DatasetApiService));
+  protected readonly picker = inject(ToleranceSourcePicker);
 
   private readonly table = this.store.selectedTableWidget;
 

@@ -13,6 +13,7 @@
       severity="secondary"
       text
       size="small"
+      [loading]="exporting()"
       [disabled]="columns().length === 0 || rowsTotal() === 0"
       (onClick)="exportCsv()"
     />

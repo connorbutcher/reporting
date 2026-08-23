@@ -8,6 +8,7 @@ import {
 import { DatasetAutosave } from './state/dataset-autosave';
 import { DatasetCollection } from './state/dataset-collection';
 import { DatasetColumnCommands } from './state/dataset-column-commands';
+import { DatasetExport } from './state/dataset-export';
 import { DatasetRowCommands } from './state/dataset-row-commands';
 import { DatasetRowWindow } from './state/dataset-row-window';
 import { DatasetSchemaState } from './state/dataset-schema-state';
@@ -40,6 +41,7 @@ export class DatasetsStore {
   private readonly columnCommands = inject(DatasetColumnCommands);
   private readonly rowCommands = inject(DatasetRowCommands);
   private readonly sourceCommands = inject(DatasetSourceCommands);
+  private readonly export = inject(DatasetExport);
 
   // --- list & selection (DatasetCollection) ---------------------------------
   readonly sources = this.collection.sources;
@@ -48,7 +50,6 @@ export class DatasetsStore {
   readonly listError = this.collection.listError;
   readonly selectedId = this.collection.selectedId;
   readonly selected = this.collection.selected;
-  readonly actionError = this.collection.actionError;
 
   // --- selected dataset's schema (DatasetSchemaState) ------------------------
   readonly columns = this.schema.columns;
@@ -150,5 +151,14 @@ export class DatasetsStore {
 
   deleteRow(row: DatasetRow): void {
     this.rowCommands.deleteRow(row);
+  }
+
+  // --- export (DatasetExport) -----------------------------------------------
+  /** True while the whole dataset is being fetched and packaged for download. */
+  readonly exporting = this.export.exporting;
+
+  /** Downloads the selected dataset as a CSV of its raw stored values. */
+  exportCsv(): void {
+    this.export.exportCsv();
   }
 }

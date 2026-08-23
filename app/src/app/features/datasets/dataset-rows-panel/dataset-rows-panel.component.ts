@@ -1,8 +1,7 @@
-import { Component, ElementRef, computed, effect, inject, viewChild } from '@angular/core';
+import { Component, ElementRef, effect, inject, viewChild } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { DatasetColumn, DatasetColumnType, DatasetRow } from '../../../core/models/dataset.model';
 import { DatasetsStore } from '../datasets.store';
 
@@ -23,7 +22,6 @@ const ROW_HEIGHT = 37;
 })
 export class DatasetRowsPanelComponent {
   private readonly store = inject(DatasetsStore);
-  private readonly api = inject(DatasetApiService);
   private readonly host = inject(ElementRef);
   private readonly table = viewChild(Table);
 
@@ -35,13 +33,11 @@ export class DatasetRowsPanelComponent {
   protected readonly rowWindow = ROW_WINDOW;
 
   protected readonly columns = this.store.columns;
-  protected readonly selectedId = this.store.selectedId;
   protected readonly rows = this.store.rows;
   protected readonly rowsTotal = this.store.rowsTotal;
   protected readonly rowsLoading = this.store.rowsLoading;
   protected readonly rowsReady = this.store.rowsReady;
-
-  private readonly datasetName = computed(() => this.store.selected()?.name ?? 'dataset');
+  protected readonly exporting = this.store.exporting;
 
   constructor() {
     // Bring a requested row (e.g. a freshly added last row) into view for editing.
@@ -68,38 +64,9 @@ export class DatasetRowsPanelComponent {
     this.store.addRow();
   }
 
-  /**
-   * Downloads the whole dataset as a CSV, with the raw stored values. Fetches every
-   * row from the server (the grid only holds the windows it has scrolled through).
-   */
+  /** Downloads the whole dataset as a CSV of its raw stored values. */
   protected exportCsv(): void {
-    const columns = this.columns();
-    const id = this.selectedId();
-    if (columns.length === 0 || id == null) return;
-
-    this.api.getData(id).subscribe((data) => {
-      const header = columns.map((c) => this.csvCell(c.name));
-      const body = data.rows.map((row) => columns.map((c) => this.csvCell(row.values[c.id] ?? '')));
-      const csv = [header, ...body].map((cells) => cells.join(',')).join('\r\n');
-
-      // A BOM keeps Excel from mangling non-ASCII characters.
-      const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${this.fileName()}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  /** Quotes a value only when it contains a delimiter, quote or newline (RFC 4180). */
-  private csvCell(value: string): string {
-    return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-  }
-
-  private fileName(): string {
-    return this.datasetName().replace(/[^\w.-]+/g, '_') || 'dataset';
+    this.store.exportCsv();
   }
 
   protected setCell(row: DatasetRow, columnId: string, value: string): void {

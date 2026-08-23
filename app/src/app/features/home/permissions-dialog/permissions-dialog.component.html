@@ -1,24 +1,24 @@
 <div class="perm-dialog">
-  <header class="perm-dialog__header">
-    <h2 class="perm-dialog__title">Sharing · {{ data.name }}</h2>
-    <button type="button" class="perm-dialog__close" (click)="close()" aria-label="Close">✕</button>
+  <header class="perm-dialog-header">
+    <h2 class="perm-dialog-title">Sharing · {{ data.name }}</h2>
+    <button type="button" class="perm-dialog-close" (click)="close()" aria-label="Close">✕</button>
   </header>
 
   @if (loading()) {
-    <div class="perm-dialog__body">
-      <p class="perm-dialog__muted">Loading…</p>
+    <div class="perm-dialog-body">
+      <p class="perm-dialog-muted">Loading…</p>
     </div>
   } @else if (error() && !permissions()) {
-    <div class="perm-dialog__body">
-      <p class="perm-dialog__error">{{ error() }}</p>
+    <div class="perm-dialog-body">
+      <p class="perm-dialog-error">{{ error() }}</p>
     </div>
   } @else if (permissions(); as perms) {
-    <div class="perm-dialog__body">
+    <div class="perm-dialog-body">
       @if (error()) {
-        <p class="perm-dialog__error">{{ error() }}</p>
+        <p class="perm-dialog-error">{{ error() }}</p>
       }
 
-      <label class="perm-dialog__inherit">
+      <label class="perm-dialog-inherit">
         <p-checkbox
           [binary]="true"
           inputId="perm-inherit"
@@ -26,9 +26,9 @@
           [disabled]="saving()"
           (onChange)="toggleInherit($event.checked)"
         />
-        <span class="perm-dialog__inherit-text">
-          <span class="perm-dialog__inherit-label">Inherit access from parent</span>
-          <span class="perm-dialog__muted">
+        <span class="perm-dialog-inherit-text">
+          <span class="perm-dialog-inherit-label">Inherit access from parent</span>
+          <span class="perm-dialog-muted">
             {{
               perms.inheritsPermissions
                 ? 'Access flows down from the parent. Turn off to restrict this ' + data.kind + '.'
@@ -38,9 +38,9 @@
         </span>
       </label>
 
-      <div class="perm-dialog__add">
+      <div class="perm-dialog-add">
         <p-select
-          class="perm-dialog__add-subject"
+          class="perm-dialog-add-subject"
           [options]="subjectOptions()"
           [ngModel]="newSubject()"
           (ngModelChange)="newSubject.set($event)"
@@ -63,7 +63,7 @@
         />
         <button
           type="button"
-          class="perm-dialog__btn perm-dialog__btn--primary"
+          class="perm-dialog-btn perm-dialog-btn--primary"
           [disabled]="!newSubject() || saving()"
           (click)="addGrant()"
         >
@@ -71,17 +71,17 @@
         </button>
       </div>
 
-      <ul class="perm-dialog__list">
+      <ul class="perm-dialog-list">
         @for (grant of perms.effective; track grant.subjectType + ':' + grant.subjectId) {
-          <li class="perm-dialog__row">
-            <span class="perm-dialog__subject">
-              <span class="perm-dialog__subject-name">{{ grant.subjectName }}</span>
+          <li class="perm-dialog-row">
+            <span class="perm-dialog-subject">
+              <span class="perm-dialog-subject-name">{{ grant.subjectName }}</span>
               @if (grant.inherited) {
-                <span class="perm-dialog__badge">Inherited · {{ grant.inheritedFrom }}</span>
+                <span class="perm-dialog-badge">Inherited · {{ grant.inheritedFrom }}</span>
               }
             </span>
             @if (grant.inherited) {
-              <span class="perm-dialog__level-static">{{ levelLabel(grant.level) }}</span>
+              <span class="perm-dialog-level-static">{{ levelLabel(grant.level) }}</span>
             } @else {
               <p-select
                 [options]="levels"
@@ -94,7 +94,7 @@
               />
               <button
                 type="button"
-                class="perm-dialog__icon"
+                class="perm-dialog-icon"
                 [disabled]="saving()"
                 (click)="remove(grant)"
                 [attr.aria-label]="'Remove ' + grant.subjectName"
@@ -104,13 +104,13 @@
             }
           </li>
         } @empty {
-          <li class="perm-dialog__muted">No one has access yet.</li>
+          <li class="perm-dialog-muted">No one has access yet.</li>
         }
       </ul>
     </div>
   }
 
-  <footer class="perm-dialog__footer">
-    <button type="button" class="perm-dialog__btn perm-dialog__btn--primary" (click)="close()">Done</button>
+  <footer class="perm-dialog-footer">
+    <button type="button" class="perm-dialog-btn perm-dialog-btn--primary" (click)="close()">Done</button>
   </footer>
 </div>

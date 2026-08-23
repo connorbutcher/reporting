@@ -1,15 +1,15 @@
-<div class="home__section">
-  <span class="home__section-label">Folders</span>
-  <div class="home__folder-row">
+<div class="home-section">
+  <span class="home-section-label">Folders</span>
+  <div class="home-folder-row">
     @for (row of store.folderRows(); track row.id) {
-      <div class="home__folder-chip" (contextmenu)="onContextMenu($event, row)">
-        <button type="button" class="home__folder-chip-open" (click)="store.openRow(row)">
-          <i class="pi pi-folder home__folder-chip-icon" aria-hidden="true"></i>
-          <span class="home__folder-chip-name">{{ row.name }}</span>
+      <div class="home-folder-chip" (contextmenu)="onContextMenu($event, row)">
+        <button type="button" class="home-folder-chip-open" (click)="store.openRow(row)">
+          <i class="pi pi-folder home-folder-chip-icon" aria-hidden="true"></i>
+          <span class="home-folder-chip-name">{{ row.name }}</span>
         </button>
         <button
           type="button"
-          class="home__folder-chip-actions"
+          class="home-folder-chip-actions"
           aria-label="Actions"
           (click)="onActions($event, row)"
         >

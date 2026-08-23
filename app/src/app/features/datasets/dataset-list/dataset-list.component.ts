@@ -31,7 +31,6 @@ export class DatasetListComponent {
   protected readonly selectedId = this.store.selectedId;
   protected readonly loading = this.store.datasetsLoading;
   protected readonly error = this.store.listError;
-  protected readonly actionError = this.store.actionError;
   protected readonly canCreate = computed(() => this.store.sources().length > 0);
 
   protected readonly filter = signal('');

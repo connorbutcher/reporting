@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetColumn, DatasetColumnType } from '../../../core/models/dataset.model';
 import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
@@ -18,6 +19,7 @@ export class DatasetColumnCommands {
   private readonly collection = inject(DatasetCollection);
   private readonly schema = inject(DatasetSchemaState);
   private readonly rows = inject(DatasetRowWindow);
+  private readonly notify = inject(NotificationService);
 
   addColumn(name: string, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
@@ -26,7 +28,7 @@ export class DatasetColumnCommands {
 
     this.autosave.track(this.api.addColumn(id, trimmed, type)).subscribe({
       next: (column) => this.schema.columns.update((columns) => [...columns, column]),
-      error: () => {},
+      error: () => this.notify.error(`Couldn't add the column "${trimmed}". Please try again.`),
     });
   }
 
@@ -38,7 +40,7 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
         ),
-      error: () => {},
+      error: () => this.notify.error("Couldn't rename the column. Please try again."),
     });
   }
 
@@ -50,7 +52,7 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
         ),
-      error: () => {},
+      error: () => this.notify.error("Couldn't change the column type. Please try again."),
     });
   }
 
@@ -64,7 +66,7 @@ export class DatasetColumnCommands {
         // The server strips the value too, so mirror that on the loaded rows.
         this.rows.stripColumn(column.id);
       },
-      error: () => {},
+      error: () => this.notify.error(`Couldn't delete "${column.name}". Please try again.`),
     });
   }
 
@@ -86,7 +88,10 @@ export class DatasetColumnCommands {
       )
       .subscribe({
         next: (schema) => this.schema.columns.set(schema.columns),
-        error: () => this.schema.columns.set(previous),
+        error: () => {
+          this.schema.columns.set(previous);
+          this.notify.error("Couldn't reorder the columns — the change was reverted.");
+        },
       });
   }
 }

@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetSource, DatasetSummary } from '../../../core/models/dataset.model';
 import { DatasetAutosave } from './dataset-autosave';
 
@@ -25,6 +26,7 @@ export class DatasetCollection {
   private readonly autosave = inject(DatasetAutosave);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly notify = inject(NotificationService);
 
   /** The report whose draft datasets are being edited; set by the page from the route. */
   private readonly reportId = signal<number | null>(null);
@@ -67,15 +69,6 @@ export class DatasetCollection {
     () => this.datasets().find((d) => d.id === this.selectedId()) ?? null,
   );
 
-  // --- dataset action errors ------------------------------------------------
-  // Structural actions (create, rename, duplicate, delete) don't roll back a bit
-  // of optimistic UI — they either happen or they don't — so a silent failure
-  // would leave the engineer with no signal the action was lost. This surfaces
-  // the last such failure as a dismissible banner; it's cleared when another
-  // action starts or the selection changes, so a stale message never lingers.
-  /** The last create/rename/duplicate/delete failure, shown as a banner; null when clear. */
-  readonly actionError = signal<string | null>(null);
-
   constructor() {
     // With nothing selected in the URL, default to the first dataset once the
     // list arrives (replacing history so the bare URL isn't a back-button trap).
@@ -85,12 +78,6 @@ export class DatasetCollection {
       untracked(() => {
         if (this.selectedId() === null && list.length) this.openDataset(list[0].id, true);
       });
-    });
-
-    // A stale action error shouldn't outlive the selection it was raised against.
-    effect(() => {
-      this.selectedId();
-      untracked(() => this.actionError.set(null));
     });
   }
 
@@ -128,13 +115,13 @@ export class DatasetCollection {
     const trimmed = name.trim();
     const reportId = this.reportId();
     if (!trimmed || reportId === null || !sourceId) return;
-    this.actionError.set(null);
     this.autosave.track(this.api.create(reportId, trimmed, sourceId)).subscribe({
       next: (dataset) => {
         this.openDataset(dataset.id);
         this.datasetsResource.reload();
+        this.notify.success(`Dataset "${trimmed}" created.`);
       },
-      error: () => this.actionError.set(`Couldn't create "${trimmed}". Please try again.`),
+      error: () => this.notify.error(`Couldn't create "${trimmed}". Please try again.`),
     });
   }
 
@@ -144,10 +131,12 @@ export class DatasetCollection {
     // Skip the save when the name is blank or unchanged, so blurring the field
     // without editing it doesn't fire a needless request.
     if (!id || !trimmed || trimmed === this.selected()?.name) return;
-    this.actionError.set(null);
     this.autosave.track(this.api.rename(id, trimmed)).subscribe({
-      next: () => this.datasetsResource.reload(),
-      error: () => this.actionError.set(`Couldn't rename the dataset to "${trimmed}". Please try again.`),
+      next: () => {
+        this.datasetsResource.reload();
+        this.notify.success(`Dataset renamed to "${trimmed}".`);
+      },
+      error: () => this.notify.error(`Couldn't rename the dataset to "${trimmed}". Please try again.`),
     });
   }
 
@@ -155,13 +144,13 @@ export class DatasetCollection {
   cloneDataset(): void {
     const dataset = this.selected();
     if (!dataset) return;
-    this.actionError.set(null);
     this.autosave.track(this.api.clone(dataset.id, `${dataset.name} (copy)`)).subscribe({
       next: (created) => {
         this.openDataset(created.id);
         this.datasetsResource.reload();
+        this.notify.success(`Duplicated "${dataset.name}".`);
       },
-      error: () => this.actionError.set(`Couldn't duplicate "${dataset.name}". Please try again.`),
+      error: () => this.notify.error(`Couldn't duplicate "${dataset.name}". Please try again.`),
     });
   }
 
@@ -172,14 +161,14 @@ export class DatasetCollection {
     // Pick the next surviving dataset up front so the delete opens it directly,
     // rather than briefly clearing the selection and re-defaulting to the first.
     const next = this.datasets().find((d) => d.id !== id)?.id ?? null;
-    this.actionError.set(null);
     this.autosave.track(this.api.remove(id)).subscribe({
       next: () => {
         this.openDataset(next, true);
         this.datasetsResource.reload();
+        this.notify.success(`Deleted "${name ?? 'the dataset'}".`);
       },
       error: () =>
-        this.actionError.set(`Couldn't delete "${name ?? 'the dataset'}". Please try again.`),
+        this.notify.error(`Couldn't delete "${name ?? 'the dataset'}". Please try again.`),
     });
   }
 }

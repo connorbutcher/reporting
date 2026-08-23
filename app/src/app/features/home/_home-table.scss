@@ -2,13 +2,13 @@
 // Each of those components pulls this in with `@use '../home-table';` so the
 // two stay visually identical without duplicating the rules.
 
-.home__table-wrapper {
+.home-table-wrapper {
   display: block;
   min-height: 0;
   overflow: auto;
 }
 
-.home__row {
+.home-row {
   cursor: pointer;
 
   // Rows are keyboard-openable (tabindex + Enter) alongside the click handler, so they need
@@ -19,7 +19,7 @@
   }
 }
 
-.home__row-name {
+.home-row-name {
   display: inline-flex;
   align-items: center;
   overflow: hidden;
@@ -32,13 +32,13 @@
   }
 }
 
-.home__col-number,
-.home__col-status,
-.home__col-modified {
+.home-col-number,
+.home-col-status,
+.home-col-modified {
   width: 130px;
 }
 
-.home__rnum {
+.home-rnum {
   font-family: var(--app-font-mono);
   font-size: 0.78rem;
   font-weight: 700;
@@ -46,13 +46,13 @@
   letter-spacing: 0.01em;
 }
 
-.home__table-skeleton {
+.home-table-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.home__empty {
+.home-empty {
   margin: 0;
   padding: 12px;
   color: #64748b;

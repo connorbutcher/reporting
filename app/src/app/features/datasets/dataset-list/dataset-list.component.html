@@ -28,10 +28,6 @@
   />
 </div>
 
-@if (actionError() && selectedId() === null) {
-  <p class="error" role="alert">{{ actionError() }}</p>
-}
-
 @if (error(); as message) {
   <p class="error">{{ message }}</p>
 } @else if (loading()) {

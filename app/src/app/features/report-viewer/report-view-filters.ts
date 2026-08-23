@@ -1,9 +1,14 @@
 import { Signal, computed } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../core/models/dataset.model';
 import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter.model';
-import { ReportRevisionContent, Widget, WidgetType } from '../../core/models/report.model';
+import { ReportRevisionContent, WidgetType, readChartBindings } from '../../core/models/report.model';
 import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
 import { FilterGroupModel } from '../report-builder/models/filter.model';
+
+/** The session-filter map key for one chart binding — a widget id plus its binding id. */
+export function chartBindingKey(widgetId: string, bindingId: string): string {
+  return `${widgetId}::${bindingId}`;
+}
 
 /** One editable filter shown in the viewer's panel. */
 export interface ViewFilterEntry {
@@ -50,18 +55,58 @@ export class ReportViewFilters {
   ) {
     const schemaFor = (datasetId: number) => computed(() => schemas()[datasetId] ?? null);
 
-    // Tables and charts both bind to a dataset and both carry their own
-    // filter now, so both get a widget-level filter entry.
-    const datasetBound = content.widgets.filter(
-      (w): w is Extract<Widget, { type: 'dataTable' | 'scatterChart' | 'lineChart' }> =>
-        (w.type === 'dataTable' || isChartWidget(w)) && !!w.config.datasetId,
-    );
-
     // A page filter exists for every dataset in use, not only those the author
     // filtered — otherwise a reader couldn't add one where none was defined.
-    const datasetIds = [...new Set(datasetBound.map((w) => w.config.datasetId!))];
+    const datasetIds = new Set<number>();
+    const widgetEntries: ViewFilterEntry[] = [];
 
-    this.pageEntries = datasetIds.map((datasetId) => {
+    for (const widget of content.widgets) {
+      if (widget.type === 'dataTable') {
+        const datasetId = widget.config.datasetId;
+        if (!datasetId) continue;
+        datasetIds.add(datasetId);
+        const schema = schemaFor(datasetId);
+        const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
+        // A table only offers the columns it shows — filtering it by a column that
+        // isn't on it would silently drop rows for a reason the reader can't see.
+        const placed = new Set(widget.config.columns.map((c) => c.columnId));
+        const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+        widgetEntries.push({
+          key: widget.id,
+          label: computed(() => title),
+          datasetId,
+          published: widget.config.filter,
+          group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
+          type: widget.type,
+          icon: widgetTypeDescriptor(widget.type).icon,
+        });
+      } else if (isChartWidget(widget)) {
+        // A chart overlays one or more datasets; each bound binding filters its own
+        // rows, so each gets its own entry. A chart has no fixed column set, so its
+        // filter offers the whole dataset.
+        const bound = readChartBindings(widget.config).filter((b) => b.datasetId);
+        const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
+        const multi = bound.length > 1;
+        for (const binding of bound) {
+          const datasetId = binding.datasetId!;
+          datasetIds.add(datasetId);
+          const schema = schemaFor(datasetId);
+          widgetEntries.push({
+            key: chartBindingKey(widget.id, binding.id),
+            label: computed(() =>
+              multi ? `${title} · ${binding.label.trim() || schema()?.name || 'Dataset'}` : title,
+            ),
+            datasetId,
+            published: binding.filter,
+            group: buildGroup(binding.filter, schema, catalogue, `view:${widget.id}:${binding.id}`),
+            type: widget.type,
+            icon: widgetTypeDescriptor(widget.type).icon,
+          });
+        }
+      }
+    }
+
+    this.pageEntries = [...datasetIds].map((datasetId) => {
       const published = content.filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
       const schema = schemaFor(datasetId);
       return {
@@ -73,32 +118,7 @@ export class ReportViewFilters {
       };
     });
 
-    this.widgetEntries = datasetBound.map((widget) => {
-      const datasetId = widget.config.datasetId!;
-      const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
-      const schema = schemaFor(datasetId);
-
-      // A table only offers the columns it shows — filtering it by a column that
-      // isn't on it would silently drop rows for a reason the reader can't see.
-      // A chart has no such fixed set, so its filter offers the whole dataset.
-      const columns =
-        widget.type === 'dataTable'
-          ? (() => {
-              const placed = new Set(widget.config.columns.map((c) => c.columnId));
-              return computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
-            })()
-          : undefined;
-
-      return {
-        key: widget.id,
-        label: computed(() => title),
-        datasetId,
-        published: widget.config.filter,
-        group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
-        type: widget.type,
-        icon: widgetTypeDescriptor(widget.type).icon,
-      };
-    });
+    this.widgetEntries = widgetEntries;
 
     // Built after pageEntries/widgetEntries exist — each computed() closes over
     // one entry, so reading it only tracks that entry's own group signals.

@@ -13,29 +13,29 @@
   flex-direction: column;
 }
 
-.confirm-dialog__header {
+.confirm-dialog-header {
   padding: 18px 20px 4px;
 }
 
-.confirm-dialog__title {
+.confirm-dialog-title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--app-navy);
 }
 
-.confirm-dialog__body {
+.confirm-dialog-body {
   padding: 10px 20px 14px;
 }
 
-.confirm-dialog__message {
+.confirm-dialog-message {
   margin: 0;
   font-size: 0.88rem;
   color: #334155;
   line-height: 1.5;
 }
 
-.confirm-dialog__footer {
+.confirm-dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -43,7 +43,7 @@
   border-top: 1px solid var(--app-card-border);
 }
 
-.confirm-dialog__button {
+.confirm-dialog-button {
   padding: 7px 16px;
   border-radius: 8px;
   font: inherit;

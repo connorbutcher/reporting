@@ -1,16 +1,16 @@
 <div class="create-dialog">
-  <header class="create-dialog__header">
-    <h2 class="create-dialog__title">Create</h2>
+  <header class="create-dialog-header">
+    <h2 class="create-dialog-title">Create</h2>
   </header>
 
-  <div class="create-dialog__body">
-    <div class="create-dialog__type" role="radiogroup" aria-label="What to create">
+  <div class="create-dialog-body">
+    <div class="create-dialog-type" role="radiogroup" aria-label="What to create">
       <button
         type="button"
-        class="create-dialog__type-option"
+        class="create-dialog-type-option"
         role="radio"
         [attr.aria-checked]="kind() === 'folder'"
-        [class.create-dialog__type-option--active]="kind() === 'folder'"
+        [class.create-dialog-type-option--active]="kind() === 'folder'"
         (click)="selectKind('folder')"
       >
         <i class="pi pi-folder" aria-hidden="true"></i>
@@ -18,10 +18,10 @@
       </button>
       <button
         type="button"
-        class="create-dialog__type-option"
+        class="create-dialog-type-option"
         role="radio"
         [attr.aria-checked]="kind() === 'report'"
-        [class.create-dialog__type-option--active]="kind() === 'report'"
+        [class.create-dialog-type-option--active]="kind() === 'report'"
         (click)="selectKind('report')"
       >
         <i class="pi pi-file" aria-hidden="true"></i>
@@ -31,7 +31,7 @@
 
     <input
       #nameInput
-      class="create-dialog__input"
+      class="create-dialog-input"
       [ngModel]="name()"
       (ngModelChange)="name.set($event)"
       (keyup.enter)="create()"
@@ -41,7 +41,7 @@
 
     @if (kind() === 'report') {
       <p-tree-select
-        class="create-dialog__source"
+        class="create-dialog-source"
         [options]="treeNodes()"
         [ngModel]="selectedSource()"
         (ngModelChange)="selectedSource.set($event)"
@@ -54,17 +54,17 @@
     }
   </div>
 
-  <footer class="create-dialog__footer">
+  <footer class="create-dialog-footer">
     <button
       type="button"
-      class="create-dialog__button create-dialog__button--secondary"
+      class="create-dialog-button create-dialog-button--secondary"
       (click)="cancel()"
     >
       Cancel
     </button>
     <button
       type="button"
-      class="create-dialog__button create-dialog__button--primary"
+      class="create-dialog-button create-dialog-button--primary"
       [disabled]="!name().trim()"
       (click)="create()"
     >

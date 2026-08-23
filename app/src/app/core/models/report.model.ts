@@ -103,17 +103,38 @@ export interface ChartTooltipColumn {
 }
 
 /**
+ * One dataset's contribution to a chart: its axes, optional per-value split, and
+ * row filter. A chart carries one or more of these; several overlaid on shared
+ * axes is how two datasets are plotted against each other. Each binding is
+ * queried on its own dataset and its series merged client-side.
+ */
+export interface ChartSeriesBinding {
+  /** Client-generated, addresses this binding in the editor — not meaningful server-side. */
+  id: string;
+  /** Null until the user binds this series to a dataset. */
+  datasetId: number | null;
+  xColumnId: string | null;
+  yColumnId: string | null;
+  /** Splits this binding into a separate coloured series per distinct value. Null plots one. */
+  seriesColumnId: string | null;
+  /** Blank falls back to the dataset/column name in the legend. */
+  label: string;
+  /** Rows this binding plots, narrowed server-side. Null means no per-series filter. */
+  filter: FilterGroup | null;
+}
+
+/**
  * Configuration common to every chart kind (scatter, line, and future bar/area).
  * Concrete kinds narrow `type` and add their own presentation options; everything
  * about data binding, tolerance bands, tooltips, and filtering is shared here.
  */
 export interface ChartWidgetConfigBase extends WidgetConfigBase {
-  /** Null until the user binds the chart to a dataset. */
-  datasetId: number | null;
-  xColumnId: string | null;
-  yColumnId: string | null;
-  /** Splits points into a separate coloured series per distinct value. Null plots one series. */
-  seriesColumnId: string | null;
+  /**
+   * The datasets this chart overlays on its shared axes, each queried on its own
+   * dataset. Always at least one entry. Prefer this over the deprecated flat
+   * fields below; read both through {@link readChartBindings}.
+   */
+  bindings: ChartSeriesBinding[];
 
   /** Blank falls back to the bound column's own name. */
   xAxisLabel: string;
@@ -126,10 +147,24 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   toleranceBands: ChartToleranceBand[];
   /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
   tooltipColumns: ChartTooltipColumn[];
-
-  /** Rows this chart plots, narrowed server-side. Null means no widget-level filter. */
-  filter: FilterGroup | null;
 }
+
+/**
+ * The pre-multi-dataset chart config shape: dataset, axes, and filter lived
+ * directly on the config rather than on a binding. Still present in reports
+ * saved before {@link ChartSeriesBinding} existed, so {@link readChartBindings}
+ * folds it into a single binding. Never written any more.
+ */
+interface LegacyFlatChartConfig {
+  datasetId?: number | null;
+  xColumnId?: string | null;
+  yColumnId?: string | null;
+  seriesColumnId?: string | null;
+  filter?: FilterGroup | null;
+}
+
+/** The binding id a legacy chart config folds into — stable so every reader agrees. */
+const LEGACY_BINDING_ID = 'legacy-primary';
 
 export interface ScatterChartWidgetConfig extends ChartWidgetConfigBase {
   type: 'scatterChart';
@@ -309,17 +344,15 @@ export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
 
 const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
-  datasetId: null,
-  xColumnId: null,
-  yColumnId: null,
-  seriesColumnId: null,
+  // A fresh chart starts with no bindings; the model seeds an empty one so the
+  // panel has a row to bind.
+  bindings: [],
   xAxisLabel: '',
   yAxisLabel: '',
   showLegend: true,
   pointSize: 8,
   toleranceBands: [],
   tooltipColumns: [],
-  filter: null,
 };
 
 export const DEFAULT_SCATTER_CHART_CONFIG: Omit<ScatterChartWidgetConfig, 'type'> = {
@@ -342,6 +375,49 @@ export const DEFAULT_BAR_CHART_CONFIG: Omit<BarChartWidgetConfig, 'type'> = {
   stacked: false,
   horizontal: false,
 };
+
+/** A blank series binding; the id is filled in per instance. */
+export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
+  datasetId: null,
+  xColumnId: null,
+  yColumnId: null,
+  seriesColumnId: null,
+  label: '',
+  filter: null,
+};
+
+/**
+ * The chart's series bindings, normalised: prefers the {@link ChartSeriesBinding}
+ * list, and for reports saved before the multi-dataset change folds the deprecated
+ * flat `datasetId`/`xColumnId`/… fields into a single binding. Always returns at
+ * least one binding so callers never special-case the empty case.
+ */
+export function readChartBindings(config: ChartWidgetConfigBase): ChartSeriesBinding[] {
+  // `bindings` is required on the type but genuinely absent from reports persisted
+  // before it existed, so this read must tolerate `undefined`, not just an empty array.
+  if (config.bindings?.length) return config.bindings;
+
+  // A report saved before bindings existed carries its axes on the flat legacy
+  // fields; fold them into one binding. New configs always have `bindings`.
+  //
+  // The id is a fixed constant, not a fresh uuid: several call sites fold the same
+  // raw legacy DTO independently (the viewer resolves filters, keys the reader
+  // panel, and queries from three separate reads), and they must agree on the
+  // binding's id for the per-binding filter map to line up. One binding per legacy
+  // chart means a constant can't collide within a widget.
+  const legacy = config as LegacyFlatChartConfig;
+  return [
+    {
+      id: LEGACY_BINDING_ID,
+      datasetId: legacy.datasetId ?? null,
+      xColumnId: legacy.xColumnId ?? null,
+      yColumnId: legacy.yColumnId ?? null,
+      seriesColumnId: legacy.seriesColumnId ?? null,
+      label: '',
+      filter: legacy.filter ?? null,
+    },
+  ];
+}
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {
   title: 'Text',

@@ -1,40 +1,40 @@
 @if (store.searching()) {
-  <div class="home__table-skeleton">
+  <div class="home-table-skeleton">
     @for (i of [1, 2, 3]; track i) {
       <p-skeleton height="2rem" />
     }
   </div>
 } @else if (results().length === 0) {
-  <p class="home__empty">No reports match "{{ store.searchQuery() }}".</p>
+  <p class="home-empty">No reports match "{{ store.searchQuery() }}".</p>
 } @else {
-  <p-table [value]="results()" sortMode="single" dataKey="id" size="small" class="home__table-wrapper">
+  <p-table [value]="results()" sortMode="single" dataKey="id" size="small" class="home-table-wrapper">
     <ng-template #header>
       <tr>
         <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
-        <th pSortableColumn="number" class="home__col-number">
+        <th pSortableColumn="number" class="home-col-number">
           Number <p-sort-icon field="number" />
         </th>
         <th pSortableColumn="folderPath">Location <p-sort-icon field="folderPath" /></th>
-        <th pSortableColumn="modifiedAt" class="home__col-modified">
+        <th pSortableColumn="modifiedAt" class="home-col-modified">
           Modified <p-sort-icon field="modifiedAt" />
         </th>
       </tr>
     </ng-template>
     <ng-template #body let-result>
       <tr
-        class="home__row"
+        class="home-row"
         tabindex="0"
         (click)="store.openSearchResult(result)"
         (keydown.enter)="store.openSearchResult(result)"
       >
         <td>
-          <span class="home__row-name">
+          <span class="home-row-name">
             <i class="pi pi-file" aria-hidden="true"></i>
             {{ result.name }}
           </span>
         </td>
         <td>
-          <span class="home__rnum">R-{{ result.number }}</span>
+          <span class="home-rnum">R-{{ result.number }}</span>
         </td>
         <td>{{ result.folderPath }}</td>
         <td>{{ result.modifiedAt | date: 'short' }}</td>

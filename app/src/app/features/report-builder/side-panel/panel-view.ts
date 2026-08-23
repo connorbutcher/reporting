@@ -11,7 +11,7 @@ export type PanelView =
   | { kind: 'chartToleranceBand'; widgetId: string; bandId: string }
   | { kind: 'tableAppearance'; widgetId: string }
   | { kind: 'textStyle'; widgetId: string }
-  | { kind: 'widgetFilters'; widgetId: string }
+  | { kind: 'widgetFilters'; widgetId: string; bindingId?: string }
   | { kind: 'reportFilters' }
   | { kind: 'addWidget' }
   | { kind: 'issues' };

@@ -3,13 +3,13 @@
   display: contents;
 }
 
-.home__section {
+.home-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.home__section-label {
+.home-section-label {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -17,7 +17,7 @@
   color: #94a3b8;
 }
 
-.home__folder-row {
+.home-folder-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -26,7 +26,7 @@
 // A plain container, not itself interactive — the open button and the actions button inside it
 // are two separate, sibling controls (never nested `<button>`s, which is invalid HTML and breaks
 // keyboard/screen-reader navigation).
-.home__folder-chip {
+.home-folder-chip {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -42,7 +42,7 @@
   }
 }
 
-.home__folder-chip-open {
+.home-folder-chip-open {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -56,13 +56,13 @@
   cursor: pointer;
 }
 
-.home__folder-chip-icon {
+.home-folder-chip-icon {
   flex: 0 0 auto;
   color: var(--app-navy);
   font-size: 0.85rem;
 }
 
-.home__folder-chip-name {
+.home-folder-chip-name {
   flex: 1;
   min-width: 0;
   font-size: 0.82rem;
@@ -73,7 +73,7 @@
   text-align: left;
 }
 
-.home__folder-chip-actions {
+.home-folder-chip-actions {
   flex: 0 0 auto;
   display: grid;
   place-items: center;

@@ -1,12 +1,12 @@
 <div class="rename-dialog">
-  <header class="rename-dialog__header">
-    <h2 class="rename-dialog__title">Rename {{ data.kind }}</h2>
+  <header class="rename-dialog-header">
+    <h2 class="rename-dialog-title">Rename {{ data.kind }}</h2>
   </header>
 
-  <div class="rename-dialog__body">
+  <div class="rename-dialog-body">
     <input
       #nameInput
-      class="rename-dialog__input"
+      class="rename-dialog-input"
       [ngModel]="name()"
       (ngModelChange)="name.set($event)"
       (keyup.enter)="save()"
@@ -14,17 +14,17 @@
     />
   </div>
 
-  <footer class="rename-dialog__footer">
+  <footer class="rename-dialog-footer">
     <button
       type="button"
-      class="rename-dialog__button rename-dialog__button--secondary"
+      class="rename-dialog-button rename-dialog-button--secondary"
       (click)="cancel()"
     >
       Cancel
     </button>
     <button
       type="button"
-      class="rename-dialog__button rename-dialog__button--primary"
+      class="rename-dialog-button rename-dialog-button--primary"
       [disabled]="!name().trim()"
       (click)="save()"
     >

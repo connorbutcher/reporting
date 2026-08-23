@@ -11,9 +11,10 @@ import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
-  Widget,
+  readChartBindings,
 } from '../../core/models/report.model';
 import { isChartWidget } from '../../core/models/widget-catalog';
+import { NotificationService } from '../../core/services/notification.service';
 import { ReportViewFilters } from './report-view-filters';
 
 /** Which secondary pane the aside is showing. */
@@ -36,6 +37,7 @@ export class ReportViewerStore {
   private readonly reportApi = inject(ReportApiService);
   private readonly datasetApi = inject(DatasetApiService);
   private readonly filterApi = inject(FilterApiService);
+  private readonly notify = inject(NotificationService);
 
   /** Schemas and operators the filter panel needs to describe each column. */
   private readonly schemas = signal<Record<string, DatasetSchema>>({});
@@ -116,14 +118,17 @@ export class ReportViewerStore {
 
   /** Fetches a schema per dataset the version uses, so the filter panel can name columns. */
   private loadSchemas(content: ReportRevisionContent): void {
-    const datasetIds = new Set(
-      content.widgets
-        .filter(
-          (w): w is Extract<Widget, { type: 'dataTable' | 'scatterChart' | 'lineChart' }> =>
-            (w.type === 'dataTable' || isChartWidget(w)) && !!w.config.datasetId,
-        )
-        .map((w) => w.config.datasetId!),
-    );
+    const datasetIds = new Set<number>();
+    for (const widget of content.widgets) {
+      if (widget.type === 'dataTable') {
+        if (widget.config.datasetId) datasetIds.add(widget.config.datasetId);
+      } else if (isChartWidget(widget)) {
+        // A chart can overlay several datasets — one per binding — all needed here.
+        for (const binding of readChartBindings(widget.config)) {
+          if (binding.datasetId) datasetIds.add(binding.datasetId);
+        }
+      }
+    }
 
     for (const datasetId of datasetIds) {
       if (this.schemas()[datasetId]) continue;
@@ -147,8 +152,9 @@ export class ReportViewerStore {
   edit(fromVersion?: number): void {
     const id = this.reportId();
     if (!id) return;
-    this.reportApi.checkout(id, fromVersion).subscribe(() => {
-      this.router.navigate(['/reports', id, 'edit']);
+    this.reportApi.checkout(id, fromVersion).subscribe({
+      next: () => this.router.navigate(['/reports', id, 'edit']),
+      error: () => this.notify.error("Couldn't open this report for editing. Please try again."),
     });
   }
 

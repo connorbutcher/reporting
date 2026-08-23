@@ -3,10 +3,6 @@
 } @else {
   <app-dataset-toolbar />
 
-  @if (actionError(); as message) {
-    <p class="error" role="alert">{{ message }}</p>
-  }
-
   @if (error()) {
     <p class="error">{{ error() }}</p>
   }

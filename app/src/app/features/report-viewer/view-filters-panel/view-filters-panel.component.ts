@@ -26,7 +26,11 @@ export class ViewFiltersPanelComponent {
   protected readonly widgetEntries = computed(() => this.filters().widgetEntries);
 
   protected isOpen(entry: ViewFilterEntry): boolean {
-    return this.openKey() === entry.key;
+    const open = this.openKey();
+    if (open === null) return false;
+    // A chart's filter button focuses the widget by its bare id, which opens every
+    // binding entry (keyed `<widgetId>::<bindingId>`); a table entry matches exactly.
+    return open === entry.key || entry.key.startsWith(`${open}::`);
   }
 
   protected toggle(entry: ViewFilterEntry): void {

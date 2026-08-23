@@ -1,21 +1,21 @@
-<app-panel-group label="Data source" icon="⛁">
-  <label class="panel-field">
-    <span class="panel-field-label">Dataset</span>
-    <p-select
-      [options]="datasets()"
-      [ngModel]="chart().datasetId()"
-      optionLabel="name"
-      optionValue="id"
-      placeholder="Select a dataset"
-      appendTo="body"
-      [showClear]="true"
-      fluid
-      (onChange)="chart().setDataset($event.value ?? null)"
-    />
-  </label>
-</app-panel-group>
-
 @if (barChart(); as bar) {
+  <app-panel-group label="Data source" icon="⛁">
+    <label class="panel-field">
+      <span class="panel-field-label">Dataset</span>
+      <p-select
+        [options]="datasets()"
+        [ngModel]="bar.datasetId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a dataset"
+        appendTo="body"
+        [showClear]="true"
+        fluid
+        (onChange)="bar.setDataset($event.value ?? null)"
+      />
+    </label>
+  </app-panel-group>
+
   <app-panel-group label="Bars" icon="＋">
     <label class="panel-field">
       <span class="panel-field-label">Category</span>
@@ -62,58 +62,159 @@
       </label>
     </div>
   </app-panel-group>
-} @else {
-  <app-panel-group label="Axes" icon="＋">
-    <div class="panel-grid-fields">
-      <label class="panel-field">
-        <span class="panel-field-label">X axis</span>
-        <p-select
-          [options]="chart().numericColumns()"
-          [ngModel]="chart().xColumnId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Column"
-          appendTo="body"
-          [disabled]="!chart().datasetId()"
-          fluid
-          (onChange)="chart().xColumnId.set($event.value ?? null)"
-        />
-      </label>
-      <label class="panel-field">
-        <span class="panel-field-label">Y axis</span>
-        <p-select
-          [options]="chart().numericColumns()"
-          [ngModel]="chart().yColumnId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Column"
-          appendTo="body"
-          [disabled]="!chart().datasetId()"
-          fluid
-          (onChange)="chart().yColumnId.set($event.value ?? null)"
-        />
-      </label>
-    </div>
-  </app-panel-group>
-}
 
-<app-panel-group label="Series" icon="◐">
-  <label class="panel-field">
-    <span class="panel-field-label">Colour by (optional)</span>
-    <p-select
-      [options]="chart().schema()?.columns ?? []"
-      [ngModel]="chart().seriesColumnId()"
-      optionLabel="name"
-      optionValue="id"
-      placeholder="One series"
-      appendTo="body"
-      [showClear]="true"
-      [disabled]="!chart().datasetId()"
-      fluid
-      (onChange)="chart().seriesColumnId.set($event.value ?? null)"
-    />
-  </label>
-</app-panel-group>
+  <app-panel-group label="Series" icon="◐">
+    <label class="panel-field">
+      <span class="panel-field-label">Colour by (optional)</span>
+      <p-select
+        [options]="bar.schema()?.columns ?? []"
+        [ngModel]="bar.seriesColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="One series"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!bar.datasetId()"
+        fluid
+        (onChange)="bar.seriesColumnId.set($event.value ?? null)"
+      />
+    </label>
+  </app-panel-group>
+
+  <button
+    type="button"
+    class="panel-menu-item"
+    [disabled]="!bar.datasetId()"
+    (click)="navigate({ kind: 'widgetFilters', widgetId: bar.id })"
+  >
+    <i class="pi pi-filter" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Filters</span>
+      <span class="panel-menu-hint">
+        {{
+          !bar.datasetId()
+            ? 'Pick a dataset first'
+            : bar.filter.count() === 0
+              ? 'Showing every row'
+              : bar.filter.count() + ' condition' + (bar.filter.count() > 1 ? 's' : '')
+        }}
+      </span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+} @else {
+  <!-- Scatter/line: one card per dataset overlaid on the shared axes. -->
+  @for (binding of chart().bindings(); track binding.id; let i = $index) {
+    <app-panel-group
+      [label]="chart().bindings().length > 1 ? 'Dataset ' + (i + 1) : 'Data source'"
+      icon="⛁"
+    >
+      <label class="panel-field">
+        <span class="panel-field-label">Dataset</span>
+        <p-select
+          [options]="datasets()"
+          [ngModel]="binding.datasetId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Select a dataset"
+          appendTo="body"
+          [showClear]="true"
+          fluid
+          (onChange)="binding.setDataset($event.value ?? null)"
+        />
+      </label>
+
+      <div class="panel-grid-fields">
+        <label class="panel-field">
+          <span class="panel-field-label">X axis</span>
+          <p-select
+            [options]="binding.numericColumns()"
+            [ngModel]="binding.xColumnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column"
+            appendTo="body"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.xColumnId.set($event.value ?? null)"
+          />
+        </label>
+        <label class="panel-field">
+          <span class="panel-field-label">Y axis</span>
+          <p-select
+            [options]="binding.numericColumns()"
+            [ngModel]="binding.yColumnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column"
+            appendTo="body"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.yColumnId.set($event.value ?? null)"
+          />
+        </label>
+      </div>
+
+      <label class="panel-field">
+        <span class="panel-field-label">Colour by (optional)</span>
+        <p-select
+          [options]="binding.schema()?.columns ?? []"
+          [ngModel]="binding.seriesColumnId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="One series"
+          appendTo="body"
+          [showClear]="true"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.seriesColumnId.set($event.value ?? null)"
+        />
+      </label>
+
+      <button
+        type="button"
+        class="panel-menu-item"
+        [disabled]="!binding.datasetId()"
+        (click)="navigate({ kind: 'widgetFilters', widgetId: chart().id, bindingId: binding.id })"
+      >
+        <i class="pi pi-filter" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">Filters</span>
+          <span class="panel-menu-hint">
+            {{
+              !binding.datasetId()
+                ? 'Pick a dataset first'
+                : binding.filter.count() === 0
+                  ? 'Showing every point'
+                  : binding.filter.count() + ' condition' + (binding.filter.count() > 1 ? 's' : '')
+            }}
+          </span>
+        </span>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+      </button>
+
+      @if (chart().bindings().length > 1) {
+        <p-button
+          label="Remove dataset"
+          icon="pi pi-trash"
+          severity="danger"
+          text
+          fluid
+          (onClick)="chart().removeBinding(binding.id)"
+        />
+      }
+    </app-panel-group>
+  }
+
+  <p-button
+    label="Add dataset"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    (onClick)="chart().addBinding()"
+  />
+}
 
 <app-panel-group label="Appearance" icon="▤">
   <div class="panel-grid-fields">
@@ -167,28 +268,6 @@
     <app-panel-bar-chart-options [chart]="bar" />
   }
 </app-panel-group>
-
-<button
-  type="button"
-  class="panel-menu-item"
-  [disabled]="!chart().datasetId()"
-  (click)="navigate({ kind: 'widgetFilters', widgetId: chart().id })"
->
-  <i class="pi pi-filter" aria-hidden="true"></i>
-  <span class="panel-menu-text">
-    <span class="panel-menu-label">Filters</span>
-    <span class="panel-menu-hint">
-      {{
-        !chart().datasetId()
-          ? 'Pick a dataset first'
-          : chart().filter.count() === 0
-            ? 'Showing every point'
-            : chart().filter.count() + ' condition' + (chart().filter.count() > 1 ? 's' : '')
-      }}
-    </span>
-  </span>
-  <i class="pi pi-angle-right" aria-hidden="true"></i>
-</button>
 
 <app-panel-chart-tolerance-list [chart]="chart()" />
 

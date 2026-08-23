@@ -7,6 +7,7 @@ import { TreeNodeSelectEvent } from 'primeng/tree';
 import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
+import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder.model';
 import { ReportSearchResult, ReportSummary } from '../../core/models/report.model';
 import { ContentRow, FolderRow, ReportRow, folderToRow, reportToRow } from './content-row';
@@ -33,8 +34,9 @@ export class HomeStore {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly actions = inject(HomeItemActionsService);
+  private readonly notify = inject(NotificationService);
 
-  readonly tree = new FolderTreeStore(this.folderApi);
+  readonly tree = new FolderTreeStore(this.folderApi, this.notify);
 
   /** The URL is the source of truth for which folder is open, so a link deep into the tree is shareable. */
   private readonly queryParams = toSignal(this.route.queryParamMap, {
@@ -90,7 +92,6 @@ export class HomeStore {
   readonly actionsBusy = this.actions.busy.asReadonly();
   /** The rail shows its skeleton until the tree's root level is loaded — by whichever fetch got there first. */
   readonly treeLoading = computed(() => !this.tree.hasChildrenLoaded(ROOT_KEY));
-  readonly errorMessage = signal<string | null>(null);
 
   /** Collapses the folder tree to a slim strip, freeing width for the contents table. */
   readonly railCollapsed = signal(false);
@@ -219,9 +220,7 @@ export class HomeStore {
     });
   }
 
-  /** Called after every successful mutation, so a stale failure message doesn't outlive it. */
   private reload(): void {
-    this.errorMessage.set(null);
     this.foldersResource.reload();
     this.reportsResource.reload();
   }
@@ -257,18 +256,21 @@ export class HomeStore {
 
   /** Arms the shared context menu for a row; the shell component then shows the overlay. */
   prepareContextMenu(row: ContentRow): void {
-    this.errorMessage.set(null);
     this.contextRow.set(row);
   }
 
   private rename(row: ContentRow): void {
-    this.actions.rename(row).subscribe(() => this.reload());
+    this.actions.rename(row).subscribe(() => {
+      this.reload();
+      this.notify.success(`${this.label(row)} renamed.`);
+    });
   }
 
   private move(row: ContentRow): void {
     this.actions.move(row).subscribe((destination) => {
       this.reload();
       if (destination !== this.selectedFolderId()) this.tree.refreshNodeIfPresent(destination);
+      this.notify.success(`${this.label(row)} moved.`);
     });
   }
 
@@ -281,9 +283,12 @@ export class HomeStore {
 
   private remove(row: ContentRow): void {
     this.actions.remove(row).subscribe({
-      next: () => this.reload(),
+      next: () => {
+        this.reload();
+        this.notify.success(`${this.label(row)} deleted.`);
+      },
       error: (err: { status?: number }) => {
-        this.errorMessage.set(
+        this.notify.error(
           err?.status === 409
             ? 'That folder still has folders or reports in it — empty it first.'
             : 'Something went wrong deleting that.',
@@ -296,8 +301,17 @@ export class HomeStore {
 
   openCreateDialog(): void {
     this.actions.create(this.selectedFolderId()).subscribe((outcome) => {
-      if (outcome.kind === 'folder') this.reload();
-      else this.router.navigate(['/reports', outcome.reportId, 'edit']);
+      if (outcome.kind === 'folder') {
+        this.reload();
+        this.notify.success('Folder created.');
+      } else {
+        this.router.navigate(['/reports', outcome.reportId, 'edit']);
+      }
     });
+  }
+
+  /** "Folder" or "Report", capitalised, for a toast about a row action. */
+  private label(row: ContentRow): string {
+    return row.kind === 'folder' ? 'Folder' : 'Report';
   }
 }

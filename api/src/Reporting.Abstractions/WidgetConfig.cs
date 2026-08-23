@@ -156,19 +156,54 @@ public class ChartTooltipColumn
 }
 
 /// <summary>
+/// One dataset's contribution to a chart: its dataset, axes, optional per-value
+/// split, and row filter. A chart carries one or more of these; several overlaid
+/// on shared axes is how two datasets are plotted against each other. Each binding
+/// is queried on its own dataset and its series merged on the client.
+/// </summary>
+public class ChartSeriesBinding
+{
+    /// <summary>Client-generated, addresses this binding in the editor — not meaningful server-side.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>Null until the user binds this series to a dataset.</summary>
+    public int? DatasetId { get; set; }
+
+    public Guid? XColumnId { get; set; }
+    public Guid? YColumnId { get; set; }
+
+    /// <summary>Splits this binding into a separate coloured series per distinct value. Null plots one.</summary>
+    public Guid? SeriesColumnId { get; set; }
+
+    /// <summary>Blank falls back to the dataset/column name in the legend.</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Rows this binding plots, narrowed server-side. Null means no per-series filter.</summary>
+    public FilterGroupDto? Filter { get; set; }
+}
+
+/// <summary>
 /// Shared configuration for every chart kind (scatter, line, and future bar/area).
 /// Concrete kinds extend this with their own presentation options; the data-binding,
 /// tolerance, tooltip, and filter fields are common to all of them.
 /// </summary>
 public abstract class ChartWidgetConfig : WidgetConfig
 {
-    /// <summary>Null until the user binds the chart to a dataset.</summary>
+    /// <summary>
+    /// The datasets this chart overlays on its shared axes, each queried on its own
+    /// dataset. Newer clients populate this; the flat fields below remain so reports
+    /// saved before bindings existed still round-trip (the client folds them into a
+    /// single binding on read).
+    /// </summary>
+    public List<ChartSeriesBinding> Bindings { get; set; } = new();
+
+    /// <summary>Deprecated: superseded by <see cref="Bindings"/>. Kept for legacy reports.</summary>
     public int? DatasetId { get; set; }
 
     public Guid? XColumnId { get; set; }
     public Guid? YColumnId { get; set; }
 
-    /// <summary>Splits points into a separate coloured series per distinct value. Null plots one series.</summary>
+    /// <summary>Deprecated: superseded by <see cref="Bindings"/>. Kept for legacy reports.</summary>
     public Guid? SeriesColumnId { get; set; }
 
     /// <summary>Blank falls back to the bound column's own name.</summary>

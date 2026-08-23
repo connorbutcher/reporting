@@ -1,5 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
@@ -19,6 +20,7 @@ import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/pane
   selector: 'app-panel-widget-detail-chart',
   imports: [
     FormsModule,
+    ButtonModule,
     CheckboxModule,
     InputNumberModule,
     InputTextModule,

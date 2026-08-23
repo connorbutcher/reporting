@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetSourceConfig } from '../../../core/models/dataset.model';
 import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
@@ -16,6 +17,7 @@ export class DatasetSourceCommands {
   private readonly autosave = inject(DatasetAutosave);
   private readonly collection = inject(DatasetCollection);
   private readonly schema = inject(DatasetSchemaState);
+  private readonly notify = inject(NotificationService);
 
   /** Repoints the selected dataset at a different source; its config resets server-side. */
   setSource(sourceId: number): void {
@@ -32,7 +34,7 @@ export class DatasetSourceCommands {
         this.schema.columns.set(schema.columns);
         this.collection.reloadList();
       },
-      error: () => {},
+      error: () => this.notify.error("Couldn't change the source. Please try again."),
     });
   }
 
@@ -44,7 +46,10 @@ export class DatasetSourceCommands {
     this.schema.sourceConfig.set(config);
     this.autosave.track(this.api.updateSourceConfig(id, config)).subscribe({
       next: (schema) => this.schema.sourceConfig.set(schema.sourceConfig),
-      error: () => this.schema.sourceConfig.set(previous),
+      error: () => {
+        this.schema.sourceConfig.set(previous);
+        this.notify.error("Couldn't save the source configuration — the change was reverted.");
+      },
     });
   }
 }

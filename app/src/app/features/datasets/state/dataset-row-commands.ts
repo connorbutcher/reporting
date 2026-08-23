@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetRow } from '../../../core/models/dataset.model';
 import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
@@ -16,6 +17,7 @@ export class DatasetRowCommands {
   private readonly autosave = inject(DatasetAutosave);
   private readonly collection = inject(DatasetCollection);
   private readonly window = inject(DatasetRowWindow);
+  private readonly notify = inject(NotificationService);
 
   addRow(): void {
     const id = this.collection.selectedId();
@@ -24,7 +26,7 @@ export class DatasetRowCommands {
       // The new row lands at the end; re-seat the grid onto the final window and
       // scroll it into view for editing.
       next: () => this.window.afterAdd(),
-      error: () => {},
+      error: () => this.notify.error("Couldn't add the row. Please try again."),
     });
   }
 
@@ -38,7 +40,10 @@ export class DatasetRowCommands {
     this.window.replaceRow({ ...row, values });
     this.autosave.track(this.api.updateRow(id, row.id, values)).subscribe({
       next: (updated) => this.window.replaceRow(updated),
-      error: () => this.window.replaceRow(row),
+      error: () => {
+        this.window.replaceRow(row);
+        this.notify.error("That edit couldn't be saved — the cell was reverted.");
+      },
     });
   }
 
@@ -47,7 +52,7 @@ export class DatasetRowCommands {
     if (!id) return;
     this.autosave.track(this.api.removeRow(id, row.id)).subscribe({
       next: () => this.window.removeRow(row.id),
-      error: () => {},
+      error: () => this.notify.error("Couldn't delete the row. Please try again."),
     });
   }
 }

@@ -1,9 +1,9 @@
-<aside class="home__tree app-card" [class.home__tree--collapsed]="store.railCollapsed()">
-  <header class="home__tree-header">
-    <h1 class="home__heading">Reports</h1>
+<aside class="home-tree app-card" [class.home-tree--collapsed]="store.railCollapsed()">
+  <header class="home-tree-header">
+    <h1 class="home-heading">Reports</h1>
     <button
       type="button"
-      class="home__tree-toggle"
+      class="home-tree-toggle"
       (click)="store.toggleRail()"
       [attr.aria-label]="store.railCollapsed() ? 'Expand folder tree' : 'Collapse folder tree'"
     >
@@ -18,14 +18,14 @@
 
   @if (!store.railCollapsed()) {
     @if (store.treeLoading()) {
-      <div class="home__tree-skeleton">
+      <div class="home-tree-skeleton">
         @for (i of [1, 2, 3, 4]; track i) {
           <p-skeleton height="1.5rem" />
         }
       </div>
     } @else {
       <p-tree
-        class="home__tree-widget"
+        class="home-tree-widget"
         [value]="store.tree.nodes()"
         selectionMode="single"
         [selectionKeys]="store.treeSelectionKeys()"

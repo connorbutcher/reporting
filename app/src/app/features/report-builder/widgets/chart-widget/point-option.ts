@@ -3,6 +3,7 @@ import { DatasetColumn } from '../../../../core/models/dataset.model';
 import {
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
+  readChartBindings,
 } from '../../../../core/models/report.model';
 import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query.model';
 import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
@@ -30,16 +31,22 @@ export function buildPointOption(
   data: ChartQueryResult | null,
   columns: DatasetColumn[],
 ): EChartsCoreOption | null {
-  const x = columnById(columns, config.xColumnId);
-  const y = columnById(columns, config.yColumnId);
+  // The first bound binding names the shared axes; its dataset's columns are
+  // `columns` (the same binding the host loaded the schema for).
+  const primary = readChartBindings(config).find((b) => b.datasetId) ?? null;
+  const x = columnById(columns, primary?.xColumnId ?? null);
+  const y = columnById(columns, primary?.yColumnId ?? null);
   if (!x || !y) return null;
 
-  const seriesColumn = columnById(columns, config.seriesColumnId);
   const series = data?.series ?? [];
 
   const xLabel = config.xAxisLabel.trim() || x.name;
   const yLabel = config.yAxisLabel.trim() || y.name;
   const names = series.map((s) => s.label);
+  // A legend and per-series tooltip name only earn their place once there's more
+  // than one series to tell apart — whether from a colour-by split within one
+  // dataset or from several datasets overlaid on the chart.
+  const showSeries = series.length > 1;
   const marks = markLineData(
     data?.toleranceBands ?? [],
     (band) => (band.axis === 'x' ? 'xAxis' : 'yAxis'),
@@ -49,16 +56,16 @@ export function buildPointOption(
     grid: {
       left: 56,
       right: 20,
-      top: seriesColumn && config.showLegend ? 40 : 20,
+      top: showSeries && config.showLegend ? 40 : 20,
       bottom: 48,
       containLabel: true,
     },
     tooltip: {
       trigger: 'item',
       formatter: (params: ScatterTooltipParams) =>
-        formatTooltip(params, seriesColumn, xLabel, yLabel),
+        formatTooltip(params, showSeries, xLabel, yLabel),
     },
-    ...(seriesColumn && config.showLegend ? { legend: { top: 0, data: names } } : {}),
+    ...(showSeries && config.showLegend ? { legend: { top: 0, data: names } } : {}),
     xAxis: { type: 'value', name: xLabel, nameLocation: 'middle', nameGap: 28 },
     yAxis: { type: 'value', name: yLabel, nameLocation: 'middle', nameGap: 40 },
     series: series.map((s, i) => {
@@ -80,12 +87,12 @@ export function buildPointOption(
 
 function formatTooltip(
   params: ScatterTooltipParams,
-  seriesColumn: DatasetColumn | null,
+  showSeries: boolean,
   xLabel: string,
   yLabel: string,
 ): string {
   const lines = [
-    ...(seriesColumn ? [params.seriesName] : []),
+    ...(showSeries ? [params.seriesName] : []),
     `${xLabel}: ${params.value[0]}`,
     `${yLabel}: ${params.value[1]}`,
     ...params.data.tooltipLines,

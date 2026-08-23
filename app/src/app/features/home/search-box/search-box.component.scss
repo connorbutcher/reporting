@@ -3,7 +3,7 @@
   display: contents;
 }
 
-.home__search {
+.home-search {
   position: relative;
   display: flex;
   align-items: center;
@@ -13,7 +13,7 @@
   flex: 0 0 auto;
 }
 
-.home__search-icon {
+.home-search-icon {
   position: absolute;
   left: 9px;
   color: #94a3b8;
@@ -21,14 +21,14 @@
   pointer-events: none;
 }
 
-.home__search-input {
+.home-search-input {
   width: 100%;
   padding-left: 26px !important;
   padding-right: 26px !important;
   box-sizing: border-box;
 }
 
-.home__search-clear {
+.home-search-clear {
   position: absolute;
   right: 6px;
   display: grid;

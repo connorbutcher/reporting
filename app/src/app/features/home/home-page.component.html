@@ -1,15 +1,15 @@
 <div class="home">
   <app-folder-tree-rail />
 
-  <section class="home__contents app-card">
-    <div class="home__toolbar">
+  <section class="home-contents app-card">
+    <div class="home-toolbar">
       @if (store.searchResults()) {
-        <button type="button" class="home__search-back" (click)="store.clearSearch()">
+        <button type="button" class="home-search-back" (click)="store.clearSearch()">
           <i class="pi pi-arrow-left" aria-hidden="true"></i>
           Back to browsing
         </button>
       } @else {
-        <p-breadcrumb class="home__breadcrumb" [model]="store.breadcrumbItems()" [home]="store.homeItem" />
+        <p-breadcrumb class="home-breadcrumb" [model]="store.breadcrumbItems()" [home]="store.homeItem" />
       }
 
       <app-search-box />
@@ -18,7 +18,7 @@
         <!-- Covers Move too, not just Create: both prefetch the whole folder tree before their
              dialog can open, and Move's trigger (a context-menu item) has nowhere of its own to
              show a pending state. -->
-        <i class="pi pi-spin pi-spinner home__action-pending" aria-label="Preparing…"></i>
+        <i class="pi pi-spin pi-spinner home-action-pending" aria-label="Preparing…"></i>
       }
 
       @if (!store.searchResults()) {
@@ -35,20 +35,16 @@
     @if (store.searchResults()) {
       <app-search-results />
     } @else {
-      @if (store.errorMessage(); as error) {
-        <p class="home__error">{{ error }}</p>
-      }
-
       @if (store.contentsLoading()) {
-        <div class="home__table-skeleton">
+        <div class="home-table-skeleton">
           @for (i of [1, 2, 3, 4, 5]; track i) {
             <p-skeleton height="2rem" />
           }
         </div>
       } @else if (store.contentsError()) {
-        <p class="home__error">This folder couldn't be loaded — it may not exist, or you may not have access to it.</p>
+        <p class="home-error">This folder couldn't be loaded — it may not exist, or you may not have access to it.</p>
       } @else if (!store.hasContent()) {
-        <p class="home__empty">This folder is empty.</p>
+        <p class="home-empty">This folder is empty.</p>
       } @else {
         @if (store.folderRows().length > 0) {
           <app-folder-chips (rowAction)="onRowAction($event)" />

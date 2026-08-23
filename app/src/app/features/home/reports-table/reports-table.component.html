@@ -1,7 +1,7 @@
-<div class="home__section">
-  <span class="home__section-label">Reports</span>
+<div class="home-section">
+  <span class="home-section-label">Reports</span>
   <p-table
-    class="home__table-wrapper"
+    class="home-table-wrapper"
     [value]="store.reportRows()"
     sortMode="single"
     dataKey="id"
@@ -10,53 +10,53 @@
     <ng-template #header>
       <tr>
         <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
-        <th pSortableColumn="number" class="home__col-number">
+        <th pSortableColumn="number" class="home-col-number">
           Number <p-sort-icon field="number" />
         </th>
-        <th pSortableColumn="status" class="home__col-status">
+        <th pSortableColumn="status" class="home-col-status">
           Status <p-sort-icon field="status" />
         </th>
-        <th pSortableColumn="modifiedAt" class="home__col-modified">
+        <th pSortableColumn="modifiedAt" class="home-col-modified">
           Modified <p-sort-icon field="modifiedAt" />
         </th>
-        <th class="home__col-actions"></th>
+        <th class="home-col-actions"></th>
       </tr>
     </ng-template>
     <ng-template #body let-row>
       <tr
-        class="home__row"
-        [class.home__row--draft]="row.statusKind === 'draft'"
-        [class.home__row--published]="row.statusKind === 'published'"
-        [class.home__row--empty]="row.statusKind === 'empty'"
+        class="home-row"
+        [class.home-row--draft]="row.statusKind === 'draft'"
+        [class.home-row--published]="row.statusKind === 'published'"
+        [class.home-row--empty]="row.statusKind === 'empty'"
         tabindex="0"
         (click)="store.openRow(row)"
         (keydown.enter)="store.openRow(row)"
         (contextmenu)="onContextMenu($event, row)"
       >
-        <td class="home__col-status-stripe">
-          <span class="home__row-name">
+        <td class="home-col-status-stripe">
+          <span class="home-row-name">
             <i class="pi pi-file" aria-hidden="true"></i>
             {{ row.name }}
           </span>
         </td>
-        <td class="home__col-number">
-          <span class="home__rnum">R-{{ row.number }}</span>
+        <td class="home-col-number">
+          <span class="home-rnum">R-{{ row.number }}</span>
         </td>
-        <td class="home__col-status">
+        <td class="home-col-status">
           <span
-            class="home__status-word"
-            [class.home__status-word--draft]="row.statusKind === 'draft'"
-            [class.home__status-word--published]="row.statusKind === 'published'"
-            [class.home__status-word--empty]="row.statusKind === 'empty'"
+            class="home-status-word"
+            [class.home-status-word--draft]="row.statusKind === 'draft'"
+            [class.home-status-word--published]="row.statusKind === 'published'"
+            [class.home-status-word--empty]="row.statusKind === 'empty'"
           >
             {{ row.status }}
           </span>
         </td>
-        <td class="home__col-modified">{{ row.modifiedAt | date: 'short' }}</td>
-        <td class="home__col-actions">
+        <td class="home-col-modified">{{ row.modifiedAt | date: 'short' }}</td>
+        <td class="home-col-actions">
           <button
             type="button"
-            class="home__row-actions"
+            class="home-row-actions"
             aria-label="Actions"
             (click)="onActions($event, row)"
           >

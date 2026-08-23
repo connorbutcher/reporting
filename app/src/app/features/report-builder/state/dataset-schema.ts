@@ -29,9 +29,16 @@ export class DatasetSchema {
     effect(
       () => {
         for (const widget of this.widgets()) {
-          if (widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel) {
+          if (widget instanceof DataTableWidgetModel) {
             const datasetId = widget.datasetId();
             if (datasetId) this.schemaCache.ensure(datasetId);
+          } else if (widget instanceof ChartWidgetModel) {
+            // A chart can overlay several datasets — one per binding — so every
+            // bound binding's schema is needed, not just the first.
+            for (const binding of widget.bindings()) {
+              const datasetId = binding.datasetId();
+              if (datasetId) this.schemaCache.ensure(datasetId);
+            }
           }
         }
       },

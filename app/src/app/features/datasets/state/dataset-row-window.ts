@@ -1,5 +1,6 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetRow } from '../../../core/models/dataset.model';
 import { DatasetCollection } from './dataset-collection';
 
@@ -22,6 +23,7 @@ const WINDOW = 100;
 export class DatasetRowWindow {
   private readonly api = inject(DatasetApiService);
   private readonly collection = inject(DatasetCollection);
+  private readonly notify = inject(NotificationService);
 
   /** The sparse row array: length is {@link total}; only loaded windows are filled. */
   private readonly _rows = signal<(DatasetRow | undefined)[]>([]);
@@ -96,7 +98,12 @@ export class DatasetRowWindow {
         }
       },
       error: () => {
-        if (seq === this.requestSeq) this.loading.set(false);
+        if (seq !== this.requestSeq) return; // A newer request (or selection) superseded this one.
+        this.loading.set(false);
+        // Let the grid mount on whatever rows already loaded rather than sitting
+        // on the skeleton — but tell the user this window didn't load.
+        this._ready.set(true);
+        this.notify.error("Couldn't load these rows. Scroll again or reopen the dataset.");
       },
     });
   }
