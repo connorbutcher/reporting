@@ -1,0 +1,35 @@
+<button
+  type="button"
+  class="trigger"
+  [class.warning]="tone() === 'warning'"
+  [class.error]="tone() === 'error'"
+  [title]="label()"
+  (click)="op.toggle($event)"
+>
+  <i
+    class="pi"
+    [class.pi-check-circle]="tone() === 'ok'"
+    [class.pi-times-circle]="tone() === 'error'"
+    [class.pi-exclamation-triangle]="tone() === 'warning'"
+    aria-hidden="true"
+  ></i>
+  {{ label() }}
+</button>
+
+<p-popover #op>
+  @if (issues().length) {
+    <ul class="list">
+      @for (issue of issues(); track issue.id) {
+        <li class="issue" [class.error]="issue.severity === 'error'">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="text">
+            <span class="issue-title">{{ issue.title }}</span>
+            <span class="issue-detail">{{ issue.detail }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="none">No issues found.</p>
+  }
+</p-popover>

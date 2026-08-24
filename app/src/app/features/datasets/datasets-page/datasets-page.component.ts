@@ -11,6 +11,7 @@ import { DatasetRowCommands } from '../state/dataset-row-commands';
 import { DatasetRowWindow } from '../state/dataset-row-window';
 import { DatasetSchemaState } from '../state/dataset-schema-state';
 import { DatasetSourceCommands } from '../state/dataset-source-commands';
+import { DatasetValidation } from '../state/dataset-validation';
 
 /**
  * The datasets screen for one report's draft: the dataset list on the left, the
@@ -34,6 +35,7 @@ import { DatasetSourceCommands } from '../state/dataset-source-commands';
     DatasetRowCommands,
     DatasetSourceCommands,
     DatasetExport,
+    DatasetValidation,
     DatasetsStore,
   ],
 })

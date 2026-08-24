@@ -94,6 +94,13 @@
   white-space: nowrap;
 }
 
+// Wins over the generic `.item .pi` navy rule above.
+.item .pi.item-invalid {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: #b45309;
+}
+
 .item-source {
   flex: 0 0 auto;
   padding: 1px 7px;

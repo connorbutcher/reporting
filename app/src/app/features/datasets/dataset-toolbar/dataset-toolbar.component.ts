@@ -4,6 +4,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SaveStatusComponent } from '../../../shared/save-status/save-status.component';
+import { DatasetIssuesComponent } from '../dataset-issues/dataset-issues.component';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -16,7 +17,7 @@ import { DatasetsStore } from '../datasets.store';
  */
 @Component({
   selector: 'app-dataset-toolbar',
-  imports: [FormsModule, ButtonModule, InputTextModule, SaveStatusComponent],
+  imports: [FormsModule, ButtonModule, InputTextModule, SaveStatusComponent, DatasetIssuesComponent],
   templateUrl: './dataset-toolbar.component.html',
   styleUrl: './dataset-toolbar.component.scss',
 })
@@ -28,14 +29,19 @@ export class DatasetToolbarComponent {
   protected readonly saving = this.store.saving;
   protected readonly saveFailed = this.store.saveFailed;
 
-  /** Commits a rename, but restores the field if it was cleared — a dataset must keep a name. */
+  /**
+   * Commits a rename, but restores the field when the name can't be saved — it was
+   * cleared (a dataset must keep a name) or it duplicates another dataset. The
+   * store's {@link DatasetsStore.renameDataset} enforces the same rules and raises
+   * the duplicate-name notification; reverting here just keeps the field truthful.
+   */
   protected onNameBlur(event: Event): void {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();
     const current = this.selected();
-    if (!name) {
-      if (current) input.value = current.name;
-      return;
+    if (!current) return;
+    if (!name || this.store.datasetNameTaken(name)) {
+      input.value = current.name;
     }
     this.store.renameDataset(name);
   }

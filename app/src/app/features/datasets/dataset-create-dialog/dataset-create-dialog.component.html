@@ -28,30 +28,23 @@
       <span class="label">Name</span>
       <input
         #nameInput
-        class="input"
-        [formField]="form.name"
+        pInputText
+        [value]="form.name().value()"
+        (input)="form.name().value.set(nameInput.value)"
+        (blur)="form.name().markAsTouched()"
+        [invalid]="(form.name().touched() || form.name().dirty()) && form.name().invalid()"
         (keyup.enter)="create()"
         placeholder="Dataset name"
         aria-label="Dataset name"
       />
+      @if (nameError(); as message) {
+        <p class="error">{{ message }}</p>
+      }
     </div>
   </div>
 
   <footer class="footer">
-    <button
-      type="button"
-      class="button secondary"
-      (click)="cancel()"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      class="button primary"
-      [disabled]="!form().valid()"
-      (click)="create()"
-    >
-      Create
-    </button>
+    <p-button label="Cancel" severity="secondary" outlined (onClick)="cancel()" />
+    <p-button label="Create" [disabled]="!form().valid()" (onClick)="create()" />
   </footer>
 </div>

@@ -72,7 +72,12 @@ export class DatasetRowWindow {
   load(first: number, count: number): void {
     const id = this.collection.selectedId();
     if (id === null) return;
-    this.fetch(id, first, count || WINDOW);
+    const size = count || WINDOW;
+    // The grid fires its first lazy-load (first = 0) the moment it mounts, which
+    // repeats the window already fetched eagerly on selection. Ignore a request
+    // identical to the one in flight (or just completed) so it isn't fetched twice.
+    if (first === this.lastFirst && size === this.lastCount) return;
+    this.fetch(id, first, size);
   }
 
   private fetch(id: number, first: number, count: number): void {
@@ -100,6 +105,10 @@ export class DatasetRowWindow {
       error: () => {
         if (seq !== this.requestSeq) return; // A newer request (or selection) superseded this one.
         this.loading.set(false);
+        // Forget the window so an identical follow-up load (e.g. the grid's
+        // mount-time lazy-load) isn't deduped away and can retry the failed fetch.
+        this.lastFirst = -1;
+        this.lastCount = -1;
         // Let the grid mount on whatever rows already loaded rather than sitting
         // on the skeleton — but tell the user this window didn't load.
         this._ready.set(true);

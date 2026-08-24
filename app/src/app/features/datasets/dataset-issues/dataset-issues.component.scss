@@ -1,0 +1,96 @@
+// Sit as a plain flex item in the toolbar rather than an extra wrapper box.
+:host {
+  display: contents;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  .pi-check-circle {
+    color: #15803d;
+  }
+
+  &:hover {
+    background: var(--p-primary-50, #eef3fa);
+  }
+
+  &.warning {
+    background: #fffbeb;
+    color: #b45309;
+  }
+
+  &.error {
+    background: #fef2f2;
+    color: #b42318;
+  }
+
+  &.warning:hover,
+  &.error:hover {
+    filter: brightness(0.97);
+  }
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+}
+
+.issue {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  margin-top: 6px;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #d97706;
+}
+
+.issue.error .dot {
+  background: #dc2626;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.issue-title {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #1f2937;
+}
+
+.issue-detail {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #475569;
+}
+
+.none {
+  margin: 0;
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  color: #475569;
+}

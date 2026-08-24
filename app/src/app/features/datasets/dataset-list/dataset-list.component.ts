@@ -31,6 +31,8 @@ export class DatasetListComponent {
   protected readonly selectedId = this.store.selectedId;
   protected readonly loading = this.store.datasetsLoading;
   protected readonly error = this.store.listError;
+  /** Dataset ids that share a name with another, marked as invalid in the list. */
+  protected readonly nameConflictIds = this.store.nameConflictIds;
   protected readonly canCreate = computed(() => this.store.sources().length > 0);
 
   protected readonly filter = signal('');
@@ -48,7 +50,10 @@ export class DatasetListComponent {
   protected openCreate(): void {
     this.dialog
       .open<DatasetCreateDialogResult | undefined>(DatasetCreateDialogComponent, {
-        data: { sources: this.store.sources() } satisfies DatasetCreateDialogData,
+        data: {
+          sources: this.store.sources(),
+          existingNames: this.store.datasets().map((d) => d.name),
+        } satisfies DatasetCreateDialogData,
       })
       .closed.subscribe((result) => {
         if (result) this.store.createDataset(result.name, result.sourceId);

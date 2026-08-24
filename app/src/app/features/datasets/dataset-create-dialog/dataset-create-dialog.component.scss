@@ -89,17 +89,10 @@
   color: #64748b;
 }
 
-.input {
-  padding: 8px 10px;
-  border: 1px solid var(--app-card-border);
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.88rem;
-
-  &:focus {
-    outline: 2px solid var(--p-primary-400, #527ac0);
-    outline-offset: -1px;
-  }
+.error {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+  color: #b42318;
 }
 
 .footer {
@@ -108,38 +101,4 @@
   gap: 8px;
   padding: 12px 20px 18px;
   border-top: 1px solid var(--app-card-border);
-}
-
-.button {
-  padding: 7px 16px;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-
-  &.secondary {
-    border: 1px solid var(--app-card-border);
-    background: #fff;
-    color: #475569;
-
-    &:hover {
-      background: #f8fafc;
-    }
-  }
-
-  &.primary {
-    border: 1px solid var(--app-navy);
-    background: var(--app-navy);
-    color: #fff;
-
-    &:hover:not(:disabled) {
-      filter: brightness(1.1);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-  }
 }

@@ -13,6 +13,7 @@ import { DatasetRowCommands } from './state/dataset-row-commands';
 import { DatasetRowWindow } from './state/dataset-row-window';
 import { DatasetSchemaState } from './state/dataset-schema-state';
 import { DatasetSourceCommands } from './state/dataset-source-commands';
+import { DatasetValidation } from './state/dataset-validation';
 
 /**
  * State and CRUD for the datasets screen. Datasets belong to a report's draft
@@ -42,6 +43,7 @@ export class DatasetsStore {
   private readonly rowCommands = inject(DatasetRowCommands);
   private readonly sourceCommands = inject(DatasetSourceCommands);
   private readonly export = inject(DatasetExport);
+  private readonly validation = inject(DatasetValidation);
 
   // --- list & selection (DatasetCollection) ---------------------------------
   readonly sources = this.collection.sources;
@@ -50,6 +52,12 @@ export class DatasetsStore {
   readonly listError = this.collection.listError;
   readonly selectedId = this.collection.selectedId;
   readonly selected = this.collection.selected;
+
+  // --- validation (DatasetValidation) ---------------------------------------
+  /** Dataset ids that share a name with another, for the list's invalid markers. */
+  readonly nameConflictIds = this.validation.nameConflictIds;
+  /** The selected dataset's validation problems, for the editor's issues banner. */
+  readonly datasetIssues = this.validation.selectedIssues;
 
   // --- selected dataset's schema (DatasetSchemaState) ------------------------
   readonly columns = this.schema.columns;
@@ -90,6 +98,11 @@ export class DatasetsStore {
 
   renameDataset(name: string): void {
     this.collection.renameDataset(name);
+  }
+
+  /** True when another dataset already uses this name — for the toolbar to reject a rename. */
+  datasetNameTaken(name: string): boolean {
+    return this.collection.datasetNameTaken(name);
   }
 
   cloneDataset(): void {

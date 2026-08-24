@@ -21,10 +21,23 @@ export class DatasetColumnCommands {
   private readonly rows = inject(DatasetRowWindow);
   private readonly notify = inject(NotificationService);
 
+  /** True when another column already uses this name (trimmed, case-insensitive). */
+  private columnNameTaken(name: string, exceptId?: string): boolean {
+    const key = name.trim().toLowerCase();
+    return this.schema
+      .columns()
+      .some((c) => c.id !== exceptId && c.name.trim().toLowerCase() === key);
+  }
+
   addColumn(name: string, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
     if (!id || !trimmed) return;
+    // Column names are the key the whole app references, so they must stay unique.
+    if (this.columnNameTaken(trimmed)) {
+      this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
+      return;
+    }
 
     this.autosave.track(this.api.addColumn(id, trimmed, type)).subscribe({
       next: (column) => this.schema.columns.update((columns) => [...columns, column]),
@@ -34,8 +47,13 @@ export class DatasetColumnCommands {
 
   renameColumn(column: DatasetColumn, name: string): void {
     const id = this.collection.selectedId();
-    if (!id || !name.trim() || name === column.name) return;
-    this.autosave.track(this.api.updateColumn(id, column.id, name.trim(), column.type)).subscribe({
+    const trimmed = name.trim();
+    if (!id || !trimmed || trimmed === column.name) return;
+    if (this.columnNameTaken(trimmed, column.id)) {
+      this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
+      return;
+    }
+    this.autosave.track(this.api.updateColumn(id, column.id, trimmed, column.type)).subscribe({
       next: (updated) =>
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
@@ -59,6 +77,12 @@ export class DatasetColumnCommands {
   deleteColumn(column: DatasetColumn): void {
     const id = this.collection.selectedId();
     if (!id) return;
+    // A dataset must keep at least one column, so refuse to delete the last one
+    // rather than save it into a "no columns" error state.
+    if (this.schema.columns().length <= 1) {
+      this.notify.error("A dataset needs at least one column, so this one can't be deleted.");
+      return;
+    }
 
     this.autosave.track(this.api.removeColumn(id, column.id)).subscribe({
       next: () => {

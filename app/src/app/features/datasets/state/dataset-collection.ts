@@ -111,10 +111,32 @@ export class DatasetCollection {
     this.datasetsResource.reload();
   }
 
+  /**
+   * True when another dataset on this report already uses `name` (trimmed,
+   * case-insensitive), ignoring the currently selected one — so a duplicate name
+   * can be caught before it's saved. Exposed for the toolbar's rename field.
+   */
+  datasetNameTaken(name: string): boolean {
+    return this.nameTaken(name, this.selectedId());
+  }
+
+  private nameTaken(name: string, exceptId: number | null): boolean {
+    const key = name.trim().toLowerCase();
+    return this.datasets().some(
+      (dataset) => dataset.id !== exceptId && dataset.name.trim().toLowerCase() === key,
+    );
+  }
+
   createDataset(name: string, sourceId: number): void {
     const trimmed = name.trim();
     const reportId = this.reportId();
     if (!trimmed || reportId === null || !sourceId) return;
+    // Don't save a name that already exists — it would land the report with two
+    // indistinguishable datasets (see DatasetValidation's duplicate-name check).
+    if (this.nameTaken(trimmed, null)) {
+      this.notify.error(`A dataset called "${trimmed}" already exists. Choose a different name.`);
+      return;
+    }
     this.autosave.track(this.api.create(reportId, trimmed, sourceId)).subscribe({
       next: (dataset) => {
         this.openDataset(dataset.id);
@@ -131,6 +153,12 @@ export class DatasetCollection {
     // Skip the save when the name is blank or unchanged, so blurring the field
     // without editing it doesn't fire a needless request.
     if (!id || !trimmed || trimmed === this.selected()?.name) return;
+    // Don't save a name another dataset already uses — it would leave the report
+    // with two datasets that can't be told apart.
+    if (this.nameTaken(trimmed, id)) {
+      this.notify.error(`Another dataset is already called "${trimmed}". Choose a different name.`);
+      return;
+    }
     this.autosave.track(this.api.rename(id, trimmed)).subscribe({
       next: () => {
         this.datasetsResource.reload();
@@ -140,11 +168,21 @@ export class DatasetCollection {
     });
   }
 
+  /** The name, suffixed with a counter if needed, so it doesn't collide with an existing dataset. */
+  private uniqueName(base: string): string {
+    if (!this.nameTaken(base, null)) return base;
+    for (let n = 2; ; n++) {
+      const candidate = `${base} ${n}`;
+      if (!this.nameTaken(candidate, null)) return candidate;
+    }
+  }
+
   /** Deep-copies the selected dataset and opens the copy. */
   cloneDataset(): void {
     const dataset = this.selected();
     if (!dataset) return;
-    this.autosave.track(this.api.clone(dataset.id, `${dataset.name} (copy)`)).subscribe({
+    // A plain "(copy)" would clash on a second clone, so land on a free name.
+    this.autosave.track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`))).subscribe({
       next: (created) => {
         this.openDataset(created.id);
         this.datasetsResource.reload();
