@@ -26,6 +26,12 @@ builder.Services.AddControllers()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Fully open CORS: any origin, header, and method. No credentials, since
+// AllowAnyOrigin and AllowCredentials can't be combined.
+builder.Services.AddCors(options =>
+    options.AddDefaultPolicy(policy =>
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
+
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
@@ -60,6 +66,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors();
 
 // Maps AccessDeniedException (thrown by the permission guards in the repositories) to 403.
 app.UseMiddleware<AccessDeniedMiddleware>();
