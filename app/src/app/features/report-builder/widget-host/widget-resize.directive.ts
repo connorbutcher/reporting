@@ -1,7 +1,7 @@
 import { Directive, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
 import { WidgetModel } from '../models/widget.model';
-import { ReportBuilderStore } from '../report-builder.store';
+import { ReportSession } from '../state/report-session';
 
 export type ResizeDirection = 'right' | 'bottom' | 'corner';
 
@@ -22,7 +22,7 @@ export class WidgetResizeDirective {
   /** Live preview of the widget's candidate rect, for the canvas overlay. */
   readonly gridPreview = output<GridPreview | null>();
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly invalid = signal(false);
@@ -59,18 +59,18 @@ export class WidgetResizeDirective {
     const widget = this.widget();
     const dx = event.clientX - this.startPointer.x;
     const dy = event.clientY - this.startPointer.y;
-    const columnStep = this.store.columnWidth() + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GRID_GAP;
     const deltaCols = columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0;
     const deltaRows = Math.round(dy / (ROW_HEIGHT + GRID_GAP));
 
     const candidateW =
       this.direction === 'bottom'
         ? widget.w()
-        : clamp(this.startCell.w + deltaCols, 1, this.store.gridColumns() - widget.x());
+        : clamp(this.startCell.w + deltaCols, 1, this.session.gridColumns() - widget.x());
     const candidateH =
       this.direction === 'right'
         ? widget.h()
-        : clamp(this.startCell.h + deltaRows, 1, this.store.gridRows() - widget.y());
+        : clamp(this.startCell.h + deltaRows, 1, this.session.gridRows() - widget.y());
     const candidate: GridRect = { x: widget.x(), y: widget.y(), w: candidateW, h: candidateH };
 
     this.pending = candidate;
@@ -93,7 +93,7 @@ export class WidgetResizeDirective {
 
   /** The pixel footprint of a w×h span: cells plus the gaps between them. */
   private pixelSize(w: number, h: number): { width: number; height: number } {
-    const columnStep = this.store.columnWidth() + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GRID_GAP;
     return {
       width: Math.max(0, w * columnStep - GRID_GAP),
       height: h * (ROW_HEIGHT + GRID_GAP) - GRID_GAP,
@@ -102,10 +102,10 @@ export class WidgetResizeDirective {
 
   private collides(candidate: GridRect): boolean {
     if (candidate.x < 0 || candidate.y < 0 || candidate.w < 1 || candidate.h < 1) return true;
-    if (candidate.x + candidate.w > this.store.gridColumns()) return true;
-    if (candidate.y + candidate.h > this.store.gridRows()) return true;
+    if (candidate.x + candidate.w > this.session.gridColumns()) return true;
+    if (candidate.y + candidate.h > this.session.gridRows()) return true;
 
-    const siblings = this.store.model()?.siblingsOf(this.widget().id) ?? [];
+    const siblings = this.session.model()?.siblingsOf(this.widget().id) ?? [];
     return siblings.some((other) => rectsOverlap(candidate, other.rect()));
   }
 

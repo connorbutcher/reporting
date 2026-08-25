@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reporting.Database;
 
@@ -11,9 +12,11 @@ using Reporting.Database;
 namespace Reporting.Database.Migrations
 {
     [DbContext(typeof(ReportingDbContext))]
-    partial class ReportingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825183103_ReportTabs")]
+    partial class ReportTabs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -4,8 +4,6 @@
     [ReportId]      INT              NOT NULL,
     [Kind]          NVARCHAR (MAX)   NOT NULL,
     [VersionNumber] INT              NULL,
-    [Columns]       INT              DEFAULT ((12)) NOT NULL,
-    [Rows]          INT              DEFAULT ((10)) NOT NULL,
     [CreatedAt]     DATETIME2 (7)    NOT NULL,
     [PublishedAt]   DATETIME2 (7)    NULL,
     [Notes]         NVARCHAR (MAX)   NULL,

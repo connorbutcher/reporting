@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportAutosave } from '../../state/report-autosave';
+import { ReportSession } from '../../state/report-session';
+import { BackToReportComponent } from './back-to-report.component';
 import { BuilderIdentityComponent } from './builder-identity.component';
 import { DatasetsLinkComponent } from './datasets-link.component';
 import { HistoryControlsComponent } from './history-controls.component';
@@ -16,6 +18,7 @@ import { PublishButtonComponent } from './publish-button.component';
 @Component({
   selector: 'app-builder-topbar',
   imports: [
+    BackToReportComponent,
     BuilderIdentityComponent,
     SaveStatusComponent,
     HistoryControlsComponent,
@@ -25,6 +28,7 @@ import { PublishButtonComponent } from './publish-button.component';
   ],
   template: `
     <header class="topbar">
+      <app-back-to-report />
       <div class="identity">
         <app-builder-identity />
         <app-save-status [saving]="saving()" [saveFailed]="saveFailed()" [dirty]="dirty()" />
@@ -70,9 +74,10 @@ import { PublishButtonComponent } from './publish-button.component';
   ],
 })
 export class BuilderTopbarComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly autosave = inject(ReportAutosave);
 
-  protected readonly saving = this.store.saving;
-  protected readonly saveFailed = this.store.saveFailed;
-  protected readonly dirty = this.store.dirty;
+  protected readonly saving = this.autosave.saving;
+  protected readonly saveFailed = this.autosave.saveFailed;
+  protected readonly dirty = this.session.dirty;
 }

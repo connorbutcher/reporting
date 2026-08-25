@@ -2,7 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 
 @Component({
   selector: 'app-panel-add-column',
@@ -12,8 +13,9 @@ import { ReportBuilderStore } from '../../../report-builder.store';
 export class PanelAddColumnComponent {
   static readonly title = 'Add column';
 
-  private readonly store = inject(ReportBuilderStore);
-  protected readonly table = this.store.selectedTableWidget;
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+  protected readonly table = this.session.selectedTableWidget;
 
   protected readonly search = signal('');
 
@@ -33,11 +35,11 @@ export class PanelAddColumnComponent {
   protected add(columnId: string): void {
     this.table()?.addColumn(columnId);
     // Straight back to the list so several columns can be added in a row.
-    this.store.back();
+    this.navigation.back();
   }
 
   protected addAll(): void {
     this.table()?.addColumns(this.matches().map((column) => column.id));
-    this.store.back();
+    this.navigation.back();
   }
 }

@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 
 /**
@@ -15,9 +15,9 @@ import { FilterBuilderComponent } from '../../filter-builder/filter-builder.comp
 export class PanelReportFiltersComponent {
   static readonly title = 'Report filters';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
 
-  protected readonly datasetIds = computed(() => this.store.model()?.usedDatasetIds() ?? []);
+  protected readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
 
   /** Which dataset's filter is on screen; defaults to the first one in use. */
   private readonly selectedDatasetId = signal<number | null>(null);
@@ -27,7 +27,7 @@ export class PanelReportFiltersComponent {
 
   protected readonly activeFilter = computed(() => {
     const datasetId = this.activeDatasetId();
-    const model = this.store.model();
+    const model = this.session.model();
     return datasetId && model ? model.reportFilter(datasetId) : null;
   });
 
@@ -36,7 +36,7 @@ export class PanelReportFiltersComponent {
     // computed above — the panel always needs one to bind to.
     effect(() => {
       const datasetId = this.activeDatasetId();
-      const model = this.store.model();
+      const model = this.session.model();
       if (!datasetId || !model) return;
       untracked(() => model.ensureReportFilter(datasetId));
     });
@@ -47,11 +47,11 @@ export class PanelReportFiltersComponent {
   }
 
   protected datasetName(datasetId: number): string {
-    return this.store.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
+    return this.session.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
   }
 
   protected conditionCount(datasetId: number): string {
-    const count = this.store.model()?.reportFilter(datasetId)?.group.count() ?? 0;
+    const count = this.session.model()?.reportFilter(datasetId)?.group.count() ?? 0;
     return count === 0 ? 'No conditions' : `${count} condition${count > 1 ? 's' : ''}`;
   }
 }

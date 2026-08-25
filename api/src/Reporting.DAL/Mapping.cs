@@ -59,12 +59,30 @@ public static class Mapping
     {
         ReportId = report.Id,
         Name = report.Name,
-        Columns = revision.Columns,
-        Rows = revision.Rows,
-        Widgets = revision.Widgets.Select(w => w.ToDto()).ToList(),
+        Tabs = revision.Tabs.OrderBy(t => t.Order).Select(t => t.ToDto()).ToList(),
         Notes = revision.Notes,
         Filters = revision.GetFilters()
     };
+
+    public static TabDto ToDto(this Tab tab) => new()
+    {
+        Id = tab.RefId,
+        Name = tab.Name,
+        Order = tab.Order,
+        Columns = tab.Columns,
+        Rows = tab.Rows,
+        Widgets = tab.Widgets.Select(w => w.ToDto()).ToList()
+    };
+
+    /// <summary>Applies a tab's own fields (not its widgets — the repository diffs those by RefId).</summary>
+    public static void ApplyTo(this TabDto dto, Tab tab)
+    {
+        tab.RefId = dto.Id;
+        tab.Name = dto.Name;
+        tab.Order = dto.Order;
+        tab.Columns = Math.Max(1, dto.Columns);
+        tab.Rows = Math.Max(1, dto.Rows);
+    }
 
     public static List<ReportFilterDto> GetFilters(this ReportRevision revision)
     {

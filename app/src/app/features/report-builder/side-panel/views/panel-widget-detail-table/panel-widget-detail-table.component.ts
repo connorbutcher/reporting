@@ -2,7 +2,8 @@ import { Component, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { DataTableWidgetModel } from '../../../models/widget.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -13,14 +14,15 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-widget-detail-table.component.html',
 })
 export class PanelWidgetDetailTableComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
   readonly table = input.required<DataTableWidgetModel>();
 
   /** The datasets on this report, for the data-source picker. */
-  protected readonly datasets = this.store.datasets;
+  protected readonly datasets = this.session.datasets;
 
   protected navigate(view: PanelView): void {
-    this.store.navigate(view);
+    this.navigation.navigate(view);
   }
 }

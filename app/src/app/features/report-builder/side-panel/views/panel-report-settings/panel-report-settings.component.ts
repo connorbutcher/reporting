@@ -2,7 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from '../../../models/report.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
 @Component({
@@ -16,7 +16,7 @@ export class PanelReportSettingsComponent {
   protected readonly defaultColumns = DEFAULT_GRID_COLUMNS;
   protected readonly defaultRows = DEFAULT_GRID_ROWS;
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
 
-  protected readonly model = this.store.model;
+  protected readonly model = this.session.model;
 }

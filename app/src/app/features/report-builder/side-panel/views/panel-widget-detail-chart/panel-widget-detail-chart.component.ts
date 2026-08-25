@@ -7,7 +7,8 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { BarChartWidgetModel, ChartWidgetModel, LineChartWidgetModel } from '../../../models/widget.model';
 import { Aggregate } from '../../../../../core/models/report';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelBarChartOptionsComponent } from '../panel-bar-chart-options/panel-bar-chart-options.component';
@@ -34,12 +35,13 @@ import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/pane
   templateUrl: './panel-widget-detail-chart.component.html',
 })
 export class PanelWidgetDetailChartComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
   readonly chart = input.required<ChartWidgetModel>();
 
   /** The datasets on this report, for the data-source picker. */
-  protected readonly datasets = this.store.datasets;
+  protected readonly datasets = this.session.datasets;
 
   /** The aggregate options offered for a bar chart, in menu order. */
   protected readonly aggregates: { label: string; value: Aggregate }[] = [
@@ -72,6 +74,6 @@ export class PanelWidgetDetailChartComponent {
   }
 
   protected navigate(view: PanelView): void {
-    this.store.navigate(view);
+    this.navigation.navigate(view);
   }
 }

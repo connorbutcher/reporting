@@ -1,5 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportSession } from '../../state/report-session';
 
 /** The name of the report being edited. */
 @Component({
@@ -18,7 +18,7 @@ import { ReportBuilderStore } from '../../report-builder.store';
   ],
 })
 export class BuilderIdentityComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
 
-  protected readonly name = computed(() => this.store.model()?.name() ?? 'Report');
+  protected readonly name = computed(() => this.session.model()?.name() ?? 'Report');
 }

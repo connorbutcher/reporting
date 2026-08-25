@@ -4,7 +4,8 @@ import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { ChartAxis } from '../../../../../core/models/report';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -27,16 +28,17 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
 export class PanelChartToleranceBandComponent {
   static readonly title = 'Tolerance band';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
-  protected readonly datasets = this.store.datasets;
+  protected readonly datasets = this.session.datasets;
   protected readonly axisOptions = AXIS_OPTIONS;
   protected readonly picker = inject(ToleranceSourcePicker);
 
-  private readonly chart = this.store.selectedChartWidget;
+  private readonly chart = this.session.selectedChartWidget;
 
   private readonly bandId = computed(() => {
-    const view = this.store.view();
+    const view = this.navigation.view();
     return view.kind === 'chartToleranceBand' ? view.bandId : null;
   });
 
@@ -80,6 +82,6 @@ export class PanelChartToleranceBandComponent {
   protected remove(): void {
     const bandId = this.bandId();
     if (bandId) this.chart()?.removeToleranceBand(bandId);
-    this.store.back();
+    this.navigation.back();
   }
 }

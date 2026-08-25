@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { widgetTypesByGroup } from '../../../../../core/models/widget-catalog';
 import { WidgetType } from '../../../../../core/models/report';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { WidgetCommands } from '../../../state/widget-commands';
 
 @Component({
   selector: 'app-panel-add-widget',
@@ -11,11 +11,11 @@ import { ReportBuilderStore } from '../../../report-builder.store';
 export class PanelAddWidgetComponent {
   static readonly title = 'Add widget';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly commands = inject(WidgetCommands);
 
   protected readonly groups = widgetTypesByGroup();
 
   protected addWidget(type: WidgetType): void {
-    this.store.addWidget(type);
+    this.commands.addWidget(type);
   }
 }

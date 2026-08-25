@@ -1,54 +1,38 @@
 import { Signal, computed, signal } from '@angular/core';
-import {
-  DEFAULT_BAR_CHART_CONFIG,
-  DEFAULT_LINE_CHART_CONFIG,
-  DEFAULT_SCATTER_CHART_CONFIG,
-  DEFAULT_TABLE_CONFIG,
-  DEFAULT_TEXT_CONFIG,
-  ReportRevisionContent,
-  Widget,
-  WidgetType,
-} from '../../../core/models/report';
+import { ReportRevisionContent, Tab, WidgetType } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
-import { clamp, rectsOverlap } from '../grid.util';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter.model';
 import {
-  ChartWidgetModel,
-  DataTableWidgetModel,
-  ModelSources,
-  WidgetModel,
-  widgetModelFromDto,
-} from './widget.model';
+  DEFAULT_GRID_COLUMNS,
+  DEFAULT_GRID_ROWS,
+  TabModel,
+} from './tab.model';
+import { ChartWidgetModel, DataTableWidgetModel, ModelSources, WidgetModel } from './widget.model';
 import { ValidationIssue } from './validation-issue';
 
-const MIN_GRID_SIZE = 1;
-// Columns fill the canvas width, so a fine column count is normal now; rows can
-// run long since the report scrolls vertically.
-const MAX_GRID_SIZE = 200;
+// Re-exported so the store and settings panel keep importing the grid defaults
+// from here, unaware they now originate on the tab.
+export { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from './tab.model';
 
 /**
- * The grid a brand-new (or unspecified) report falls back to. Exported so the
- * store and the settings panel default to the same size the model does, instead
- * of each repeating the literals.
- */
-export const DEFAULT_GRID_COLUMNS = 48;
-export const DEFAULT_GRID_ROWS = 30;
-// Sized for the default ~48-column grid: roughly a quarter width, a useful height.
-const DEFAULT_WIDGET_W = 12;
-const DEFAULT_WIDGET_H = 8;
-
-/**
- * The report being edited. Owns the grid and the widgets on it, and validates
- * the things only it can see — whether widgets fit the grid and whether any of
- * them collide. Everything widget-specific is validated by the widget itself.
+ * The report being edited. Owns its tabs, the report-level filters, and the name.
+ * Grid geometry and widgets live on each {@link TabModel}; the report proxies the
+ * widget/grid operations through to whichever tab is active, so callers that used
+ * to talk to the single-surface report keep working unchanged.
  */
 export class ReportModel extends EditorNode {
   readonly reportId: number;
   readonly name = signal('');
-  readonly gridColumns = signal(DEFAULT_GRID_COLUMNS);
-  readonly gridRows = signal(DEFAULT_GRID_ROWS);
-  readonly widgets = signal<readonly WidgetModel[]>([]);
+
+  readonly tabs = signal<readonly TabModel[]>([]);
+  readonly activeTabId = signal<string | null>(null);
+
+  /** The tab the canvas shows and every placement operation targets. */
+  readonly activeTab = computed<TabModel | null>(() => {
+    const tabs = this.tabs();
+    return tabs.find((t) => t.id === this.activeTabId()) ?? tabs[0] ?? null;
+  });
 
   /** Report-level filters, one per dataset, layered over each widget's own. */
   readonly filters = signal<readonly ReportFilterModel[]>([]);
@@ -63,9 +47,14 @@ export class ReportModel extends EditorNode {
     super();
     this.reportId = report.reportId;
     this.name.set(report.name);
-    this.gridColumns.set(report.columns);
-    this.gridRows.set(report.rows);
-    this.widgets.set(report.widgets.map((w) => widgetModelFromDto(w, sources)));
+
+    const tabs = [...report.tabs]
+      .sort((a, b) => a.order - b.order)
+      .map((t) => new TabModel(t, sources));
+    this.tabs.set(tabs);
+    // Which tab is active is driven by the route's `tab` param (see ReportSession),
+    // so it's left unset here; `activeTab` falls back to the first tab until then.
+
     this.filters.set(
       (report.filters ?? []).map((f) => this.buildReportFilter(f.datasetId, f.filter)),
     );
@@ -89,20 +78,136 @@ export class ReportModel extends EditorNode {
     return model;
   }
 
+  // --- active-tab proxies ----------------------------------------------------
+
+  readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
+  readonly gridColumns = computed(() => this.activeTab()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
+  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? DEFAULT_GRID_ROWS);
+
+  setGridColumns(value: number): void {
+    this.activeTab()?.setGridColumns(value);
+  }
+
+  setGridRows(value: number): void {
+    this.activeTab()?.setGridRows(value);
+  }
+
+  addWidget(type: WidgetType): WidgetModel | null {
+    return this.activeTab()?.addWidget(type) ?? null;
+  }
+
+  removeWidget(widgetId: string): void {
+    this.tabOf(widgetId)?.removeWidget(widgetId);
+  }
+
+  removeWidgets(widgetIds: readonly string[]): void {
+    // Widgets in a single operation are always on the active tab (the only one on
+    // screen), but route each to its owning tab to stay correct regardless.
+    for (const id of widgetIds) this.tabOf(id)?.removeWidget(id);
+  }
+
+  duplicateWidget(widgetId: string): WidgetModel | null {
+    return (this.tabOf(widgetId) ?? this.activeTab())?.duplicateWidget(widgetId) ?? null;
+  }
+
+  findFreeSlot(w: number, h: number): { x: number; y: number } {
+    return this.activeTab()?.findFreeSlot(w, h) ?? { x: 0, y: 0 };
+  }
+
+  /** Any widget across every tab, so the panel resolves a selection wherever it lives. */
   widget(widgetId: string): WidgetModel | null {
-    return this.widgets().find((w) => w.id === widgetId) ?? null;
+    for (const tab of this.tabs()) {
+      const found = tab.widget(widgetId);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /** The tab a widget belongs to, or null if it isn't on any. */
+  tabOf(widgetId: string): TabModel | null {
+    return this.tabs().find((t) => t.widget(widgetId)) ?? null;
+  }
+
+  /** Siblings on the same tab as the given widget, for collision checks while dragging/resizing. */
+  siblingsOf(widgetId: string): readonly WidgetModel[] {
+    return (this.tabOf(widgetId) ?? this.activeTab())?.siblingsOf(widgetId) ?? [];
+  }
+
+  // --- tab lifecycle ---------------------------------------------------------
+
+  setActiveTab(tabId: string): void {
+    if (this.tabs().some((t) => t.id === tabId)) this.activeTabId.set(tabId);
+  }
+
+  /**
+   * Adds an empty tab after the last one and returns it. Making it the active tab
+   * is the caller's job (it navigates the `tab` query param — see TabCommands).
+   */
+  addTab(): TabModel {
+    const order = this.tabs().reduce((max, t) => Math.max(max, t.order()), -1) + 1;
+    const dto: Tab = {
+      id: crypto.randomUUID(),
+      name: `Tab ${this.tabs().length + 1}`,
+      order,
+      columns: DEFAULT_GRID_COLUMNS,
+      rows: DEFAULT_GRID_ROWS,
+      widgets: [],
+    };
+    const tab = new TabModel(dto, this.sources);
+    this.tabs.update((tabs) => [...tabs, tab]);
+    return tab;
+  }
+
+  /**
+   * Removes a tab, refusing to drop the last one. Reselecting a survivor is the
+   * caller's job when the active tab went (the route's `tab` param drives it).
+   */
+  removeTab(tabId: string): void {
+    const tabs = this.tabs();
+    if (tabs.length <= 1) return;
+    if (!tabs.some((t) => t.id === tabId)) return;
+
+    const next = tabs.filter((t) => t.id !== tabId);
+    this.renumber(next);
+    this.tabs.set(next);
+  }
+
+  renameTab(tabId: string, name: string): void {
+    this.tabs()
+      .find((t) => t.id === tabId)
+      ?.name.set(name);
+  }
+
+  /** Moves a tab to a new position and renumbers every tab's order to match. */
+  moveTab(tabId: string, toIndex: number): void {
+    const tabs = [...this.tabs()];
+    const from = tabs.findIndex((t) => t.id === tabId);
+    if (from < 0) return;
+
+    const clamped = Math.max(0, Math.min(toIndex, tabs.length - 1));
+    const [moved] = tabs.splice(from, 1);
+    tabs.splice(clamped, 0, moved);
+    this.renumber(tabs);
+    this.tabs.set(tabs);
+  }
+
+  /** Rewrites each tab's `order` to its position in the list. */
+  private renumber(tabs: readonly TabModel[]): void {
+    tabs.forEach((tab, index) => tab.order.set(index));
   }
 
   // --- report-level filters -------------------------------------------------
 
-  /** Every dataset some table on this report is bound to, in first-use order. */
+  /** Every dataset some table/chart across any tab is bound to, in first-use order. */
   readonly usedDatasetIds = computed(() => {
     const ids: number[] = [];
-    for (const widget of this.widgets()) {
-      if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel))
-        continue;
-      const id = widget.datasetId();
-      if (id && !ids.includes(id)) ids.push(id);
+    for (const tab of this.tabs()) {
+      for (const widget of tab.widgets()) {
+        if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel))
+          continue;
+        const id = widget.datasetId();
+        if (id && !ids.includes(id)) ids.push(id);
+      }
     }
     return ids;
   });
@@ -130,127 +235,11 @@ export class ReportModel extends EditorNode {
     });
   }
 
-  setGridColumns(value: number): void {
-    if (!Number.isFinite(value)) return;
-    this.gridColumns.set(clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE));
-  }
-
-  setGridRows(value: number): void {
-    if (!Number.isFinite(value)) return;
-    this.gridRows.set(clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE));
-  }
-
-  /** Adds an empty widget in the first free space; the user configures it after. */
-  addWidget(type: WidgetType): WidgetModel {
-    const slot = this.findFreeSlot(DEFAULT_WIDGET_W, DEFAULT_WIDGET_H);
-    this.growRowsFor(slot.y, DEFAULT_WIDGET_H);
-    const base = { id: crypto.randomUUID(), ...slot, w: DEFAULT_WIDGET_W, h: DEFAULT_WIDGET_H };
-
-    const dto: Widget = this.emptyWidgetDto(type, base);
-
-    const widget = widgetModelFromDto(dto, this.sources);
-    this.widgets.update((widgets) => [...widgets, widget]);
-    return widget;
-  }
-
-  /** A freshly-placed widget of the given type, filled with that type's default config. */
-  private emptyWidgetDto(type: WidgetType, base: Omit<Widget, 'type' | 'config'>): Widget {
-    switch (type) {
-      case 'dataTable':
-        return { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } };
-      case 'scatterChart':
-        return {
-          ...base,
-          type: 'scatterChart',
-          config: { type: 'scatterChart', ...DEFAULT_SCATTER_CHART_CONFIG },
-        };
-      case 'lineChart':
-        return {
-          ...base,
-          type: 'lineChart',
-          config: { type: 'lineChart', ...DEFAULT_LINE_CHART_CONFIG },
-        };
-      case 'barChart':
-        return {
-          ...base,
-          type: 'barChart',
-          config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
-        };
-      case 'staticText':
-        return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
-    }
-  }
-
-  removeWidget(widgetId: string): void {
-    this.widgets.update((widgets) => widgets.filter((w) => w.id !== widgetId));
-  }
-
-  removeWidgets(widgetIds: readonly string[]): void {
-    const doomed = new Set(widgetIds);
-    this.widgets.update((widgets) => widgets.filter((w) => !doomed.has(w.id)));
-  }
-
-  /** Copies a widget with all of its configuration into the nearest free space. */
-  duplicateWidget(widgetId: string): WidgetModel | null {
-    const source = this.widget(widgetId);
-    if (!source) return null;
-
-    const dto = source.toDto();
-    // Must avoid every existing widget, the original included, or the copy
-    // lands exactly on top of what it was copied from.
-    const slot = this.findFreeSlot(dto.w, dto.h);
-    this.growRowsFor(slot.y, dto.h);
-    const copy = widgetModelFromDto({ ...dto, id: crypto.randomUUID(), ...slot }, this.sources);
-
-    // Sits straight after the original so the list order matches the canvas.
-    this.widgets.update((widgets) => {
-      const index = widgets.findIndex((w) => w.id === widgetId);
-      const next = [...widgets];
-      next.splice(index + 1, 0, copy);
-      return next;
-    });
-    return copy;
-  }
-
-  /**
-   * Scans the grid row by row for somewhere the given size fits. Falls back to
-   * directly below everything else, which validation will flag if the grid is
-   * genuinely full rather than silently stacking widgets on top of each other.
-   */
-  findFreeSlot(w: number, h: number): { x: number; y: number } {
-    const taken = this.widgets().map((widget) => widget.rect());
-
-    for (let y = 0; y + h <= this.gridRows(); y++) {
-      for (let x = 0; x + w <= this.gridColumns(); x++) {
-        const candidate = { x, y, w, h };
-        if (!taken.some((rect) => rectsOverlap(candidate, rect))) return { x, y };
-      }
-    }
-
-    return { x: 0, y: taken.reduce((max, rect) => Math.max(max, rect.y + rect.h), 0) };
-  }
-
-  /**
-   * Extends the canvas so a widget placed at the fallback slot still fits.
-   * Growing the grid is far friendlier than handing back a report that fails
-   * validation and blocks saving because one click had nowhere to go.
-   */
-  private growRowsFor(y: number, h: number): void {
-    if (y + h > this.gridRows()) this.setGridRows(y + h);
-  }
-
-  /** Widgets other than the given one, for collision checks while dragging. */
-  siblingsOf(widgetId: string): readonly WidgetModel[] {
-    return this.widgets().filter((w) => w.id !== widgetId);
-  }
-
   toDto(): ReportRevisionContent {
     return {
       reportId: this.reportId,
       name: this.name(),
-      columns: this.gridColumns(),
-      rows: this.gridRows(),
-      widgets: this.widgets().map((w) => w.toDto()),
+      tabs: this.tabs().map((t) => t.toDto()),
       // Notes only ever exist on published versions; a draft's autosave payload never carries one.
       notes: null,
       filters: this.filters()
@@ -264,46 +253,11 @@ export class ReportModel extends EditorNode {
   }
 
   protected override childNodes(): readonly EditorNode[] {
-    return [...this.widgets(), ...this.filters()];
+    return [...this.tabs(), ...this.filters()];
   }
 
   protected override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const widgets = this.widgets();
-    const columns = this.gridColumns();
-    const rows = this.gridRows();
-
-    for (const widget of widgets) {
-      const rect = widget.rect();
-      if (rect.x + rect.w <= columns && rect.y + rect.h <= rows) continue;
-
-      issues.push({
-        id: `${widget.id}:bounds`,
-        severity: 'error',
-        title: `${widget.label()} sits outside the grid`,
-        detail: `The grid is ${columns} × ${rows}; this widget reaches ${rect.x + rect.w} × ${rect.y + rect.h}.`,
-        widgetId: widget.id,
-        view: { kind: 'widget', widgetId: widget.id },
-      });
-    }
-
-    // Overlaps are reported once per pair, against the later widget.
-    widgets.forEach((widget, index) => {
-      const overlapping = widgets
-        .slice(0, index)
-        .find((other) => rectsOverlap(widget.rect(), other.rect()));
-      if (!overlapping) return;
-
-      issues.push({
-        id: `${widget.id}:overlap`,
-        severity: 'error',
-        title: `${widget.label()} overlaps ${overlapping.label()}`,
-        detail: 'Move or resize one of them so they no longer sit on the same cells.',
-        widgetId: widget.id,
-        view: { kind: 'widget', widgetId: widget.id },
-      });
-    });
-
-    return issues;
+    // Grid/overlap issues belong to each tab; the report itself raises none.
+    return [];
   }
 }
