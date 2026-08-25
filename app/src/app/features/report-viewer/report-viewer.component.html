@@ -8,12 +8,32 @@
       <app-report-viewer-header />
 
       @if (content(); as content) {
-        <app-readonly-report-grid
-          [content]="content"
-          [pageFilters]="viewFilters()?.pageFilters ?? null"
-          [widgetFilters]="viewFilters()?.widgetFilters ?? null"
-          (filterWidget)="filterWidget($event)"
-        />
+        @if (tabs().length > 1) {
+          <div class="view-tabs" role="tablist">
+            @for (tab of tabs(); track tab.id) {
+              <button
+                type="button"
+                class="view-tab"
+                role="tab"
+                [class.active]="tab.id === activeTab()?.id"
+                [attr.aria-selected]="tab.id === activeTab()?.id"
+                (click)="selectTab(tab.id)"
+              >
+                {{ tab.name }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (activeTab(); as tab) {
+          <app-readonly-report-grid
+            [content]="content"
+            [tab]="tab"
+            [pageFilters]="viewFilters()?.pageFilters ?? null"
+            [widgetFilters]="viewFilters()?.widgetFilters ?? null"
+            (filterWidget)="filterWidget($event)"
+          />
+        }
       } @else {
         <p class="status">
           This report has no published version yet. Check it out to start building it.

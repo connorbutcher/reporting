@@ -1,11 +1,11 @@
 <div class="readonly-grid-viewport">
   <div
     class="readonly-grid"
-    [style.grid-template-columns]="'repeat(' + content().columns + ', minmax(0, 1fr))'"
-    [style.grid-template-rows]="'repeat(' + content().rows + ', ' + rowHeight + 'px)'"
+    [style.grid-template-columns]="'repeat(' + tab().columns + ', minmax(0, 1fr))'"
+    [style.grid-template-rows]="'repeat(' + tab().rows + ', ' + rowHeight + 'px)'"
     [style.gap.px]="gridGap"
   >
-    @for (widget of content().widgets; track widget.id) {
+    @for (widget of tab().widgets; track widget.id) {
       <div
         class="item"
         [style.grid-column]="widget.x + 1 + ' / span ' + widget.w"

@@ -100,6 +100,12 @@ export class ReportBuilderStore {
   readonly gridColumns = computed(() => this.model()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
   readonly gridRows = computed(() => this.model()?.gridRows() ?? DEFAULT_GRID_ROWS);
 
+  // --- tabs ------------------------------------------------------------------
+
+  readonly tabs = computed(() => this.model()?.tabs() ?? []);
+  readonly activeTabId = computed(() => this.model()?.activeTabId() ?? null);
+  readonly activeTab = computed(() => this.model()?.activeTab() ?? null);
+
   readonly issues = computed<ValidationIssue[]>(() => this.model()?.issues() ?? []);
   readonly errors = computed(() => this.model()?.errors() ?? []);
   readonly warnings = computed(() => this.model()?.warnings() ?? []);
@@ -252,8 +258,16 @@ export class ReportBuilderStore {
       current.widgetId === widgetId &&
       this.selectedWidgetIds().length === 1;
 
+    this.focusTabFor(widgetId);
     this.selection.select(widgetId);
     if (!alreadyThere) this.navigate({ kind: 'widget', widgetId });
+  }
+
+  /** Brings the tab that owns a widget to the front, so the canvas shows what's selected. */
+  private focusTabFor(widgetId: string): void {
+    const model = this.model();
+    const tab = model?.tabOf(widgetId);
+    if (tab && model!.activeTabId() !== tab.id) model!.setActiveTab(tab.id);
   }
 
   /** Adds to or removes from the selection, for ctrl/shift-clicking on the canvas. */
@@ -278,8 +292,41 @@ export class ReportBuilderStore {
 
   /** Takes the user to whatever the issue is about. */
   goToIssue(issue: ValidationIssue): void {
-    if (issue.widgetId) this.selection.set([issue.widgetId]);
+    if (issue.widgetId) {
+      this.focusTabFor(issue.widgetId);
+      this.selection.set([issue.widgetId]);
+    }
     this.navigate(issue.view);
+  }
+
+  // --- tab lifecycle ---------------------------------------------------------
+
+  /** Switches the visible tab, dropping the selection (each tab has its own widgets). */
+  selectTab(tabId: string): void {
+    const model = this.model();
+    if (!model || model.activeTabId() === tabId) return;
+    model.setActiveTab(tabId);
+    this.selection.clear();
+    this.navigate({ kind: 'widgets' });
+  }
+
+  addTab(): void {
+    if (!this.model()?.addTab()) return;
+    this.selection.clear();
+    this.navigate({ kind: 'widgets' });
+  }
+
+  removeTab(tabId: string): void {
+    this.model()?.removeTab(tabId);
+    this.selection.clear();
+  }
+
+  renameTab(tabId: string, name: string): void {
+    this.model()?.renameTab(tabId, name);
+  }
+
+  moveTab(tabId: string, toIndex: number): void {
+    this.model()?.moveTab(tabId, toIndex);
   }
 
   private syncSelectionToView(): void {
@@ -334,9 +381,15 @@ export class ReportBuilderStore {
    */
   private restore(report: ReportRevisionContent | null): void {
     if (!report) return;
-    this.model.set(new ReportModel(report, this.sources));
+    // Keep showing the same tab across an undo/redo when it still exists.
+    const previousTabId = this.model()?.activeTabId() ?? null;
+    const model = new ReportModel(report, this.sources);
+    if (previousTabId && report.tabs.some((t) => t.id === previousTabId)) {
+      model.setActiveTab(previousTabId);
+    }
+    this.model.set(model);
 
-    const present = new Set(report.widgets.map((w) => w.id));
+    const present = new Set(report.tabs.flatMap((t) => t.widgets.map((w) => w.id)));
     this.selection.set(this.selectedWidgetIds().filter((id) => present.has(id)));
   }
 

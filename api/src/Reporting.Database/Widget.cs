@@ -13,8 +13,8 @@ public class Widget
     /// </summary>
     public Guid RefId { get; set; }
 
-    public int ReportRevisionId { get; set; }
-    public ReportRevision? ReportRevision { get; set; }
+    public int TabId { get; set; }
+    public Tab? Tab { get; set; }
     public WidgetType Type { get; set; }
     public int X { get; set; }
     public int Y { get; set; }

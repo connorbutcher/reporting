@@ -23,8 +23,6 @@ public class ReportRevision
     public Report? Report { get; set; }
     public RevisionKind Kind { get; set; }
     public int? VersionNumber { get; set; }
-    public int Columns { get; set; } = 48;
-    public int Rows { get; set; } = 30;
     public DateTime CreatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
 
@@ -38,7 +36,11 @@ public class ReportRevision
     /// </summary>
     public string FiltersJson { get; set; } = "[]";
 
-    public List<Widget> Widgets { get; set; } = new();
+    /// <summary>
+    /// The tabs belonging to this revision. Each owns its own grid dimensions and widgets.
+    /// A revision always has at least one. Deep-copied with the revision on checkout/publish.
+    /// </summary>
+    public List<Tab> Tabs { get; set; } = new();
 
     /// <summary>
     /// The datasets belonging to this revision. Deep-copied with the revision on checkout/publish

@@ -1,6 +1,6 @@
 import { Component, Signal, computed, input, output } from '@angular/core';
 import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
-import { ReportRevisionContent, Widget, readChartBindings } from '../../../core/models/report';
+import { ReportRevisionContent, Tab, Widget, readChartBindings } from '../../../core/models/report';
 import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
@@ -15,6 +15,9 @@ import { chartBindingKey } from '../report-view-filters';
 })
 export class ReadonlyReportGridComponent {
   readonly content = input.required<ReportRevisionContent>();
+
+  /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
+  readonly tab = input.required<Tab>();
 
   protected readonly rowHeight = ROW_HEIGHT;
   protected readonly gridGap = GRID_GAP;
@@ -75,7 +78,7 @@ export class ReadonlyReportGridComponent {
    */
   private readonly chartBindingFilters = computed(() => {
     const map = new Map<string, Record<string, FilterGroup | null>>();
-    for (const widget of this.content().widgets) {
+    for (const widget of this.tab().widgets) {
       if (!isChartWidget(widget)) continue;
       const filters: Record<string, FilterGroup | null> = {};
       for (const binding of readChartBindings(widget.config)) {

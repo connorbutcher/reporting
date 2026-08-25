@@ -6,6 +6,7 @@ import { BuilderShortcutsDirective } from './builder-shortcuts.directive';
 import { BuilderTopbarComponent } from './builder-topbar/builder-topbar.component';
 import { CanvasGridComponent } from './canvas-grid/canvas-grid.component';
 import { CanvasStatusComponent } from './canvas-status/canvas-status.component';
+import { CanvasTabsComponent } from './canvas-tabs/canvas-tabs.component';
 
 /**
  * The report builder screen. A thin shell: it provides the
@@ -17,6 +18,7 @@ import { CanvasStatusComponent } from './canvas-status/canvas-status.component';
   selector: 'app-report-canvas',
   imports: [
     BuilderTopbarComponent,
+    CanvasTabsComponent,
     CanvasGridComponent,
     CanvasStatusComponent,
     ReportSidePanelComponent,

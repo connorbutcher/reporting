@@ -12,6 +12,7 @@ public class ReportingDbContext : DbContext
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<ReportRevision> ReportRevisions => Set<ReportRevision>();
+    public DbSet<Tab> Tabs => Set<Tab>();
     public DbSet<Widget> Widgets => Set<Widget>();
     public DbSet<Dataset> Datasets => Set<Dataset>();
     public DbSet<DatasetSource> DatasetSources => Set<DatasetSource>();
@@ -63,31 +64,39 @@ public class ReportingDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ReportRevision>()
-            .Property(rv => rv.Columns)
-            .HasDefaultValue(12);
-
-        modelBuilder.Entity<ReportRevision>()
-            .Property(rv => rv.Rows)
-            .HasDefaultValue(10);
-
-        modelBuilder.Entity<ReportRevision>()
             .Property(rv => rv.Kind)
             .HasConversion<string>();
 
+        // A revision owns one or more tabs; deleting it cascades through its tabs (and their widgets).
         modelBuilder.Entity<ReportRevision>()
-            .HasMany(rv => rv.Widgets)
-            .WithOne(w => w.ReportRevision)
-            .HasForeignKey(w => w.ReportRevisionId)
+            .HasMany(rv => rv.Tabs)
+            .WithOne(t => t.ReportRevision)
+            .HasForeignKey(t => t.ReportRevisionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // A tab's RefId is stable across versions, so it repeats across revisions of a report —
+        // unique only within a single revision, which is all the client's per-revision diff needs.
+        modelBuilder.Entity<Tab>()
+            .HasIndex(t => new { t.ReportRevisionId, t.RefId })
+            .IsUnique();
+
+        modelBuilder.Entity<Tab>().Property(t => t.Columns).HasDefaultValue(48);
+        modelBuilder.Entity<Tab>().Property(t => t.Rows).HasDefaultValue(30);
+
+        modelBuilder.Entity<Tab>()
+            .HasMany(t => t.Widgets)
+            .WithOne(w => w.Tab)
+            .HasForeignKey(w => w.TabId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Widget>()
             .Property(w => w.Type)
             .HasConversion<string>();
 
-        // A widget's RefId is stable across versions, so it repeats across revisions of a report —
-        // unique only within a single revision, which is all the client's per-revision diff needs.
+        // A widget's RefId is stable across versions, so it repeats across tabs of a report —
+        // unique only within a single tab, which is all the client's per-tab diff needs.
         modelBuilder.Entity<Widget>()
-            .HasIndex(w => new { w.ReportRevisionId, w.RefId })
+            .HasIndex(w => new { w.TabId, w.RefId })
             .IsUnique();
 
         // Datasets are owned by a revision; deleting a revision (or the report above it) cascades

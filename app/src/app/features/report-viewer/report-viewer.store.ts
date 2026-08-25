@@ -83,6 +83,16 @@ export class ReportViewerStore {
   readonly content = computed(() =>
     this.contentResource.hasValue() ? this.contentResource.value() : null,
   );
+
+  /** Which tab the grid shows; null falls back to the first by order. */
+  readonly activeTabId = signal<string | null>(null);
+  readonly tabs = computed(() =>
+    [...(this.content()?.tabs ?? [])].sort((a, b) => a.order - b.order),
+  );
+  readonly activeTab = computed(() => {
+    const tabs = this.tabs();
+    return tabs.find((t) => t.id === this.activeTabId()) ?? tabs[0] ?? null;
+  });
   readonly loading = computed(
     () =>
       !this.reportId() ||
@@ -111,6 +121,8 @@ export class ReportViewerStore {
             : null,
         );
         this.openFilterKey.set(null);
+        // A fresh version resets to its first tab.
+        this.activeTabId.set(null);
         if (content) this.loadSchemas(content);
       });
     });
@@ -119,7 +131,7 @@ export class ReportViewerStore {
   /** Fetches a schema per dataset the version uses, so the filter panel can name columns. */
   private loadSchemas(content: ReportRevisionContent): void {
     const datasetIds = new Set<number>();
-    for (const widget of content.widgets) {
+    for (const widget of content.tabs.flatMap((t) => t.widgets)) {
       if (widget.type === 'dataTable') {
         if (widget.config.datasetId) datasetIds.add(widget.config.datasetId);
       } else if (isChartWidget(widget)) {
@@ -140,6 +152,11 @@ export class ReportViewerStore {
 
   showTab(tab: AsideTab): void {
     this.asideTab.set(tab);
+  }
+
+  /** Switches which report tab the grid shows. */
+  selectTab(tabId: string): void {
+    this.activeTabId.set(tabId);
   }
 
   /** Clicking a table's filter button takes the reader straight to its conditions. */

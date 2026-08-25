@@ -238,7 +238,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (report is null || !await CanSeeAsync(report)) return null;
 
         var revision = await db.ReportRevisions
-            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published && rv.VersionNumber == versionNumber);
         return revision?.ToContentDto(report);
     }
@@ -253,7 +253,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var draft = await db.ReportRevisions
-            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         return draft?.ToContentDto(report);
     }
@@ -270,7 +270,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var existingDraft = await db.ReportRevisions
-            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (existingDraft is not null) return existingDraft.ToContentDto(report);
 
@@ -300,7 +300,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     /// <summary>Loads the parts of a revision needed to deep-copy it: its widgets and its datasets' full graph.</summary>
     private static IQueryable<ReportRevision> IncludeContent(IQueryable<ReportRevision> revisions) =>
         revisions
-            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .Include(rv => rv.Datasets).ThenInclude(d => d.Columns)
             .Include(rv => rv.Datasets).ThenInclude(d => d.Rows).ThenInclude(r => r.Cells);
 
@@ -315,27 +315,44 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     /// </summary>
     private async Task CopyContentIntoAsync(ReportRevision target, ReportRevision? source)
     {
-        target.Columns = source?.Columns ?? 48;
-        target.Rows = source?.Rows ?? 30;
         target.FiltersJson = source?.FiltersJson ?? "[]";
 
-        // Widget configs still reference the source's dataset primary keys here; they're remapped
-        // once the copied datasets have been saved and their new keys are known.
+        // Copy each tab (grid dimensions included) and its widgets, preserving both the tab's and
+        // the widgets' RefIds so they keep their logical identity across versions. Widget configs
+        // still reference the source's dataset primary keys here; they're remapped once the copied
+        // datasets have been saved and their new keys are known. A revision with no source starts
+        // with a single empty tab so the editor always has a surface.
         if (source is not null)
         {
-            foreach (var widget in source.Widgets)
+            foreach (var sourceTab in source.Tabs)
             {
-                target.Widgets.Add(new Widget
+                var tabCopy = new Tab
                 {
-                    RefId = widget.RefId,
-                    Type = widget.Type,
-                    X = widget.X,
-                    Y = widget.Y,
-                    W = widget.W,
-                    H = widget.H,
-                    ConfigJson = widget.ConfigJson,
-                });
+                    RefId = sourceTab.RefId,
+                    Name = sourceTab.Name,
+                    Order = sourceTab.Order,
+                    Columns = sourceTab.Columns,
+                    Rows = sourceTab.Rows,
+                };
+                foreach (var widget in sourceTab.Widgets)
+                {
+                    tabCopy.Widgets.Add(new Widget
+                    {
+                        RefId = widget.RefId,
+                        Type = widget.Type,
+                        X = widget.X,
+                        Y = widget.Y,
+                        W = widget.W,
+                        H = widget.H,
+                        ConfigJson = widget.ConfigJson,
+                    });
+                }
+                target.Tabs.Add(tabCopy);
             }
+        }
+        else
+        {
+            target.Tabs.Add(new Tab { RefId = Guid.NewGuid(), Name = "Tab 1", Order = 0 });
         }
 
         // Copy each dataset's shell (columns + rows, preserving their RefIds). Cells reference their
@@ -409,7 +426,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         }
 
         var datasetIdMap = datasetCopies.ToDictionary(d => d.Source.Id, d => d.Copy.Id);
-        foreach (var widget in target.Widgets)
+        foreach (var widget in target.Tabs.SelectMany(t => t.Widgets))
             widget.ConfigJson = Mapping.RemapConfigDatasetIds(widget.ConfigJson, datasetIdMap);
 
         var filters = target.GetFilters();
@@ -436,30 +453,47 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var draft = await db.ReportRevisions
-            .Include(rv => rv.Widgets)
+            .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
         if (draft is null) throw new DataNotFoundException("No draft is checked out.");
 
-        draft.Columns = Math.Max(1, dto.Columns);
-        draft.Rows = Math.Max(1, dto.Rows);
         draft.SetFilters(dto.Filters);
 
-        // Widgets are addressed by their client-generated RefId, which is stable across versions.
-        var incomingRefs = dto.Widgets.Select(w => w.Id).ToHashSet();
-        draft.Widgets.RemoveAll(w => !incomingRefs.Contains(w.RefId));
+        // Tabs and widgets are addressed by their client-generated RefIds, which are stable across
+        // versions. Drop tabs no longer present, then upsert each incoming tab and diff its widgets.
+        var incomingTabRefs = dto.Tabs.Select(t => t.Id).ToHashSet();
+        draft.Tabs.RemoveAll(t => !incomingTabRefs.Contains(t.RefId));
 
-        foreach (var widgetDto in dto.Widgets)
+        foreach (var tabDto in dto.Tabs)
         {
-            var widget = draft.Widgets.FirstOrDefault(w => w.RefId == widgetDto.Id);
-            if (widget is null)
+            var tab = draft.Tabs.FirstOrDefault(t => t.RefId == tabDto.Id);
+            if (tab is null)
             {
-                widget = new Widget();
-                widgetDto.ApplyTo(widget);
-                draft.Widgets.Add(widget);
+                tab = new Tab();
+                tabDto.ApplyTo(tab);
+                draft.Tabs.Add(tab);
             }
             else
             {
-                widgetDto.ApplyTo(widget);
+                tabDto.ApplyTo(tab);
+            }
+
+            var incomingWidgetRefs = tabDto.Widgets.Select(w => w.Id).ToHashSet();
+            tab.Widgets.RemoveAll(w => !incomingWidgetRefs.Contains(w.RefId));
+
+            foreach (var widgetDto in tabDto.Widgets)
+            {
+                var widget = tab.Widgets.FirstOrDefault(w => w.RefId == widgetDto.Id);
+                if (widget is null)
+                {
+                    widget = new Widget();
+                    widgetDto.ApplyTo(widget);
+                    tab.Widgets.Add(widget);
+                }
+                else
+                {
+                    widgetDto.ApplyTo(widget);
+                }
             }
         }
 

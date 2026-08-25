@@ -132,7 +132,11 @@ public static class DbSeeder
         var dataset = datasetFactory(pending);
         revision.Datasets.Add(dataset);
 
-        revision.Widgets.Add(TitleWidget(title));
+        // Widgets live on a tab; each seeded revision gets a single default tab to carry them.
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Tab 1", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        tab.Widgets.Add(TitleWidget(title));
         var table = new Widget
         {
             RefId = Guid.NewGuid(),
@@ -143,7 +147,7 @@ public static class DbSeeder
             H = 5,
             ConfigJson = "{}",
         };
-        revision.Widgets.Add(table);
+        tab.Widgets.Add(table);
         pendingTables.Add(new PendingTable(table, dataset, title, columnNames));
     }
 

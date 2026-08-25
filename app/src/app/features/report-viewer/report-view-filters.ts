@@ -60,7 +60,8 @@ export class ReportViewFilters {
     const datasetIds = new Set<number>();
     const widgetEntries: ViewFilterEntry[] = [];
 
-    for (const widget of content.widgets) {
+    // Filters are report-wide, so every tab's widgets contribute their entries.
+    for (const widget of content.tabs.flatMap((t) => t.widgets)) {
       if (widget.type === 'dataTable') {
         const datasetId = widget.config.datasetId;
         if (!datasetId) continue;

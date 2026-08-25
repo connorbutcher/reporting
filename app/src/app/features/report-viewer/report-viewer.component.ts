@@ -25,8 +25,15 @@ export class ReportViewerComponent {
   protected readonly report = this.store.report;
   protected readonly content = this.store.content;
   protected readonly viewFilters = this.store.viewFilters;
+  protected readonly tabs = this.store.tabs;
+  protected readonly activeTab = this.store.activeTab;
+  protected readonly activeTabId = this.store.activeTabId;
 
   protected filterWidget(widgetId: string): void {
     this.store.filterWidget(widgetId);
+  }
+
+  protected selectTab(tabId: string): void {
+    this.store.selectTab(tabId);
   }
 }
