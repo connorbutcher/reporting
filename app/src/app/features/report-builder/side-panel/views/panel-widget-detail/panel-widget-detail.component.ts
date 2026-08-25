@@ -6,7 +6,9 @@ import { InputTextModule } from 'primeng/inputtext';
 import { WidgetType } from '../../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog';
 import { ChartWidgetModel, StaticTextWidgetModel } from '../../../models/widget.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { WidgetSelection } from '../../../state/widget-selection';
+import { WidgetCommands } from '../../../state/widget-commands';
 import { PanelWidgetDetailChartComponent } from '../panel-widget-detail-chart/panel-widget-detail-chart.component';
 import { PanelWidgetDetailTableComponent } from '../panel-widget-detail-table/panel-widget-detail-table.component';
 import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/panel-widget-detail-text.component';
@@ -29,29 +31,31 @@ export class PanelWidgetDetailComponent {
   /** Fallback heading; the chrome shows the selected widget's own name when there is one. */
   static readonly title = 'Widget';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly commands = inject(WidgetCommands);
 
-  protected readonly hasMultiSelection = this.store.hasMultiSelection;
-  protected readonly selectedWidgetIds = this.store.selectedWidgetIds;
-  protected readonly selectedWidget = this.store.selectedWidget;
-  protected readonly widgets = this.store.widgets;
+  protected readonly hasMultiSelection = this.selection.hasMultiSelection;
+  protected readonly selectedWidgetIds = this.selection.selectedWidgetIds;
+  protected readonly selectedWidget = this.session.selectedWidget;
+  protected readonly widgets = this.session.widgets;
 
-  protected readonly table = this.store.selectedTableWidget;
+  protected readonly table = this.session.selectedTableWidget;
   protected readonly text = computed(() => {
-    const widget = this.store.selectedWidget();
+    const widget = this.session.selectedWidget();
     return widget instanceof StaticTextWidgetModel ? widget : null;
   });
   protected readonly chart = computed(() => {
-    const widget = this.store.selectedWidget();
+    const widget = this.session.selectedWidget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
 
   protected readonly index = computed(() =>
-    this.store.widgets().findIndex((w) => w.id === this.store.selectedWidgetId()),
+    this.session.widgets().findIndex((w) => w.id === this.selection.selectedWidgetId()),
   );
   protected readonly hasPrevious = computed(() => this.index() > 0);
   protected readonly hasNext = computed(
-    () => this.index() >= 0 && this.index() < this.store.widgets().length - 1,
+    () => this.index() >= 0 && this.index() < this.session.widgets().length - 1,
   );
 
   protected defaultTitle(type: WidgetType): string {
@@ -59,18 +63,18 @@ export class PanelWidgetDetailComponent {
   }
 
   protected duplicateSelection(): void {
-    this.store.duplicateSelection();
+    this.commands.duplicateSelection();
   }
 
   protected removeSelection(): void {
-    this.store.removeWidgets(this.store.selectedWidgetIds());
+    this.commands.removeWidgets(this.selection.selectedWidgetIds());
   }
 
   protected removeWidget(widgetId: string): void {
-    this.store.removeWidget(widgetId);
+    this.commands.removeWidget(widgetId);
   }
 
   protected stepWidget(offset: number): void {
-    this.store.stepWidget(offset);
+    this.commands.stepWidget(offset);
   }
 }

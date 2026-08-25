@@ -1,6 +1,7 @@
-import { computed, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
 /** Which widgets are selected on the canvas, in the order they were added. */
+@Injectable()
 export class WidgetSelection {
   private readonly ids = signal<readonly string[]>([]);
 

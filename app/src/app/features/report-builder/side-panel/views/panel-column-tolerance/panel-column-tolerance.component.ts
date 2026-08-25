@@ -2,7 +2,8 @@ import { Component, computed, effect, inject, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -21,15 +22,16 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelColumnToleranceComponent {
   static readonly title = 'Tolerance limits';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
-  protected readonly datasets = this.store.datasets;
+  protected readonly datasets = this.session.datasets;
   protected readonly picker = inject(ToleranceSourcePicker);
 
-  private readonly table = this.store.selectedTableWidget;
+  private readonly table = this.session.selectedTableWidget;
 
   private readonly columnId = computed(() => {
-    const view = this.store.view();
+    const view = this.navigation.view();
     return view.kind === 'columnTolerance' ? view.columnId : null;
   });
 

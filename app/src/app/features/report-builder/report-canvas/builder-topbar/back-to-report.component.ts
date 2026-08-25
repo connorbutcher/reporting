@@ -1,26 +1,27 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ReportSession } from '../../state/report-session';
 
-/** Secondary navigation to the report's dataset editor. */
+/**
+ * Leaves the builder and returns to the report's view page. In-app navigation, so
+ * the unsaved-changes guard still gets a chance to confirm before any pending save
+ * is abandoned. The report id comes from the route, so the link is there even
+ * before the draft has loaded.
+ */
 @Component({
-  selector: 'app-datasets-link',
+  selector: 'app-back-to-report',
   imports: [RouterLink],
   template: `
     @if (reportId(); as id) {
-      <a
-        class="datasets"
-        [routerLink]="['/reports', id, 'edit', 'datasets']"
-        title="Manage this report's datasets"
-      >
-        <i class="pi pi-database" aria-hidden="true"></i>
-        Datasets
+      <a class="back" [routerLink]="['/reports', id]" title="Return to the report view">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        Back to report
       </a>
     }
   `,
   styles: [
     `
-      .datasets {
+      .back {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -33,15 +34,15 @@ import { ReportSession } from '../../state/report-session';
         font-weight: 500;
         text-decoration: none;
       }
-      .datasets:hover {
+      .back:hover {
         background: var(--p-primary-50, #eef3fa);
         color: var(--app-navy);
       }
     `,
   ],
 })
-export class DatasetsLinkComponent {
+export class BackToReportComponent {
   private readonly session = inject(ReportSession);
 
-  protected readonly reportId = computed(() => this.session.model()?.reportId ?? null);
+  protected readonly reportId = this.session.reportId;
 }

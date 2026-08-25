@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 
 @Component({
   selector: 'app-panel-column-list',
@@ -11,18 +12,19 @@ import { ReportBuilderStore } from '../../../report-builder.store';
 export class PanelColumnListComponent {
   static readonly title = 'Columns';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
-  protected readonly table = this.store.selectedTableWidget;
+  protected readonly table = this.session.selectedTableWidget;
   protected readonly widgetId = computed(() => this.table()?.id ?? null);
 
   protected openSettings(columnId: string): void {
     const widgetId = this.widgetId();
-    if (widgetId) this.store.navigate({ kind: 'columnSettings', widgetId, columnId });
+    if (widgetId) this.navigation.navigate({ kind: 'columnSettings', widgetId, columnId });
   }
 
   protected openAdd(): void {
     const widgetId = this.widgetId();
-    if (widgetId) this.store.navigate({ kind: 'addColumn', widgetId });
+    if (widgetId) this.navigation.navigate({ kind: 'addColumn', widgetId });
   }
 }

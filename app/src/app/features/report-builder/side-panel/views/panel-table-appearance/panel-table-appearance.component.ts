@@ -5,7 +5,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TableDensity } from '../../../../../core/models/report';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
 const DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
@@ -29,15 +29,15 @@ const DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
 export class PanelTableAppearanceComponent {
   static readonly title = 'Appearance';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
   protected readonly densityOptions = DENSITY_OPTIONS;
 
   protected readonly appearance = computed(
-    () => this.store.selectedTableWidget()?.appearance ?? null,
+    () => this.session.selectedTableWidget()?.appearance ?? null,
   );
-  protected readonly showTitle = computed(() => this.store.selectedWidget()?.showTitle() ?? true);
+  protected readonly showTitle = computed(() => this.session.selectedWidget()?.showTitle() ?? true);
 
   protected setShowTitle(value: boolean): void {
-    this.store.selectedWidget()?.showTitle.set(value);
+    this.session.selectedWidget()?.showTitle.set(value);
   }
 }

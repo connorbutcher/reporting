@@ -1,7 +1,7 @@
 import { Directive, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
 import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
 import { WidgetModel } from '../models/widget.model';
-import { ReportBuilderStore } from '../report-builder.store';
+import { ReportSession } from '../state/report-session';
 
 /**
  * The drag half of a widget's pointer interaction, split out of the host so the
@@ -21,7 +21,7 @@ export class WidgetDragDirective {
   /** Fires synchronously before the drag begins so the host can update the selection. */
   readonly selectRequest = output<PointerEvent>();
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly dragging = signal(false);
@@ -53,7 +53,7 @@ export class WidgetDragDirective {
     this.selectRequest.emit(event);
 
     // Dragging any member of a selection moves the whole group together.
-    const selected = this.store.selectedWidgets();
+    const selected = this.session.selectedWidgets();
     const group = selected.some((w) => w.id === this.widget().id) ? selected : [this.widget()];
     this.dragGroup = group.map((widget) => ({ widget, origin: { x: widget.x(), y: widget.y() } }));
 
@@ -73,7 +73,7 @@ export class WidgetDragDirective {
     this.dragOffset.set({ x: dx, y: dy });
 
     // Column width is measured live (columns fill the canvas); rows are a fixed height.
-    const columnStep = this.store.columnWidth() + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GRID_GAP;
     const rowStep = ROW_HEIGHT + GRID_GAP;
 
     // Clamp the group as a unit so its members keep their relative positions.
@@ -113,7 +113,7 @@ export class WidgetDragDirective {
 
   /** Limits the shift so no member of the group leaves the grid. */
   private clampGroupDelta(delta: number, axis: 'x' | 'y'): number {
-    const limit = axis === 'x' ? this.store.gridColumns() : this.store.gridRows();
+    const limit = axis === 'x' ? this.session.gridColumns() : this.session.gridRows();
 
     let min = -Infinity;
     let max = Infinity;
@@ -127,7 +127,7 @@ export class WidgetDragDirective {
   }
 
   private groupCollides(dx: number, dy: number): boolean {
-    const model = this.store.model();
+    const model = this.session.model();
     if (!model) return true;
 
     const moving = new Set(this.dragGroup.map((entry) => entry.widget.id));

@@ -1,7 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, inject } from '@angular/core';
 import { PublishDialogComponent } from '../../publish-dialog/publish-dialog.component';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportLifecycle } from '../../state/report-lifecycle';
+import { ReportSession } from '../../state/report-session';
 
 /**
  * The builder's one primary action: publish the draft as a new version. Carries
@@ -60,16 +61,17 @@ import { ReportBuilderStore } from '../../report-builder.store';
   ],
 })
 export class PublishButtonComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly lifecycle = inject(ReportLifecycle);
   private readonly dialog = inject(Dialog);
 
   protected readonly canPublish = computed(
-    () => this.store.hasUnpublishedChanges() && this.store.isValid(),
+    () => this.lifecycle.hasUnpublishedChanges() && this.session.isValid(),
   );
 
   protected readonly title = computed(() => {
-    if (!this.store.isValid()) return 'Fix errors before publishing';
-    if (!this.store.hasUnpublishedChanges()) return 'No changes to publish';
+    if (!this.session.isValid()) return 'Fix errors before publishing';
+    if (!this.lifecycle.hasUnpublishedChanges()) return 'No changes to publish';
     return 'Publish this draft as a new version';
   });
 
@@ -78,7 +80,7 @@ export class PublishButtonComponent {
     ref.closed.subscribe((notes) => {
       // undefined means the dialog was cancelled or dismissed.
       if (notes === undefined) return;
-      this.store.publish(notes);
+      this.lifecycle.publish(notes);
     });
   }
 }

@@ -1,5 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportAutosave } from '../../state/report-autosave';
+import { ReportSession } from '../../state/report-session';
+import { WidgetSelection } from '../../state/widget-selection';
 import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
 
 /**
@@ -46,14 +48,16 @@ import { SaveStatusComponent } from '../../../../shared/save-status/save-status.
   ],
 })
 export class CanvasStatusComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly autosave = inject(ReportAutosave);
 
-  protected readonly gridColumns = this.store.gridColumns;
-  protected readonly gridRows = this.store.gridRows;
-  protected readonly hasMultiSelection = this.store.hasMultiSelection;
-  protected readonly widgetCount = computed(() => this.store.widgets().length);
-  protected readonly selectedCount = computed(() => this.store.selectedWidgetIds().length);
-  protected readonly saving = this.store.saving;
-  protected readonly saveFailed = this.store.saveFailed;
-  protected readonly dirty = this.store.dirty;
+  protected readonly gridColumns = this.session.gridColumns;
+  protected readonly gridRows = this.session.gridRows;
+  protected readonly hasMultiSelection = this.selection.hasMultiSelection;
+  protected readonly widgetCount = computed(() => this.session.widgets().length);
+  protected readonly selectedCount = computed(() => this.selection.selectedWidgetIds().length);
+  protected readonly saving = this.autosave.saving;
+  protected readonly saveFailed = this.autosave.saveFailed;
+  protected readonly dirty = this.session.dirty;
 }

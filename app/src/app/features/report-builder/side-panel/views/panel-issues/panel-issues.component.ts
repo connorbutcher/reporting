@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { ValidationIssue } from '../../../models/validation-issue';
 
 @Component({
@@ -10,12 +11,13 @@ import { ValidationIssue } from '../../../models/validation-issue';
 export class PanelIssuesComponent {
   static readonly title = 'Report issues';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
-  protected readonly issues = this.store.issues;
-  protected readonly saveBlocked = this.store.saveBlocked;
+  protected readonly issues = this.session.issues;
+  protected readonly saveBlocked = this.session.saveBlocked;
 
   protected goToIssue(issue: ValidationIssue): void {
-    this.store.goToIssue(issue);
+    this.navigation.goToIssue(issue);
   }
 }

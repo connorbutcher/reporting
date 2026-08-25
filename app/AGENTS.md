@@ -57,8 +57,10 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use the `providedIn: 'root'` option for singleton services
 - Prefer the `@Service` decorator over `@Injectable({providedIn: 'root'})` for new singleton services (Angular v22+)
 - Use the `inject()` function instead of constructor injection
-- Components must NOT inject or call services directly. A feature screen provides a single component-scoped `@Injectable()` store (listed in the component's `providers`); the store is the only thing that injects services (HTTP, data, etc.). Sub-components inject the store and read/drive it — never a service.
-- The store instance itself must NOT be publicly exposed to the UI. Keep the injected store as a private field and expose narrow public getters/methods on the component that delegate to it, so the template binds only to the component's own API — never to `store.xyz` directly.
+- A feature screen owns its state as focused `@Injectable()` services, all listed in the screen component's `providers` (component-scoped, not root) so they share one instance per screen. Never `new` a state collaborator — provide it and `inject()` it, so Angular constructs it and it can inject its own dependencies. Two shapes are allowed:
+  - **Facade store** — one store service fronts the collaborators and re-exposes their signals/methods; sub-components inject only the store. Used by `datasets` (`DatasetsStore`) and `home` (`HomeStore`).
+  - **Direct services** — the collaborators are the public surface and sub-components inject the specific service(s) they need directly, with no facade. Used by the report builder (`report-canvas` provides `ReportSession`, `PanelNavigation`, `WidgetSelection`, `ReportAutosave`, `DatasetSchema`, `ReportLifecycle`, `WidgetCommands`, `TabCommands`).
+- Whichever shape, keep the injected service(s) as private fields and expose narrow public getters/methods on the component that delegate to them, so the template binds only to the component's own API — never to `store.xyz` / `service.xyz` directly.
 
 ## Styles (SCSS)
 

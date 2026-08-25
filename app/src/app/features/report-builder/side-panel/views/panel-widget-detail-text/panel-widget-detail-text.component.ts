@@ -2,7 +2,7 @@ import { Component, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TextareaModule } from 'primeng/textarea';
 import { StaticTextWidgetModel } from '../../../models/widget.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -13,11 +13,11 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-widget-detail-text.component.html',
 })
 export class PanelWidgetDetailTextComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly navigation = inject(PanelNavigation);
 
   readonly text = input.required<StaticTextWidgetModel>();
 
   protected navigate(view: PanelView): void {
-    this.store.navigate(view);
+    this.navigation.navigate(view);
   }
 }

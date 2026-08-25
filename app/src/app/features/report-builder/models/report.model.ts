@@ -52,7 +52,8 @@ export class ReportModel extends EditorNode {
       .sort((a, b) => a.order - b.order)
       .map((t) => new TabModel(t, sources));
     this.tabs.set(tabs);
-    this.activeTabId.set(tabs[0]?.id ?? null);
+    // Which tab is active is driven by the route's `tab` param (see ReportSession),
+    // so it's left unset here; `activeTab` falls back to the first tab until then.
 
     this.filters.set(
       (report.filters ?? []).map((f) => this.buildReportFilter(f.datasetId, f.filter)),
@@ -138,7 +139,10 @@ export class ReportModel extends EditorNode {
     if (this.tabs().some((t) => t.id === tabId)) this.activeTabId.set(tabId);
   }
 
-  /** Adds an empty tab after the last one and makes it active. */
+  /**
+   * Adds an empty tab after the last one and returns it. Making it the active tab
+   * is the caller's job (it navigates the `tab` query param — see TabCommands).
+   */
   addTab(): TabModel {
     const order = this.tabs().reduce((max, t) => Math.max(max, t.order()), -1) + 1;
     const dto: Tab = {
@@ -151,26 +155,21 @@ export class ReportModel extends EditorNode {
     };
     const tab = new TabModel(dto, this.sources);
     this.tabs.update((tabs) => [...tabs, tab]);
-    this.activeTabId.set(tab.id);
     return tab;
   }
 
-  /** Removes a tab, refusing to drop the last one. Reselects a neighbour if the active tab went. */
+  /**
+   * Removes a tab, refusing to drop the last one. Reselecting a survivor is the
+   * caller's job when the active tab went (the route's `tab` param drives it).
+   */
   removeTab(tabId: string): void {
     const tabs = this.tabs();
     if (tabs.length <= 1) return;
-
-    const index = tabs.findIndex((t) => t.id === tabId);
-    if (index < 0) return;
+    if (!tabs.some((t) => t.id === tabId)) return;
 
     const next = tabs.filter((t) => t.id !== tabId);
     this.renumber(next);
     this.tabs.set(next);
-
-    if (this.activeTabId() === tabId) {
-      const neighbour = next[Math.min(index, next.length - 1)];
-      this.activeTabId.set(neighbour?.id ?? null);
-    }
   }
 
   renameTab(tabId: string, name: string): void {

@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { ChartWidgetModel } from '../../../models/widget.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 
 @Component({
@@ -11,8 +12,9 @@ import { FilterBuilderComponent } from '../../filter-builder/filter-builder.comp
 export class PanelWidgetFiltersComponent {
   static readonly title = 'Filters';
 
-  private readonly store = inject(ReportBuilderStore);
-  private readonly widget = this.store.selectedFilterableWidget;
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly widget = this.session.selectedFilterableWidget;
 
   /**
    * The filter this screen edits: a specific chart binding's when the view names
@@ -23,7 +25,7 @@ export class PanelWidgetFiltersComponent {
     const widget = this.widget();
     if (!widget) return null;
 
-    const view = this.store.view();
+    const view = this.navigation.view();
     if (widget instanceof ChartWidgetModel && view.kind === 'widgetFilters' && view.bindingId) {
       const binding = widget.binding(view.bindingId);
       if (binding) return { datasetId: binding.datasetId, filter: binding.filter };

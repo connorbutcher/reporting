@@ -1,5 +1,7 @@
 import { Directive, inject } from '@angular/core';
-import { ReportBuilderStore } from '../report-builder.store';
+import { ReportAutosave } from '../state/report-autosave';
+import { WidgetCommands } from '../state/widget-commands';
+import { WidgetSelection } from '../state/widget-selection';
 
 /** Nudging by a whole cell keeps widgets on the grid. */
 const NUDGE = 1;
@@ -16,7 +18,9 @@ const NUDGE = 1;
   },
 })
 export class BuilderShortcutsDirective {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly autosave = inject(ReportAutosave);
+  private readonly commands = inject(WidgetCommands);
+  private readonly selection = inject(WidgetSelection);
 
   protected onKeyDown(event: KeyboardEvent): void {
     // Never steal keys from a field the user is typing in.
@@ -26,40 +30,40 @@ export class BuilderShortcutsDirective {
 
     if (ctrl && event.key.toLowerCase() === 'z') {
       event.preventDefault();
-      if (event.shiftKey) this.store.redo();
-      else this.store.undo();
+      if (event.shiftKey) this.autosave.redo();
+      else this.autosave.undo();
       return;
     }
 
     if (ctrl && event.key.toLowerCase() === 'y') {
       event.preventDefault();
-      this.store.redo();
+      this.autosave.redo();
       return;
     }
 
     if (ctrl && event.key.toLowerCase() === 'd') {
       event.preventDefault();
-      this.store.duplicateSelection();
+      this.commands.duplicateSelection();
       return;
     }
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
-      const ids = this.store.selectedWidgetIds();
+      const ids = this.selection.selectedWidgetIds();
       if (ids.length === 0) return;
       event.preventDefault();
-      this.store.removeWidgets(ids);
+      this.commands.removeWidgets(ids);
       return;
     }
 
     if (event.key === 'Escape') {
-      this.store.clearSelection();
+      this.selection.clear();
       return;
     }
 
     const nudge = NUDGE_KEYS[event.key];
-    if (nudge && this.store.selectedWidgetIds().length > 0) {
+    if (nudge && this.selection.selectedWidgetIds().length > 0) {
       event.preventDefault();
-      this.store.nudgeSelection(nudge.dx, nudge.dy);
+      this.commands.nudgeSelection(nudge.dx, nudge.dy);
     }
   }
 }

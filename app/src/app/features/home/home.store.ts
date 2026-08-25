@@ -20,9 +20,9 @@ const SEARCH_DEBOUNCE_MS = 300;
  * All state and coordination for the home screen: which folder is open (driven by the URL),
  * the folder tree, the current folder's contents and breadcrumb, whole-tree search, and the
  * row/create actions. The page shell and each of its section components inject this and read or
- * drive it directly, so the shell stays thin — mirroring how the report builder is composed
- * around {@link ReportBuilderStore}. The tree is a plain collaborator ({@link FolderTreeStore})
- * constructed here, the same way that store nests {@link WidgetSelection} and friends.
+ * drive it directly, so the shell stays thin — mirroring how the report builder screen is
+ * composed from focused, component-provided state services. The tree is a plain collaborator
+ * ({@link FolderTreeStore}) constructed here.
  *
  * Provided at the page component (not root), so its {@link ActivatedRoute} resolves to the home
  * route and its lifetime — and that of the subscriptions/effects below — is tied to the page.

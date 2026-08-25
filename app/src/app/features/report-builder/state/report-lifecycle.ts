@@ -1,81 +1,108 @@
-import { WritableSignal, computed } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
-import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { FilterApiService } from '../../../core/api/filter-api.service';
 import { ReportApiService } from '../../../core/api/report-api.service';
-import { DatasetSummary } from '../../../core/models/dataset';
-import { OperatorCatalogue } from '../../../core/models/filter';
 import { ReportRevisionContent } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportModel } from '../models/report.model';
-import { ModelSources } from '../models/widget.model';
 import { ReportAutosave } from './report-autosave';
+import { ReportSession } from './report-session';
 
 /**
- * Loading and publishing the report: fetching the draft (checking one out if the
- * viewer didn't), building the model tree, and pushing a published version back.
- * Owns the "what was loaded" baseline that {@link hasUnpublishedChanges} compares
- * against — which the model's own dirty flag can't answer, since autosave clears
- * that the moment it catches up.
+ * Loading and publishing the report. The draft is fetched with an
+ * {@link httpResource} keyed on the route's report id (via {@link ReportSession}),
+ * so navigating or reloading refetches on its own — no imperative `load()` call
+ * from the screen. When the report has no checked-out draft yet (a direct
+ * navigation or a refresh mid-edit), the GET 404s and this checks one out on the
+ * fly, then reloads the resource. The resolved content is turned into the
+ * {@link ReportModel} tree once, seeding the autosave baseline.
+ *
+ * Also owns the "what was loaded" baseline that {@link hasUnpublishedChanges}
+ * compares against — which the model's own dirty flag can't answer, since
+ * autosave clears that the moment it catches up.
  */
+@Injectable()
 export class ReportLifecycle {
+  private readonly reportApi = inject(ReportApiService);
+  private readonly router = inject(Router);
+  private readonly session = inject(ReportSession);
+  private readonly autosave = inject(ReportAutosave);
+  private readonly notify = inject(NotificationService);
+
+  /** The checked-out draft for the current report; refetched whenever the route id changes. */
+  private readonly draftResource = httpResource<ReportRevisionContent>(() => {
+    const id = this.session.reportId();
+    return id !== null ? `/api/reports/${id}/draft` : undefined;
+  });
+
+  /** The report id we've already tried to check out a draft for, so we only try once. */
+  private checkoutAttemptedFor: number | null = null;
+  /** Set when even a checkout couldn't produce a draft, so the skeleton stops. */
+  private readonly loadFailed = signal(false);
+
   /**
    * The normalised snapshot the draft had when it was loaded (or last
    * published), for detecting whether there's anything new to publish.
    */
   private loadBaseline: string | null = null;
 
+  /** True until the report's model tree is built (or loading has failed), for the canvas skeleton. */
+  readonly loading = computed(
+    () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
+  );
+
   /** Whether this draft differs from what was loaded (or last published). */
   readonly hasUnpublishedChanges = computed(() => {
-    const model = this.model();
+    const model = this.session.model();
     if (!model || this.loadBaseline === null) return false;
     return JSON.stringify(model.toDto()) !== this.loadBaseline;
   });
 
-  constructor(
-    private readonly reportApi: ReportApiService,
-    private readonly datasetApi: DatasetApiService,
-    private readonly filterApi: FilterApiService,
-    private readonly router: Router,
-    private readonly model: WritableSignal<ReportModel | null>,
-    private readonly operatorCatalogue: WritableSignal<OperatorCatalogue | null>,
-    private readonly datasets: WritableSignal<DatasetSummary[]>,
-    private readonly loading: WritableSignal<boolean>,
-    private readonly sources: ModelSources,
-    private readonly autosave: ReportAutosave,
-    private readonly notify: NotificationService,
-  ) {}
-
   /**
-   * Loads the draft checked out for the given report. The report viewer is
-   * responsible for checking a draft out before routing here; if none exists
-   * (e.g. a direct navigation or a page refresh mid-edit) one is checked out
-   * on the fly so the canvas still has something to edit.
+   * Whether leaving right now could lose work: an edit hasn't reached the server
+   * yet, or the last attempt to send it failed. Shared by the beforeunload
+   * handler and the route guard so both agree on the risk.
    */
-  load(reportId: number): void {
-    this.loading.set(true);
-    this.datasetApi.listForReport(reportId).subscribe((datasets) => this.datasets.set(datasets));
-    this.filterApi.operators().subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
+  readonly hasUnsavedRisk = computed(() => this.session.dirty() || this.autosave.saveFailed());
 
-    this.reportApi.getDraft(reportId).subscribe({
-      next: (content) => this.setLoadedReport(content),
-      // No draft yet — check one out on the fly. If that fails too there's
-      // nothing to edit, so stop the skeleton and say so rather than hanging on
-      // it forever.
-      error: () =>
-        this.reportApi.checkout(reportId).subscribe({
-          next: (content) => this.setLoadedReport(content),
+  constructor() {
+    // The GET failing means the report has no draft checked out yet — check one
+    // out on the fly and reload the resource. If that fails too there's nothing
+    // to edit, so give up and let the skeleton stop.
+    effect(() => {
+      const id = this.session.reportId();
+      const failed = this.draftResource.error() !== undefined;
+      if (id === null || !failed) return;
+
+      untracked(() => {
+        if (this.checkoutAttemptedFor === id) {
+          this.loadFailed.set(true);
+          this.notify.error("This report couldn't be opened for editing. Please try again.");
+          return;
+        }
+        this.checkoutAttemptedFor = id;
+        this.reportApi.checkout(id).subscribe({
+          next: () => this.draftResource.reload(),
           error: () => {
-            this.loading.set(false);
+            this.loadFailed.set(true);
             this.notify.error("This report couldn't be opened for editing. Please try again.");
           },
-        }),
+        });
+      });
+    });
+
+    // Build the model tree once the draft content arrives (first load or after a checkout).
+    effect(() => {
+      const content = this.draftResource.hasValue() ? this.draftResource.value() : null;
+      untracked(() => {
+        if (content) this.setLoadedReport(content);
+      });
     });
   }
 
   /** Publishes the checked-out draft as a new version, then returns to the viewer. */
   publish(notes: string | null): void {
-    const model = this.model();
+    const model = this.session.model();
     if (!model) return;
 
     this.reportApi.publish(model.reportId, notes).subscribe({
@@ -89,13 +116,12 @@ export class ReportLifecycle {
   }
 
   private setLoadedReport(report: ReportRevisionContent): void {
-    const model = ReportModel.fromDto(report, this.sources);
-    this.model.set(model);
+    const model = ReportModel.fromDto(report, this.session.sources);
+    this.session.model.set(model);
     this.loadBaseline = JSON.stringify(model.toDto());
     // Seeded from the model, not the server payload: the model normalises
     // defaults and key order, so anything else would look like a change and
     // leave an undo step available before the user has done anything.
     this.autosave.reset(model.toDto());
-    this.loading.set(false);
   }
 }

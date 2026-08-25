@@ -10,7 +10,9 @@ import { SelectModule } from 'primeng/select';
 import { DatasetColumn, DatasetColumnConfiguration } from '../../../../../core/models/dataset';
 import { ColumnAlign } from '../../../../../core/models/report';
 import { TableColumnModel } from '../../../models/table-column.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
+import { PanelNavigation } from '../../../state/panel-navigation';
+import { DatasetSchema } from '../../../state/dataset-schema';
 import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -54,15 +56,17 @@ export class PanelColumnSettingsComponent {
   /** Fallback heading; the chrome shows the selected column's own label when there is one. */
   static readonly title = 'Column';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly schema = inject(DatasetSchema);
 
   protected readonly dateFormats = DATE_FORMAT_OPTIONS;
   protected readonly alignOptions = HORIZONTAL_ALIGN_OPTIONS;
 
-  private readonly table = this.store.selectedTableWidget;
+  private readonly table = this.session.selectedTableWidget;
 
   private readonly columnId = computed(() => {
-    const view = this.store.view();
+    const view = this.navigation.view();
     return view.kind === 'columnSettings' ? view.columnId : null;
   });
 
@@ -94,7 +98,7 @@ export class PanelColumnSettingsComponent {
 
   protected openTolerance(columnId: string): void {
     const widgetId = this.table()?.id;
-    if (widgetId) this.store.navigate({ kind: 'columnTolerance', widgetId, columnId });
+    if (widgetId) this.navigation.navigate({ kind: 'columnTolerance', widgetId, columnId });
   }
 
   protected patchFormat(patch: DatasetColumnConfiguration): void {
@@ -102,11 +106,11 @@ export class PanelColumnSettingsComponent {
     const column = this.schemaColumn();
     if (!datasetId || !column) return;
 
-    this.store.updateColumnConfiguration(datasetId, column.id, { ...this.config(), ...patch });
+    this.schema.updateColumnConfiguration(datasetId, column.id, { ...this.config(), ...patch });
   }
 
   protected remove(columnId: string): void {
     this.table()?.removeColumn(columnId);
-    this.store.back();
+    this.navigation.back();
   }
 }

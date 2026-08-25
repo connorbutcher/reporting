@@ -2,6 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs';
 import { DatasetApiService } from '../../core/api/dataset-api.service';
 import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
@@ -84,11 +85,21 @@ export class ReportViewerStore {
     this.contentResource.hasValue() ? this.contentResource.value() : null,
   );
 
-  /** Which tab the grid shows; null falls back to the first by order. */
-  readonly activeTabId = signal<string | null>(null);
+  // Which tab the grid shows is the `tab` query param, so the URL is the source of
+  // truth: reloading, deep-linking and back/forward all restore the open tab. The
+  // value is a tab's stable id (its RefId), which is preserved across versions.
+  private readonly tabParam = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('tab'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('tab') },
+  );
   readonly tabs = computed(() =>
     [...(this.content()?.tabs ?? [])].sort((a, b) => a.order - b.order),
   );
+  /** The param when it names a tab this version has; null falls back to the first by order. */
+  readonly activeTabId = computed(() => {
+    const raw = this.tabParam();
+    return raw && this.tabs().some((t) => t.id === raw) ? raw : null;
+  });
   readonly activeTab = computed(() => {
     const tabs = this.tabs();
     return tabs.find((t) => t.id === this.activeTabId()) ?? tabs[0] ?? null;
@@ -121,10 +132,29 @@ export class ReportViewerStore {
             : null,
         );
         this.openFilterKey.set(null);
-        // A fresh version resets to its first tab.
-        this.activeTabId.set(null);
         if (content) this.loadSchemas(content);
       });
+    });
+
+    // Keep the URL pointing at a real tab: when the `tab` param is missing or names
+    // a tab this version doesn't have, default to the first one (replacing history
+    // so the bare URL isn't a back-button trap). A param that resolves is left be —
+    // tab ids are stable across versions, so it survives switching version too.
+    effect(() => {
+      const tabs = this.tabs();
+      untracked(() => {
+        if (tabs.length && this.activeTabId() === null) this.goToTab(tabs[0].id, true);
+      });
+    });
+  }
+
+  /** Writes the active tab to the `tab` query param, which the URL drives back into {@link activeTabId}. */
+  private goToTab(tabId: string, replaceUrl = false): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: tabId },
+      queryParamsHandling: 'merge',
+      replaceUrl,
     });
   }
 
@@ -154,9 +184,10 @@ export class ReportViewerStore {
     this.asideTab.set(tab);
   }
 
-  /** Switches which report tab the grid shows. */
+  /** Switches which report tab the grid shows by navigating the `tab` query param. */
   selectTab(tabId: string): void {
-    this.activeTabId.set(tabId);
+    if (this.activeTabId() === tabId) return;
+    this.goToTab(tabId);
   }
 
   /** Clicking a table's filter button takes the reader straight to its conditions. */

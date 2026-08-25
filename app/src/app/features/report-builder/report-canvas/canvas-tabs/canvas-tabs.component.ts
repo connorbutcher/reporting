@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportSession } from '../../state/report-session';
+import { TabCommands } from '../../state/tab-commands';
 
 /**
  * The tab strip along the top of the canvas. Each tab is its own grid surface;
@@ -134,26 +135,27 @@ import { ReportBuilderStore } from '../../report-builder.store';
   ],
 })
 export class CanvasTabsComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly tabCommands = inject(TabCommands);
 
-  protected readonly tabs = this.store.tabs;
-  protected readonly activeTabId = this.store.activeTabId;
+  protected readonly tabs = this.session.tabs;
+  protected readonly activeTabId = this.session.activeTabId;
   protected readonly canDelete = computed(() => this.tabs().length > 1);
 
   protected readonly editingId = signal<string | null>(null);
   protected readonly draft = signal('');
 
   protected select(tabId: string): void {
-    this.store.selectTab(tabId);
+    this.tabCommands.selectTab(tabId);
   }
 
   protected add(): void {
-    this.store.addTab();
+    this.tabCommands.addTab();
   }
 
   protected remove(tabId: string, event: Event): void {
     event.stopPropagation();
-    this.store.removeTab(tabId);
+    this.tabCommands.removeTab(tabId);
   }
 
   protected startRename(tabId: string): void {
@@ -164,7 +166,7 @@ export class CanvasTabsComponent {
   protected commitRename(tabId: string): void {
     if (this.editingId() !== tabId) return;
     const name = this.draft().trim();
-    if (name) this.store.renameTab(tabId, name);
+    if (name) this.tabCommands.renameTab(tabId, name);
     this.editingId.set(null);
   }
 

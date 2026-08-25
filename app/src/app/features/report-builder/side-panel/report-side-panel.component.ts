@@ -2,7 +2,8 @@ import { NgComponentOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
-import { ReportBuilderStore } from '../report-builder.store';
+import { PanelNavigation } from '../state/panel-navigation';
+import { ReportSession } from '../state/report-session';
 import { PANEL_VIEWS, panelComponentFor, parentOf } from './panel-component.registry';
 import { PanelView } from './panel-view';
 
@@ -34,17 +35,18 @@ const COLLAPSE_THRESHOLD = 4;
   styleUrl: './report-side-panel.component.scss',
 })
 export class ReportSidePanelComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly session = inject(ReportSession);
 
   protected readonly ellipsis = ELLIPSIS;
 
   /** The component to render for the current view — replaces a per-kind template switch. */
-  protected readonly currentPanel = computed(() => panelComponentFor(this.store.view()));
+  protected readonly currentPanel = computed(() => panelComponentFor(this.navigation.view()));
 
   // Narrow pass-throughs so the template binds only to this component's own API,
-  // never to the store directly.
-  protected readonly canGoBack = this.store.canGoBack;
-  protected readonly canGoForward = this.store.canGoForward;
+  // never to the navigation service directly.
+  protected readonly canGoBack = this.navigation.canGoBack;
+  protected readonly canGoForward = this.navigation.canGoForward;
 
   /** User asked to see the collapsed middle of the trail for the current screen. */
   private readonly expanded = signal(false);
@@ -53,7 +55,7 @@ export class ReportSidePanelComponent {
     // A fresh screen starts collapsed again — an expansion from three levels
     // ago isn't relevant once the user has navigated somewhere new.
     effect(() => {
-      this.store.view();
+      this.navigation.view();
       this.expanded.set(false);
     });
   }
@@ -61,7 +63,7 @@ export class ReportSidePanelComponent {
   /** Every ancestor of the current view, root first, not including the current view itself. */
   protected readonly ancestors = computed(() => {
     const chain: PanelView[] = [];
-    let parent = parentOf(this.store.view());
+    let parent = parentOf(this.navigation.view());
     while (parent) {
       chain.unshift(parent);
       parent = parentOf(parent);
@@ -80,7 +82,7 @@ export class ReportSidePanelComponent {
     return [all[0], ELLIPSIS, ...all.slice(-2)];
   });
 
-  protected readonly title = computed(() => this.labelFor(this.store.view()));
+  protected readonly title = computed(() => this.labelFor(this.navigation.view()));
 
   protected crumbKey(crumb: Crumb): string {
     return crumb === ELLIPSIS ? ELLIPSIS : viewKey(crumb);
@@ -91,15 +93,15 @@ export class ReportSidePanelComponent {
   }
 
   protected navigate(view: PanelView): void {
-    this.store.navigate(view);
+    this.navigation.navigate(view);
   }
 
   protected back(): void {
-    this.store.back();
+    this.navigation.back();
   }
 
   protected forward(): void {
-    this.store.forward();
+    this.navigation.forward();
   }
 
   /**
@@ -112,9 +114,9 @@ export class ReportSidePanelComponent {
     const fallback = PANEL_VIEWS[view.kind].component.title;
     switch (view.kind) {
       case 'columnSettings':
-        return this.store.selectedTableWidget()?.column(view.columnId)?.label() ?? fallback;
+        return this.session.selectedTableWidget()?.column(view.columnId)?.label() ?? fallback;
       case 'widget':
-        return this.store.selectedWidget()?.label() ?? fallback;
+        return this.session.selectedWidget()?.label() ?? fallback;
       default:
         return fallback;
     }

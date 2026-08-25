@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { PanelNavigation } from '../../state/panel-navigation';
+import { ReportSession } from '../../state/report-session';
 
 /**
  * The report's validation state, as a button into the issues panel. Stays quiet
@@ -64,24 +65,25 @@ import { ReportBuilderStore } from '../../report-builder.store';
   ],
 })
 export class IssueIndicatorComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
 
   protected readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
-    if (this.store.errors().length) return 'error';
-    if (this.store.warnings().length) return 'warning';
+    if (this.session.errors().length) return 'error';
+    if (this.session.warnings().length) return 'warning';
     return 'ok';
   });
 
   protected readonly label = computed(() => {
-    if (this.store.saveBlocked()) return 'Fix errors';
-    const errors = this.store.errors().length;
-    const warnings = this.store.warnings().length;
+    if (this.session.saveBlocked()) return 'Fix errors';
+    const errors = this.session.errors().length;
+    const warnings = this.session.warnings().length;
     if (errors) return `${errors} error${errors > 1 ? 's' : ''}`;
     if (warnings) return `${warnings} warning${warnings > 1 ? 's' : ''}`;
     return 'No issues';
   });
 
   protected open(): void {
-    this.store.navigate({ kind: 'issues' });
+    this.navigation.navigate({ kind: 'issues' });
   }
 }

@@ -3,7 +3,10 @@ import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection } from '../../../core/models/report';
 import { GridPreview } from '../grid.util';
 import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
-import { ReportBuilderStore } from '../report-builder.store';
+import { DatasetSchema } from '../state/dataset-schema';
+import { PanelNavigation } from '../state/panel-navigation';
+import { ReportSession } from '../state/report-session';
+import { WidgetSelection } from '../state/widget-selection';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
@@ -23,15 +26,20 @@ export class WidgetHostComponent {
   readonly widget = input.required<WidgetModel>();
   readonly gridPreview = output<GridPreview | null>();
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly schema = inject(DatasetSchema);
 
   protected readonly selected = computed(() =>
-    this.store.selectedWidgetIds().includes(this.widget().id),
+    this.selection.selectedWidgetIds().includes(this.widget().id),
   );
   /** The one the side panel is editing, when several are selected at once. */
-  protected readonly primary = computed(() => this.store.selectedWidgetId() === this.widget().id);
+  protected readonly primary = computed(
+    () => this.selection.selectedWidgetId() === this.widget().id,
+  );
   protected readonly issues = computed(
-    () => this.store.issuesByWidget().get(this.widget().id) ?? [],
+    () => this.session.issuesByWidget().get(this.widget().id) ?? [],
   );
   protected readonly hasError = computed(() => this.issues().some((i) => i.severity === 'error'));
   protected readonly issueLabel = computed(() => {
@@ -62,7 +70,7 @@ export class WidgetHostComponent {
     return widget instanceof ChartWidgetModel ? widget : null;
   });
 
-  protected readonly datasetVersion = computed(() => this.store.datasetVersion());
+  protected readonly datasetVersion = computed(() => this.schema.datasetVersion());
 
   /** Wired by name onto the created widget's outputs; only a table emits these. */
   protected readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
@@ -100,24 +108,24 @@ export class WidgetHostComponent {
 
   private reportFilterFor(datasetId: number | null): FilterGroup | null {
     if (!datasetId) return null;
-    return this.store.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
+    return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   }
 
   /** Ctrl/⌘ or shift extends the selection; a plain click replaces it. */
   protected select(event: PointerEvent | MouseEvent): void {
     if (event.ctrlKey || event.metaKey || event.shiftKey) {
-      this.store.toggleWidgetSelection(this.widget().id);
+      this.navigation.toggleWidgetSelection(this.widget().id);
       return;
     }
     // Clicking a widget already in a multi-selection keeps the group intact so
     // the whole thing can be dragged.
-    if (this.store.hasMultiSelection() && this.store.isSelected(this.widget().id)) return;
-    this.store.selectWidget(this.widget().id);
+    if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) return;
+    this.navigation.selectWidget(this.widget().id);
   }
 
   protected showIssues(): void {
-    this.store.selectOnly(this.widget().id);
-    this.store.navigate({ kind: 'issues' });
+    this.selection.set([this.widget().id]);
+    this.navigation.navigate({ kind: 'issues' });
   }
 
   protected onSortChange(sort: { columnId: string; direction: SortDirection }): void {

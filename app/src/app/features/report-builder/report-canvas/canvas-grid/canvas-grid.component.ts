@@ -8,7 +8,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { GRID_GAP, ROW_HEIGHT, GridPreview } from '../../grid.util';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportLifecycle } from '../../state/report-lifecycle';
+import { ReportSession } from '../../state/report-session';
+import { WidgetSelection } from '../../state/widget-selection';
 import { WidgetHostComponent } from '../../widget-host/widget-host.component';
 
 /**
@@ -27,12 +29,14 @@ import { WidgetHostComponent } from '../../widget-host/widget-host.component';
   styleUrl: './canvas-grid.component.scss',
 })
 export class CanvasGridComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly lifecycle = inject(ReportLifecycle);
 
-  protected readonly loading = this.store.loading;
-  protected readonly widgets = this.store.widgets;
-  protected readonly gridColumns = this.store.gridColumns;
-  protected readonly gridRows = this.store.gridRows;
+  protected readonly loading = this.lifecycle.loading;
+  protected readonly widgets = this.session.widgets;
+  protected readonly gridColumns = this.session.gridColumns;
+  protected readonly gridRows = this.session.gridRows;
 
   protected readonly rowHeight = ROW_HEIGHT;
   protected readonly gridGap = GRID_GAP;
@@ -43,14 +47,14 @@ export class CanvasGridComponent {
   /** Fixed vertical pitch between rows; horizontal pitch is measured (see below). */
   protected readonly rowStep = ROW_HEIGHT + GRID_GAP;
   /** Horizontal pitch between columns, from the measured column width. */
-  protected readonly columnStep = computed(() => this.store.columnWidth() + GRID_GAP);
+  protected readonly columnStep = computed(() => this.session.columnWidth() + GRID_GAP);
 
   constructor() {
     // Measure the column width from the live grid, re-running whenever the column
     // count changes and whenever the element resizes with the window/panel.
     effect((onCleanup) => {
       const el = this.gridEl()?.nativeElement;
-      const columns = this.store.gridColumns();
+      const columns = this.session.gridColumns();
       if (!el) return;
 
       const measure = () => {
@@ -59,7 +63,7 @@ export class CanvasGridComponent {
         // the grid has none, so this is the track area. Subtract the gaps between
         // columns and divide by the count to get one column's width.
         const columnWidth = columns > 0 ? (width - (columns - 1) * GRID_GAP) / columns : 0;
-        this.store.columnWidth.set(Math.max(0, columnWidth));
+        this.session.columnWidth.set(Math.max(0, columnWidth));
       };
 
       measure();
@@ -75,6 +79,6 @@ export class CanvasGridComponent {
 
   /** Clicking empty canvas drops the selection. */
   protected onCanvasPointerDown(event: PointerEvent): void {
-    if (event.target === event.currentTarget) this.store.clearSelection();
+    if (event.target === event.currentTarget) this.selection.clear();
   }
 }

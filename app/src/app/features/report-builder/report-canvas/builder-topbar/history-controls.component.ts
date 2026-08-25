@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { ReportBuilderStore } from '../../report-builder.store';
+import { ReportAutosave } from '../../state/report-autosave';
 
 /** Undo/redo for the report's edit history, as one segmented control. */
 @Component({
@@ -61,16 +61,16 @@ import { ReportBuilderStore } from '../../report-builder.store';
   ],
 })
 export class HistoryControlsComponent {
-  private readonly store = inject(ReportBuilderStore);
+  private readonly autosave = inject(ReportAutosave);
 
-  protected readonly canUndo = this.store.canUndo;
-  protected readonly canRedo = this.store.canRedo;
+  protected readonly canUndo = this.autosave.canUndo;
+  protected readonly canRedo = this.autosave.canRedo;
 
   protected undo(): void {
-    this.store.undo();
+    this.autosave.undo();
   }
 
   protected redo(): void {
-    this.store.redo();
+    this.autosave.redo();
   }
 }

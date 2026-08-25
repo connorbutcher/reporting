@@ -5,7 +5,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../../core/models/report';
 import { StaticTextWidgetModel } from '../../../models/widget.model';
-import { ReportBuilderStore } from '../../../report-builder.store';
+import { ReportSession } from '../../../state/report-session';
 import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -43,14 +43,14 @@ const VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
 export class PanelTextStyleComponent {
   static readonly title = 'Style';
 
-  private readonly store = inject(ReportBuilderStore);
+  private readonly session = inject(ReportSession);
 
   protected readonly fontWeightOptions = FONT_WEIGHT_OPTIONS;
   protected readonly textAlignOptions = TEXT_ALIGN_OPTIONS;
   protected readonly verticalAlignOptions = VERTICAL_ALIGN_OPTIONS;
 
   protected readonly widget = computed(() => {
-    const widget = this.store.selectedWidget();
+    const widget = this.session.selectedWidget();
     return widget instanceof StaticTextWidgetModel ? widget : null;
   });
   protected readonly style = computed(() => this.widget()?.style ?? null);
