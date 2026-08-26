@@ -1,5 +1,5 @@
 import { Signal, computed, signal } from '@angular/core';
-import { ReportRevisionContent, Tab, WidgetType } from '../../../core/models/report';
+import { ReportRevisionContent, Tab } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter.model';
@@ -78,40 +78,21 @@ export class ReportModel extends EditorNode {
     return model;
   }
 
-  // --- active-tab proxies ----------------------------------------------------
-
-  readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
-  readonly gridColumns = computed(() => this.activeTab()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
-  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? DEFAULT_GRID_ROWS);
-
-  setGridColumns(value: number): void {
-    this.activeTab()?.setGridColumns(value);
-  }
-
-  setGridRows(value: number): void {
-    this.activeTab()?.setGridRows(value);
-  }
-
-  addWidget(type: WidgetType): WidgetModel | null {
-    return this.activeTab()?.addWidget(type) ?? null;
-  }
+  // --- cross-tab widget lookup & mutation ------------------------------------
+  // Per-tab reads (widgets, grid) and adding a widget target the *active* tab, so
+  // they live on ReportSession, which owns the active tab. What stays here spans
+  // tabs: resolving a widget wherever it lives, and routing an edit to its tab.
 
   removeWidget(widgetId: string): void {
     this.tabOf(widgetId)?.removeWidget(widgetId);
   }
 
   removeWidgets(widgetIds: readonly string[]): void {
-    // Widgets in a single operation are always on the active tab (the only one on
-    // screen), but route each to its owning tab to stay correct regardless.
     for (const id of widgetIds) this.tabOf(id)?.removeWidget(id);
   }
 
   duplicateWidget(widgetId: string): WidgetModel | null {
-    return (this.tabOf(widgetId) ?? this.activeTab())?.duplicateWidget(widgetId) ?? null;
-  }
-
-  findFreeSlot(w: number, h: number): { x: number; y: number } {
-    return this.activeTab()?.findFreeSlot(w, h) ?? { x: 0, y: 0 };
+    return this.tabOf(widgetId)?.duplicateWidget(widgetId) ?? null;
   }
 
   /** Any widget across every tab, so the panel resolves a selection wherever it lives. */
@@ -130,7 +111,7 @@ export class ReportModel extends EditorNode {
 
   /** Siblings on the same tab as the given widget, for collision checks while dragging/resizing. */
   siblingsOf(widgetId: string): readonly WidgetModel[] {
-    return (this.tabOf(widgetId) ?? this.activeTab())?.siblingsOf(widgetId) ?? [];
+    return this.tabOf(widgetId)?.siblingsOf(widgetId) ?? [];
   }
 
   // --- tab lifecycle ---------------------------------------------------------
@@ -246,6 +227,17 @@ export class ReportModel extends EditorNode {
         .map((f) => f.toDto())
         .filter((f): f is ReportFilter => f !== null),
     };
+  }
+
+  /**
+   * The whole report serialized, memoized so it recomputes once per change and is
+   * shared between the dirty check ({@link serialize}) and the undo stack / autosave
+   * — a large report would otherwise be JSON-stringified several times per edit.
+   */
+  readonly serialized = computed(() => JSON.stringify(this.toDto()));
+
+  protected override serialize(): string {
+    return this.serialized();
   }
 
   protected override snapshotValue(): unknown {

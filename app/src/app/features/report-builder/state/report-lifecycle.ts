@@ -103,6 +103,6 @@ export class ReportLifecycle {
     // Seeded from the model, not the server payload: the model normalises
     // defaults and key order, so anything else would look like a change and
     // leave an undo step available before the user has done anything.
-    this.autosave.reset(model.toDto());
+    this.autosave.reset(model.serialized());
   }
 }

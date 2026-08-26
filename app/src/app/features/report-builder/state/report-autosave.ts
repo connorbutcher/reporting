@@ -1,8 +1,8 @@
 import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, filter, map, retry, switchMap, tap } from 'rxjs';
 import { ReportApiService } from '../../../core/api/report-api.service';
-import { ReportRevisionContent } from '../../../core/models/report';
+import { LoggerService } from '../../../core/services/logger.service';
 import { UndoHistory } from '../models/undo-history';
 import { ReportSession } from './report-session';
 
@@ -24,6 +24,7 @@ const HISTORY_DEBOUNCE_MS = 400;
 export class ReportAutosave {
   private readonly session = inject(ReportSession);
   private readonly reportApi = inject(ReportApiService);
+  private readonly logger = inject(LoggerService);
 
   private readonly saveQueue = new Subject<void>();
   private readonly historyQueue = new Subject<void>();
@@ -54,19 +55,19 @@ export class ReportAutosave {
       untracked(() => this.saveQueue.next());
     });
 
-    // Undo steps are captured from the same snapshot the save uses, so the two
-    // always agree on what "the current state" is.
+    // Undo steps read the model's memoized serialization — the same value the
+    // dirty check uses — so a change is serialized once and shared between them.
     effect(() => {
       const current = model();
       if (!current) return;
 
-      current.toDto();
+      current.serialized();
       untracked(() => this.historyQueue.next());
     });
 
     this.historyQueue.pipe(debounceTime(HISTORY_DEBOUNCE_MS), takeUntilDestroyed()).subscribe(() => {
       const current = model();
-      if (current) this.history.capture(current.toDto());
+      if (current) this.history.capture(current.serialized());
     });
 
     // Saves are coalesced so dragging, typing and toggling stay responsive;
@@ -82,11 +83,14 @@ export class ReportAutosave {
           if (!current) return EMPTY;
 
           return this.reportApi.updateDraft(current.reportId, current.toDto()).pipe(
+            // Ride out transient network blips before giving up; a fresh edit
+            // supersedes this whole inner (switchMap) and cancels the retries.
+            retry({ count: 2, delay: 400 }),
             map(() => current),
             // Catch inside the switchMap: an error reaching the outer stream
             // would tear down the subscription and silently stop all saving.
             catchError((error: unknown) => {
-              console.error('Failed to save report', error);
+              this.logger.error('Failed to save report draft', error);
               this.saveFailed.set(true);
               this.saving.set(false);
               return EMPTY;
@@ -104,9 +108,9 @@ export class ReportAutosave {
       });
   }
 
-  /** Starts a fresh undo timeline from a loaded (or freshly published) snapshot. */
-  reset(snapshot: ReportRevisionContent): void {
-    this.history.reset(snapshot);
+  /** Starts a fresh undo timeline from a loaded snapshot's serialized form. */
+  reset(serialized: string): void {
+    this.history.reset(serialized);
   }
 
   /** Restores the previous snapshot into the session, if there's anything to undo. */

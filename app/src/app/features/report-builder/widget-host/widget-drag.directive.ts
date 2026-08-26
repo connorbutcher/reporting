@@ -127,11 +127,8 @@ export class WidgetDragDirective {
   }
 
   private groupCollides(dx: number, dy: number): boolean {
-    const model = this.session.model();
-    if (!model) return true;
-
     const moving = new Set(this.dragGroup.map((entry) => entry.widget.id));
-    const others = model.widgets().filter((w) => !moving.has(w.id));
+    const others = this.session.widgets().filter((w) => !moving.has(w.id));
 
     return this.dragGroup.some(({ widget, origin }) => {
       const rect: GridRect = { x: origin.x + dx, y: origin.y + dy, w: widget.w(), h: widget.h() };

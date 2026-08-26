@@ -26,6 +26,15 @@ export abstract class EditorNode {
 
   private readonly pristine = signal<string | null>(null);
 
+  /**
+   * This node's state as a comparable string. Defaults to serializing the
+   * snapshot; the root overrides it with a memoized computed so the whole-report
+   * serialization runs once per change and is shared with the undo stack.
+   */
+  protected serialize(): string {
+    return JSON.stringify(this.snapshotValue());
+  }
+
   /** This node's problems plus everything below it. */
   readonly issues: Signal<ValidationIssue[]> = computed(() => [
     ...this.ownIssues(),
@@ -45,12 +54,12 @@ export abstract class EditorNode {
    */
   readonly dirty = computed(() => {
     const pristine = this.pristine();
-    return pristine === null || JSON.stringify(this.snapshotValue()) !== pristine;
+    return pristine === null || this.serialize() !== pristine;
   });
 
   /** Accepts the current state as saved, for this node and everything below. */
   markPristine(): void {
-    this.pristine.set(JSON.stringify(this.snapshotValue()));
+    this.pristine.set(this.serialize());
     for (const child of this.childNodes()) child.markPristine();
   }
 }

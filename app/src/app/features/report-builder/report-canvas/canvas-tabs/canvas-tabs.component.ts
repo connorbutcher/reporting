@@ -1,13 +1,22 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ReportSession } from '../../state/report-session';
 import { TabCommands } from '../../state/tab-commands';
 
 /**
  * The tab strip along the top of the canvas. Each tab is its own grid surface;
- * clicking one switches the canvas to it, double-clicking renames it inline, and
- * the trailing button adds another. The last remaining tab can't be deleted — a
- * revision always needs at least one surface.
+ * clicking one switches the canvas to it, double-clicking renames it inline,
+ * dragging one reorders the strip, and the trailing button adds another. The last
+ * remaining tab can't be deleted — a revision always needs at least one surface.
  */
 @Component({
   selector: 'app-canvas-tabs',
@@ -19,11 +28,18 @@ import { TabCommands } from '../../state/tab-commands';
           class="tab"
           role="tab"
           [class.active]="tab.id === activeTabId()"
+          [class.dragging]="tab.id === draggingId()"
           [attr.aria-selected]="tab.id === activeTabId()"
+          [draggable]="editingId() !== tab.id"
           (click)="select(tab.id)"
+          (dragstart)="onDragStart(tab.id, $event)"
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop(tab.id, $event)"
+          (dragend)="onDragEnd()"
         >
           @if (editingId() === tab.id) {
             <input
+              #renameInput
               class="tab-rename"
               type="text"
               [ngModel]="tab.name()"
@@ -32,8 +48,6 @@ import { TabCommands } from '../../state/tab-commands';
               (keydown.enter)="commitRename(tab.id)"
               (keydown.escape)="cancelRename()"
               (click)="$event.stopPropagation()"
-              (focus)="selectAll($event)"
-              autofocus
             />
           } @else {
             <span class="tab-label" (dblclick)="startRename(tab.id)">{{ tab.name() }}</span>
@@ -88,6 +102,9 @@ import { TabCommands } from '../../state/tab-commands';
       .tab:hover {
         background: #f1f5f9;
       }
+      .tab.dragging {
+        opacity: 0.5;
+      }
       .tab.active {
         background: #fff;
         border-color: var(--app-card-border);
@@ -137,6 +154,9 @@ import { TabCommands } from '../../state/tab-commands';
 export class CanvasTabsComponent {
   private readonly session = inject(ReportSession);
   private readonly tabCommands = inject(TabCommands);
+  private readonly injector = inject(Injector);
+
+  private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
 
   protected readonly tabs = this.session.tabs;
   protected readonly activeTabId = this.session.activeTabId;
@@ -144,6 +164,7 @@ export class CanvasTabsComponent {
 
   protected readonly editingId = signal<string | null>(null);
   protected readonly draft = signal('');
+  protected readonly draggingId = signal<string | null>(null);
 
   protected select(tabId: string): void {
     this.tabCommands.selectTab(tabId);
@@ -161,6 +182,15 @@ export class CanvasTabsComponent {
   protected startRename(tabId: string): void {
     this.draft.set(this.tabs().find((t) => t.id === tabId)?.name() ?? '');
     this.editingId.set(tabId);
+    // Focus and select once the input has rendered, so the name is ready to overtype.
+    afterNextRender(
+      () => {
+        const el = this.renameInput()?.nativeElement;
+        el?.focus();
+        el?.select();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected commitRename(tabId: string): void {
@@ -174,7 +204,32 @@ export class CanvasTabsComponent {
     this.editingId.set(null);
   }
 
-  protected selectAll(event: Event): void {
-    (event.target as HTMLInputElement).select();
+  // --- drag to reorder -------------------------------------------------------
+
+  protected onDragStart(tabId: string, event: DragEvent): void {
+    this.draggingId.set(tabId);
+    event.dataTransfer?.setData('text/plain', tabId);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  protected onDragOver(event: DragEvent): void {
+    // Only a tab drag (not, say, a file) is a valid drop; preventDefault allows it.
+    if (!this.draggingId()) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  protected onDrop(targetTabId: string, event: DragEvent): void {
+    event.preventDefault();
+    const dragged = this.draggingId();
+    this.draggingId.set(null);
+    if (!dragged || dragged === targetTabId) return;
+
+    const toIndex = this.tabs().findIndex((t) => t.id === targetTabId);
+    if (toIndex >= 0) this.tabCommands.moveTab(dragged, toIndex);
+  }
+
+  protected onDragEnd(): void {
+    this.draggingId.set(null);
   }
 }

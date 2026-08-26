@@ -20,7 +20,7 @@ export class WidgetCommands {
   private readonly navigation = inject(PanelNavigation);
 
   addWidget(type: WidgetType): void {
-    const widget = this.session.model()?.addWidget(type);
+    const widget = this.session.addWidget(type);
     if (!widget) return;
     this.selection.select(widget.id);
     this.navigation.navigate({ kind: 'widget', widgetId: widget.id });
@@ -54,26 +54,26 @@ export class WidgetCommands {
 
   /** Nudges every selected widget, refusing the move if any would collide. */
   nudgeSelection(dx: number, dy: number): void {
-    const model = this.session.model();
     const widgets = this.session.selectedWidgets();
-    if (!model || widgets.length === 0) return;
+    if (widgets.length === 0) return;
 
     const moving = new Set(widgets.map((w) => w.id));
-    const others = model.widgets().filter((w) => !moving.has(w.id));
+    const others = this.session.widgets().filter((w) => !moving.has(w.id));
 
     const targets = widgets.map((widget) => ({
       widget,
       rect: { x: widget.x() + dx, y: widget.y() + dy, w: widget.w(), h: widget.h() },
     }));
 
-    if (!fitsWithoutCollision(targets, others, model.gridColumns(), model.gridRows())) return;
+    if (!fitsWithoutCollision(targets, others, this.session.gridColumns(), this.session.gridRows()))
+      return;
 
     for (const { widget, rect } of targets) widget.moveTo(rect.x, rect.y);
   }
 
   /** Moves the panel to the widget `offset` places along, without adding history. */
   stepWidget(offset: number): void {
-    const widgets = this.session.model()?.widgets() ?? [];
+    const widgets = this.session.widgets();
     const index = widgets.findIndex((w) => w.id === this.selection.selectedWidgetId());
     const next = widgets[index + offset];
     if (!next) return;

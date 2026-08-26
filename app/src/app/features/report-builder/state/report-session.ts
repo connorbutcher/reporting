@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetSummary } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
-import { ReportRevisionContent } from '../../../core/models/report';
+import { ReportRevisionContent, WidgetType } from '../../../core/models/report';
 import { FilterApiService } from '../../../core/api/filter-api.service';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
 import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from '../models/report.model';
@@ -114,9 +114,26 @@ export class ReportSession {
 
   // --- report state, delegated to the model tree -----------------------------
 
-  readonly widgets = computed<readonly WidgetModel[]>(() => this.model()?.widgets() ?? []);
-  readonly gridColumns = computed(() => this.model()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
-  readonly gridRows = computed(() => this.model()?.gridRows() ?? DEFAULT_GRID_ROWS);
+  // The active tab (resolved from the model's tabs and the route param) is the one
+  // grid surface on screen, so its widgets and grid are what the canvas reads and
+  // the placement verbs act on. Reading it directly keeps ReportModel out of the
+  // per-tab business — it just holds the tabs and the report-level state.
+  readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
+  readonly gridColumns = computed(() => this.activeTab()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
+  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? DEFAULT_GRID_ROWS);
+
+  setGridColumns(value: number): void {
+    this.activeTab()?.setGridColumns(value);
+  }
+
+  setGridRows(value: number): void {
+    this.activeTab()?.setGridRows(value);
+  }
+
+  /** Adds an empty widget to the active tab; null if there's no tab to add it to. */
+  addWidget(type: WidgetType): WidgetModel | null {
+    return this.activeTab()?.addWidget(type) ?? null;
+  }
 
   readonly tabs = computed(() => this.model()?.tabs() ?? []);
   readonly activeTabId = computed(() => this.model()?.activeTabId() ?? null);
