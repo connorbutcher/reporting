@@ -108,6 +108,18 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.set(columns);
   }
 
+  /** Moves one column to another's position — for a header drag reorder. */
+  reorderColumn(draggedColumnId: string, targetColumnId: string): void {
+    const columns = [...this.columns()];
+    const from = columns.findIndex((c) => c.columnId === draggedColumnId);
+    const to = columns.findIndex((c) => c.columnId === targetColumnId);
+    if (from < 0 || to < 0 || from === to) return;
+
+    const [moved] = columns.splice(from, 1);
+    columns.splice(to, 0, moved);
+    this.columns.set(columns);
+  }
+
   column(columnId: string): TableColumnModel | null {
     return this.columns().find((c) => c.columnId === columnId) ?? null;
   }

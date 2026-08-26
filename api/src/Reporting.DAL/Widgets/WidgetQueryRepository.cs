@@ -129,16 +129,25 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
 
-        // Resolve the axis columns to their int ids; a missing column yields a sentinel that
-        // matches no cell, so the chart is simply empty (as before).
-        var xId = columnsByRef.GetValueOrDefault(dto.XColumnId)?.Id ?? 0;
-        var yId = columnsByRef.GetValueOrDefault(dto.YColumnId)?.Id ?? 0;
+        // Resolve the axis columns; a missing column yields a sentinel id that matches no cell,
+        // so the chart is simply empty (as before). An axis is a number for a numeric column and
+        // a category label for a text one.
+        var xColumn = columnsByRef.GetValueOrDefault(dto.XColumnId);
+        var yColumn = columnsByRef.GetValueOrDefault(dto.YColumnId);
+        var xId = xColumn?.Id ?? 0;
+        var yId = yColumn?.Id ?? 0;
+        var xText = xColumn?.Type == DatasetColumnType.String;
+        var yText = yColumn?.Type == DatasetColumnType.String;
 
-        // Points need a real x and y; anything missing either is dropped, same
-        // as the client's old Number.isFinite check.
-        var plottable = matching.Where(r =>
-            r.Cells.Any(c => c.ColumnId == xId && c.NumberValue != null) &&
-            r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
+        // Points need a real value on each axis — a number for a numeric axis, a string for a text
+        // one; anything missing either is dropped. Filtered per axis type so the predicate stays
+        // EF-translatable rather than branching per row.
+        var plottable = xText
+            ? matching.Where(r => r.Cells.Any(c => c.ColumnId == xId && c.StringValue != null))
+            : matching.Where(r => r.Cells.Any(c => c.ColumnId == xId && c.NumberValue != null));
+        plottable = yText
+            ? plottable.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.StringValue != null))
+            : plottable.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
 
         var rows = await plottable.Include(r => r.Cells).ToListAsync();
 
@@ -151,8 +160,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var groups = new Dictionary<string, List<ChartPointDto>>();
         foreach (var row in rows)
         {
-            var x = row.Cells.First(c => c.ColumnId == xId).NumberValue!.Value;
-            var y = row.Cells.First(c => c.ColumnId == yId).NumberValue!.Value;
+            var xCell = row.Cells.First(c => c.ColumnId == xId);
+            var yCell = row.Cells.First(c => c.ColumnId == yId);
+            object x = xText ? xCell.StringValue!.Trim() : xCell.NumberValue!.Value;
+            object y = yText ? yCell.StringValue!.Trim() : yCell.NumberValue!.Value;
 
             var key = "";
             if (seriesColumn is not null)
@@ -210,8 +221,15 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         {
             Id = dataset.Id,
             Name = dataset.Name,
-            // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op for scatter.
-            Series = groups.Select(g => new ChartSeriesDto { Label = g.Key, Points = g.Value.OrderBy(p => p.X).ToList() }).ToList(),
+            // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op
+            // for scatter. A text X orders alphabetically, matching the category axis the client builds.
+            Series = groups.Select(g => new ChartSeriesDto
+            {
+                Label = g.Key,
+                Points = (xText
+                    ? g.Value.OrderBy(p => (string)p.X)
+                    : g.Value.OrderBy(p => (double)p.X)).ToList()
+            }).ToList(),
             ToleranceBands = resolvedBands
         };
     }

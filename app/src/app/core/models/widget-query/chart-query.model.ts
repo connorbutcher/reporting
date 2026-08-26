@@ -11,8 +11,9 @@ export interface ChartQueryRequest {
 }
 
 export interface ChartPoint {
-  x: number;
-  y: number;
+  /** A number for a numeric axis column, a category label for a text one. */
+  x: number | string;
+  y: number | string;
   tooltipLines: string[];
 }
 

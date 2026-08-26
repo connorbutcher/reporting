@@ -32,10 +32,24 @@ export class PanelChartToleranceBandComponent {
   private readonly navigation = inject(PanelNavigation);
 
   protected readonly datasets = this.session.datasets;
-  protected readonly axisOptions = AXIS_OPTIONS;
   protected readonly picker = inject(ToleranceSourcePicker);
 
   private readonly chart = this.session.selectedChartWidget;
+
+  /**
+   * Only axes bound to a numeric column can carry a band — a band is a numeric
+   * min/max line, meaningless on a category (text) axis. Falls back to both when
+   * neither is numeric so the control still renders.
+   */
+  protected readonly axisOptions = computed(() => {
+    const chart = this.chart();
+    if (!chart) return AXIS_OPTIONS;
+    const numeric = new Set(chart.numericColumns().map((c) => c.id));
+    const options = AXIS_OPTIONS.filter((o) =>
+      numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
+    );
+    return options.length ? options : AXIS_OPTIONS;
+  });
 
   private readonly bandId = computed(() => {
     const view = this.navigation.view();

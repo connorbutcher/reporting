@@ -76,6 +76,8 @@ export class WidgetHostComponent {
   protected readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
     sortChange: (sort: { columnId: string; direction: SortDirection }) => this.onSortChange(sort),
     columnResize: (widths: { columnId: string; width: number }[]) => this.onColumnResize(widths),
+    columnReorder: (move: { draggedColumnId: string; targetColumnId: string }) =>
+      this.onColumnReorder(move),
   };
 
   /** Only the finished conditions, so a half-typed row doesn't blank the table. */
@@ -130,6 +132,10 @@ export class WidgetHostComponent {
 
   protected onSortChange(sort: { columnId: string; direction: SortDirection }): void {
     this.tableModel()?.setSort(sort.columnId, sort.direction);
+  }
+
+  protected onColumnReorder(move: { draggedColumnId: string; targetColumnId: string }): void {
+    this.tableModel()?.reorderColumn(move.draggedColumnId, move.targetColumnId);
   }
 
   /**

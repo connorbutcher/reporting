@@ -4,7 +4,13 @@
     Choose a dataset for this table in the side panel.
   </div>
 } @else if (error()) {
-  <div class="status error">Failed to load dataset.</div>
+  <div class="status error">
+    <span>Failed to load dataset.</span>
+    <button type="button" class="retry" (click)="retry()">
+      <i class="pi pi-refresh" aria-hidden="true"></i>
+      Retry
+    </button>
+  </div>
 } @else if (displayColumns().length === 0 && !loading()) {
   <div class="status">
     <i class="pi pi-list" aria-hidden="true"></i>
@@ -20,17 +26,21 @@
     [loading]="loading()"
     [scrollable]="true"
     scrollHeight="flex"
+    [virtualScroll]="!config().paginator"
+    [virtualScrollItemSize]="rowHeight()"
     [size]="density()"
     [stripedRows]="config().stripedRows"
     [showGridlines]="config().showGridlines"
     [rowHover]="config().rowHover"
     [resizableColumns]="config().resizableColumns"
     columnResizeMode="expand"
+    [reorderableColumns]="true"
     [paginator]="config().paginator"
     [rows]="config().rowsPerPage"
-    [totalRecords]="matchedRowCount()"
+    [totalRecords]="config().paginator ? matchedRowCount() : rows().length"
     (onLazyLoad)="onLazyLoad($event)"
     (onColResize)="onColResize()"
+    (onColReorder)="onColReorder($event)"
   >
     <ng-template #header>
       <tr>
@@ -43,6 +53,7 @@
             [pSortableColumnDisabled]="!col.sortable"
             pResizableColumn
             [pResizableColumnDisabled]="!config().resizableColumns"
+            pReorderableColumn
             [style.width.px]="col.width ?? null"
             [style.text-align]="col.align"
           >
@@ -55,7 +66,7 @@
       </tr>
     </ng-template>
     <ng-template #body let-row>
-      <tr>
+      <tr [style.height.px]="rowHeight()">
         @for (col of displayColumns(); track col.column.id) {
           <td [style.text-align]="col.align" [class]="toleranceClass(row.cells[col.column.id])">
             {{ row.cells[col.column.id]?.displayValue }}
@@ -72,10 +83,8 @@
     </ng-template>
   </p-table>
 
-  @if (isFiltered()) {
-    <p class="count">
-      <i class="pi pi-filter" aria-hidden="true"></i>
-      Showing {{ matchedRowCount() }} of {{ totalRowCount() }} rows
-    </p>
-  }
+  <p class="count" [class.truncated]="isTruncated()">
+    <i class="pi" [class.pi-filter]="isFiltered()" [class.pi-list]="!isFiltered()" aria-hidden="true"></i>
+    {{ countLabel() }}
+  </p>
 }

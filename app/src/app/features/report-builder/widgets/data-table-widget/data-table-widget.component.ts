@@ -19,7 +19,7 @@ import {
   DataTableWidgetConfig,
   SortDirection,
 } from '../../../../core/models/report';
-import { TableQueryResult } from '../../../../core/models/widget-query';
+import { TableCell, TableQueryResult } from '../../../../core/models/widget-query';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 
@@ -63,6 +63,7 @@ export class DataTableWidgetComponent {
 
   readonly sortChange = output<{ columnId: string; direction: SortDirection }>();
   readonly columnResize = output<{ columnId: string; width: number }[]>();
+  readonly columnReorder = output<{ draggedColumnId: string; targetColumnId: string }>();
 
   private readonly datasetApi = inject(DatasetApiService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
@@ -113,10 +114,38 @@ export class DataTableWidgetComponent {
   protected readonly error = this.source.error;
   protected readonly rows = computed(() => this.source.result()?.rows ?? []);
 
-  /** Row counts from the last query, for the paginator and the "n of m" footer. */
+  /** Row counts from the last query, for the paginator and the footer. */
   protected readonly matchedRowCount = computed(() => this.source.result()?.matchedRowCount ?? 0);
   protected readonly totalRowCount = computed(() => this.source.result()?.totalRowCount ?? 0);
   protected readonly isFiltered = computed(() => this.effectiveFilter() !== null);
+
+  /** True when a non-paginated table hit the row cap, so more rows exist than are shown. */
+  protected readonly isTruncated = computed(
+    () => !this.config().paginator && this.matchedRowCount() > this.rows().length,
+  );
+
+  /**
+   * The always-on footer text. Makes the row cap visible (rather than silently
+   * showing 500 as if it were the whole dataset) and reports the filtered view.
+   */
+  protected readonly countLabel = computed(() => {
+    const matched = this.matchedRowCount();
+    if (this.isTruncated()) return `Showing first ${this.rows().length} of ${matched} rows`;
+    if (this.isFiltered()) return `Showing ${matched} of ${this.totalRowCount()} rows`;
+    return `${matched} row${matched === 1 ? '' : 's'}`;
+  });
+
+  /** Row height (px) for the virtual scroller, matched to the table's density. */
+  protected readonly rowHeight = computed(() => {
+    switch (this.config().density) {
+      case 'compact':
+        return 31;
+      case 'comfortable':
+        return 51;
+      default:
+        return 39;
+    }
+  });
 
   /** Columns are chosen explicitly, so the table shows exactly what is configured. */
   protected readonly displayColumns = computed<DisplayColumn[]>(() => {
@@ -191,14 +220,27 @@ export class DataTableWidgetComponent {
     });
   }
 
-  /** PrimeNG's lazy-table event: fires for a sort click, a page change, and on first render. */
+  /**
+   * PrimeNG's lazy-table event: a sort click, a page change, and — with virtual
+   * scroll on — every scroll window. A paged table moves the server window on a
+   * page change; a virtual-scrolled table already holds its (capped) window, so
+   * only a sort change refetches, never a scroll.
+   */
   protected onLazyLoad(event: TableLazyLoadEvent): void {
     const columnId = typeof event.sortField === 'string' ? event.sortField : undefined;
     const order = event.sortOrder ?? this.sortOrder();
+    const sortChanged = columnId !== this.sortField() || order !== this.sortOrder();
 
     this.sortField.set(columnId);
     this.sortOrder.set(order);
-    this.first.set(event.first ?? 0);
+
+    if (this.config().paginator) {
+      this.first.set(event.first ?? 0);
+    } else {
+      this.first.set(0);
+      // A scroll (no sort change) renders from the rows already loaded — don't refetch.
+      if (!sortChanged) return;
+    }
 
     // The table also reports the sort we seeded it with, so only persist changes.
     if (columnId) {
@@ -211,6 +253,23 @@ export class DataTableWidgetComponent {
     this.source.loading.set(true);
     this.source.error.set(false);
     this.source.reloadNow();
+  }
+
+  /** Retries the last query after a load failure. */
+  protected retry(): void {
+    this.source.error.set(false);
+    this.source.loading.set(true);
+    this.source.reloadNow();
+  }
+
+  /** A header drag reordered columns; map the moved positions to their column ids for the host to persist. */
+  protected onColReorder(event: { dragIndex?: number; dropIndex?: number }): void {
+    const cols = this.displayColumns();
+    const dragged = event.dragIndex != null ? cols[event.dragIndex]?.column.id : undefined;
+    const target = event.dropIndex != null ? cols[event.dropIndex]?.column.id : undefined;
+    if (dragged && target && dragged !== target) {
+      this.columnReorder.emit({ draggedColumnId: dragged, targetColumnId: target });
+    }
   }
 
   /** Reads the settled header widths once the browser has laid the table out. */
@@ -228,9 +287,7 @@ export class DataTableWidgetComponent {
   }
 
   /** Red below/above a concession bound, orange in the concession band, else unmarked. */
-  protected toleranceClass(
-    cell: TableQueryResult['rows'][number]['cells'][string] | undefined,
-  ): string | null {
+  protected toleranceClass(cell: TableCell | undefined): string | null {
     switch (cell?.tolerance) {
       case 'fail':
         return 'cell-red';

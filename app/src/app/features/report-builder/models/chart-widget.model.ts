@@ -35,8 +35,10 @@ export class ChartBindingModel extends EditorNode {
 
   /** This binding's dataset schema, once loaded. */
   readonly schema: Signal<DatasetSchema | null>;
-  /** Columns the axes can plot — only numeric types make sense on a chart. */
+  /** Numeric columns — for things that need a measure (a bar's value, a tolerance band's axis). */
   readonly numericColumns: Signal<DatasetColumn[]>;
+  /** Columns an axis can plot: numeric (value axis) or text (category axis). */
+  readonly axisColumns: Signal<DatasetColumn[]>;
 
   constructor(binding: ChartSeriesBinding, sources: ModelSources, widgetId: string) {
     super();
@@ -53,6 +55,12 @@ export class ChartBindingModel extends EditorNode {
     });
     this.numericColumns = computed(
       () => this.schema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
+    );
+    this.axisColumns = computed(
+      () =>
+        this.schema()?.columns.filter(
+          (c) => c.type === 'int' || c.type === 'double' || c.type === 'string',
+        ) ?? [],
     );
 
     this.filter = new FilterGroupModel(binding.filter, {
@@ -207,6 +215,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
   }
   get numericColumns(): Signal<DatasetColumn[]> {
     return this.primaryBinding().numericColumns;
+  }
+  get axisColumns(): Signal<DatasetColumn[]> {
+    return this.primaryBinding().axisColumns;
   }
 
   /** Swapping dataset invalidates the primary binding's columns, and the chart-wide tooltip. */

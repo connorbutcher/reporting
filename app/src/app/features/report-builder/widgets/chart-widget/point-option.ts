@@ -11,13 +11,16 @@ import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared'
 /** The two chart kinds that plot raw rows as points, as opposed to aggregated bars. */
 export type PointChartConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
 
+/** A coordinate is numeric for a value axis, a category label for a text one. */
+type Coord = number | string;
+
 interface ScatterPoint {
-  value: [number, number];
+  value: [Coord, Coord];
   tooltipLines: string[];
 }
 
 interface ScatterTooltipParams {
-  value: [number, number];
+  value: [Coord, Coord];
   seriesName: string;
   data: ScatterPoint;
 }
@@ -42,6 +45,13 @@ export function buildPointOption(
 
   const xLabel = config.xAxisLabel.trim() || x.name;
   const yLabel = config.yAxisLabel.trim() || y.name;
+  // A text column plots on a category axis; a numeric one on a value axis. The
+  // category list is the distinct values the points carry, sorted to match the
+  // server's alphabetical ordering.
+  const xIsText = x.type === 'string';
+  const yIsText = y.type === 'string';
+  const xData = xIsText ? categoryValues(series, 'x') : null;
+  const yData = yIsText ? categoryValues(series, 'y') : null;
   const names = series.map((s) => s.label);
   // A legend and per-series tooltip name only earn their place once there's more
   // than one series to tell apart — whether from a colour-by split within one
@@ -66,8 +76,20 @@ export function buildPointOption(
         formatTooltip(params, showSeries, xLabel, yLabel),
     },
     ...(showSeries && config.showLegend ? { legend: { top: 0, data: names } } : {}),
-    xAxis: { type: 'value', name: xLabel, nameLocation: 'middle', nameGap: 28 },
-    yAxis: { type: 'value', name: yLabel, nameLocation: 'middle', nameGap: 40 },
+    xAxis: {
+      type: xIsText ? 'category' : 'value',
+      ...(xData ? { data: xData } : {}),
+      name: xLabel,
+      nameLocation: 'middle',
+      nameGap: 28,
+    },
+    yAxis: {
+      type: yIsText ? 'category' : 'value',
+      ...(yData ? { data: yData } : {}),
+      name: yLabel,
+      nameLocation: 'middle',
+      nameGap: 40,
+    },
     series: series.map((s, i) => {
       const color = SERIES_COLORS[i % SERIES_COLORS.length];
       return {
@@ -103,6 +125,15 @@ function formatTooltip(
 
 function pointsFor(series: ChartSeriesResult): ScatterPoint[] {
   return series.points.map((p) => ({ value: [p.x, p.y], tooltipLines: p.tooltipLines }));
+}
+
+/** The distinct category labels a text axis carries, alphabetical — the axis's `data`. */
+function categoryValues(series: ChartSeriesResult[], axis: 'x' | 'y'): string[] {
+  const values = new Set<string>();
+  for (const s of series) {
+    for (const point of s.points) values.add(String(axis === 'x' ? point.x : point.y));
+  }
+  return [...values].sort((a, b) => a.localeCompare(b));
 }
 
 /**

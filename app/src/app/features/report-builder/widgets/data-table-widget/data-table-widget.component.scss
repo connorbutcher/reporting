@@ -20,6 +20,36 @@
     .pi {
       font-size: 0.65rem;
     }
+
+    // More rows exist than are shown (the row cap) — worth drawing the eye.
+    &.truncated {
+      color: #92400e;
+      background: #fffbeb;
+    }
+  }
+
+  .status .retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--app-card-border);
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--p-primary-50, #eef3fa);
+      color: var(--app-navy);
+    }
+  }
+
+  .status.error {
+    flex-direction: column;
   }
 
   .status {

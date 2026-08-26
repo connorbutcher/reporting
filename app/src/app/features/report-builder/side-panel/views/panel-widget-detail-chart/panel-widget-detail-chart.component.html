@@ -128,7 +128,7 @@
         <label class="panel-field">
           <span class="panel-field-label">X axis</span>
           <p-select
-            [options]="binding.numericColumns()"
+            [options]="binding.axisColumns()"
             [ngModel]="binding.xColumnId()"
             optionLabel="name"
             optionValue="id"
@@ -142,7 +142,7 @@
         <label class="panel-field">
           <span class="panel-field-label">Y axis</span>
           <p-select
-            [options]="binding.numericColumns()"
+            [options]="binding.axisColumns()"
             [ngModel]="binding.yColumnId()"
             optionLabel="name"
             optionValue="id"

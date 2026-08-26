@@ -68,7 +68,7 @@ export class PanelWidgetDetailChartComponent {
   protected axisPlaceholder(columnId: string | null): string {
     return (
       this.chart()
-        .numericColumns()
+        .axisColumns()
         .find((c) => c.id === columnId)?.name ?? ''
     );
   }
