@@ -16,10 +16,6 @@ import { ReportSession } from './report-session';
  * navigation or a refresh mid-edit), the GET 404s and this checks one out on the
  * fly, then reloads the resource. The resolved content is turned into the
  * {@link ReportModel} tree once, seeding the autosave baseline.
- *
- * Also owns the "what was loaded" baseline that {@link hasUnpublishedChanges}
- * compares against — which the model's own dirty flag can't answer, since
- * autosave clears that the moment it catches up.
  */
 @Injectable()
 export class ReportLifecycle {
@@ -40,23 +36,10 @@ export class ReportLifecycle {
   /** Set when even a checkout couldn't produce a draft, so the skeleton stops. */
   private readonly loadFailed = signal(false);
 
-  /**
-   * The normalised snapshot the draft had when it was loaded (or last
-   * published), for detecting whether there's anything new to publish.
-   */
-  private loadBaseline: string | null = null;
-
   /** True until the report's model tree is built (or loading has failed), for the canvas skeleton. */
   readonly loading = computed(
     () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
   );
-
-  /** Whether this draft differs from what was loaded (or last published). */
-  readonly hasUnpublishedChanges = computed(() => {
-    const model = this.session.model();
-    if (!model || this.loadBaseline === null) return false;
-    return JSON.stringify(model.toDto()) !== this.loadBaseline;
-  });
 
   /**
    * Whether leaving right now could lose work: an edit hasn't reached the server
@@ -107,7 +90,6 @@ export class ReportLifecycle {
 
     this.reportApi.publish(model.reportId, notes).subscribe({
       next: () => {
-        this.loadBaseline = JSON.stringify(model.toDto());
         this.router.navigate(['/reports', model.reportId]);
         this.notify.success('Report published.');
       },
@@ -118,7 +100,6 @@ export class ReportLifecycle {
   private setLoadedReport(report: ReportRevisionContent): void {
     const model = ReportModel.fromDto(report, this.session.sources);
     this.session.model.set(model);
-    this.loadBaseline = JSON.stringify(model.toDto());
     // Seeded from the model, not the server payload: the model normalises
     // defaults and key order, so anything else would look like a change and
     // leave an undo step available before the user has done anything.
