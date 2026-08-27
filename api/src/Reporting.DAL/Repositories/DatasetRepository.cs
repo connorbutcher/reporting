@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
@@ -94,20 +93,23 @@ public class DatasetRepository(ReportingDbContext db)
         };
     }
 
-    /// <summary>Replaces a column's free-form display configuration blob.</summary>
-    public async Task<DatasetColumnDto?> UpdateColumnConfigurationAsync(int id, Guid columnId, JsonElement configuration)
+    /// <summary>
+    /// Replaces a column's typed display configuration. Null when the column doesn't exist; throws
+    /// <see cref="DataValidationException"/> when the config's kind doesn't match the column's type.
+    /// </summary>
+    public async Task<DatasetColumnDto?> UpdateColumnConfigurationAsync(int id, Guid columnId, DatasetColumnConfig configuration)
     {
-        if (configuration.ValueKind is not (JsonValueKind.Object or JsonValueKind.Null or JsonValueKind.Undefined))
-        {
-            throw new DataValidationException("Column configuration must be a JSON object.");
-        }
-
         var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
         if (column is null) return null;
 
-        column.ConfigurationJson = configuration.ValueKind == JsonValueKind.Object
-            ? configuration.GetRawText()
-            : "{}";
+        var expected = DatasetColumnConfig.KindFor(column.Type);
+        if (configuration.Kind != expected)
+        {
+            throw new DataValidationException(
+                $"Configuration of kind '{configuration.Kind}' doesn't match the column's type '{column.Type}' (expects '{expected}').");
+        }
+
+        column.SetConfig(configuration);
         await db.SaveChangesAsync();
         return column.ToDto();
     }

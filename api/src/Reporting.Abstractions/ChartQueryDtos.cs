@@ -39,6 +39,10 @@ public class ResolvedToleranceBandDto
     public double? Max { get; set; }
     public double? ConcessionLower { get; set; }
     public double? ConcessionUpper { get; set; }
+
+    /// <summary>Presentation flags echoed from the band config so the client can render without it.</summary>
+    public bool Fill { get; set; }
+    public bool OutlinePoints { get; set; }
 }
 
 public class ChartQueryResultDto

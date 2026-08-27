@@ -221,8 +221,41 @@ public static class Mapping
         Name = column.Name,
         Type = column.Type,
         Order = column.Order,
-        Configuration = JsonSerializer.Deserialize<JsonElement>(column.ConfigurationJson)
+        Configuration = column.GetConfig()
     };
+
+    /// <summary>
+    /// The column's typed display configuration, deserialized into the concrete shape its
+    /// <see cref="DatasetColumn.Type"/> formats through. A blank blob (a freshly created column)
+    /// or a malformed one falls back to that type's default config. The blob is read by column
+    /// type rather than by its own "kind" discriminator, so configs stored before typing existed
+    /// still load.
+    /// </summary>
+    public static DatasetColumnConfig GetConfig(this DatasetColumn column)
+    {
+        if (!string.IsNullOrWhiteSpace(column.ConfigurationJson))
+        {
+            try
+            {
+                if (JsonSerializer.Deserialize(
+                        column.ConfigurationJson,
+                        DatasetColumnConfigs.ConcreteType(column.Type),
+                        ConfigJsonOptions) is DatasetColumnConfig config)
+                {
+                    return config;
+                }
+            }
+            catch (JsonException)
+            {
+                // A malformed blob falls back to the type's default below.
+            }
+        }
+
+        return DatasetColumnConfigs.Default(column.Type);
+    }
+
+    public static void SetConfig(this DatasetColumn column, DatasetColumnConfig config) =>
+        column.ConfigurationJson = JsonSerializer.Serialize(config, typeof(DatasetColumnConfig), ConfigJsonOptions);
 
     public static DatasetDataDto ToDataDto(this Dataset dataset) =>
         BuildDataDto(dataset, dataset.Rows);

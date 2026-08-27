@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
@@ -22,7 +21,24 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // Keyed by RefId: the client references columns by their stable RefId, and the translator
         // resolves each to the column's int id for cell comparisons.
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
+
+        // Every distinct tolerance pointer among the requested columns, resolved in one batch —
+        // used both to band the returned cells and to evaluate any tolerance filter operators,
+        // which reuse the column's banding. Keyed by the column RefId the filter also addresses.
+        var pointers = dto.Columns
+            .Where(c => c.Tolerance is not null)
+            .Select(c => (
+                Key: c.ColumnId,
+                c.Tolerance!.SourceDatasetId,
+                c.Tolerance.SourceRowId,
+                c.Tolerance.MinColumnId,
+                c.Tolerance.MaxColumnId,
+                c.Tolerance.ConcessionLowerColumnId,
+                c.Tolerance.ConcessionUpperColumnId))
+            .ToList();
+        var bounds = await tolerance.ResolveAsync(pointers);
+
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds);
 
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
@@ -37,20 +53,6 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var take = Math.Clamp(dto.Take <= 0 ? 50 : dto.Take, 1, 500);
         var rows = await ordered.Skip(skip).Take(take).Include(r => r.Cells).ToListAsync();
 
-        // Every distinct tolerance pointer among the requested columns, resolved in one batch.
-        var pointers = dto.Columns
-            .Where(c => c.Tolerance is not null)
-            .Select(c => (
-                Key: c.ColumnId,
-                c.Tolerance!.SourceDatasetId,
-                c.Tolerance.SourceRowId,
-                c.Tolerance.MinColumnId,
-                c.Tolerance.MaxColumnId,
-                c.Tolerance.ConcessionLowerColumnId,
-                c.Tolerance.ConcessionUpperColumnId))
-            .ToList();
-        var bounds = await tolerance.ResolveAsync(pointers);
-
         var resultRows = rows.Select(row =>
         {
             var cells = new Dictionary<Guid, TableCellDto>();
@@ -59,8 +61,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 if (!columnsByRef.TryGetValue(setting.ColumnId, out var column)) continue;
 
                 var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id);
-                var configuration = JsonSerializer.Deserialize<JsonElement>(column.ConfigurationJson);
-                var display = cell is null ? null : CellFormatter.Format(cell, column.Type, configuration);
+                var display = cell is null ? null : CellFormatter.Format(cell, column.Type, column.GetConfig());
 
                 var status = ToleranceStatus.None;
                 if (setting.Tolerance is not null
@@ -83,6 +84,65 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             TotalRowCount = totalRowCount,
             MatchedRowCount = matchedRowCount
         };
+    }
+
+    /// <summary>Resolves every tolerance band's bounds in one batch, keyed by the band's client id.</summary>
+    private async Task<Dictionary<string, ToleranceBounds?>> ResolveBandsAsync(IReadOnlyList<ChartToleranceBand> bands)
+    {
+        var pointers = bands
+            .Where(b => b.SourceDatasetId != 0 && b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
+            .Select(b => (
+                Key: b.Id,
+                b.SourceDatasetId,
+                b.SourceRowId,
+                b.MinColumnId,
+                b.MaxColumnId,
+                b.ConcessionLowerColumnId,
+                b.ConcessionUpperColumnId))
+            .ToList();
+        return await tolerance.ResolveAsync(pointers);
+    }
+
+    /// <summary>Projects resolved band bounds into the client DTOs that draw the reference lines.</summary>
+    private static List<ResolvedToleranceBandDto> ResolvedBands(
+        IReadOnlyList<ChartToleranceBand> bands,
+        IReadOnlyDictionary<string, ToleranceBounds?> bounds) =>
+        bands.Select(b =>
+        {
+            bounds.TryGetValue(b.Id, out var bound);
+            return new ResolvedToleranceBandDto
+            {
+                Id = b.Id,
+                Axis = b.Axis,
+                Min = bound?.Min,
+                Max = bound?.Max,
+                ConcessionLower = bound?.ConcessionLower,
+                ConcessionUpper = bound?.ConcessionUpper,
+                Fill = b.Fill,
+                OutlinePoints = b.OutlinePoints
+            };
+        }).ToList();
+
+    /// <summary>
+    /// Maps each tolerance band's bounds onto the axis column it bands, for the tolerance filter
+    /// operators. Only an axis carrying exactly one band is included — with several, "out of
+    /// tolerance" has no single meaning, so the operator isn't offered (nor resolved) there.
+    /// </summary>
+    private static Dictionary<Guid, ToleranceBounds?> ToleranceByAxisColumn(
+        IReadOnlyList<ChartToleranceBand> bands,
+        IReadOnlyDictionary<string, ToleranceBounds?> resolved,
+        Guid? xColumnId,
+        Guid? yColumnId)
+    {
+        var map = new Dictionary<Guid, ToleranceBounds?>();
+        foreach (var axisBands in bands.GroupBy(b => b.Axis))
+        {
+            var list = axisBands.ToList();
+            if (list.Count != 1) continue;
+            var column = axisBands.Key == ChartAxis.Y ? yColumnId : xColumnId;
+            if (column is { } col && col != Guid.Empty) map[col] = resolved.GetValueOrDefault(list[0].Id);
+        }
+        return map;
     }
 
     /// <summary>Orders by the sort column's typed value, correlated per row the same way filters are.</summary>
@@ -124,7 +184,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
+
+        // Resolve the tolerance bands up front: their bounds draw the reference lines below, and
+        // a tolerance filter operator reuses the band on the filtered column's axis.
+        var bounds = await ResolveBandsAsync(dto.ToleranceBands);
+        var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.XColumnId, dto.YColumnId);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
 
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
@@ -178,8 +243,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column!.Id);
                 if (cell is null) continue;
 
-                var configuration = JsonSerializer.Deserialize<JsonElement>(column!.ConfigurationJson);
-                var value = CellFormatter.Format(cell, column.Type, configuration);
+                var value = CellFormatter.Format(cell, column!.Type, column.GetConfig());
                 if (string.IsNullOrEmpty(value)) continue;
 
                 tooltipLines.Add($"{setting.Prefix}{value}{setting.Suffix}");
@@ -189,33 +253,6 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             if (groups.TryGetValue(key, out var points)) points.Add(point);
             else groups[key] = [point];
         }
-
-        var pointers = dto.ToleranceBands
-            .Where(b => b.SourceDatasetId != 0 && b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
-            .Select(b => (
-                Key: b.Id,
-                b.SourceDatasetId,
-                b.SourceRowId,
-                b.MinColumnId,
-                b.MaxColumnId,
-                b.ConcessionLowerColumnId,
-                b.ConcessionUpperColumnId))
-            .ToList();
-        var bounds = await tolerance.ResolveAsync(pointers);
-
-        var resolvedBands = dto.ToleranceBands.Select(b =>
-        {
-            bounds.TryGetValue(b.Id, out var bound);
-            return new ResolvedToleranceBandDto
-            {
-                Id = b.Id,
-                Axis = b.Axis,
-                Min = bound?.Min,
-                Max = bound?.Max,
-                ConcessionLower = bound?.ConcessionLower,
-                ConcessionUpper = bound?.ConcessionUpper
-            };
-        }).ToList();
 
         return new ChartQueryResultDto
         {
@@ -230,7 +267,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                     ? g.Value.OrderBy(p => (string)p.X)
                     : g.Value.OrderBy(p => (double)p.X)).ToList()
             }).ToList(),
-            ToleranceBands = resolvedBands
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
         };
     }
 
@@ -251,7 +288,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var empty = new BarChartQueryResultDto { Id = dataset.Id, Name = dataset.Name };
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
+
+        // Bands sit on the value (Y) axis; a tolerance filter reuses the band on that axis to
+        // narrow rows by the measure column before they're aggregated into bars.
+        var bounds = await ResolveBandsAsync(dto.ToleranceBands);
+        var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
 
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
@@ -374,40 +416,13 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .Select(key => key.Length == 0 ? "(blank)" : key)
             .ToList();
 
-        var pointers = dto.ToleranceBands
-            .Where(b => b.SourceDatasetId != 0 && b.SourceRowId != Guid.Empty && b.MinColumnId != Guid.Empty && b.MaxColumnId != Guid.Empty)
-            .Select(b => (
-                Key: b.Id,
-                b.SourceDatasetId,
-                b.SourceRowId,
-                b.MinColumnId,
-                b.MaxColumnId,
-                b.ConcessionLowerColumnId,
-                b.ConcessionUpperColumnId))
-            .ToList();
-        var bounds = await tolerance.ResolveAsync(pointers);
-
-        var resolvedBands = dto.ToleranceBands.Select(b =>
-        {
-            bounds.TryGetValue(b.Id, out var bound);
-            return new ResolvedToleranceBandDto
-            {
-                Id = b.Id,
-                Axis = b.Axis,
-                Min = bound?.Min,
-                Max = bound?.Max,
-                ConcessionLower = bound?.ConcessionLower,
-                ConcessionUpper = bound?.ConcessionUpper
-            };
-        }).ToList();
-
         return new BarChartQueryResultDto
         {
             Id = dataset.Id,
             Name = dataset.Name,
             Categories = orderedCategories,
             Series = series,
-            ToleranceBands = resolvedBands
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
         };
     }
 

@@ -37,7 +37,13 @@ public enum FilterOperator
 
     // Date, relative to today.
     InLastDays,
-    InNextDays
+    InNextDays,
+
+    // Numeric, against the column's configured tolerance banding. These take no
+    // operand — the bounds come from the banding, resolved server-side at query time.
+    InTolerance,
+    NeedsConcession,
+    OutOfTolerance
 }
 
 /// <summary>What the panel should render for an operator's operands.</summary>
@@ -75,6 +81,13 @@ public class FilterConditionDto : FilterNodeDto
 
     /// <summary>Raw strings parsed against the column's type; 0, 1 or 2 depending on the operator.</summary>
     public List<string> Values { get; set; } = new();
+
+    /// <summary>
+    /// Whether this condition narrows the data. Defaults to true, so a condition stored
+    /// before toggling existed (its JSON omits the field) still applies. A disabled
+    /// condition is retained but skipped when the filter is translated.
+    /// </summary>
+    public bool Enabled { get; set; } = true;
 }
 
 /// <summary>

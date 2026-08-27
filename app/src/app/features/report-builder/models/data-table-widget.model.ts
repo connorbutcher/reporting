@@ -59,6 +59,11 @@ export class DataTableWidgetModel extends WidgetModel {
           .map((c) => c.schemaColumn())
           .filter((c): c is NonNullable<typeof c> => !!c),
       ),
+      // The columns on this table that have tolerance banding, so the filter can offer
+      // "in/out of tolerance" on them.
+      tolerantColumns: computed(
+        () => new Set(this.columns().filter((c) => c.tolerance()).map((c) => c.columnId)),
+      ),
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,
       widgetId: this.id,

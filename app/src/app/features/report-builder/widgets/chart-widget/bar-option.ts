@@ -6,7 +6,14 @@ import {
   readChartBindings,
 } from '../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../core/models/widget-query';
-import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
+import {
+  SERIES_COLORS,
+  columnById,
+  markAreaData,
+  markLineData,
+  outlierItemStyle,
+  valueOutlineColor,
+} from './chart-options-shared';
 
 /**
  * The bar option: a category axis with one aggregated value per category, per
@@ -35,8 +42,12 @@ export function buildBarOption(
   const horizontal = config.horizontal;
 
   // The value axis is whichever one isn't holding the categories, so reference
-  // lines land on the measure regardless of orientation.
-  const marks = markLineData(data?.toleranceBands ?? [], () => (horizontal ? 'xAxis' : 'yAxis'));
+  // lines and fills land on the measure regardless of orientation.
+  const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis');
+  const bands = data?.toleranceBands ?? [];
+  const marks = markLineData(bands, valueAxisKey);
+  const areas = markAreaData(bands, valueAxisKey);
+  const outlineColor = valueOutlineColor(bands);
 
   const categoryAxis = {
     type: 'category' as const,
@@ -68,10 +79,16 @@ export function buildBarOption(
         // A shared stack name piles a category's series into one bar.
         ...(config.stacked ? { stack: 'total' } : {}),
         itemStyle: { color },
-        data: s.values,
+        // A bar whose aggregated value falls outside an outlined band is bordered in the
+        // crossed limit's colour (orange for min/max, red for concession); others stay plain.
+        data: s.values.map((v) => {
+          const border = v !== null ? outlineColor(v) : null;
+          return border ? { value: v, itemStyle: outlierItemStyle(color, border) } : v;
+        }),
         ...(i === 0 && marks.length > 0
           ? { markLine: { silent: true, symbol: 'none', data: marks } }
           : {}),
+        ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
       };
     }),
   };

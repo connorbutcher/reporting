@@ -1,5 +1,5 @@
 import { Signal, computed, signal } from '@angular/core';
-import { ReportRevisionContent, Tab } from '../../../core/models/report';
+import { ReportRevisionContent, Tab, bandedChartColumns } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter.model';
@@ -211,9 +211,39 @@ export class ReportModel extends EditorNode {
     return new ReportFilterModel(datasetId, dto, {
       schema: computed(() => this.sources.schemas()[datasetId] ?? null),
       catalogue: this.sources.catalogue,
+      // A page filter isn't tied to one widget, so its tolerance operators are offered on
+      // any column banded by a widget in the report that draws on this dataset.
+      tolerantColumns: computed(() => this.tolerantColumnsFor(datasetId)),
       view: { kind: 'reportFilters' },
       ownerId: `report:${datasetId}`,
     });
+  }
+
+  /** Every column banded (table banding or a chart's single-band axis) by a widget on this dataset. */
+  private tolerantColumnsFor(datasetId: number): ReadonlySet<string> {
+    const columns = new Set<string>();
+    for (const tab of this.tabs()) {
+      for (const widget of tab.widgets()) {
+        if (widget instanceof DataTableWidgetModel) {
+          if (widget.datasetId() !== datasetId) continue;
+          for (const column of widget.columns()) {
+            if (column.tolerance()) columns.add(column.columnId);
+          }
+        } else if (widget instanceof ChartWidgetModel) {
+          const bands = widget.toleranceBands();
+          for (const binding of widget.bindings()) {
+            if (binding.datasetId() !== datasetId) continue;
+            for (const id of bandedChartColumns(bands, {
+              xColumnId: binding.xColumnId(),
+              yColumnId: binding.yColumnId(),
+            })) {
+              columns.add(id);
+            }
+          }
+        }
+      }
+    }
+    return columns;
   }
 
   toDto(): ReportRevisionContent {

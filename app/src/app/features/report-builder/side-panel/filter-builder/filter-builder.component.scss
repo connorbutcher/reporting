@@ -33,6 +33,17 @@
     }
   }
 
+  // A switched-off condition is kept but doesn't narrow the data. Mute the parts
+  // that describe what it tests, while leaving the toggle and remove control fully
+  // interactive so it can be turned back on or edited.
+  &.filter-row--off {
+    .head ::ng-deep .filter-column,
+    ::ng-deep .filter-operator,
+    .operands {
+      opacity: 0.5;
+    }
+  }
+
   .operands {
     display: flex;
     gap: 6px;

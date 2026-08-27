@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
@@ -173,12 +172,12 @@ public class DatasetsController(
 
     // --- mutations (Editor, draft only) ---------------------------------------
 
-    /// <summary>Replaces a column's free-form display configuration blob.</summary>
+    /// <summary>Replaces a column's typed display configuration; the body's kind must match the column's type.</summary>
     [HttpPut("{id:int}/columns/{columnId:guid}/configuration")]
     public async Task<ActionResult<DatasetColumnDto>> UpdateColumnConfiguration(
         int id,
         Guid columnId,
-        [FromBody] JsonElement configuration)
+        [FromBody] DatasetColumnConfig configuration)
     {
         if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
 

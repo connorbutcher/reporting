@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { ChartAxis } from '../../../../../core/models/report';
@@ -21,7 +22,14 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
  */
 @Component({
   selector: 'app-panel-chart-tolerance-band',
-  imports: [FormsModule, ButtonModule, SelectModule, SelectButtonModule, PanelGroupComponent],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    CheckboxModule,
+    SelectModule,
+    SelectButtonModule,
+    PanelGroupComponent,
+  ],
   templateUrl: './panel-chart-tolerance-band.component.html',
   providers: [ToleranceSourcePicker],
 })
@@ -91,6 +99,16 @@ export class PanelChartToleranceBandComponent {
 
       untracked(() => this.chart()?.updateToleranceBand(bandId, { axis, ...pointer }));
     });
+  }
+
+  protected setFill(fill: boolean): void {
+    const bandId = this.bandId();
+    if (bandId) this.chart()?.updateToleranceBand(bandId, { fill });
+  }
+
+  protected setOutlinePoints(outlinePoints: boolean): void {
+    const bandId = this.bandId();
+    if (bandId) this.chart()?.updateToleranceBand(bandId, { outlinePoints });
   }
 
   protected remove(): void {

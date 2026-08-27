@@ -6,7 +6,14 @@ import {
   readChartBindings,
 } from '../../../../core/models/report';
 import { ChartQueryResult, ChartSeriesResult } from '../../../../core/models/widget-query';
-import { SERIES_COLORS, columnById, markLineData } from './chart-options-shared';
+import {
+  SERIES_COLORS,
+  columnById,
+  markAreaData,
+  markLineData,
+  outlierItemStyle,
+  pointOutlineColor,
+} from './chart-options-shared';
 
 /** The two chart kinds that plot raw rows as points, as opposed to aggregated bars. */
 export type PointChartConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
@@ -17,6 +24,8 @@ type Coord = number | string;
 interface ScatterPoint {
   value: [Coord, Coord];
   tooltipLines: string[];
+  /** Per-point override, set only for points outlined as out of tolerance. */
+  itemStyle?: object;
 }
 
 interface ScatterTooltipParams {
@@ -57,10 +66,12 @@ export function buildPointOption(
   // than one series to tell apart — whether from a colour-by split within one
   // dataset or from several datasets overlaid on the chart.
   const showSeries = series.length > 1;
-  const marks = markLineData(
-    data?.toleranceBands ?? [],
-    (band) => (band.axis === 'x' ? 'xAxis' : 'yAxis'),
-  );
+  const bands = data?.toleranceBands ?? [];
+  const axisKeyFor = (band: { axis: 'x' | 'y' }): 'xAxis' | 'yAxis' =>
+    band.axis === 'x' ? 'xAxis' : 'yAxis';
+  const marks = markLineData(bands, axisKeyFor);
+  const areas = markAreaData(bands, axisKeyFor);
+  const outlineColor = pointOutlineColor(bands);
 
   return {
     grid: {
@@ -96,12 +107,13 @@ export function buildPointOption(
         name: s.label || config.title || 'Series',
         ...seriesKindOptions(config, color),
         itemStyle: { color },
-        data: pointsFor(s),
-        // Attached to the first series only — markLine coordinates are chart-wide,
-        // so one copy is enough regardless of how many series are plotted.
+        data: pointsFor(s, color, outlineColor),
+        // Attached to the first series only — markLine/markArea coordinates are
+        // chart-wide, so one copy is enough regardless of how many series are plotted.
         ...(i === 0 && marks.length > 0
           ? { markLine: { silent: true, symbol: 'none', data: marks } }
           : {}),
+        ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
       };
     }),
   };
@@ -123,8 +135,19 @@ function formatTooltip(
   return lines.join('<br/>');
 }
 
-function pointsFor(series: ChartSeriesResult): ScatterPoint[] {
-  return series.points.map((p) => ({ value: [p.x, p.y], tooltipLines: p.tooltipLines }));
+function pointsFor(
+  series: ChartSeriesResult,
+  color: string,
+  outlineColor: (x: Coord, y: Coord) => string | null,
+): ScatterPoint[] {
+  return series.points.map((p) => {
+    const border = outlineColor(p.x, p.y);
+    return {
+      value: [p.x, p.y],
+      tooltipLines: p.tooltipLines,
+      ...(border ? { itemStyle: outlierItemStyle(color, border) } : {}),
+    };
+  });
 }
 
 /** The distinct category labels a text axis carries, alphabetical — the axis's `data`. */

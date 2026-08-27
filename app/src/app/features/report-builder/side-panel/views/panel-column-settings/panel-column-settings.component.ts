@@ -7,7 +7,13 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { SelectModule } from 'primeng/select';
-import { DatasetColumn, DatasetColumnConfiguration } from '../../../../../core/models/dataset';
+import {
+  BoolColumnConfig,
+  DatasetColumn,
+  DatasetColumnConfiguration,
+  DateColumnConfig,
+  NumericColumnConfig,
+} from '../../../../../core/models/dataset';
 import { ColumnAlign } from '../../../../../core/models/report';
 import { TableColumnModel } from '../../../models/table-column.model';
 import { ReportSession } from '../../../state/report-session';
@@ -77,9 +83,25 @@ export class PanelColumnSettingsComponent {
 
   protected readonly schemaColumn = computed(() => this.column()?.schemaColumn() ?? null);
 
-  protected readonly config = computed<DatasetColumnConfiguration>(
-    () => this.schemaColumn()?.configuration ?? {},
-  );
+  /**
+   * The selected column's config narrowed to each editable shape. Reading through
+   * these keeps the template type-safe: a mismatched or absent config (the column
+   * changed type, or none loaded yet) reads as that shape's empty default.
+   */
+  protected readonly numericConfig = computed<NumericColumnConfig>(() => {
+    const config = this.schemaColumn()?.configuration;
+    return config?.kind === 'numeric' ? config : { kind: 'numeric' };
+  });
+
+  protected readonly dateConfig = computed<DateColumnConfig>(() => {
+    const config = this.schemaColumn()?.configuration;
+    return config?.kind === 'date' ? config : { kind: 'date' };
+  });
+
+  protected readonly boolConfig = computed<BoolColumnConfig>(() => {
+    const config = this.schemaColumn()?.configuration;
+    return config?.kind === 'bool' ? config : { kind: 'bool' };
+  });
 
   protected readonly effectiveAlign = computed<ColumnAlign>(() => {
     const explicit = this.column()?.align();
@@ -101,12 +123,24 @@ export class PanelColumnSettingsComponent {
     if (widgetId) this.navigation.navigate({ kind: 'columnTolerance', widgetId, columnId });
   }
 
-  protected patchFormat(patch: DatasetColumnConfiguration): void {
+  protected patchNumeric(patch: Partial<Omit<NumericColumnConfig, 'kind'>>): void {
+    this.saveConfig({ ...this.numericConfig(), ...patch });
+  }
+
+  protected patchDate(patch: Partial<Omit<DateColumnConfig, 'kind'>>): void {
+    this.saveConfig({ ...this.dateConfig(), ...patch });
+  }
+
+  protected patchBool(patch: Partial<Omit<BoolColumnConfig, 'kind'>>): void {
+    this.saveConfig({ ...this.boolConfig(), ...patch });
+  }
+
+  private saveConfig(config: DatasetColumnConfiguration): void {
     const datasetId = this.table()?.datasetId();
     const column = this.schemaColumn();
     if (!datasetId || !column) return;
 
-    this.schema.updateColumnConfiguration(datasetId, column.id, { ...this.config(), ...patch });
+    this.schema.updateColumnConfiguration(datasetId, column.id, config);
   }
 
   protected remove(columnId: string): void {

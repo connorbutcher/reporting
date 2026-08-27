@@ -29,6 +29,10 @@ export interface ResolvedToleranceBand {
   max: number | null;
   concessionLower: number | null;
   concessionUpper: number | null;
+  /** Shade the zone between the lines. */
+  fill: boolean;
+  /** Outline plotted points that fall outside the band's outermost line. */
+  outlinePoints: boolean;
 }
 
 export interface ChartQueryResult {

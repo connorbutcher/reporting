@@ -8,8 +8,9 @@ import {
   output,
   signal,
   untracked,
+  viewChild,
 } from '@angular/core';
-import { TableLazyLoadEvent, TableModule } from 'primeng/table';
+import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
 import { FilterGroup } from '../../../../core/models/filter';
@@ -67,6 +68,7 @@ export class DataTableWidgetComponent {
 
   private readonly datasetApi = inject(DatasetApiService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly table = viewChild(Table);
 
   protected readonly datasetId = computed(() => this.config().datasetId);
 
@@ -216,6 +218,25 @@ export class DataTableWidgetComponent {
         this.source.error.set(false);
         this.first.set(0);
         this.source.reloadDebounced();
+      });
+    });
+
+    // PrimeNG's virtual scroller measures its viewport only when the table first
+    // mounts. In this flex layout the container is often still zero-height at
+    // that point (and the loading overlay is up), so it computes a render window
+    // of zero rows — and because the table is lazy it won't recalculate when the
+    // rows land. The data then stays invisible until a scroll or resize nudges
+    // the scroller. Re-run its size calc once fresh rows have actually rendered.
+    effect(() => {
+      const hasRows = this.rows().length > 0;
+      const settled = !this.loading();
+      const scroller = this.table()?.scroller();
+      if (!hasRows || !settled || !scroller) return;
+
+      untracked(() => {
+        // A frame later the rows are in the DOM and the flex container has its
+        // real height, so the scroller's remeasure sees a non-zero viewport.
+        requestAnimationFrame(() => scroller.init());
       });
     });
   }

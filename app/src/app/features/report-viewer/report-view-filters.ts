@@ -1,7 +1,12 @@
-import { Signal, computed } from '@angular/core';
+import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../core/models/dataset';
 import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter';
-import { ReportRevisionContent, WidgetType, readChartBindings } from '../../core/models/report';
+import {
+  ReportRevisionContent,
+  WidgetType,
+  bandedChartColumns,
+  readChartBindings,
+} from '../../core/models/report';
 import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
 import { FilterGroupModel } from '../report-builder/models/filter.model';
 
@@ -60,6 +65,16 @@ export class ReportViewFilters {
     const datasetIds = new Set<number>();
     const widgetEntries: ViewFilterEntry[] = [];
 
+    // Columns banded anywhere on a dataset, so a page filter offers the tolerance
+    // operators on the same columns a widget filter would. Accumulated as the widget
+    // loop below discovers each widget's banded columns.
+    const tolerantByDataset = new Map<number, Set<string>>();
+    const addTolerant = (datasetId: number, ids: readonly string[]) => {
+      const set = tolerantByDataset.get(datasetId) ?? new Set<string>();
+      for (const id of ids) set.add(id);
+      tolerantByDataset.set(datasetId, set);
+    };
+
     // Filters are report-wide, so every tab's widgets contribute their entries.
     for (const widget of content.tabs.flatMap((t) => t.widgets)) {
       if (widget.type === 'dataTable') {
@@ -72,12 +87,17 @@ export class ReportViewFilters {
         // isn't on it would silently drop rows for a reason the reader can't see.
         const placed = new Set(widget.config.columns.map((c) => c.columnId));
         const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+        const banded = widget.config.columns.filter((c) => c.tolerance).map((c) => c.columnId);
+        addTolerant(datasetId, banded);
         widgetEntries.push({
           key: widget.id,
           label: computed(() => title),
           datasetId,
           published: widget.config.filter,
-          group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, columns),
+          group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, {
+            columns,
+            tolerantColumns: signal(new Set(banded)),
+          }),
           type: widget.type,
           icon: widgetTypeDescriptor(widget.type).icon,
         });
@@ -92,6 +112,8 @@ export class ReportViewFilters {
           const datasetId = binding.datasetId!;
           datasetIds.add(datasetId);
           const schema = schemaFor(datasetId);
+          const banded = bandedChartColumns(widget.config.toleranceBands ?? [], binding);
+          addTolerant(datasetId, banded);
           widgetEntries.push({
             key: chartBindingKey(widget.id, binding.id),
             label: computed(() =>
@@ -99,7 +121,9 @@ export class ReportViewFilters {
             ),
             datasetId,
             published: binding.filter,
-            group: buildGroup(binding.filter, schema, catalogue, `view:${widget.id}:${binding.id}`),
+            group: buildGroup(binding.filter, schema, catalogue, `view:${widget.id}:${binding.id}`, {
+              tolerantColumns: signal(new Set(banded)),
+            }),
             type: widget.type,
             icon: widgetTypeDescriptor(widget.type).icon,
           });
@@ -115,7 +139,9 @@ export class ReportViewFilters {
         label: computed(() => schema()?.name ?? 'Dataset'),
         datasetId,
         published,
-        group: buildGroup(published, schema, catalogue, `page:${datasetId}`),
+        group: buildGroup(published, schema, catalogue, `page:${datasetId}`, {
+          tolerantColumns: signal(new Set(tolerantByDataset.get(datasetId) ?? [])),
+        }),
       };
     });
 
@@ -138,8 +164,9 @@ export class ReportViewFilters {
   /** True once the reader's view differs from what the author published. */
   readonly changed = computed(() => this.allEntries.some((e) => entryChanged(e)));
 
+  /** How many conditions are switched on across the whole report — the badge count. */
   readonly conditionCount = computed(() =>
-    this.allEntries.reduce((n, e) => n + e.group.count(), 0),
+    this.allEntries.reduce((n, e) => n + e.group.enabledCount(), 0),
   );
 
   /** Puts every filter back to what the published report defines. */
@@ -153,11 +180,20 @@ function buildGroup(
   schema: Signal<DatasetSchema | null>,
   catalogue: Signal<OperatorCatalogue | null>,
   ownerId: string,
-  columns?: Signal<DatasetColumn[]>,
+  scope?: {
+    columns?: Signal<DatasetColumn[]>;
+    tolerantColumns?: Signal<ReadonlySet<string>>;
+  },
 ): FilterGroupModel {
   // Deep-copied so editing never mutates the published revision held in the
   // content signal, which is what reset() restores from.
-  return new FilterGroupModel(clone(published), { schema, catalogue, ownerId, columns });
+  return new FilterGroupModel(clone(published), {
+    schema,
+    catalogue,
+    ownerId,
+    columns: scope?.columns,
+    tolerantColumns: scope?.tolerantColumns,
+  });
 }
 
 function clone(filter: FilterGroup | null): FilterGroup | null {

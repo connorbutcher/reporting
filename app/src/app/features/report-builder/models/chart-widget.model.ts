@@ -7,6 +7,7 @@ import {
   ChartWidget,
   ChartWidgetConfigBase,
   EMPTY_CHART_BINDING,
+  bandedChartColumns,
   readChartBindings,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
@@ -40,7 +41,12 @@ export class ChartBindingModel extends EditorNode {
   /** Columns an axis can plot: numeric (value axis) or text (category axis). */
   readonly axisColumns: Signal<DatasetColumn[]>;
 
-  constructor(binding: ChartSeriesBinding, sources: ModelSources, widgetId: string) {
+  constructor(
+    binding: ChartSeriesBinding,
+    sources: ModelSources,
+    widgetId: string,
+    toleranceBands: Signal<readonly ChartToleranceBand[]>,
+  ) {
     super();
     this.id = binding.id;
     this.datasetId.set(binding.datasetId);
@@ -68,6 +74,16 @@ export class ChartBindingModel extends EditorNode {
       catalogue: sources.catalogue,
       // Unlike a table, a chart doesn't show an enumerable set of columns, so
       // its filter offers the whole dataset rather than a narrowed list.
+      // A tolerance filter keys off this binding's axis columns that carry a band.
+      tolerantColumns: computed(
+        () =>
+          new Set(
+            bandedChartColumns(toleranceBands(), {
+              xColumnId: this.xColumnId(),
+              yColumnId: this.yColumnId(),
+            }),
+          ),
+      ),
       view: { kind: 'widgetFilters', widgetId, bindingId: this.id },
       // Namespaced per binding so overlaid datasets' filter issues stay distinct.
       ownerId: `${widgetId}:${this.id}`,
@@ -160,7 +176,12 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.bindings.set(
       readChartBindings(config).map(
         (b) =>
-          new ChartBindingModel(hadBindings ? b : { ...b, id: crypto.randomUUID() }, sources, this.id),
+          new ChartBindingModel(
+            hadBindings ? b : { ...b, id: crypto.randomUUID() },
+            sources,
+            this.id,
+            this.toleranceBands,
+          ),
       ),
     );
   }
@@ -178,7 +199,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
   /** Appends a fresh, unbound series to overlay another dataset; returns its id. */
   addBinding(): string {
     const dto: ChartSeriesBinding = { id: crypto.randomUUID(), ...EMPTY_CHART_BINDING };
-    const model = new ChartBindingModel(dto, this.sources, this.id);
+    const model = new ChartBindingModel(dto, this.sources, this.id, this.toleranceBands);
     this.bindings.update((bindings) => [...bindings, model]);
     return model.id;
   }

@@ -28,8 +28,14 @@
   } @else {
     <ul class="filter-rows">
       @for (condition of group().children(); track $index) {
-        <li class="filter-row">
+        <li class="filter-row" [class.filter-row--off]="!condition.enabled()">
           <div class="head">
+            <p-toggleswitch
+              styleClass="filter-toggle"
+              [ngModel]="condition.enabled()"
+              (ngModelChange)="condition.setEnabled($event)"
+              [ariaLabel]="(condition.enabled() ? 'Disable' : 'Enable') + ' condition ' + ($index + 1)"
+            />
             <p-select
               styleClass="filter-column"
               size="small"

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.Json;
 using Reporting.Abstractions;
 using Reporting.Database;
 
@@ -14,22 +13,20 @@ public static class CellFormatter
 {
     private const string DefaultDateFormat = "dd/MM/yyyy";
 
-    private static readonly JsonSerializerOptions ConfigOptions = new() { PropertyNameCaseInsensitive = true };
-
-    public static string? Format(DatasetCell cell, DatasetColumnType type, JsonElement? configuration) => type switch
+    public static string? Format(DatasetCell cell, DatasetColumnType type, DatasetColumnConfig? configuration) => type switch
     {
         DatasetColumnType.Int or DatasetColumnType.Double =>
-            cell.NumberValue is { } number ? FormatNumber(number, configuration) : null,
+            cell.NumberValue is { } number ? FormatNumber(number, configuration as NumericColumnConfig) : null,
         DatasetColumnType.DateTime =>
-            cell.DateValue is { } date ? FormatDate(date, configuration) : null,
+            cell.DateValue is { } date ? FormatDate(date, configuration as DateColumnConfig) : null,
         DatasetColumnType.Bool =>
-            cell.BoolValue is { } flag ? FormatBool(flag, configuration) : null,
+            cell.BoolValue is { } flag ? FormatBool(flag, configuration as BoolColumnConfig) : null,
         _ => string.IsNullOrEmpty(cell.StringValue) ? null : cell.StringValue
     };
 
-    private static string FormatNumber(double value, JsonElement? configuration)
+    private static string FormatNumber(double value, NumericColumnConfig? config)
     {
-        var config = Deserialize<NumericConfig>(configuration) ?? new NumericConfig();
+        config ??= new NumericColumnConfig();
         var grouping = config.UseGrouping != false;
 
         // A fixed decimal count formats to exactly that many places; otherwise up
@@ -41,9 +38,9 @@ public static class CellFormatter
         return $"{config.Prefix}{formatted}{config.Suffix}";
     }
 
-    private static string FormatDate(DateTime value, JsonElement? configuration)
+    private static string FormatDate(DateTime value, DateColumnConfig? config)
     {
-        var pattern = Deserialize<DateConfig>(configuration)?.DateFormat;
+        var pattern = config?.DateFormat;
         if (string.IsNullOrEmpty(pattern)) pattern = DefaultDateFormat;
 
         try
@@ -57,34 +54,6 @@ public static class CellFormatter
         }
     }
 
-    private static string FormatBool(bool value, JsonElement? configuration)
-    {
-        var config = Deserialize<BoolConfig>(configuration);
-        return value ? (config?.TrueLabel ?? "Yes") : (config?.FalseLabel ?? "No");
-    }
-
-    private static T? Deserialize<T>(JsonElement? configuration) where T : class
-    {
-        if (configuration is not { ValueKind: JsonValueKind.Object } element) return null;
-        return JsonSerializer.Deserialize<T>(element.GetRawText(), ConfigOptions);
-    }
-
-    private sealed class NumericConfig
-    {
-        public int? Decimals { get; set; }
-        public bool? UseGrouping { get; set; }
-        public string Prefix { get; set; } = string.Empty;
-        public string Suffix { get; set; } = string.Empty;
-    }
-
-    private sealed class DateConfig
-    {
-        public string? DateFormat { get; set; }
-    }
-
-    private sealed class BoolConfig
-    {
-        public string? TrueLabel { get; set; }
-        public string? FalseLabel { get; set; }
-    }
+    private static string FormatBool(bool value, BoolColumnConfig? config) =>
+        value ? (config?.TrueLabel ?? "Yes") : (config?.FalseLabel ?? "No");
 }

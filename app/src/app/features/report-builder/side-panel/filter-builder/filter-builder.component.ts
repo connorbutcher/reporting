@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { FilterConditionModel, FilterGroupModel } from '../../models/filter.model';
 
 /**
@@ -13,7 +14,7 @@ import { FilterConditionModel, FilterGroupModel } from '../../models/filter.mode
  */
 @Component({
   selector: 'app-filter-builder',
-  imports: [FormsModule, ButtonModule, SelectModule],
+  imports: [FormsModule, ButtonModule, SelectModule, ToggleSwitchModule],
   templateUrl: './filter-builder.component.html',
   styleUrl: './filter-builder.component.scss',
 })

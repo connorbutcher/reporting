@@ -56,8 +56,8 @@
           <label class="panel-field">
             <span class="panel-field-label">Decimal places</span>
             <p-inputnumber
-              [ngModel]="config().decimals ?? null"
-              (ngModelChange)="patchFormat({ decimals: $event ?? undefined })"
+              [ngModel]="numericConfig().decimals ?? null"
+              (ngModelChange)="patchNumeric({ decimals: $event ?? undefined })"
               [min]="0"
               [max]="10"
               placeholder="Auto"
@@ -68,8 +68,8 @@
             <p-checkbox
               [binary]="true"
               inputId="use-grouping"
-              [ngModel]="config().useGrouping !== false"
-              (onChange)="patchFormat({ useGrouping: $event.checked })"
+              [ngModel]="numericConfig().useGrouping !== false"
+              (onChange)="patchNumeric({ useGrouping: $event.checked })"
             />
             <label for="use-grouping">Thousands separators</label>
           </div>
@@ -78,8 +78,8 @@
               <span class="panel-field-label">Prefix</span>
               <input
                 pInputText
-                [ngModel]="config().prefix ?? ''"
-                (ngModelChange)="patchFormat({ prefix: $event })"
+                [ngModel]="numericConfig().prefix ?? ''"
+                (ngModelChange)="patchNumeric({ prefix: $event })"
                 placeholder="£"
               />
             </label>
@@ -87,8 +87,8 @@
               <span class="panel-field-label">Suffix</span>
               <input
                 pInputText
-                [ngModel]="config().suffix ?? ''"
-                (ngModelChange)="patchFormat({ suffix: $event })"
+                [ngModel]="numericConfig().suffix ?? ''"
+                (ngModelChange)="patchNumeric({ suffix: $event })"
                 placeholder="%"
               />
             </label>
@@ -107,12 +107,12 @@
             <span class="panel-field-label">Date format</span>
             <p-select
               [options]="dateFormats"
-              [ngModel]="config().dateFormat ?? 'dd/MM/yyyy'"
+              [ngModel]="dateConfig().dateFormat ?? 'dd/MM/yyyy'"
               optionLabel="label"
               optionValue="value"
               appendTo="body"
               fluid
-              (onChange)="patchFormat({ dateFormat: $event.value })"
+              (onChange)="patchDate({ dateFormat: $event.value })"
             />
           </label>
         } @else if (schemaColumn.type === 'bool') {
@@ -121,8 +121,8 @@
               <span class="panel-field-label">True label</span>
               <input
                 pInputText
-                [ngModel]="config().trueLabel ?? ''"
-                (ngModelChange)="patchFormat({ trueLabel: $event })"
+                [ngModel]="boolConfig().trueLabel ?? ''"
+                (ngModelChange)="patchBool({ trueLabel: $event })"
                 placeholder="Yes"
               />
             </label>
@@ -130,8 +130,8 @@
               <span class="panel-field-label">False label</span>
               <input
                 pInputText
-                [ngModel]="config().falseLabel ?? ''"
-                (ngModelChange)="patchFormat({ falseLabel: $event })"
+                [ngModel]="boolConfig().falseLabel ?? ''"
+                (ngModelChange)="patchBool({ falseLabel: $event })"
                 placeholder="No"
               />
             </label>

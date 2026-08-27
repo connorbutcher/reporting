@@ -40,7 +40,7 @@ export class DatasetSchemaCacheService {
     this.patchColumn(datasetId, columnId, configuration);
 
     this.datasetApi.updateColumnConfiguration(datasetId, columnId, configuration).subscribe((column) => {
-      this.patchColumn(datasetId, columnId, column.configuration ?? {});
+      this.patchColumn(datasetId, columnId, column.configuration);
     });
   }
 

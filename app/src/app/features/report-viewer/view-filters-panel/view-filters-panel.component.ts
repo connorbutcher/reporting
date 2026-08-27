@@ -38,8 +38,14 @@ export class ViewFiltersPanelComponent {
   }
 
   protected summary(entry: ViewFilterEntry): string {
-    const count = entry.group.count();
-    return count === 0 ? 'No conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+    const total = entry.group.count();
+    if (total === 0) return 'No conditions';
+
+    // When some are switched off, spell out how many are actually narrowing the
+    // data — that's the number the reader cares about.
+    const active = entry.group.enabledCount();
+    if (active < total) return `${active} of ${total} active`;
+    return `${total} condition${total > 1 ? 's' : ''}`;
   }
 
   /** Marks entries the reader has changed away from what was published. */

@@ -21,6 +21,35 @@ export interface ChartToleranceBand {
   maxColumnId: string;
   concessionLowerColumnId?: string;
   concessionUpperColumnId?: string;
+  /** Shades the in-spec zone (and any concession shoulders) between the band's lines. */
+  fill?: boolean;
+  /** Outlines plotted points that fall outside the band's outermost line. */
+  outlinePoints?: boolean;
+}
+
+/** A band is only usable — for a reference line or a tolerance filter — once it points at a spec. */
+export function isCompleteToleranceBand(band: ChartToleranceBand): boolean {
+  return !!(band.sourceDatasetId && band.sourceRowId && band.minColumnId && band.maxColumnId);
+}
+
+/**
+ * The binding's axis columns a tolerance filter can key off: an axis column counts only when
+ * exactly one complete band targets that axis, so "out of tolerance" resolves to a single spec —
+ * mirroring how the server maps bands to axis columns.
+ */
+export function bandedChartColumns(
+  bands: readonly ChartToleranceBand[],
+  binding: { xColumnId: string | null; yColumnId: string | null },
+): string[] {
+  const complete = bands.filter(isCompleteToleranceBand);
+  const columns: string[] = [];
+  for (const [axis, columnId] of [
+    ['x', binding.xColumnId],
+    ['y', binding.yColumnId],
+  ] as const) {
+    if (columnId && complete.filter((b) => b.axis === axis).length === 1) columns.push(columnId);
+  }
+  return columns;
 }
 
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */

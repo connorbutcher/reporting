@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Reporting.Abstractions;
 
 public class DatasetSummaryDto
@@ -25,7 +23,12 @@ public class DatasetColumnDto
     public string Name { get; set; } = string.Empty;
     public DatasetColumnType Type { get; set; }
     public int Order { get; set; }
-    public JsonElement? Configuration { get; set; }
+
+    /// <summary>
+    /// The column's typed display configuration; the concrete shape matches <see cref="Type"/>
+    /// (polymorphic on a "kind" discriminator). Always populated on read.
+    /// </summary>
+    public DatasetColumnConfig? Configuration { get; set; }
 }
 
 public class DatasetSchemaDto

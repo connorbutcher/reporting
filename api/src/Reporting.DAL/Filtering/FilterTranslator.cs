@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Widgets;
 using Reporting.Database;
 
 namespace Reporting.DAL.Filtering;
@@ -16,26 +17,37 @@ public sealed class FilterException(string message) : Exception(message);
 /// </summary>
 public static class FilterTranslator
 {
+    /// <param name="toleranceByColumn">
+    /// Resolved tolerance bounds per column RefId, for the tolerance operators. Supplied by the
+    /// widget query (which already resolves banding); omitted where there's no banding context, in
+    /// which case a tolerance condition simply narrows nothing.
+    /// </param>
     public static Expression<Func<DatasetRow, bool>>? Build(
         FilterNodeDto? node,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById) =>
-        node is null ? null : Translate(node, columnsById);
+        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null) =>
+        node is null ? null : Translate(node, columnsById, toleranceByColumn);
 
     private static Expression<Func<DatasetRow, bool>>? Translate(
         FilterNodeDto node,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById) => node switch
+        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn) => node switch
     {
-        FilterGroupDto group => TranslateGroup(group, columnsById),
+        FilterGroupDto group => TranslateGroup(group, columnsById, toleranceByColumn),
+        // A disabled condition is retained in the tree but never narrows rows.
+        FilterConditionDto { Enabled: false } => null,
+        FilterConditionDto c when IsTolerance(c.Operator) => TranslateTolerance(c, columnsById, toleranceByColumn),
         FilterConditionDto condition => TranslateCondition(condition, columnsById),
         _ => throw new FilterException("Unknown filter node.")
     };
 
     private static Expression<Func<DatasetRow, bool>>? TranslateGroup(
         FilterGroupDto group,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById)
+        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn)
     {
         var parts = group.Children
-            .Select(child => Translate(child, columnsById))
+            .Select(child => Translate(child, columnsById, toleranceByColumn))
             .Where(p => p is not null)
             .Cast<Expression<Func<DatasetRow, bool>>>()
             .ToList();
@@ -70,6 +82,93 @@ public static class FilterTranslator
     {
         protected override Expression VisitParameter(ParameterExpression node) =>
             node == from ? to : base.VisitParameter(node);
+    }
+
+    // --- tolerance conditions ----------------------------------------------
+
+    private static bool IsTolerance(FilterOperator op) =>
+        op is FilterOperator.InTolerance or FilterOperator.NeedsConcession or FilterOperator.OutOfTolerance;
+
+    /// <summary>
+    /// Translates a tolerance operator into a numeric range predicate, using the bounds resolved
+    /// from the column's banding. The band ranges mirror <see cref="ToleranceResolver.Classify"/>:
+    /// in-spec is [Min, Max]; the concession band is the amber shoulder each side of it; out of
+    /// tolerance is beyond the widest allowed bound.
+    /// </summary>
+    private static Expression<Func<DatasetRow, bool>>? TranslateTolerance(
+        FilterConditionDto condition,
+        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn)
+    {
+        if (!columnsById.TryGetValue(condition.ColumnId, out var column))
+        {
+            throw new FilterException($"Column {condition.ColumnId} is not part of this dataset.");
+        }
+
+        if (column.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+        {
+            throw new FilterException(
+                $"A tolerance filter needs a numeric column, but '{column.Name}' is {column.Type}.");
+        }
+
+        // No banding resolved for this column here (none configured on the querying widget, or the
+        // limits row is missing) — the check can't be evaluated, so it narrows nothing rather than
+        // blanking the data.
+        if (toleranceByColumn is null
+            || !toleranceByColumn.TryGetValue(condition.ColumnId, out var bounds)
+            || bounds is null)
+        {
+            return null;
+        }
+
+        var id = column.Id;
+        var min = bounds.Min;
+        var max = bounds.Max;
+
+        switch (condition.Operator)
+        {
+            case FilterOperator.InTolerance:
+                return r => r.Cells.Any(c => c.ColumnId == id && c.NumberValue >= min && c.NumberValue <= max);
+
+            case FilterOperator.OutOfTolerance:
+                // Beyond the widest allowed bound: the concession bound where there is one, else spec.
+                var low = bounds.ConcessionLower ?? min;
+                var high = bounds.ConcessionUpper ?? max;
+                return r => r.Cells.Any(c => c.ColumnId == id && (c.NumberValue < low || c.NumberValue > high));
+
+            case FilterOperator.NeedsConcession:
+                return Concession(id, bounds);
+
+            default:
+                throw new FilterException($"Operator '{condition.Operator}' is not a tolerance check.");
+        }
+    }
+
+    /// <summary>The amber shoulder: outside [Min, Max] but within a concession bound, per side.</summary>
+    private static Expression<Func<DatasetRow, bool>> Concession(int id, ToleranceBounds bounds)
+    {
+        var min = bounds.Min;
+        var max = bounds.Max;
+
+        if (bounds.ConcessionLower is { } lower && bounds.ConcessionUpper is { } upper)
+        {
+            return r => r.Cells.Any(c => c.ColumnId == id
+                && ((c.NumberValue >= lower && c.NumberValue < min)
+                    || (c.NumberValue > max && c.NumberValue <= upper)));
+        }
+
+        if (bounds.ConcessionLower is { } lo)
+        {
+            return r => r.Cells.Any(c => c.ColumnId == id && c.NumberValue >= lo && c.NumberValue < min);
+        }
+
+        if (bounds.ConcessionUpper is { } hi)
+        {
+            return r => r.Cells.Any(c => c.ColumnId == id && c.NumberValue > max && c.NumberValue <= hi);
+        }
+
+        // No concession band defined, so nothing can be "in concession".
+        return _ => false;
     }
 
     // --- conditions ---------------------------------------------------------

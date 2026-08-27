@@ -34,6 +34,12 @@ public class ChartToleranceBand
     public Guid MaxColumnId { get; set; }
     public Guid? ConcessionLowerColumnId { get; set; }
     public Guid? ConcessionUpperColumnId { get; set; }
+
+    /// <summary>Shades the in-spec zone (and any concession shoulders) between the band's lines.</summary>
+    public bool Fill { get; set; }
+
+    /// <summary>Outlines plotted points that fall outside this band's outermost line.</summary>
+    public bool OutlinePoints { get; set; }
 }
 
 /// <summary>One extra field shown in a point's tooltip, beyond the X/Y values.</summary>

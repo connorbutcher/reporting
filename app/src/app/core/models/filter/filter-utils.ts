@@ -30,7 +30,11 @@ export function filterKey(node: FilterNode | null): string {
   if (!pruned) return '';
 
   if (pruned.kind === 'condition') {
-    return `c:${pruned.columnId}:${pruned.operator}:${pruned.values.join(' ')}`;
+    // A disabled condition is a distinct state a reader can reach, so it must key
+    // differently from the same condition enabled — otherwise toggling it off
+    // wouldn't register as a change against what the author published.
+    const off = pruned.enabled === false ? ':off' : '';
+    return `c:${pruned.columnId}:${pruned.operator}:${pruned.values.join(' ')}${off}`;
   }
   return `g:${pruned.join}:[${pruned.children.map(filterKey).join(',')}]`;
 }

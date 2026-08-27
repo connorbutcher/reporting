@@ -117,6 +117,28 @@
       }
     </app-panel-group>
 
+    <app-panel-group label="Display" icon="◧">
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="band-fill"
+          [ngModel]="band.fill ?? false"
+          (onChange)="setFill($event.checked)"
+        />
+        <label for="band-fill">Shade the zone between the lines</label>
+      </div>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="band-outline"
+          [ngModel]="band.outlinePoints ?? false"
+          (onChange)="setOutlinePoints($event.checked)"
+        />
+        <label for="band-outline">Outline points outside the band</label>
+      </div>
+      <p class="panel-hint">Shading and outlines appear once the band's min and max are set.</p>
+    </app-panel-group>
+
     <p-button
       label="Remove band"
       icon="pi pi-times"

@@ -44,7 +44,20 @@ public static class FilterOperators
         Op(FilterOperator.LessThan, "<", 1, FilterOperandKind.Number),
         Op(FilterOperator.LessThanOrEqual, "≤", 1, FilterOperandKind.Number),
         Op(FilterOperator.Between, "is between", 2, FilterOperandKind.Number),
-        .. Presence()
+        .. Presence(),
+        .. Tolerance()
+    ];
+
+    /// <summary>
+    /// Tolerance checks, offerable only on a numeric column that has banding configured
+    /// (the client hides them otherwise). They take no operand — the bounds come from the
+    /// banding, resolved against a limits dataset when the query runs.
+    /// </summary>
+    private static IEnumerable<FilterOperatorDto> Tolerance() =>
+    [
+        Op(FilterOperator.InTolerance, "is in tolerance", 0, FilterOperandKind.None),
+        Op(FilterOperator.NeedsConcession, "needs concession", 0, FilterOperandKind.None),
+        Op(FilterOperator.OutOfTolerance, "is out of tolerance", 0, FilterOperandKind.None)
     ];
 
     private static readonly FilterOperatorDto[] BoolOperators =
