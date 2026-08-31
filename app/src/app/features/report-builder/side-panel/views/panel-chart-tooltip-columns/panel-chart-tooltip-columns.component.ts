@@ -14,9 +14,9 @@ import { PanelGroupComponent } from '../../panel-group.component';
   styleUrl: './panel-chart-tooltip-columns.component.scss',
 })
 export class PanelChartTooltipColumnsComponent {
-  readonly chart = input.required<ChartWidgetModel>();
+  public readonly chart = input.required<ChartWidgetModel>();
 
-  protected tooltipColumnsExhausted(): boolean {
+  public tooltipColumnsExhausted(): boolean {
     const total = this.chart().schema()?.columns.length ?? 0;
     return total > 0 && this.chart().tooltipColumns().length >= total;
   }

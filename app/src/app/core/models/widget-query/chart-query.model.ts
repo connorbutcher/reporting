@@ -20,6 +20,14 @@ export interface ChartPoint {
 export interface ChartSeriesResult {
   label: string;
   points: ChartPoint[];
+  /**
+   * The id of the binding this series came from, stamped client-side when overlays
+   * are merged (absent on a raw server response). The option builder resolves the
+   * series' live presentation — its Y axis, colour, marker, and dash — from this
+   * binding's current config, so appearance edits reflect without a refetch. A
+   * binding that splits by colour contributes several series that share this id.
+   */
+  bindingId?: string;
 }
 
 export interface ResolvedToleranceBand {
@@ -40,4 +48,8 @@ export interface ChartQueryResult {
   name: string;
   series: ChartSeriesResult[];
   toleranceBands: ResolvedToleranceBand[];
+  /** Total rows that matched before the server's point cap; equals the plotted count when not truncated. */
+  totalPoints?: number;
+  /** True when the server returned only a capped subset of the matching points. */
+  truncated?: boolean;
 }

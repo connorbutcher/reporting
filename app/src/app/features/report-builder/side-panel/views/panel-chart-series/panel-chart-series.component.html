@@ -1,0 +1,169 @@
+@if (binding(); as binding) {
+  <app-panel-group label="Data source" icon="⛁">
+    <label class="panel-field">
+      <span class="panel-field-label">Dataset</span>
+      <p-select
+        [options]="datasets()"
+        [ngModel]="binding.datasetId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a dataset"
+        appendTo="body"
+        [showClear]="true"
+        fluid
+        (onChange)="binding.setDataset($event.value ?? null)"
+      />
+    </label>
+
+    <div class="panel-grid-fields">
+      <label class="panel-field">
+        <span class="panel-field-label">X axis</span>
+        <p-select
+          [options]="binding.axisColumns()"
+          [ngModel]="binding.xColumnId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Column"
+          appendTo="body"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.xColumnId.set($event.value ?? null)"
+        />
+      </label>
+      <label class="panel-field">
+        <span class="panel-field-label">Y axis</span>
+        <p-select
+          [options]="binding.axisColumns()"
+          [ngModel]="binding.yColumnId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Column"
+          appendTo="body"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.yColumnId.set($event.value ?? null)"
+        />
+      </label>
+    </div>
+  </app-panel-group>
+
+  <app-panel-group label="Appearance" icon="◐">
+    <label class="panel-field">
+      <span class="panel-field-label">Colour by (optional)</span>
+      <p-select
+        [options]="binding.schema()?.columns ?? []"
+        [ngModel]="binding.seriesColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="One series"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!binding.datasetId()"
+        fluid
+        (onChange)="binding.seriesColumnId.set($event.value ?? null)"
+      />
+    </label>
+
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="series-color"
+        [ngModel]="binding.color() !== null"
+        (onChange)="binding.color.set($event.checked ? defaultColor : null)"
+      />
+      <label for="series-color">Custom colour</label>
+      @if (binding.color() !== null) {
+        <input
+          type="color"
+          class="panel-color-swatch"
+          [ngModel]="binding.color()"
+          (ngModelChange)="binding.color.set($event)"
+        />
+      }
+    </div>
+
+    <div class="panel-grid-fields">
+      <label class="panel-field">
+        <span class="panel-field-label">Marker</span>
+        <p-select
+          [options]="symbolOptions()"
+          [ngModel]="binding.symbol()"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.symbol.set($event.value ?? null)"
+        />
+      </label>
+      @if (isLine()) {
+        <label class="panel-field">
+          <span class="panel-field-label">Line style</span>
+          <p-select
+            [options]="dashOptions"
+            [ngModel]="binding.dashStyle() ?? 'solid'"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.dashStyle.set($event.value ?? null)"
+          />
+        </label>
+      }
+    </div>
+
+    @if ((chart()?.yAxes()?.length ?? 0) > 1) {
+      <label class="panel-field">
+        <span class="panel-field-label">Plot on axis</span>
+        <p-select
+          [options]="axisOptions()"
+          [ngModel]="binding.yAxisId() ?? primaryAxisId()"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="
+            binding.yAxisId.set($event.value === primaryAxisId() ? null : ($event.value ?? null))
+          "
+        />
+      </label>
+    }
+  </app-panel-group>
+
+  <button
+    type="button"
+    class="panel-menu-item"
+    [disabled]="!binding.datasetId()"
+    (click)="navigate({ kind: 'widgetFilters', widgetId: chart()!.id, bindingId: binding.id })"
+  >
+    <i class="pi pi-filter" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Filters</span>
+      <span class="panel-menu-hint">
+        {{
+          !binding.datasetId()
+            ? 'Pick a dataset first'
+            : binding.filter.count() === 0
+              ? 'Showing every point'
+              : binding.filter.count() + ' condition' + (binding.filter.count() > 1 ? 's' : '')
+        }}
+      </span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+
+  @if (canRemove()) {
+    <p-button
+      label="Remove series"
+      icon="pi pi-trash"
+      severity="danger"
+      outlined
+      fluid
+      (onClick)="removeSeries()"
+    />
+  }
+} @else {
+  <p class="panel-empty">This series is no longer on the chart.</p>
+}

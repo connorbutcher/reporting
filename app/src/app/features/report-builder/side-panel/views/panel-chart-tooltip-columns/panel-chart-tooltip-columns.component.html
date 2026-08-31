@@ -1,4 +1,4 @@
-<app-panel-group label="Tooltip" icon="◐">
+<app-panel-group label="Tooltip" icon="◐" [open]="false">
   <p class="panel-hint">Shown when hovering a point, alongside X and Y.</p>
   @for (col of chart().tooltipColumns(); track col.columnId) {
     <div class="panel-tooltip-row">

@@ -14,24 +14,24 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-chart-tolerance-list.component.html',
 })
 export class PanelChartToleranceListComponent {
+  public readonly chart = input.required<ChartWidgetModel>();
+
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  readonly chart = input.required<ChartWidgetModel>();
-
   /** Adds a band and jumps straight to it, rather than leaving the user to find it in the list. */
-  protected addToleranceBand(): void {
+  public addToleranceBand(): void {
     const chart = this.chart();
     const bandId = chart.addToleranceBand();
     this.navigation.navigate({ kind: 'chartToleranceBand', widgetId: chart.id, bandId });
   }
 
-  protected bandSummary(band: ChartToleranceBand): string {
+  public bandSummary(band: ChartToleranceBand): string {
     if (!band.sourceDatasetId) return 'Not set up yet';
     return this.session.datasets().find((d) => d.id === band.sourceDatasetId)?.name ?? 'Dataset';
   }
 
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
   }
 }

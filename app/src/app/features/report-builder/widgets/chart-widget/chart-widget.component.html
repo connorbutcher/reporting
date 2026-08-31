@@ -1,17 +1,62 @@
-@if (!datasetId()) {
-  <div class="status">
-    <i [class]="placeholderIcon()" aria-hidden="true"></i>
-    Choose a dataset for this chart in the side panel.
-  </div>
-} @else if (loading()) {
-  <div class="status">Loading…</div>
-} @else if (error()) {
-  <div class="status error">Failed to load dataset.</div>
-} @else if (chartOption(); as option) {
-  <div echarts [options]="option" [autoResize]="true" class="canvas"></div>
-} @else {
-  <div class="status">
-    <i class="pi pi-sliders-h" aria-hidden="true"></i>
-    Pick an X and a Y column from the side panel.
-  </div>
+@switch (view()) {
+  @case ('noDataset') {
+    <div class="status">
+      <i [class]="placeholderIcon()" aria-hidden="true"></i>
+      Choose a dataset for this chart in the side panel.
+    </div>
+  }
+  @case ('needsConfig') {
+    <div class="status">
+      <i class="pi pi-sliders-h" aria-hidden="true"></i>
+      {{ configHint() }}
+    </div>
+  }
+  @case ('error') {
+    <div class="status error">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <span>Couldn’t load this chart’s data.</span>
+      <p-button label="Retry" icon="pi pi-refresh" size="small" text (onClick)="retry()" />
+    </div>
+  }
+  @case ('loading') {
+    <div class="status">
+      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i>
+      Loading…
+    </div>
+  }
+  @case ('empty') {
+    <div class="status">
+      <i class="pi pi-inbox" aria-hidden="true"></i>
+      No rows match the current filters.
+    </div>
+  }
+  @case ('ready') {
+    @if (chartOption(); as option) {
+      <div
+        echarts
+        [options]="option"
+        [autoResize]="true"
+        class="canvas"
+        (chartInit)="onChartInit($event)"
+      ></div>
+      <div class="chart-actions">
+        <button type="button" aria-label="Download image (PNG)" title="Download image (PNG)" (click)="downloadPng()">
+          <i class="pi pi-image" aria-hidden="true"></i>
+        </button>
+        <button type="button" aria-label="Download data (CSV)" title="Download data (CSV)" (click)="downloadCsv()">
+          <i class="pi pi-download" aria-hidden="true"></i>
+        </button>
+      </div>
+      @if (truncationNote(); as note) {
+        <div class="point-cap-note" title="The dataset has more points than the chart plots.">
+          {{ note }}
+        </div>
+      }
+      @if (reloading()) {
+        <div class="reload-veil" aria-live="polite">
+          <i class="pi pi-spinner pi-spin" aria-hidden="true"></i>
+        </div>
+      }
+    }
+  }
 }

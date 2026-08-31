@@ -10,5 +10,5 @@ import { BarChartWidgetModel } from '../../../models/widget.model';
   templateUrl: './panel-bar-chart-options.component.html',
 })
 export class PanelBarChartOptionsComponent {
-  readonly chart = input.required<BarChartWidgetModel>();
+  public readonly chart = input.required<BarChartWidgetModel>();
 }

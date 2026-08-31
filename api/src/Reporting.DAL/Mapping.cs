@@ -153,7 +153,6 @@ public static class Mapping
                     if (column.Tolerance is { } tolerance) tolerance.SourceDatasetId = Remap0(tolerance.SourceDatasetId);
                 break;
             case ChartWidgetConfig chart:
-                chart.DatasetId = Remap(chart.DatasetId);
                 foreach (var binding in chart.Bindings) binding.DatasetId = Remap(binding.DatasetId);
                 foreach (var band in chart.ToleranceBands) band.SourceDatasetId = Remap0(band.SourceDatasetId);
                 break;

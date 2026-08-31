@@ -103,141 +103,143 @@
     <i class="pi pi-angle-right" aria-hidden="true"></i>
   </button>
 } @else {
-  <!-- Scatter/line: one card per dataset overlaid on the shared axes. -->
-  @for (binding of chart().bindings(); track binding.id; let i = $index) {
-    <app-panel-group
-      [label]="chart().bindings().length > 1 ? 'Dataset ' + (i + 1) : 'Data source'"
-      icon="⛁"
-    >
-      <label class="panel-field">
-        <span class="panel-field-label">Dataset</span>
-        <p-select
-          [options]="datasets()"
-          [ngModel]="binding.datasetId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Select a dataset"
-          appendTo="body"
-          [showClear]="true"
-          fluid
-          (onChange)="binding.setDataset($event.value ?? null)"
-        />
-      </label>
-
-      <div class="panel-grid-fields">
-        <label class="panel-field">
-          <span class="panel-field-label">X axis</span>
-          <p-select
-            [options]="binding.axisColumns()"
-            [ngModel]="binding.xColumnId()"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Column"
-            appendTo="body"
-            [disabled]="!binding.datasetId()"
-            fluid
-            (onChange)="binding.xColumnId.set($event.value ?? null)"
-          />
-        </label>
-        <label class="panel-field">
-          <span class="panel-field-label">Y axis</span>
-          <p-select
-            [options]="binding.axisColumns()"
-            [ngModel]="binding.yColumnId()"
-            optionLabel="name"
-            optionValue="id"
-            placeholder="Column"
-            appendTo="body"
-            [disabled]="!binding.datasetId()"
-            fluid
-            (onChange)="binding.yColumnId.set($event.value ?? null)"
-          />
-        </label>
-      </div>
-
-      <label class="panel-field">
-        <span class="panel-field-label">Colour by (optional)</span>
-        <p-select
-          [options]="binding.schema()?.columns ?? []"
-          [ngModel]="binding.seriesColumnId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="One series"
-          appendTo="body"
-          [showClear]="true"
-          [disabled]="!binding.datasetId()"
-          fluid
-          (onChange)="binding.seriesColumnId.set($event.value ?? null)"
-        />
-      </label>
-
-      <button
-        type="button"
-        class="panel-menu-item"
-        [disabled]="!binding.datasetId()"
-        (click)="navigate({ kind: 'widgetFilters', widgetId: chart().id, bindingId: binding.id })"
-      >
-        <i class="pi pi-filter" aria-hidden="true"></i>
-        <span class="panel-menu-text">
-          <span class="panel-menu-label">Filters</span>
-          <span class="panel-menu-hint">
-            {{
-              !binding.datasetId()
-                ? 'Pick a dataset first'
-                : binding.filter.count() === 0
-                  ? 'Showing every point'
-                  : binding.filter.count() + ' condition' + (binding.filter.count() > 1 ? 's' : '')
-            }}
-          </span>
-        </span>
-        <i class="pi pi-angle-right" aria-hidden="true"></i>
-      </button>
-
-      @if (chart().bindings().length > 1) {
-        <p-button
-          label="Remove dataset"
-          icon="pi pi-trash"
-          severity="danger"
-          text
-          fluid
-          (onClick)="chart().removeBinding(binding.id)"
-        />
-      }
-    </app-panel-group>
-  }
-
-  <p-button
-    label="Add dataset"
-    icon="pi pi-plus"
-    severity="secondary"
-    outlined
-    fluid
-    (onClick)="chart().addBinding()"
-  />
+  <app-panel-chart-series-list [chart]="chart()" />
 }
 
-<app-panel-group label="Appearance" icon="▤">
-  <div class="panel-grid-fields">
-    <label class="panel-field">
-      <span class="panel-field-label">X axis label</span>
-      <input
-        pInputText
-        [ngModel]="chart().xAxisLabel()"
-        (ngModelChange)="chart().xAxisLabel.set($event)"
-        [placeholder]="axisPlaceholder(chart().xColumnId())"
+<app-panel-group label="Axes" icon="✛" [open]="false">
+  <label class="panel-field">
+    <span class="panel-field-label">X axis label</span>
+    <input
+      pInputText
+      [ngModel]="chart().xAxisLabel()"
+      (ngModelChange)="chart().xAxisLabel.set($event)"
+      [placeholder]="axisPlaceholder(chart().xColumnId())"
+    />
+  </label>
+
+  @if (!barChart() && xIsNumeric()) {
+    <div class="panel-grid-fields">
+      <label class="panel-field">
+        <span class="panel-field-label">X min</span>
+        <p-inputnumber
+          [ngModel]="chart().xAxisMin()"
+          (ngModelChange)="chart().xAxisMin.set($event ?? null)"
+          placeholder="Auto"
+          fluid
+        />
+      </label>
+      <label class="panel-field">
+        <span class="panel-field-label">X max</span>
+        <p-inputnumber
+          [ngModel]="chart().xAxisMax()"
+          (ngModelChange)="chart().xAxisMax.set($event ?? null)"
+          placeholder="Auto"
+          fluid
+        />
+      </label>
+    </div>
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="x-log"
+        [ngModel]="chart().xLogScale()"
+        (onChange)="chart().xLogScale.set($event.checked)"
       />
-    </label>
+      <label for="x-log">X log scale</label>
+    </div>
+  }
+
+  @if (barChart()) {
+    <!-- A bar chart has a single value axis; multiple axes don't apply. -->
     <label class="panel-field">
       <span class="panel-field-label">Y axis label</span>
       <input
         pInputText
-        [ngModel]="chart().yAxisLabel()"
-        (ngModelChange)="chart().yAxisLabel.set($event)"
+        [ngModel]="chart().yAxes()[0].label"
+        (ngModelChange)="chart().updateYAxis(chart().yAxes()[0].id, { label: $event })"
         [placeholder]="axisPlaceholder(chart().yColumnId())"
       />
     </label>
-  </div>
+  } @else {
+    <!-- Point charts (scatter/line) can carry several value axes; overlaid datasets each pick one. -->
+    @for (axis of chart().yAxes(); track axis.id; let i = $index) {
+      <div class="panel-axis-row">
+        <div class="panel-grid-fields">
+          <label class="panel-field">
+            <span class="panel-field-label">{{ i === 0 ? 'Y axis label' : 'Axis ' + (i + 1) + ' label' }}</span>
+            <input
+              pInputText
+              [ngModel]="axis.label"
+              (ngModelChange)="chart().updateYAxis(axis.id, { label: $event })"
+              [placeholder]="i === 0 ? axisPlaceholder(chart().yColumnId()) : 'Axis ' + (i + 1)"
+            />
+          </label>
+          <label class="panel-field">
+            <span class="panel-field-label">Side</span>
+            <p-select
+              [options]="axisSides"
+              [ngModel]="axis.side"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              fluid
+              (onChange)="chart().updateYAxis(axis.id, { side: $event.value })"
+            />
+          </label>
+        </div>
+        <div class="panel-grid-fields">
+          <label class="panel-field">
+            <span class="panel-field-label">Min</span>
+            <p-inputnumber
+              [ngModel]="axis.min ?? null"
+              (ngModelChange)="chart().updateYAxis(axis.id, { min: $event ?? null })"
+              placeholder="Auto"
+              fluid
+            />
+          </label>
+          <label class="panel-field">
+            <span class="panel-field-label">Max</span>
+            <p-inputnumber
+              [ngModel]="axis.max ?? null"
+              (ngModelChange)="chart().updateYAxis(axis.id, { max: $event ?? null })"
+              placeholder="Auto"
+              fluid
+            />
+          </label>
+        </div>
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            [inputId]="'yaxis-log-' + axis.id"
+            [ngModel]="axis.logScale ?? false"
+            (onChange)="chart().updateYAxis(axis.id, { logScale: $event.checked })"
+          />
+          <label [for]="'yaxis-log-' + axis.id">Log scale</label>
+        </div>
+        @if (i > 0) {
+          <p-button
+            label="Remove axis"
+            icon="pi pi-trash"
+            severity="danger"
+            text
+            fluid
+            (onClick)="chart().removeYAxis(axis.id)"
+          />
+        }
+      </div>
+    }
+    <p-button
+      label="Add axis"
+      icon="pi pi-plus"
+      severity="secondary"
+      outlined
+      fluid
+      (onClick)="chart().addYAxis()"
+    />
+  }
+</app-panel-group>
 
+<app-panel-group label="Appearance" icon="▤">
   @if (!barChart()) {
     <label class="panel-field">
       <span class="panel-field-label">Point size (px)</span>
@@ -260,6 +262,18 @@
     />
     <label for="chart-legend">Show legend</label>
   </div>
+
+  @if (!barChart()) {
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="chart-zoom"
+        [ngModel]="chart().zoom()"
+        (onChange)="chart().zoom.set($event.checked)"
+      />
+      <label for="chart-zoom">Zoom &amp; pan (wheel, drag, slider)</label>
+    </div>
+  }
 
   @if (lineChart(); as line) {
     <app-panel-line-chart-options [chart]="line" />

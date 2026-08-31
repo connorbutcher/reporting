@@ -10,5 +10,5 @@ import { LineChartWidgetModel } from '../../../models/widget.model';
   templateUrl: './panel-line-chart-options.component.html',
 })
 export class PanelLineChartOptionsComponent {
-  readonly chart = input.required<LineChartWidgetModel>();
+  public readonly chart = input.required<LineChartWidgetModel>();
 }

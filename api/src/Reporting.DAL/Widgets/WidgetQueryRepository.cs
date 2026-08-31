@@ -9,6 +9,35 @@ namespace Reporting.DAL.Widgets;
 public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tolerance)
 {
     /// <summary>
+    /// Ceiling on points returned for one scatter/line query. Past this the payload and the
+    /// client-side render stop being worth it; the response flags that it was capped so the
+    /// widget can say so. The client thins what it draws (LTTB / large-scatter mode) on top.
+    /// </summary>
+    private const int MaxChartPoints = 20_000;
+
+    /// <summary>
+    /// Narrows to rows that carry a plottable value for the axis column — a string for a text
+    /// axis, a date for a date axis, a number otherwise — kept as an expression EF can translate.
+    /// </summary>
+    private static IQueryable<DatasetRow> RequireAxisValue(IQueryable<DatasetRow> rows, int columnId, DatasetColumnType? type) => type switch
+    {
+        DatasetColumnType.String => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.StringValue != null)),
+        DatasetColumnType.DateTime => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.DateValue != null)),
+        _ => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.NumberValue != null))
+    };
+
+    /// <summary>
+    /// The axis coordinate for a cell: the trimmed string for a text axis, epoch milliseconds for
+    /// a date axis (which the client plots on an echarts time axis), else the raw number.
+    /// </summary>
+    private static object AxisValue(DatasetCell cell, DatasetColumnType? type) => type switch
+    {
+        DatasetColumnType.String => cell.StringValue!.Trim(),
+        DatasetColumnType.DateTime => (cell.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds,
+        _ => cell.NumberValue!.Value
+    };
+
+    /// <summary>
     /// A page of rows shaped for a table widget: filtered and sorted server-side,
     /// with each requested column's value already formatted per its stored display
     /// configuration and classified against its tolerance band, if it has one.
@@ -195,26 +224,18 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var matching = predicate is null ? all : all.Where(predicate);
 
         // Resolve the axis columns; a missing column yields a sentinel id that matches no cell,
-        // so the chart is simply empty (as before). An axis is a number for a numeric column and
-        // a category label for a text one.
+        // so the chart is simply empty (as before). An axis value is a string for a text column,
+        // a timestamp (epoch millis) for a date column, and a number otherwise.
         var xColumn = columnsByRef.GetValueOrDefault(dto.XColumnId);
         var yColumn = columnsByRef.GetValueOrDefault(dto.YColumnId);
         var xId = xColumn?.Id ?? 0;
         var yId = yColumn?.Id ?? 0;
         var xText = xColumn?.Type == DatasetColumnType.String;
-        var yText = yColumn?.Type == DatasetColumnType.String;
 
-        // Points need a real value on each axis — a number for a numeric axis, a string for a text
-        // one; anything missing either is dropped. Filtered per axis type so the predicate stays
-        // EF-translatable rather than branching per row.
-        var plottable = xText
-            ? matching.Where(r => r.Cells.Any(c => c.ColumnId == xId && c.StringValue != null))
-            : matching.Where(r => r.Cells.Any(c => c.ColumnId == xId && c.NumberValue != null));
-        plottable = yText
-            ? plottable.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.StringValue != null))
-            : plottable.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
-
-        var rows = await plottable.Include(r => r.Cells).ToListAsync();
+        // Points need a real value on each axis; anything missing either is dropped. Narrowed per
+        // axis kind so the predicate stays EF-translatable rather than branching per row.
+        var plottable = RequireAxisValue(matching, xId, xColumn?.Type);
+        plottable = RequireAxisValue(plottable, yId, yColumn?.Type);
 
         var seriesColumn = dto.SeriesColumnId is { } seriesId ? columnsByRef.GetValueOrDefault(seriesId) : null;
         var tooltipColumns = dto.TooltipColumns
@@ -222,13 +243,30 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .Where(p => p.Column is not null)
             .ToList();
 
+        // Only the cells the chart actually reads are loaded per row — the axes, the
+        // series key, and any tooltip columns — via a filtered include, rather than
+        // pulling every cell in the row across the wire.
+        var neededIds = new HashSet<int> { xId, yId };
+        if (seriesColumn is not null) neededIds.Add(seriesColumn.Id);
+        foreach (var (_, column) in tooltipColumns) neededIds.Add(column!.Id);
+
+        // Cap the rows pulled back: a runaway dataset shouldn't ship hundreds of
+        // thousands of points the browser then chokes on. Count first so the client
+        // can report how much was left off, then take a deterministic slice.
+        var total = await plottable.CountAsync();
+        var rows = await plottable
+            .OrderBy(r => r.Id)
+            .Take(MaxChartPoints)
+            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
+            .ToListAsync();
+
         var groups = new Dictionary<string, List<ChartPointDto>>();
         foreach (var row in rows)
         {
             var xCell = row.Cells.First(c => c.ColumnId == xId);
             var yCell = row.Cells.First(c => c.ColumnId == yId);
-            object x = xText ? xCell.StringValue!.Trim() : xCell.NumberValue!.Value;
-            object y = yText ? yCell.StringValue!.Trim() : yCell.NumberValue!.Value;
+            object x = AxisValue(xCell, xColumn?.Type);
+            object y = AxisValue(yCell, yColumn?.Type);
 
             var key = "";
             if (seriesColumn is not null)
@@ -267,7 +305,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                     ? g.Value.OrderBy(p => (string)p.X)
                     : g.Value.OrderBy(p => (double)p.X)).ToList()
             }).ToList(),
-            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalPoints = total,
+            Truncated = total > MaxChartPoints
         };
     }
 

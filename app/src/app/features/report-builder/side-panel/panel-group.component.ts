@@ -11,7 +11,7 @@ import { Component, input } from '@angular/core';
   selector: 'app-panel-group',
   imports: [],
   template: `
-    <details class="panel-group" open>
+    <details class="panel-group" [open]="open()">
       <summary class="panel-group-head">
         @if (icon()) {
           <span class="panel-group-icon" aria-hidden="true">{{ icon() }}</span>
@@ -28,4 +28,11 @@ export class PanelGroupComponent {
   readonly label = input.required<string>();
   /** A short glyph shown before the label, e.g. an icon character. Omitted shows none. */
   readonly icon = input('');
+  /**
+   * Whether the group starts expanded. Defaults open; advanced groups a user
+   * rarely touches (axis bounds, tolerance bands, tooltip) pass `false` to start
+   * collapsed and keep a long panel scannable. Only the initial state — once open,
+   * the native `<details>` owns it.
+   */
+  readonly open = input(true);
 }

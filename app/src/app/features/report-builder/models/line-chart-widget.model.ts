@@ -10,14 +10,14 @@ import { ModelSources } from './widget-model-base';
 
 /** A line chart, with its own line-specific presentation options on top of the shared chart base. */
 export class LineChartWidgetModel extends ChartWidgetModel {
-  override readonly type = 'lineChart' as const;
+  public override readonly type = 'lineChart' as const;
 
   /** Draws the line with curved rather than straight segments. */
-  readonly smooth = signal(false);
+  public readonly smooth = signal(false);
   /** Whether point markers are drawn along the line. */
-  readonly showPoints = signal(true);
+  public readonly showPoints = signal(true);
   /** Shades the area under the line. */
-  readonly areaFill = signal(false);
+  public readonly areaFill = signal(false);
 
   constructor(widget: LineChartWidget, sources: ModelSources) {
     super(widget, sources);
@@ -26,7 +26,7 @@ export class LineChartWidgetModel extends ChartWidgetModel {
     this.areaFill.set(widget.config.areaFill);
   }
 
-  override toDto(): LineChartWidget {
+  public override toDto(): LineChartWidget {
     const config: LineChartWidgetConfig = {
       type: 'lineChart',
       ...DEFAULT_LINE_CHART_CONFIG,
@@ -38,7 +38,7 @@ export class LineChartWidgetModel extends ChartWidgetModel {
     return { ...this.geometryDto(), type: 'lineChart', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return widgetTypeDescriptor('lineChart').label;
   }
 }

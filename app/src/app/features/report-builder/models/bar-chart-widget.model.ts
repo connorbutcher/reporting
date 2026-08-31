@@ -17,13 +17,13 @@ import { ModelSources } from './widget-model-base';
  * aggregates.
  */
 export class BarChartWidgetModel extends ChartWidgetModel {
-  override readonly type = 'barChart' as const;
+  public override readonly type = 'barChart' as const;
 
-  readonly aggregate = signal<Aggregate>('sum');
+  public readonly aggregate = signal<Aggregate>('sum');
   /** Stacks a category's series bars into one column instead of placing them side by side. */
-  readonly stacked = signal(false);
+  public readonly stacked = signal(false);
   /** Draws bars horizontally (categories down the Y axis) rather than as vertical columns. */
-  readonly horizontal = signal(false);
+  public readonly horizontal = signal(false);
 
   constructor(widget: BarChartWidget, sources: ModelSources) {
     super(widget, sources);
@@ -33,11 +33,11 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   }
 
   /** Count summarises row counts, so it needs no measure column. */
-  needsValue(): boolean {
+  public needsValue(): boolean {
     return this.aggregate() !== 'count';
   }
 
-  override toDto(): BarChartWidget {
+  public override toDto(): BarChartWidget {
     const config: BarChartWidgetConfig = {
       type: 'barChart',
       ...DEFAULT_BAR_CHART_CONFIG,
@@ -49,13 +49,13 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     return { ...this.geometryDto(), type: 'barChart', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return widgetTypeDescriptor('barChart').label;
   }
 
   // Category maps to xColumnId, measure to yColumnId; the measure is optional for
   // Count, so the shared "needs both axes" check doesn't fit.
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     const name = this.label();
 
     if (!this.datasetId()) {

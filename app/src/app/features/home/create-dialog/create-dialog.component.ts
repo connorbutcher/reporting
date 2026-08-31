@@ -8,9 +8,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { form, required, validate } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 import { Folder } from '../../../core/models/folder.model';
 import { ReportSummary } from '../../../core/models/report';
 import { groupByParent } from '../group-by-parent.util';
@@ -20,6 +23,8 @@ export type CreateKind = 'folder' | 'report';
 export interface CreateDialogData {
   folders: Folder[];
   reports: ReportSummary[];
+  /** The folder the new item will be created in (null = Home). Drives the uniqueness check. */
+  folderId: number | null;
 }
 
 export interface CreateDialogResult {
@@ -32,7 +37,7 @@ export interface CreateDialogResult {
 /** Lets the user pick folder-vs-report, name it, and (for reports) optionally copy an existing one — in one step, before creating either. */
 @Component({
   selector: 'app-create-dialog',
-  imports: [FormsModule, TreeSelectModule],
+  imports: [FormsModule, TreeSelectModule, ButtonModule, InputTextModule],
   templateUrl: './create-dialog.component.html',
   styleUrl: './create-dialog.component.scss',
 })
@@ -42,8 +47,41 @@ export class CreateDialogComponent implements AfterViewInit {
   private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
 
   protected readonly kind = signal<CreateKind>('report');
-  protected readonly name = signal('');
   protected readonly selectedSource = signal<TreeNode | null>(null);
+
+  private readonly model = signal({ name: '' });
+
+  // The name is required and must be unique within the destination folder for the
+  // selected kind (folders are checked against sibling folders, reports against
+  // sibling reports). The duplicate check runs as a live validator, so a clashing
+  // name disables Create and shows a message as it's typed — before the dialog closes.
+  protected readonly form = form(this.model, (path) => {
+    required(path.name, { message: 'A name is required.' });
+    validate(path.name, ({ value }) => {
+      const name = value().trim().toLowerCase();
+      if (!name) return null;
+      const taken = this.siblingNames().some((existing) => existing === name);
+      return taken
+        ? { kind: 'duplicate', message: `A ${this.kind()} called "${value().trim()}" already exists here.` }
+        : null;
+    });
+  });
+
+  /** The duplicate-name message, shown as it's typed (never the plain "required"). */
+  protected readonly nameError = computed(
+    () => this.form.name().errors().find((e) => e.kind === 'duplicate')?.message ?? null,
+  );
+
+  /** Lower-cased sibling names of the selected kind in the destination folder. */
+  private readonly siblingNames = computed(() =>
+    this.kind() === 'folder'
+      ? this.data.folders
+          .filter((f) => f.parentFolderId === this.data.folderId)
+          .map((f) => f.name.trim().toLowerCase())
+      : this.data.reports
+          .filter((r) => r.folderId === this.data.folderId)
+          .map((r) => r.name.trim().toLowerCase()),
+  );
 
   private readonly foldersByParent = computed(() => groupByParent(this.data.folders, (f) => f.parentFolderId));
   private readonly reportsByParent = computed(() => groupByParent(this.data.reports, (r) => r.folderId));
@@ -86,8 +124,8 @@ export class CreateDialogComponent implements AfterViewInit {
   }
 
   protected create(): void {
-    const name = this.name().trim();
-    if (!name) return;
+    const name = this.form.name().value().trim();
+    if (!this.form().valid() || !name) return;
     const sourceKey = this.selectedSource()?.key;
     const sourceReportId =
       this.kind() === 'report' && sourceKey !== undefined ? Number(sourceKey) : undefined;

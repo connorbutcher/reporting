@@ -17,6 +17,22 @@
           (ngModelChange)="axis.set($event)"
         />
       </label>
+
+      @if (axis() === 'y' && yAxisOptions().length > 1) {
+        <label class="panel-field">
+          <span class="panel-field-label">Y axis</span>
+          <p-select
+            [options]="yAxisOptions()"
+            [ngModel]="band.yAxisId ?? yAxisOptions()[0].value"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            fluid
+            (onChange)="setYAxis($event.value ?? null)"
+          />
+        </label>
+        <p class="panel-hint">The band draws on this axis's scale — pick the one its series uses.</p>
+      }
     </app-panel-group>
 
     <app-panel-group label="Limits" icon="⛁">

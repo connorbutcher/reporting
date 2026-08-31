@@ -133,7 +133,7 @@ export class HomeItemActionsService {
       switchMap(
         ({ folders, reports }) =>
           this.dialog.open<CreateDialogResult | undefined>(CreateDialogComponent, {
-            data: { folders, reports } satisfies CreateDialogData,
+            data: { folders, reports, folderId } satisfies CreateDialogData,
           }).closed,
       ),
       filter((result): result is CreateDialogResult => !!result),

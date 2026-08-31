@@ -134,6 +134,26 @@ body {
   min-width: 0;
 }
 
+// One value axis's row in the chart Axes panel: its label/side fields stacked
+// above an optional remove button.
+.panel-axis-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// The compact colour well shown when a chart series switches to a custom colour.
+.panel-color-swatch {
+  margin-left: auto;
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
 .panel-inline-field {
   display: flex;
   align-items: center;

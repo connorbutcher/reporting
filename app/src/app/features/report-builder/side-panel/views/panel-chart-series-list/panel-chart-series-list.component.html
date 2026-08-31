@@ -1,0 +1,25 @@
+<app-panel-group label="Data series" icon="◱">
+  <p class="panel-hint">Each dataset overlaid on the chart's shared axes. Select one to configure it.</p>
+  @for (binding of chart().bindings(); track binding.id) {
+    <button
+      type="button"
+      class="panel-menu-item"
+      (click)="navigate({ kind: 'chartSeries', widgetId: chart().id, bindingId: binding.id })"
+    >
+      <i class="pi pi-circle-fill" aria-hidden="true" [style.color]="binding.color() ?? '#94a3b8'"></i>
+      <span class="panel-menu-text">
+        <span class="panel-menu-label">{{ seriesLabel(binding) }}</span>
+        <span class="panel-menu-hint">{{ seriesHint(binding) }}</span>
+      </span>
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+    </button>
+  }
+  <p-button
+    label="Add series"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    (onClick)="addSeries()"
+  />
+</app-panel-group>

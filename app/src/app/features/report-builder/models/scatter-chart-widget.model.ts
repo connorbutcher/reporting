@@ -9,13 +9,13 @@ import { ModelSources } from './widget-model-base';
 
 /** A scatter chart: X/Y points, one mark per row. Adds no options beyond the shared chart base. */
 export class ScatterChartWidgetModel extends ChartWidgetModel {
-  override readonly type = 'scatterChart' as const;
+  public override readonly type = 'scatterChart' as const;
 
   constructor(widget: ScatterChartWidget, sources: ModelSources) {
     super(widget, sources);
   }
 
-  override toDto(): ScatterChartWidget {
+  public override toDto(): ScatterChartWidget {
     const config: ScatterChartWidgetConfig = {
       type: 'scatterChart',
       ...DEFAULT_SCATTER_CHART_CONFIG,
@@ -24,7 +24,7 @@ export class ScatterChartWidgetModel extends ChartWidgetModel {
     return { ...this.geometryDto(), type: 'scatterChart', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return widgetTypeDescriptor('scatterChart').label;
   }
 }

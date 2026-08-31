@@ -6,6 +6,39 @@ export type Aggregate = 'sum' | 'average' | 'count' | 'min' | 'max';
 
 export type ChartAxis = 'x' | 'y';
 
+/** Which side of the plot a value axis sits on. */
+export type AxisSide = 'left' | 'right';
+
+/** A point marker shape a series can be drawn with; `none` hides the marker. */
+export type ChartSymbol = 'circle' | 'rect' | 'triangle' | 'diamond' | 'none';
+
+/** How a line series' stroke is dashed. */
+export type LineDashStyle = 'solid' | 'dashed' | 'dotted';
+
+/**
+ * One value (Y) axis a chart plots against. A chart always has at least the
+ * primary axis (the first in {@link ChartWidgetConfigBase.yAxes}); adding more
+ * lets overlaid datasets with different scales each get a readable axis — the
+ * echarts multi-axis / dual-axis chart. Only point charts (scatter, line) use
+ * more than one; a bar chart has a single value axis.
+ */
+export interface ChartValueAxis {
+  /** Client-generated, referenced by a binding's {@link ChartSeriesBinding.yAxisId} — not meaningful server-side. */
+  id: string;
+  /** Blank falls back to the bound column's name (primary axis) or the axis's default label. */
+  label: string;
+  side: AxisSide;
+  /** Fixed lower bound; null/undefined lets echarts fit the data. Ignored on a category axis. */
+  min?: number | null;
+  /** Fixed upper bound; null/undefined lets echarts fit the data. Ignored on a category axis. */
+  max?: number | null;
+  /** Plots this axis on a logarithmic scale. Ignored on a category axis. */
+  logScale?: boolean;
+}
+
+/** The primary axis's id: constant so a legacy-folded config and null bindings agree on it. */
+export const PRIMARY_AXIS_ID = 'primary';
+
 /**
  * Reference lines drawn on one axis, resolved against one row of a separate
  * limits dataset — the chart equivalent of a table column's ToleranceConfig.
@@ -15,6 +48,13 @@ export interface ChartToleranceBand {
   /** Client-generated, only for addressing this band in the editor — not meaningful server-side. */
   id: string;
   axis: ChartAxis;
+  /**
+   * Which value axis a `y` band draws against, by {@link ChartValueAxis.id}; null —
+   * or an id no longer among the chart's axes — falls back to the primary. Ignored
+   * for an `x` band (the X axis is shared). Lets a band sit on the scale of the
+   * series it bounds rather than always the primary axis.
+   */
+  yAxisId?: string | null;
   sourceDatasetId: number;
   sourceRowId: string;
   minColumnId: string;
@@ -25,31 +65,6 @@ export interface ChartToleranceBand {
   fill?: boolean;
   /** Outlines plotted points that fall outside the band's outermost line. */
   outlinePoints?: boolean;
-}
-
-/** A band is only usable — for a reference line or a tolerance filter — once it points at a spec. */
-export function isCompleteToleranceBand(band: ChartToleranceBand): boolean {
-  return !!(band.sourceDatasetId && band.sourceRowId && band.minColumnId && band.maxColumnId);
-}
-
-/**
- * The binding's axis columns a tolerance filter can key off: an axis column counts only when
- * exactly one complete band targets that axis, so "out of tolerance" resolves to a single spec —
- * mirroring how the server maps bands to axis columns.
- */
-export function bandedChartColumns(
-  bands: readonly ChartToleranceBand[],
-  binding: { xColumnId: string | null; yColumnId: string | null },
-): string[] {
-  const complete = bands.filter(isCompleteToleranceBand);
-  const columns: string[] = [];
-  for (const [axis, columnId] of [
-    ['x', binding.xColumnId],
-    ['y', binding.yColumnId],
-  ] as const) {
-    if (columnId && complete.filter((b) => b.axis === axis).length === 1) columns.push(columnId);
-  }
-  return columns;
 }
 
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */
@@ -74,8 +89,20 @@ export interface ChartSeriesBinding {
   yColumnId: string | null;
   /** Splits this binding into a separate coloured series per distinct value. Null plots one. */
   seriesColumnId: string | null;
+  /**
+   * Which value axis this binding plots against, by {@link ChartValueAxis.id}.
+   * Null — or an id no longer among the chart's axes — falls back to the primary
+   * (first) axis. Only meaningful for point charts.
+   */
+  yAxisId: string | null;
   /** Blank falls back to the dataset/column name in the legend. */
   label: string;
+  /** Overrides the auto-assigned palette colour; null uses the palette. Ignored when the binding splits by colour. */
+  color?: string | null;
+  /** Point marker shape; null uses the chart kind's default. */
+  symbol?: ChartSymbol | null;
+  /** Line dash for a line series; null draws solid. */
+  dashStyle?: LineDashStyle | null;
   /** Rows this binding plots, narrowed server-side. Null means no per-series filter. */
   filter: FilterGroup | null;
 }
@@ -88,14 +115,34 @@ export interface ChartSeriesBinding {
 export interface ChartWidgetConfigBase extends WidgetConfigBase {
   /**
    * The datasets this chart overlays on its shared axes, each queried on its own
-   * dataset. Always at least one entry. Prefer this over the deprecated flat
-   * fields below; read both through {@link readChartBindings}.
+   * dataset and its series merged client-side. Always at least one entry once the
+   * chart is set up; a bar chart uses only the first.
    */
   bindings: ChartSeriesBinding[];
 
+  /**
+   * The value (Y) axes this chart plots against, in order; the first is the
+   * primary. Always at least one entry. Point charts can carry several and assign
+   * each binding to one; a bar chart uses only the primary. Read through
+   * {@link readChartAxes}, which folds the deprecated {@link yAxisLabel} for
+   * reports saved before this existed.
+   */
+  yAxes: ChartValueAxis[];
+
   /** Blank falls back to the bound column's own name. */
   xAxisLabel: string;
+  /** Deprecated: the primary axis's label now lives on {@link yAxes}. Kept so pre-multi-axis reports round-trip; read through {@link readChartAxes}. */
   yAxisLabel: string;
+
+  /** Fixed X-axis lower bound; null/undefined auto-fits. Ignored on a category X axis. */
+  xAxisMin?: number | null;
+  /** Fixed X-axis upper bound; null/undefined auto-fits. Ignored on a category X axis. */
+  xAxisMax?: number | null;
+  /** Plots the X axis on a logarithmic scale. Ignored on a category X axis. */
+  xLogScale?: boolean;
+
+  /** Adds mouse-wheel/drag zoom plus a slider to point charts so dense plots can be explored. */
+  zoom: boolean;
 
   showLegend: boolean;
   pointSize: number;
@@ -105,23 +152,6 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
   tooltipColumns: ChartTooltipColumn[];
 }
-
-/**
- * The pre-multi-dataset chart config shape: dataset, axes, and filter lived
- * directly on the config rather than on a binding. Still present in reports
- * saved before {@link ChartSeriesBinding} existed, so {@link readChartBindings}
- * folds it into a single binding. Never written any more.
- */
-interface LegacyFlatChartConfig {
-  datasetId?: number | null;
-  xColumnId?: string | null;
-  yColumnId?: string | null;
-  seriesColumnId?: string | null;
-  filter?: FilterGroup | null;
-}
-
-/** The binding id a legacy chart config folds into — stable so every reader agrees. */
-const LEGACY_BINDING_ID = 'legacy-primary';
 
 export interface ScatterChartWidgetConfig extends ChartWidgetConfigBase {
   type: 'scatterChart';
@@ -140,9 +170,9 @@ export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
 
 /**
  * A bar chart. Unlike scatter/line it doesn't plot raw rows: rows are grouped by
- * the category column (`xColumnId`) and each group's values in the measure column
- * (`yColumnId`) are reduced to one bar by `aggregate`. The measure is unused — and
- * may be left unbound — when `aggregate` is `'count'`, which counts rows.
+ * its binding's category column (`xColumnId`) and each group's values in the
+ * measure column (`yColumnId`) are reduced to one bar by `aggregate`. The measure
+ * is unused — and may be left unbound — when `aggregate` is `'count'`, which counts rows.
  */
 export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
   type: 'barChart';
@@ -162,10 +192,13 @@ export type ChartWidgetConfig =
 const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
   // A fresh chart starts with no bindings; the model seeds an empty one so the
-  // panel has a row to bind.
+  // panel has a row to bind. Axes are likewise left empty and synthesised into a
+  // single primary axis by readChartAxes.
   bindings: [],
+  yAxes: [],
   xAxisLabel: '',
   yAxisLabel: '',
+  zoom: true,
   showLegend: true,
   pointSize: 8,
   toleranceBands: [],
@@ -199,39 +232,10 @@ export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
   xColumnId: null,
   yColumnId: null,
   seriesColumnId: null,
+  yAxisId: null,
   label: '',
+  color: null,
+  symbol: null,
+  dashStyle: null,
   filter: null,
 };
-
-/**
- * The chart's series bindings, normalised: prefers the {@link ChartSeriesBinding}
- * list, and for reports saved before the multi-dataset change folds the deprecated
- * flat `datasetId`/`xColumnId`/… fields into a single binding. Always returns at
- * least one binding so callers never special-case the empty case.
- */
-export function readChartBindings(config: ChartWidgetConfigBase): ChartSeriesBinding[] {
-  // `bindings` is required on the type but genuinely absent from reports persisted
-  // before it existed, so this read must tolerate `undefined`, not just an empty array.
-  if (config.bindings?.length) return config.bindings;
-
-  // A report saved before bindings existed carries its axes on the flat legacy
-  // fields; fold them into one binding. New configs always have `bindings`.
-  //
-  // The id is a fixed constant, not a fresh uuid: several call sites fold the same
-  // raw legacy DTO independently (the viewer resolves filters, keys the reader
-  // panel, and queries from three separate reads), and they must agree on the
-  // binding's id for the per-binding filter map to line up. One binding per legacy
-  // chart means a constant can't collide within a widget.
-  const legacy = config as LegacyFlatChartConfig;
-  return [
-    {
-      id: LEGACY_BINDING_ID,
-      datasetId: legacy.datasetId ?? null,
-      xColumnId: legacy.xColumnId ?? null,
-      yColumnId: legacy.yColumnId ?? null,
-      seriesColumnId: legacy.seriesColumnId ?? null,
-      label: '',
-      filter: legacy.filter ?? null,
-    },
-  ];
-}

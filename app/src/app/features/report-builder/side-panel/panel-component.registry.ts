@@ -2,6 +2,7 @@ import { Type } from '@angular/core';
 import { PanelView } from './panel-view';
 import { PanelAddColumnComponent } from './views/panel-add-column/panel-add-column.component';
 import { PanelAddWidgetComponent } from './views/panel-add-widget/panel-add-widget.component';
+import { PanelChartSeriesComponent } from './views/panel-chart-series/panel-chart-series.component';
 import { PanelChartToleranceBandComponent } from './views/panel-chart-tolerance-band/panel-chart-tolerance-band.component';
 import { PanelColumnListComponent } from './views/panel-column-list/panel-column-list.component';
 import { PanelColumnSettingsComponent } from './views/panel-column-settings/panel-column-settings.component';
@@ -76,6 +77,14 @@ export const PANEL_VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K
   },
   widgetFilters: {
     component: PanelWidgetFiltersComponent,
+    // A chart binding's filters sit under that series' screen; a table's under the widget.
+    parent: (view) =>
+      view.bindingId
+        ? { kind: 'chartSeries', widgetId: view.widgetId, bindingId: view.bindingId }
+        : { kind: 'widget', widgetId: view.widgetId },
+  },
+  chartSeries: {
+    component: PanelChartSeriesComponent,
     parent: (view) => ({ kind: 'widget', widgetId: view.widgetId }),
   },
   chartToleranceBand: {

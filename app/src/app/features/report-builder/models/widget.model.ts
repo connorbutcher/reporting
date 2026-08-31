@@ -8,6 +8,7 @@ import { ModelSources, WidgetModel } from './widget-model-base';
 
 export * from './widget-model-base';
 export * from './data-table-widget.model';
+export * from './chart-binding.model';
 export * from './chart-widget.model';
 export * from './scatter-chart-widget.model';
 export * from './line-chart-widget.model';

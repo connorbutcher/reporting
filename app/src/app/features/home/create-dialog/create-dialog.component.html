@@ -29,15 +29,23 @@
       </button>
     </div>
 
-    <input
-      #nameInput
-      class="create-dialog-input"
-      [ngModel]="name()"
-      (ngModelChange)="name.set($event)"
-      (keyup.enter)="create()"
-      [placeholder]="kind() === 'folder' ? 'Folder name' : 'Report name'"
-      aria-label="Name"
-    />
+    <div class="create-dialog-field">
+      <input
+        #nameInput
+        pInputText
+        class="create-dialog-input"
+        [value]="form.name().value()"
+        (input)="form.name().value.set(nameInput.value)"
+        (blur)="form.name().markAsTouched()"
+        [invalid]="form.name().dirty() && form.name().invalid()"
+        (keyup.enter)="create()"
+        [placeholder]="kind() === 'folder' ? 'Folder name' : 'Report name'"
+        aria-label="Name"
+      />
+      @if (nameError(); as message) {
+        <p class="create-dialog-error">{{ message }}</p>
+      }
+    </div>
 
     @if (kind() === 'report') {
       <p-tree-select
@@ -55,20 +63,7 @@
   </div>
 
   <footer class="create-dialog-footer">
-    <button
-      type="button"
-      class="create-dialog-button create-dialog-button--secondary"
-      (click)="cancel()"
-    >
-      Cancel
-    </button>
-    <button
-      type="button"
-      class="create-dialog-button create-dialog-button--primary"
-      [disabled]="!name().trim()"
-      (click)="create()"
-    >
-      Create
-    </button>
+    <p-button label="Cancel" severity="secondary" outlined (onClick)="cancel()" />
+    <p-button label="Create" [disabled]="!form().valid()" (onClick)="create()" />
   </footer>
 </div>

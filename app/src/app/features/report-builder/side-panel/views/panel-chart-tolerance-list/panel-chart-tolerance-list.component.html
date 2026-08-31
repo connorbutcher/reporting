@@ -1,4 +1,4 @@
-<app-panel-group label="Tolerance bands" icon="⛁">
+<app-panel-group label="Tolerance bands" icon="⛁" [open]="false">
   <p class="panel-hint">Dashed reference lines resolved from a separate limits dataset.</p>
   @if (chart().toleranceBands().length === 0) {
     <p class="panel-empty">No reference lines yet.</p>
