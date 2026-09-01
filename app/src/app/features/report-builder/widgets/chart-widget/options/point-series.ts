@@ -1,4 +1,5 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
+import { PointSeriesOption } from './chart-option.types';
 import { ToleranceOutline } from './tolerance-outline';
 import { Coord, PointChartConfig, ScatterPoint, SeriesStyle } from './point-types';
 
@@ -8,19 +9,19 @@ export class PointSeries {
    * The echarts series options specific to one point-chart kind — its type and per-kind styling.
    * Name, colour, data and mark lines are shared by the caller.
    */
-  public static kindOptions(config: PointChartConfig, color: string, style: SeriesStyle): object {
+  public static kindOptions(config: PointChartConfig, color: string, style: SeriesStyle): PointSeriesOption {
     // A per-binding symbol override wins over the kind's default marker; 'none' hides it.
     const symbol = style.symbol;
     switch (config.type) {
       case 'lineChart':
         return {
-          type: 'line' as const,
+          type: 'line',
           smooth: config.smooth,
           showSymbol: symbol ? symbol !== 'none' : config.showPoints,
           symbol: symbol && symbol !== 'none' ? symbol : 'circle',
           symbolSize: config.pointSize,
           // LTTB thins a dense line to ~one point per pixel column while keeping its shape.
-          sampling: 'lttb' as const,
+          sampling: 'lttb',
           ...(style.dashStyle && style.dashStyle !== 'solid'
             ? { lineStyle: { type: style.dashStyle } }
             : {}),
@@ -30,7 +31,7 @@ export class PointSeries {
         // `large` switches scatter to a batched renderer past the threshold. 'none' is ignored —
         // scatter has no line to fall back on, so honouring it would blank the series.
         return {
-          type: 'scatter' as const,
+          type: 'scatter',
           ...(symbol && symbol !== 'none' ? { symbol } : {}),
           symbolSize: config.pointSize,
           large: true,

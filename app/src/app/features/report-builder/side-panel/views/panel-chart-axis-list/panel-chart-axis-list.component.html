@@ -1,0 +1,42 @@
+<app-panel-group label="Axes" icon="✛" [open]="false">
+  <p class="panel-hint">The chart's shared axes. Select one to customise its label, bounds, and scale.</p>
+
+  <button
+    type="button"
+    class="panel-menu-item"
+    (click)="navigate({ kind: 'chartAxis', widgetId: chart().id, axis: 'x' })"
+  >
+    <i class="pi pi-arrows-h" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">{{ xLabel() }}</span>
+      <span class="panel-menu-hint">X axis</span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
+
+  @for (axis of chart().yAxes(); track axis.id; let i = $index) {
+    <button
+      type="button"
+      class="panel-menu-item"
+      (click)="navigate({ kind: 'chartAxis', widgetId: chart().id, axis: 'y', axisId: axis.id })"
+    >
+      <i class="pi pi-arrows-v" aria-hidden="true"></i>
+      <span class="panel-menu-text">
+        <span class="panel-menu-label">{{ yLabel(axis, i) }}</span>
+        <span class="panel-menu-hint">{{ i === 0 ? 'Value axis' : 'Secondary axis · ' + axis.side }}</span>
+      </span>
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+    </button>
+  }
+
+  @if (!isBar()) {
+    <p-button
+      label="Add axis"
+      icon="pi pi-plus"
+      severity="secondary"
+      outlined
+      fluid
+      (onClick)="addAxis()"
+    />
+  }
+</app-panel-group>

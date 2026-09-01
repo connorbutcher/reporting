@@ -15,6 +15,9 @@ export type ChartSymbol = 'circle' | 'rect' | 'triangle' | 'diamond' | 'none';
 /** How a line series' stroke is dashed. */
 export type LineDashStyle = 'solid' | 'dashed' | 'dotted';
 
+/** Tick-label orientation for an axis; unset keeps the chart's default (e.g. a bar's auto-tilt). */
+export type AxisLabelRotation = 'horizontal' | 'vertical';
+
 /**
  * One value (Y) axis a chart plots against. A chart always has at least the
  * primary axis (the first in {@link ChartWidgetConfigBase.yAxes}); adding more
@@ -34,6 +37,10 @@ export interface ChartValueAxis {
   max?: number | null;
   /** Plots this axis on a logarithmic scale. Ignored on a category axis. */
   logScale?: boolean;
+  /** Forced tick interval; null/undefined lets echarts choose. Ignored on a category axis. */
+  interval?: number | null;
+  /** Tick-label orientation; unset keeps the default. */
+  rotate?: AxisLabelRotation;
 }
 
 /** The primary axis's id: constant so a legacy-folded config and null bindings agree on it. */
@@ -140,6 +147,10 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   xAxisMax?: number | null;
   /** Plots the X axis on a logarithmic scale. Ignored on a category X axis. */
   xLogScale?: boolean;
+  /** Forced X-axis tick interval; null/undefined auto-fits. Ignored on a category X axis. */
+  xAxisInterval?: number | null;
+  /** X-axis tick-label orientation; unset keeps the default. */
+  xAxisRotate?: AxisLabelRotation;
 
   /** Adds mouse-wheel/drag zoom plus a slider to point charts so dense plots can be explored. */
   zoom: boolean;

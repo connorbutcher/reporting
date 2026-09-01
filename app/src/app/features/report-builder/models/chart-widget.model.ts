@@ -1,6 +1,7 @@
 import { Signal, WritableSignal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
+  AxisLabelRotation,
   ChartSeriesBinding,
   ChartToleranceBand,
   ChartTooltipColumn,
@@ -33,10 +34,13 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public readonly yAxisLabel = signal('');
   /** The value (Y) axes this chart plots against; the first is the primary. Always at least one. */
   public readonly yAxes = signal<readonly ChartValueAxis[]>([]);
-  /** Fixed X-axis bounds (null auto-fits) and log scale — the X counterparts of a value axis's own. */
+  /** Fixed X-axis bounds (null auto-fits), log scale, tick interval, and label orientation — the
+   * X counterparts of a value axis's own. `xAxisRotate` is null when left at the default. */
   public readonly xAxisMin = signal<number | null>(null);
   public readonly xAxisMax = signal<number | null>(null);
   public readonly xLogScale = signal(false);
+  public readonly xAxisInterval = signal<number | null>(null);
+  public readonly xAxisRotate = signal<AxisLabelRotation | null>(null);
   /** Mouse-wheel/drag zoom + slider on point charts. */
   public readonly zoom = signal(true);
   public readonly showLegend = signal(true);
@@ -62,6 +66,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.xAxisMin.set(config.xAxisMin ?? null);
     this.xAxisMax.set(config.xAxisMax ?? null);
     this.xLogScale.set(config.xLogScale ?? false);
+    this.xAxisInterval.set(config.xAxisInterval ?? null);
+    this.xAxisRotate.set(config.xAxisRotate ?? null);
     // Charts saved before zoom existed default it on, matching a fresh chart.
     this.zoom.set(config.zoom ?? true);
     this.showLegend.set(config.showLegend);
@@ -220,6 +226,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
       xAxisMin: this.xAxisMin(),
       xAxisMax: this.xAxisMax(),
       xLogScale: this.xLogScale(),
+      xAxisInterval: this.xAxisInterval(),
+      // Null (the default) round-trips as an absent field, matching the optional config shape.
+      xAxisRotate: this.xAxisRotate() ?? undefined,
       zoom: this.zoom(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),

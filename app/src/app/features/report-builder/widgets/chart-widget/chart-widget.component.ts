@@ -1,5 +1,4 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import type { EChartsCoreOption } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { ButtonModule } from 'primeng/button';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
@@ -10,6 +9,7 @@ import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/w
 import { WidgetDataSource } from '../widget-data-source';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
+import { ECOption } from './options/chart-option.types';
 import { PointOption } from './options/point-option';
 import { SeriesPalette } from './options/series-colors';
 import { ChartQuery } from './query/chart-query';
@@ -41,7 +41,7 @@ export class ChartWidgetComponent {
   public readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
 
   /** Null until there's a dataset and enough columns bound to actually plot. */
-  public readonly chartOption = computed<EChartsCoreOption | null>(() => {
+  public readonly chartOption = computed<ECOption | null>(() => {
     const config = this.config();
     const columns = this.source.columns();
     const data = this.source.result();

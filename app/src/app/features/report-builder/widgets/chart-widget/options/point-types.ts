@@ -4,6 +4,7 @@ import {
   LineDashStyle,
   ScatterChartWidgetConfig,
 } from '../../../../../core/models/report';
+import { OutlineItemStyle } from './chart-option.types';
 
 /** The two chart kinds that plot raw rows as points, as opposed to aggregated bars. */
 export type PointChartConfig = ScatterChartWidgetConfig | LineChartWidgetConfig;
@@ -29,7 +30,7 @@ export interface ScatterPoint {
   value: [Coord, Coord];
   tooltipLines: string[];
   /** Per-point override, set only for points outlined as out of tolerance. */
-  itemStyle?: object;
+  itemStyle?: OutlineItemStyle;
 }
 
 export interface ScatterTooltipParams {

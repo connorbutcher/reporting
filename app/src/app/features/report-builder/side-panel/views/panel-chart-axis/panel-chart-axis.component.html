@@ -1,0 +1,176 @@
+@if (chart(); as chart) {
+  @if (isX()) {
+    <div class="panel-section">
+      <app-panel-group label="X axis" icon="✛">
+        <label class="panel-field">
+          <span class="panel-field-label">Axis label</span>
+          <input
+            pInputText
+            [ngModel]="chart.xAxisLabel()"
+            (ngModelChange)="chart.xAxisLabel.set($event)"
+            [placeholder]="xPlaceholder()"
+          />
+        </label>
+
+        <label class="panel-field">
+          <span class="panel-field-label">Label rotation</span>
+          <p-select
+            [options]="axisRotations"
+            [ngModel]="chart.xAxisRotate()"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Default"
+            [showClear]="true"
+            appendTo="body"
+            fluid
+            (ngModelChange)="chart.xAxisRotate.set($event ?? null)"
+          />
+        </label>
+
+        <label class="panel-field">
+          <span class="panel-field-label">Interval</span>
+          <p-inputnumber
+            [ngModel]="chart.xAxisInterval()"
+            (ngModelChange)="chart.xAxisInterval.set($event ?? null)"
+            placeholder="Auto"
+            fluid
+          />
+          <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
+        </label>
+
+        @if (!barChart() && xIsNumeric()) {
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">Min</span>
+              <p-inputnumber
+                [ngModel]="chart.xAxisMin()"
+                (ngModelChange)="chart.xAxisMin.set($event ?? null)"
+                placeholder="Auto"
+                fluid
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Max</span>
+              <p-inputnumber
+                [ngModel]="chart.xAxisMax()"
+                (ngModelChange)="chart.xAxisMax.set($event ?? null)"
+                placeholder="Auto"
+                fluid
+              />
+            </label>
+          </div>
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="x-log"
+              [ngModel]="chart.xLogScale()"
+              (onChange)="chart.xLogScale.set($event.checked)"
+            />
+            <label for="x-log">Log scale</label>
+          </div>
+        } @else if (!barChart()) {
+          <p class="panel-hint">Bounds and log scale apply once the X axis is a numeric column.</p>
+        }
+      </app-panel-group>
+    </div>
+  } @else if (yAxis(); as y) {
+    <div class="panel-section">
+      <app-panel-group label="Value axis" icon="✛">
+        <label class="panel-field">
+          <span class="panel-field-label">Axis label</span>
+          <input
+            pInputText
+            [ngModel]="y.axis.label"
+            (ngModelChange)="chart.updateYAxis(y.axis.id, { label: $event })"
+            [placeholder]="yPlaceholder(y.index)"
+          />
+        </label>
+
+        <label class="panel-field">
+          <span class="panel-field-label">Label rotation</span>
+          <p-select
+            [options]="axisRotations"
+            [ngModel]="y.axis.rotate ?? null"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Default"
+            [showClear]="true"
+            appendTo="body"
+            fluid
+            (ngModelChange)="chart.updateYAxis(y.axis.id, { rotate: $event ?? undefined })"
+          />
+        </label>
+
+        <label class="panel-field">
+          <span class="panel-field-label">Interval</span>
+          <p-inputnumber
+            [ngModel]="y.axis.interval ?? null"
+            (ngModelChange)="chart.updateYAxis(y.axis.id, { interval: $event ?? null })"
+            placeholder="Auto"
+            fluid
+          />
+          <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
+        </label>
+
+        @if (!barChart()) {
+          <label class="panel-field">
+            <span class="panel-field-label">Side</span>
+            <p-select
+              [options]="axisSides"
+              [ngModel]="y.axis.side"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              fluid
+              (onChange)="chart.updateYAxis(y.axis.id, { side: $event.value })"
+            />
+          </label>
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">Min</span>
+              <p-inputnumber
+                [ngModel]="y.axis.min ?? null"
+                (ngModelChange)="chart.updateYAxis(y.axis.id, { min: $event ?? null })"
+                placeholder="Auto"
+                fluid
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Max</span>
+              <p-inputnumber
+                [ngModel]="y.axis.max ?? null"
+                (ngModelChange)="chart.updateYAxis(y.axis.id, { max: $event ?? null })"
+                placeholder="Auto"
+                fluid
+              />
+            </label>
+          </div>
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              [inputId]="'yaxis-log-' + y.axis.id"
+              [ngModel]="y.axis.logScale ?? false"
+              (onChange)="chart.updateYAxis(y.axis.id, { logScale: $event.checked })"
+            />
+            <label [for]="'yaxis-log-' + y.axis.id">Log scale</label>
+          </div>
+        }
+      </app-panel-group>
+
+      @if (canRemove()) {
+        <p-button
+          label="Remove axis"
+          icon="pi pi-times"
+          severity="danger"
+          outlined
+          fluid
+          (onClick)="remove()"
+        />
+      }
+    </div>
+  } @else {
+    <p class="panel-empty">This axis is no longer on the chart.</p>
+  }
+} @else {
+  <p class="panel-empty">This axis is no longer on the chart.</p>
+}

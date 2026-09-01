@@ -1,4 +1,5 @@
 import { ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import { OutlineItemStyle } from './chart-option.types';
 
 const OUTLINE_CONCESSION = '#d97706'; // orange: past min/max, still inside the concession band
 const OUTLINE_FAIL = '#dc2626'; // red: past the concession bound (or past min/max when there is none)
@@ -38,7 +39,7 @@ export class ToleranceOutline {
   }
 
   /** An outlined mark: the series colour as fill, bordered in the crossed limit's colour. */
-  public static itemStyle(seriesColor: string, borderColor: string): object {
+  public static itemStyle(seriesColor: string, borderColor: string): OutlineItemStyle {
     return { color: seriesColor, borderColor, borderWidth: 2 };
   }
 

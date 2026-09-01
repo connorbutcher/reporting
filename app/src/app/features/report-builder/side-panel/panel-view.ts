@@ -9,6 +9,8 @@ export type PanelView =
   | { kind: 'columnSettings'; widgetId: string; columnId: string }
   | { kind: 'columnTolerance'; widgetId: string; columnId: string }
   | { kind: 'chartSeries'; widgetId: string; bindingId: string }
+  | { kind: 'chartAxis'; widgetId: string; axis: 'x' }
+  | { kind: 'chartAxis'; widgetId: string; axis: 'y'; axisId: string }
   | { kind: 'chartToleranceBand'; widgetId: string; bandId: string }
   | { kind: 'tableAppearance'; widgetId: string }
   | { kind: 'textStyle'; widgetId: string }

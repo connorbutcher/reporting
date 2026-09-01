@@ -1,7 +1,7 @@
-import type { EChartsCoreOption } from 'echarts/core';
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import { chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
-import { ChartQueryResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import { ChartQueryResult, ChartSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import { ECOption, MarkAreaData, MarkLineData, TooltipCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -21,7 +21,7 @@ export class PointOption {
     data: ChartQueryResult | null,
     columns: DatasetColumn[],
     colors: Map<string, string>,
-  ): EChartsCoreOption | null {
+  ): ECOption | null {
     // The first bound binding names the shared axes; its dataset's columns are `columns`.
     const primary = readChartBindings(config).find((b) => b.datasetId) ?? null;
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
@@ -48,6 +48,20 @@ export class PointOption {
     const formatYPrimary = PointTooltip.formatterFor(yPrimaryIsText, yPrimaryIsDate, yConfig, yDateCfg);
     const formatYOther = PointTooltip.formatterFor(false, false, undefined, undefined);
     const xData = xIsText ? PointAxes.categories(series, 'x') : null;
+    // The shared X axis's scale fragment and label rotation, hoisted so the assembled axis can
+    // layer rotation over the fragment's own label config.
+    const xScale = xIsDate
+      ? ChartScale.dateAxis(xDateCfg)
+      : xIsText
+        ? ChartScale.categoryAxis(xData ?? [], config.xAxisInterval)
+        : ChartScale.numericAxis(config.xLogScale, config.xAxisMin, config.xAxisMax, config.xAxisInterval, xConfig);
+    const xRotate = ChartScale.labelRotate(config.xAxisRotate);
+    // Size the X name's gap to clear its tick labels (category labels verbatim, else the
+    // widest formatted data value), so the two never overlap.
+    const xLongest = xIsText
+      ? ChartScale.longestLen(xData ?? [])
+      : PointOption.extentLabelLen(series, 'x', formatX);
+    const xNameGap = ChartScale.nameGap(xLongest, xRotate, 'x');
     const names = series.map((s) => s.label);
     // A legend and per-series name only earn their place with more than one series.
     const showSeries = series.length > 1;
@@ -110,7 +124,7 @@ export class PointOption {
 
     // markLine/markArea coordinates read against the axis of the series they hang on. A Y band
     // hangs on a series plotted on its target axis; an X band rides the first series (index 0).
-    const marksBySeries = new Map<number, { marks: object[]; areas: object[] }>();
+    const marksBySeries = new Map<number, { marks: MarkLineData; areas: MarkAreaData }>();
     const hangBands = (seriesIdx: number, axisBands: ResolvedToleranceBand[]): void => {
       const marks = ToleranceMarks.lines(axisBands, axisKeyFor);
       const areas = ToleranceMarks.areas(axisBands, axisKeyFor);
@@ -154,10 +168,16 @@ export class PointOption {
         top: showSeries && config.showLegend ? 40 : 20,
         bottom: zoom ? 76 : 48,
         containLabel: true,
+        // Contain the axis *names* too (not just their labels), so a name pushed further out by a
+        // wide/rotated label set is kept on-canvas — echarts shrinks the plot instead of clipping.
+        outerBoundsContain: 'all',
       },
       tooltip: {
         trigger: 'item',
-        formatter: (params: ScatterTooltipParams) => {
+        formatter: (raw: TooltipCallbackParams) => {
+          // echarts types the param loosely (it can be an array under other triggers); an item
+          // tooltip always gets one, carrying our per-point payload (`ScatterTooltipParams`).
+          const params = raw as unknown as ScatterTooltipParams;
           // The Y value reads through the axis it plots on: the primary's format, or plain
           // grouping for a series on a secondary axis (whose column the shared schema lacks).
           const onPrimary = (seriesAxisIndex[params.seriesIndex] ?? 0) === 0;
@@ -171,13 +191,13 @@ export class PointOption {
         ? { dataZoom: [{ type: 'inside' }, { type: 'slider', height: 20, bottom: 12 }] }
         : {}),
       xAxis: {
-        ...(xIsDate
-          ? ChartScale.dateAxis(xDateCfg)
-          : ChartScale.numericAxis(xIsText, config.xLogScale, config.xAxisMin, config.xAxisMax, xConfig)),
-        ...(xData ? { data: xData } : {}),
+        // The scale fragment carries the axis `type` (and, for a category axis, its `data`);
+        // a non-default rotation layers over its own label config.
+        ...xScale,
+        ...(xRotate !== 0 ? { axisLabel: { ...xScale.axisLabel, rotate: xRotate } } : {}),
         name: xLabel,
         nameLocation: 'middle',
-        nameGap: 28,
+        nameGap: xNameGap,
       },
       yAxis: multiAxis ? yAxisDefs : yAxisDefs[0],
       series: series.map((s, i) => {
@@ -199,5 +219,30 @@ export class PointOption {
         };
       }),
     };
+  }
+
+  /**
+   * The longest tick label a numeric/date axis will show, in characters, from its data extent.
+   * Formatting just the min and max (widest by magnitude) approximates the widest tick without
+   * knowing echarts' chosen ticks — enough to size a non-overlapping {@link ChartScale.nameGap}.
+   */
+  private static extentLabelLen(
+    series: readonly ChartSeriesResult[],
+    dim: 'x' | 'y',
+    format: (value: Coord) => string,
+  ): number {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const s of series) {
+      for (const p of s.points) {
+        const v = dim === 'x' ? p.x : p.y;
+        if (typeof v === 'number') {
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+      }
+    }
+    if (!Number.isFinite(min)) return 0;
+    return Math.max(format(min).length, format(max).length);
   }
 }
