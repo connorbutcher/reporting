@@ -32,13 +32,17 @@ export class ChartScale {
     };
   }
 
-  /** A value (or log) axis with optional fixed bounds, a forced tick interval, and a number-formatting tick label. */
+  /**
+   * A value (or log) axis with optional fixed bounds, a forced tick interval, a number-formatting
+   * tick label, and `scale` (fit to the data rather than anchoring at zero).
+   */
   public static numericAxis(
     logScale: boolean | undefined,
     min: number | null | undefined,
     max: number | null | undefined,
     interval: number | null | undefined,
     config: NumericColumnConfig | undefined,
+    scale?: boolean,
   ): ValueAxisFragment {
     return {
       // A log axis takes the exact same option fields as a value axis, so the fragment types both
@@ -49,6 +53,8 @@ export class ChartScale {
       ...(max != null ? { max } : {}),
       // A zero/negative interval would make echarts lay out endless ticks, so only a positive one counts.
       ...(interval != null && interval > 0 ? { interval } : {}),
+      // Explicit bounds already pin the range, so `scale` only matters when they're absent.
+      ...(scale ? { scale: true } : {}),
       axisLabel: {
         formatter: (value: number | string) =>
           typeof value === 'number' ? ChartFormat.numeric(value, config) : String(value),

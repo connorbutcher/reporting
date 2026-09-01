@@ -1,7 +1,7 @@
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import { chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
 import { ChartQueryResult, ChartSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
-import { ECOption, MarkAreaData, MarkLineData, TooltipCallbackParams } from './chart-option.types';
+import { ECOption, LabelCallbackParams, MarkAreaData, MarkLineData, TooltipCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -12,6 +12,9 @@ import { AXIS_OFFSET, Coord, PointChartConfig, ScatterTooltipParams, SeriesStyle
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
+
+// A perceptual-ish, colourblind-safe blue→red ramp for the colour-by-value scale (RdYlBu, reversed).
+const VALUE_COLOR_SCALE = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c'];
 
 /** Builds the scatter/line echarts option: value axes with one mark per row, grouped into series. */
 export class PointOption {
@@ -54,8 +57,13 @@ export class PointOption {
       ? ChartScale.dateAxis(xDateCfg)
       : xIsText
         ? ChartScale.categoryAxis(xData ?? [], config.xAxisInterval)
-        : ChartScale.numericAxis(config.xLogScale, config.xAxisMin, config.xAxisMax, config.xAxisInterval, xConfig);
+        : ChartScale.numericAxis(config.xLogScale, config.xAxisMin, config.xAxisMax, config.xAxisInterval, xConfig, config.xAxisScale);
     const xRotate = ChartScale.labelRotate(config.xAxisRotate);
+    const showGridLines = config.showGridLines ?? true;
+    // Colour-by-value maps the Y value to a continuous colour scale (visualMap). Only meaningful
+    // with a numeric Y and actual data; when on it drives the mark colours and replaces the legend.
+    const yExtent = PointOption.extent(series, 'y');
+    const colorByValue = !!config.colorByValue && !yPrimaryIsText && yExtent !== null;
     // Size the X name's gap to clear its tick labels (category labels verbatim, else the
     // widest formatted data value), so the two never overlap.
     const xLongest = xIsText
@@ -118,6 +126,7 @@ export class PointOption {
       yDateCfg,
       yPrimaryIsText,
       yPrimaryIsDate,
+      showGridLines: config.showGridLines ?? true,
     });
     const leftCount = axes.filter((a) => a.side === 'left').length;
     const rightCount = axes.filter((a) => a.side === 'right').length;
@@ -157,6 +166,10 @@ export class PointOption {
 
     // A zoom slider needs room below the axis; leave the tighter margin when off.
     const zoom = config.zoom ?? true;
+    // The legend shows series colours; colour-by-value replaces it with the value scale, so only
+    // one of the two occupies the top strip at a time.
+    const showLegendNow = showSeries && config.showLegend && !colorByValue;
+    const topReserved = showLegendNow || colorByValue;
 
     return {
       // Date axes are plotted from UTC-epoch millis and labelled in UTC, so lay time axes out
@@ -165,7 +178,7 @@ export class PointOption {
       grid: {
         left: 56 + Math.max(0, leftCount - 1) * AXIS_OFFSET,
         right: 20 + rightCount * AXIS_OFFSET,
-        top: showSeries && config.showLegend ? 40 : 20,
+        top: topReserved ? 40 : 20,
         bottom: zoom ? 76 : 48,
         containLabel: true,
         // Contain the axis *names* too (not just their labels), so a name pushed further out by a
@@ -185,10 +198,37 @@ export class PointOption {
         },
       },
       // `scroll` paginates the legend rather than letting many colour-by series overflow the plot.
-      ...(showSeries && config.showLegend ? { legend: { top: 0, data: names, type: 'scroll' } } : {}),
-      // Mouse-wheel/drag zoom plus a slider along the X axis. Off hides both.
-      ...(zoom
-        ? { dataZoom: [{ type: 'inside' }, { type: 'slider', height: 20, bottom: 12 }] }
+      ...(showLegendNow ? { legend: { top: 0, data: names, type: 'scroll' } } : {}),
+      // Colour marks by their Y value on a continuous scale, shown as a horizontal bar up top.
+      ...(colorByValue && yExtent
+        ? {
+            visualMap: {
+              type: 'continuous',
+              min: yExtent.min,
+              max: yExtent.max,
+              dimension: 1,
+              calculable: true,
+              orient: 'horizontal',
+              left: 'center',
+              top: 0,
+              text: [formatYPrimary(yExtent.max), formatYPrimary(yExtent.min)],
+              inRange: { color: VALUE_COLOR_SCALE },
+            },
+          }
+        : {}),
+      // Wheel/drag zoom: a slider + inside along X, and inside along Y when enabled.
+      ...(zoom || config.zoomY
+        ? {
+            dataZoom: [
+              ...(zoom
+                ? [
+                    { type: 'inside' as const, xAxisIndex: 0 },
+                    { type: 'slider' as const, xAxisIndex: 0, height: 20, bottom: 12 },
+                  ]
+                : []),
+              ...(config.zoomY ? [{ type: 'inside' as const, yAxisIndex: 0 }] : []),
+            ],
+          }
         : {}),
       xAxis: {
         // The scale fragment carries the axis `type` (and, for a category axis, its `data`);
@@ -198,19 +238,34 @@ export class PointOption {
         name: xLabel,
         nameLocation: 'middle',
         nameGap: xNameGap,
+        // Vertical gridlines follow the chart-wide toggle; a category X never draws them.
+        splitLine: { show: showGridLines && !xIsText },
       },
       yAxis: multiAxis ? yAxisDefs : yAxisDefs[0],
       series: series.map((s, i) => {
         const color = seriesColors[i];
         const axisK = seriesAxisIndex[i];
-        // A point is outlined only by bands on its own series' axis (plus shared X-axis bands).
-        const outlineColor = outlineFor(axisK);
+        const onPrimary = axisK === 0;
+        // Colour-by-value drives the fill from the visualMap, so drop the per-series colour and the
+        // per-point outline (the value colour already conveys where a mark sits).
+        const outlineColor = colorByValue ? () => null : outlineFor(axisK);
+        const formatY = onPrimary ? formatYPrimary : formatYOther;
         const hung = marksBySeries.get(i);
         return {
           name: s.label || config.title || 'Series',
           ...PointSeries.kindOptions(config, color, seriesStyle[i]),
-          itemStyle: { color },
+          ...(colorByValue ? {} : { itemStyle: { color } }),
           data: PointSeries.points(s, color, outlineColor),
+          ...(config.showValueLabels
+            ? {
+                label: {
+                  show: true,
+                  position: 'top' as const,
+                  formatter: (p: LabelCallbackParams) =>
+                    formatY((p.value as [Coord, Coord])[1]),
+                },
+              }
+            : {}),
           ...(multiAxis ? { yAxisIndex: Math.min(axisK, axes.length - 1) } : {}),
           ...(hung && hung.marks.length > 0
             ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
@@ -231,6 +286,16 @@ export class PointOption {
     dim: 'x' | 'y',
     format: (value: Coord) => string,
   ): number {
+    const extent = PointOption.extent(series, dim);
+    if (!extent) return 0;
+    return Math.max(format(extent.min).length, format(extent.max).length);
+  }
+
+  /** The numeric [min, max] of a dimension across all series, or null when it has no numbers. */
+  private static extent(
+    series: readonly ChartSeriesResult[],
+    dim: 'x' | 'y',
+  ): { min: number; max: number } | null {
     let min = Infinity;
     let max = -Infinity;
     for (const s of series) {
@@ -242,7 +307,6 @@ export class PointOption {
         }
       }
     }
-    if (!Number.isFinite(min)) return 0;
-    return Math.max(format(min).length, format(max).length);
+    return Number.isFinite(min) ? { min, max } : null;
   }
 }

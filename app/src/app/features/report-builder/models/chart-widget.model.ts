@@ -41,8 +41,14 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public readonly xLogScale = signal(false);
   public readonly xAxisInterval = signal<number | null>(null);
   public readonly xAxisRotate = signal<AxisLabelRotation | null>(null);
-  /** Mouse-wheel/drag zoom + slider on point charts. */
+  public readonly xAxisScale = signal(false);
+  /** Mouse-wheel/drag zoom (+ slider) along the X axis; `zoomY` adds the same on the Y axis. */
   public readonly zoom = signal(true);
+  public readonly zoomY = signal(false);
+  /** Plot gridlines (defaults on); value labels beside marks; colour point marks by value. */
+  public readonly showGridLines = signal(true);
+  public readonly showValueLabels = signal(false);
+  public readonly colorByValue = signal(false);
   public readonly showLegend = signal(true);
   public readonly pointSize = signal(8);
 
@@ -68,8 +74,14 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.xLogScale.set(config.xLogScale ?? false);
     this.xAxisInterval.set(config.xAxisInterval ?? null);
     this.xAxisRotate.set(config.xAxisRotate ?? null);
+    this.xAxisScale.set(config.xAxisScale ?? false);
     // Charts saved before zoom existed default it on, matching a fresh chart.
     this.zoom.set(config.zoom ?? true);
+    this.zoomY.set(config.zoomY ?? false);
+    // Gridlines default on for charts saved before the toggle existed.
+    this.showGridLines.set(config.showGridLines ?? true);
+    this.showValueLabels.set(config.showValueLabels ?? false);
+    this.colorByValue.set(config.colorByValue ?? false);
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
     this.toleranceBands.set(config.toleranceBands ?? []);
@@ -229,7 +241,12 @@ export abstract class ChartWidgetModel extends WidgetModel {
       xAxisInterval: this.xAxisInterval(),
       // Null (the default) round-trips as an absent field, matching the optional config shape.
       xAxisRotate: this.xAxisRotate() ?? undefined,
+      xAxisScale: this.xAxisScale(),
       zoom: this.zoom(),
+      zoomY: this.zoomY(),
+      showGridLines: this.showGridLines(),
+      showValueLabels: this.showValueLabels(),
+      colorByValue: this.colorByValue(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
       // A band not yet pointed at a spec is left out — the server's Guid fields can't parse the

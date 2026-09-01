@@ -6,12 +6,17 @@ import type {
   MarkAreaComponentOption,
   MarkLineComponentOption,
   TooltipComponentOption,
+  VisualMapComponentOption,
 } from 'echarts/components';
 import type { ComposeOption } from 'echarts/core';
 // The composed axis option types aren't surfaced by the tree-shaken entry points, so pull them
 // from the root package. These are `import type` only — erased at compile time — so they don't
 // drag the full echarts build into the bundle the way a value import would.
-import type { XAXisComponentOption, YAXisComponentOption } from 'echarts';
+import type {
+  DefaultLabelFormatterCallbackParams,
+  XAXisComponentOption,
+  YAXisComponentOption,
+} from 'echarts';
 
 /**
  * The strongly-typed echarts option for this widget — every builder bundles up to one of these.
@@ -29,6 +34,7 @@ export type ECOption = ComposeOption<
   | DataZoomComponentOption
   | MarkLineComponentOption
   | MarkAreaComponentOption
+  | VisualMapComponentOption
 >;
 
 /** The two point-chart series kinds; a bar chart uses {@link BarSeriesOption}. */
@@ -58,6 +64,8 @@ export interface ValueAxisFragment {
   min?: number;
   max?: number;
   interval?: number;
+  /** Fit the axis to the data rather than anchoring it at zero. */
+  scale?: boolean;
   axisLabel?: AxisLabelFormatting;
 }
 export interface CategoryAxisFragment {
@@ -89,6 +97,9 @@ export type MarkAreaData = NonNullable<MarkAreaComponentOption['data']>;
 export type TooltipCallbackParams = Parameters<
   NonNullable<Extract<TooltipComponentOption['formatter'], (...args: never[]) => unknown>>
 >[0];
+
+/** The echarts callback param passed to a series `label.formatter`. */
+export type LabelCallbackParams = DefaultLabelFormatterCallbackParams;
 
 export type {
   BarSeriesOption,

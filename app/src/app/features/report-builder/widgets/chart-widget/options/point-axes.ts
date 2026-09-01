@@ -19,6 +19,8 @@ export interface YAxesInput {
   yDateCfg: DateColumnConfig | undefined;
   yPrimaryIsText: boolean;
   yPrimaryIsDate: boolean;
+  /** Whether the primary axis draws horizontal gridlines (its `splitLine`). */
+  showGridLines: boolean;
 }
 
 /** Builds the Y axis definitions for a point chart, and the category labels a text axis carries. */
@@ -50,7 +52,7 @@ export class PointAxes {
         ? ChartScale.dateAxis(yDateCfg)
         : isText
           ? ChartScale.categoryAxis(cats ?? [], axis.interval)
-          : ChartScale.numericAxis(axis.logScale, axis.min, axis.max, axis.interval, isPrimary ? yConfig : undefined);
+          : ChartScale.numericAxis(axis.logScale, axis.min, axis.max, axis.interval, isPrimary ? yConfig : undefined, axis.scale);
       const rotate = ChartScale.labelRotate(axis.rotate);
       // Size the name's gap to clear this axis's own tick labels so the two never overlap.
       const longest = isText
@@ -72,7 +74,9 @@ export class PointAxes {
         ...(!isPrimary || axisColor
           ? { axisLine: { show: true, ...(axisColor ? { lineStyle: { color: axisColor } } : {}) } }
           : {}),
-        ...(isPrimary ? {} : { splitLine: { show: false } }),
+        // Gridlines ride the primary axis (toggled chart-wide); secondaries never draw them so
+        // stacked scales don't produce competing grids.
+        splitLine: { show: isPrimary && input.showGridLines },
       };
     });
   }

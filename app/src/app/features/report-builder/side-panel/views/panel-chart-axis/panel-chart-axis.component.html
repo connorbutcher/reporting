@@ -68,6 +68,15 @@
             />
             <label for="x-log">Log scale</label>
           </div>
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="x-scale"
+              [ngModel]="chart.xAxisScale()"
+              (onChange)="chart.xAxisScale.set($event.checked)"
+            />
+            <label for="x-scale">Fit to data (don’t start at zero)</label>
+          </div>
         } @else if (!barChart()) {
           <p class="panel-hint">Bounds and log scale apply once the X axis is a numeric column.</p>
         }
@@ -153,6 +162,15 @@
               (onChange)="chart.updateYAxis(y.axis.id, { logScale: $event.checked })"
             />
             <label [for]="'yaxis-log-' + y.axis.id">Log scale</label>
+          </div>
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              [inputId]="'yaxis-scale-' + y.axis.id"
+              [ngModel]="y.axis.scale ?? false"
+              (onChange)="chart.updateYAxis(y.axis.id, { scale: $event.checked })"
+            />
+            <label [for]="'yaxis-scale-' + y.axis.id">Fit to data (don’t start at zero)</label>
           </div>
         }
       </app-panel-group>

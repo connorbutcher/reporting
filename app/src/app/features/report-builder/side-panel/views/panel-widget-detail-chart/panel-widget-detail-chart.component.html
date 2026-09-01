@@ -132,7 +132,37 @@
     <label for="chart-legend">Show legend</label>
   </div>
 
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-gridlines"
+      [ngModel]="chart().showGridLines()"
+      (onChange)="chart().showGridLines.set($event.checked)"
+    />
+    <label for="chart-gridlines">Show gridlines</label>
+  </div>
+
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-value-labels"
+      [ngModel]="chart().showValueLabels()"
+      (onChange)="chart().showValueLabels.set($event.checked)"
+    />
+    <label for="chart-value-labels">Show value labels</label>
+  </div>
+
   @if (!barChart()) {
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="chart-color-by-value"
+        [ngModel]="chart().colorByValue()"
+        (onChange)="chart().colorByValue.set($event.checked)"
+      />
+      <label for="chart-color-by-value">Colour by value</label>
+    </div>
+
     <div class="panel-inline-field">
       <p-checkbox
         [binary]="true"
@@ -140,7 +170,17 @@
         [ngModel]="chart().zoom()"
         (onChange)="chart().zoom.set($event.checked)"
       />
-      <label for="chart-zoom">Zoom &amp; pan (wheel, drag, slider)</label>
+      <label for="chart-zoom">Zoom &amp; pan — X axis (wheel, drag, slider)</label>
+    </div>
+
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="chart-zoom-y"
+        [ngModel]="chart().zoomY()"
+        (onChange)="chart().zoomY.set($event.checked)"
+      />
+      <label for="chart-zoom-y">Zoom — Y axis (wheel, drag)</label>
     </div>
   }
 

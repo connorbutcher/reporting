@@ -41,6 +41,8 @@ export interface ChartValueAxis {
   interval?: number | null;
   /** Tick-label orientation; unset keeps the default. */
   rotate?: AxisLabelRotation;
+  /** Fits the axis to the data instead of anchoring it at zero. Ignored on a category axis. */
+  scale?: boolean;
 }
 
 /** The primary axis's id: constant so a legacy-folded config and null bindings agree on it. */
@@ -151,9 +153,23 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   xAxisInterval?: number | null;
   /** X-axis tick-label orientation; unset keeps the default. */
   xAxisRotate?: AxisLabelRotation;
+  /** Fits the X axis to the data instead of anchoring it at zero. Ignored on a category X axis. */
+  xAxisScale?: boolean;
 
-  /** Adds mouse-wheel/drag zoom plus a slider to point charts so dense plots can be explored. */
+  /** Adds mouse-wheel/drag zoom plus a slider along the X axis to point charts. */
   zoom: boolean;
+  /** Adds mouse-wheel/drag zoom along the Y axis to point charts. */
+  zoomY?: boolean;
+  /** Draws the plot's gridlines; off gives a cleaner, lineless look. Defaults on. */
+  showGridLines?: boolean;
+  /** Prints each point's/bar's value beside it. */
+  showValueLabels?: boolean;
+  /**
+   * Colours point-chart marks by their Y value on a continuous scale (an echarts visualMap)
+   * instead of by series — turns a scatter/line into a value heat view. Ignored when the Y axis
+   * isn't numeric; replaces the series legend while on.
+   */
+  colorByValue?: boolean;
 
   showLegend: boolean;
   pointSize: number;

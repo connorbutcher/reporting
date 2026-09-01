@@ -1,7 +1,7 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import { Aggregate, BarChartWidgetConfig, readChartAxes, readChartBindings } from '../../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../../core/models/widget-query';
-import { BarSeriesOption, ECOption } from './chart-option.types';
+import { BarSeriesOption, ECOption, LabelCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -37,6 +37,7 @@ export class BarOption {
     // A legend only earns its space once bars split into more than one series.
     const showLegend = series.length > 1 && config.showLegend;
     const horizontal = config.horizontal;
+    const showGridLines = config.showGridLines ?? true;
 
     // The value axis is whichever one isn't holding the categories, so reference lines and
     // fills land on the measure regardless of orientation.
@@ -63,7 +64,14 @@ export class BarOption {
       nameGap: ChartScale.nameGap(ChartScale.longestLen(categories), categoryRotate, categoryOrientation),
       axisLabel: { ...categoryScale.axisLabel, rotate: categoryRotate },
     };
-    const valueScale = ChartScale.numericAxis(false, null, null, valueAxisConfig.interval, valueConfig);
+    const valueScale = ChartScale.numericAxis(
+      false,
+      null,
+      null,
+      valueAxisConfig.interval,
+      valueConfig,
+      valueAxisConfig.scale,
+    );
     const valueRotate = ChartScale.labelRotate(valueAxisConfig.rotate);
     const valueLen = BarOption.valueLabelLen(series, valueConfig);
     const valueAxis = {
@@ -72,6 +80,8 @@ export class BarOption {
       name: valueLabel,
       nameLocation: 'middle' as const,
       nameGap: ChartScale.nameGap(valueLen, valueRotate, valueOrientation),
+      // Gridlines run across the value axis (the measure); the category axis never draws them.
+      splitLine: { show: showGridLines },
     };
 
     return {
@@ -96,6 +106,16 @@ export class BarOption {
           // A shared stack name piles a category's series into one bar.
           ...(config.stacked ? { stack: 'total' } : {}),
           itemStyle: { color },
+          ...(config.showValueLabels
+            ? {
+                label: {
+                  show: true,
+                  position: horizontal ? 'right' : 'top',
+                  formatter: (p: LabelCallbackParams) =>
+                    typeof p.value === 'number' ? ChartFormat.numeric(p.value, valueConfig) : '',
+                },
+              }
+            : {}),
           // A bar outside an outlined band is bordered in the crossed limit's colour.
           data: s.values.map((v) => {
             const border = v !== null ? outlineColor(v) : null;
