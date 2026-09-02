@@ -50,6 +50,35 @@ public enum Aggregate
     Max
 }
 
+/// <summary>Where a box plot's whiskers end, and whether points beyond them are drawn as outliers.</summary>
+public enum BoxWhisker
+{
+    /// <summary>Whiskers reach a multiple (see WhiskerFactor, default 1.5) of the IQR past the quartiles; values beyond are outliers.</summary>
+    Tukey,
+
+    /// <summary>Whiskers reach the group's actual minimum and maximum; nothing is treated as an outlier.</summary>
+    MinMax,
+
+    /// <summary>Whiskers reach a multiple (see WhiskerFactor, default 3) of the standard deviation either side of the mean; values beyond are outliers.</summary>
+    StdDev
+}
+
+/// <summary>How a box plot orders its categories along the axis.</summary>
+public enum BoxSort
+{
+    /// <summary>The category column's own order (numeric/chronological, else alphabetical).</summary>
+    Category,
+
+    /// <summary>By each category's pooled median, lowest first.</summary>
+    MedianAsc,
+
+    /// <summary>By each category's pooled median, highest first.</summary>
+    MedianDesc,
+
+    /// <summary>By each category's pooled spread (IQR), widest first — surfaces the least consistent groups.</summary>
+    SpreadDesc
+}
+
 /// <summary>
 /// Reference lines drawn on one axis, resolved against one row of a separate
 /// limits dataset — the chart equivalent of a table column's <see cref="ToleranceConfig"/>.
@@ -209,5 +238,39 @@ public class BarChartWidgetConfig : ChartWidgetConfig
     public bool Stacked { get; set; }
 
     /// <summary>Draws bars horizontally (categories down the Y axis) rather than as vertical columns.</summary>
+    public bool Horizontal { get; set; }
+}
+
+/// <summary>
+/// A box-and-whisker chart. Like a bar chart it groups rows by its binding's category column
+/// (<see cref="ChartSeriesBinding.XColumnId"/>), but instead of one aggregate it summarises each
+/// group's values in the measure column (<see cref="ChartSeriesBinding.YColumnId"/>) into a
+/// five-number summary (min, Q1, median, Q3, max) drawn as a box. A series column, if set, splits
+/// each category into several boxes side by side.
+/// </summary>
+public class BoxPlotWidgetConfig : ChartWidgetConfig
+{
+    /// <summary>Where the whiskers end, and whether outliers are drawn beyond them.</summary>
+    public BoxWhisker Whisker { get; set; } = BoxWhisker.Tukey;
+
+    /// <summary>The whisker length multiplier — of the IQR for Tukey, of the standard deviation for StdDev. Ignored for MinMax.</summary>
+    public double WhiskerFactor { get; set; } = 1.5;
+
+    /// <summary>How the categories are ordered along the axis.</summary>
+    public BoxSort Sort { get; set; } = BoxSort.Category;
+
+    /// <summary>Draws the mean as a marker inside each box, alongside the median line.</summary>
+    public bool ShowMean { get; set; }
+
+    /// <summary>Prints each box's sample size (n) above it.</summary>
+    public bool ShowSampleSize { get; set; }
+
+    /// <summary>Overlays the individual measurements as jittered points over each box.</summary>
+    public bool ShowPoints { get; set; }
+
+    /// <summary>Adds process capability (Cp/Cpk) to each box's tooltip, resolved against the value-axis spec band.</summary>
+    public bool ShowCapability { get; set; }
+
+    /// <summary>Draws boxes horizontally (categories down the Y axis) rather than upright.</summary>
     public bool Horizontal { get; set; }
 }

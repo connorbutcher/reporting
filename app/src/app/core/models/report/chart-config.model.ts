@@ -4,6 +4,16 @@ import { WidgetConfigBase } from './widget-base.model';
 /** How a bar chart reduces the many rows in one category down to a single bar height. */
 export type Aggregate = 'sum' | 'average' | 'count' | 'min' | 'max';
 
+/**
+ * Where a box plot's whiskers end. `tukey` stops them a multiple (see {@link BoxPlotWidgetConfig.whiskerFactor})
+ * of the IQR past the quartiles; `stdDev` stops them that multiple of the standard deviation either side of
+ * the mean; both draw anything beyond as outliers. `minMax` reaches the group's actual extremes with no outliers.
+ */
+export type BoxWhisker = 'tukey' | 'minMax' | 'stdDev';
+
+/** How a box plot orders its categories: the column's own order, or by each group's pooled median/spread. */
+export type BoxSort = 'category' | 'medianAsc' | 'medianDesc' | 'spreadDesc';
+
 export type ChartAxis = 'x' | 'y';
 
 /** Which side of the plot a value axis sits on. */
@@ -211,10 +221,38 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
 }
 
+/**
+ * A box-and-whisker chart. Like a bar chart it groups rows by its binding's category column
+ * (`xColumnId`), but instead of one aggregate it summarises each group's values in the measure
+ * column (`yColumnId`) into a five-number summary (min, Q1, median, Q3, max) drawn as a box.
+ * A series column, if set, splits each category into several boxes side by side.
+ */
+export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
+  type: 'boxPlot';
+
+  /** Where the whiskers end, and whether outliers are drawn beyond them. */
+  whisker: BoxWhisker;
+  /** The whisker length multiplier — of the IQR for `tukey`, of the standard deviation for `stdDev`. Ignored for `minMax`. */
+  whiskerFactor: number;
+  /** How the categories are ordered along the axis. */
+  sort: BoxSort;
+  /** Draws the mean as a marker inside each box, alongside the median line. */
+  showMean: boolean;
+  /** Prints each box's sample size (n) above it. */
+  showSampleSize: boolean;
+  /** Overlays the individual measurements as jittered points over each box. */
+  showPoints: boolean;
+  /** Adds process capability (Cp/Cpk) to each box's tooltip, resolved against the value-axis spec band. */
+  showCapability: boolean;
+  /** Draws boxes horizontally (categories down the Y axis) rather than upright. */
+  horizontal: boolean;
+}
+
 export type ChartWidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
-  | BarChartWidgetConfig;
+  | BarChartWidgetConfig
+  | BoxPlotWidgetConfig;
 
 const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
@@ -250,6 +288,19 @@ export const DEFAULT_BAR_CHART_CONFIG: Omit<BarChartWidgetConfig, 'type'> = {
   title: 'Bar chart',
   aggregate: 'sum',
   stacked: false,
+  horizontal: false,
+};
+
+export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Box plot',
+  whisker: 'tukey',
+  whiskerFactor: 1.5,
+  sort: 'category',
+  showMean: false,
+  showSampleSize: false,
+  showPoints: false,
+  showCapability: false,
   horizontal: false,
 };
 

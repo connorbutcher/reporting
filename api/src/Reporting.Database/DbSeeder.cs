@@ -91,6 +91,9 @@ public static class DbSeeder
     /// <summary>A data table whose config JSON (datasetId + column ids) is filled in once its dataset has a primary key.</summary>
     private sealed record PendingTable(Widget Widget, Dataset Dataset, string Title, string[] ColumnNames);
 
+    /// <summary>A chart widget whose config JSON is built once its dataset has a database-assigned int id.</summary>
+    private sealed record PendingChart(Widget Widget, Func<string> BuildJson);
+
     public static void Seed(ReportingDbContext db)
     {
         if (db.Reports.Any()) return;
@@ -113,6 +116,41 @@ public static class DbSeeder
         foreach (var table in pendingTables)
         {
             table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
+    /// Adds the box-plot showcase report ("Torque Calibration Study") if it isn't already present.
+    /// Idempotent and independent of the main demo seed — so it tops up an existing database (which
+    /// <see cref="Seed"/> skips once any report exists) without wiping the user's own reports. Its
+    /// number is the next free one, so it never collides with what's already there.
+    /// </summary>
+    public static void SeedBoxPlotShowcase(ReportingDbContext db)
+    {
+        const string name = "Torque Calibration Study";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildTorqueStudyReport(pending, pendingTables, pendingCharts, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
         }
         db.SaveChanges();
     }
@@ -350,6 +388,215 @@ public static class DbSeeder
             number, "Final Assembly QA — Batch 12", null, BuildTestRuns, testColumns, daysAgo: 1, pending, pendingTables));
     }
 
+    /// <summary>
+    /// A standalone draft report showcasing the box-and-whisker chart: a repeated torque
+    /// measurement taken across four assembly stations and two shifts, whose distributions
+    /// differ enough — in centre, spread, and a scatter of deliberate outliers — to make a
+    /// compelling box plot. Carries two box plots (one per station, one split by shift) plus
+    /// the raw table behind them.
+    /// </summary>
+    private static Report BuildTorqueStudyReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Torque Calibration Study",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildTorqueStudy(pending);
+        revision.Datasets.Add(dataset);
+
+        // A one-row limits dataset gives the value axis its spec band (LSL/USL) — the reference the
+        // out-of-spec box highlighting and the Cp/Cpk capability figures are measured against.
+        var specRowRef = Guid.NewGuid();
+        var spec = new Dataset
+        {
+            Name = "Torque Spec",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[9]}",
+        };
+        var characteristic = Column(spec, "Characteristic", DatasetColumnType.String, 0);
+        var lsl = Column(spec, "LSL", DatasetColumnType.Double, 1, "{\"decimals\":2,\"suffix\":\" Nm\"}");
+        var usl = Column(spec, "USL", DatasetColumnType.Double, 2, "{\"decimals\":2,\"suffix\":\" Nm\"}");
+        var specRow = new DatasetRow { RefId = specRowRef };
+        spec.Rows.Add(specRow);
+        pending.Add(new PendingCell(specRow, characteristic, "Seal Torque"));
+        pending.Add(new PendingCell(specRow, lsl, Num(11.00)));
+        pending.Add(new PendingCell(specRow, usl, Num(13.00)));
+        revision.Datasets.Add(spec);
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Box plots", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        var stationRef = dataset.Columns.First(c => c.Name == "Station").RefId;
+        var shiftRef = dataset.Columns.First(c => c.Name == "Shift").RefId;
+        var torqueRef = dataset.Columns.First(c => c.Name == "Seal Torque").RefId;
+        const string yLabel = "Seal Torque (Nm)";
+
+        tab.Widgets.Add(TitleWidget("Seal Torque Calibration Study", 0, 0, 48, 2));
+
+        // Hero box plot: one box per station with the spec band, so a station whose spread breaches
+        // ±1 Nm is highlighted; mean marker, n, and Cp/Cpk make it a capability view.
+        var byStation = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BoxPlot, X = 0, Y = 2, W = 28, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(byStation);
+        pendingCharts.Add(new PendingChart(byStation, () =>
+            BoxPlotConfigJson("Seal torque by station", dataset, stationRef, torqueRef, null, "tukey", yLabel,
+                showMean: true, showSampleSize: true, showCapability: true,
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId))));
+
+        // The same measure split by shift, with the individual measurements jittered over each box.
+        var byShift = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BoxPlot, X = 28, Y = 2, W = 20, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(byShift);
+        pendingCharts.Add(new PendingChart(byShift, () =>
+            BoxPlotConfigJson("By station & shift", dataset, stationRef, torqueRef, shiftRef, "tukey", yLabel,
+                showMean: true, showPoints: true)));
+
+        // The rows behind the plots, so the distribution is inspectable.
+        var tableColumns = new[] { "Sample ID", "Station", "Shift", "Operator", "Seal Torque", "Measured At" };
+        var table = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 19, W = 48, H = 11, ConfigJson = "{}" };
+        tab.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, "Torque measurements", tableColumns));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A repeated-measurement dataset built for the box plot: one row per torque check, tagged
+    /// with the station and shift it was taken on. Each station/shift draws from its own normal
+    /// distribution (differing centre and spread), with a handful of extreme readings injected so
+    /// the Tukey whiskers flag them as outliers. Deterministic — a fixed RNG seed keeps the seeded
+    /// data identical across rebuilds.
+    /// </summary>
+    private static Dataset BuildTorqueStudy(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Torque Calibration Study",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[5,6]}",
+        };
+
+        var sampleId = Column(dataset, "Sample ID", DatasetColumnType.String, 0);
+        var station = Column(dataset, "Station", DatasetColumnType.String, 1);
+        var shift = Column(dataset, "Shift", DatasetColumnType.String, 2);
+        var operatorCol = Column(dataset, "Operator", DatasetColumnType.String, 3);
+        var torque = Column(dataset, "Seal Torque", DatasetColumnType.Double, 4, "{\"decimals\":2,\"suffix\":\" Nm\"}");
+        var measuredAt = Column(dataset, "Measured At", DatasetColumnType.DateTime, 5, "{\"dateFormat\":\"d MMM yyyy\"}");
+
+        // (station, day mean, day sd) — night runs a touch higher and more variable (see below).
+        var stations = new[]
+        {
+            ("Station A", 12.00, 0.30),
+            ("Station B", 12.55, 0.70),
+            ("Station C", 11.55, 0.45),
+            ("Station D", 12.10, 1.05),
+        };
+        var operators = new[] { "J. Reyes", "K. Novak", "P. Osei", "L. Haddad" };
+
+        // Fixed seed → identical data every rebuild.
+        var rng = new Random(20260902);
+        var start = new DateTime(2026, 5, 4);
+        var sample = 1;
+        var day = 0;
+
+        void Emit(string stationName, string shiftName, string op, double value, int dayOffset)
+        {
+            AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+            {
+                [sampleId] = $"TQ-{sample:0000}",
+                [station] = stationName,
+                [shift] = shiftName,
+                [operatorCol] = op,
+                [torque] = Num(Math.Round(value, 2)),
+                [measuredAt] = Iso(start.AddDays(dayOffset)),
+            });
+            sample++;
+        }
+
+        // Standard-normal sample via Box–Muller, so each group is a believable spread rather than noise.
+        double NextNormal()
+        {
+            var u1 = 1.0 - rng.NextDouble();
+            var u2 = 1.0 - rng.NextDouble();
+            return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
+        }
+
+        const int perGroup = 14;
+        foreach (var (stationName, mean, sd) in stations)
+        {
+            for (var s = 0; s < 2; s++)
+            {
+                var night = s == 1;
+                var shiftName = night ? "Night" : "Day";
+                // Night shift drifts a little high and runs wider — a small, visible shift between boxes.
+                var groupMean = night ? mean + 0.18 : mean;
+                var groupSd = night ? sd * 1.25 : sd;
+
+                for (var i = 0; i < perGroup; i++)
+                {
+                    var value = Math.Clamp(groupMean + groupSd * NextNormal(), 8.0, 17.0);
+                    Emit(stationName, shiftName, operators[(sample) % operators.Length], value, day);
+                    day++;
+                }
+            }
+        }
+
+        // A scatter of deliberate outliers so Tukey whiskers have something to flag.
+        Emit("Station A", "Day", "J. Reyes", 13.55, day++);
+        Emit("Station B", "Night", "K. Novak", 15.90, day++);
+        Emit("Station C", "Night", "P. Osei", 9.85, day++);
+        Emit("Station D", "Day", "L. Haddad", 8.70, day++);
+        Emit("Station D", "Day", "L. Haddad", 15.40, day);
+
+        return dataset;
+    }
+
+    /// <summary>
+    /// A box-plot widget's config JSON, built once the dataset has a primary key. The dataset is
+    /// referenced by that int id; columns by their stable RefIds. A null <paramref name="seriesRef"/>
+    /// plots one box per category; otherwise each category splits into a box per series value.
+    /// </summary>
+    private static string BoxPlotConfigJson(
+        string title, Dataset dataset, Guid categoryRef, Guid valueRef, Guid? seriesRef, string whisker, string yAxisLabel,
+        bool showMean = false, bool showSampleSize = false, bool showPoints = false, bool showCapability = false,
+        string bandsJson = "[]")
+    {
+        var bindingId = Guid.NewGuid();
+        var series = seriesRef is { } s ? $"\"{s}\"" : "null";
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"boxPlot","title":"{{title}}","showTitle":true,
+             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{categoryRef}}","yColumnId":"{{valueRef}}","seriesColumnId":{{series}},"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
+             "xAxisLabel":"","yAxisLabel":"{{yAxisLabel}}",
+             "zoom":false,"showLegend":true,"pointSize":8,
+             "showGridLines":true,"showValueLabels":false,
+             "toleranceBands":{{bandsJson}},"tooltipColumns":[],
+             "whisker":"{{whisker}}","whiskerFactor":1.5,"sort":"category",
+             "showMean":{{B(showMean)}},"showSampleSize":{{B(showSampleSize)}},"showPoints":{{B(showPoints)}},"showCapability":{{B(showCapability)}},
+             "horizontal":false}
+            """;
+    }
+
+    /// <summary>
+    /// A single value-axis tolerance band pointing at the spec row's LSL/USL columns, shaded and set
+    /// to outline out-of-spec boxes. Built once the limits dataset has its <paramref name="specDatasetId"/>.
+    /// </summary>
+    private static string SpecBandJson(int specDatasetId, Guid rowRef, Guid minRef, Guid maxRef)
+    {
+        var bandId = Guid.NewGuid();
+        return $$"""
+            [{"id":"{{bandId}}","axis":"y","yAxisId":null,"sourceDatasetId":{{specDatasetId}},"sourceRowId":"{{rowRef}}","minColumnId":"{{minRef}}","maxColumnId":"{{maxRef}}","fill":true,"outlinePoints":true}]
+            """;
+    }
+
     private static Report PublishedReport(
         int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
         string[] columns, int versions, int daysAgo, List<PendingCell> pending, List<PendingTable> pendingTables)
@@ -437,14 +684,16 @@ public static class DbSeeder
         };
     }
 
-    private static Widget TitleWidget(string text) => new()
+    private static Widget TitleWidget(string text) => TitleWidget(text, 0, 0, 8, 1);
+
+    private static Widget TitleWidget(string text, int x, int y, int w, int h) => new()
     {
         RefId = Guid.NewGuid(),
         Type = WidgetType.StaticText,
-        X = 0,
-        Y = 0,
-        W = 8,
-        H = 1,
+        X = x,
+        Y = y,
+        W = w,
+        H = h,
         ConfigJson = $$"""
             {"type":"staticText","title":"Text","showTitle":false,
              "content":"{{text}}","fontSize":22,"fontWeight":"bold",

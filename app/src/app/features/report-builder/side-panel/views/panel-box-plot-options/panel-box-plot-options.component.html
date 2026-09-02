@@ -1,0 +1,91 @@
+<label class="panel-field">
+  <span class="panel-field-label">Whiskers</span>
+  <p-select
+    [options]="whiskers"
+    [ngModel]="chart().whisker()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().whisker.set($event.value)"
+  />
+</label>
+
+@if (showFactor()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Whisker length ({{ factorUnit() }})</span>
+    <p-inputnumber
+      [ngModel]="chart().whiskerFactor()"
+      (ngModelChange)="chart().whiskerFactor.set($event ?? 1.5)"
+      [min]="0"
+      [maxFractionDigits]="2"
+      [step]="0.5"
+      showButtons
+      fluid
+    />
+  </label>
+}
+
+<label class="panel-field">
+  <span class="panel-field-label">Order boxes by</span>
+  <p-select
+    [options]="sorts"
+    [ngModel]="chart().sort()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().sort.set($event.value)"
+  />
+</label>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="box-show-mean"
+    [ngModel]="chart().showMean()"
+    (onChange)="chart().showMean.set($event.checked)"
+  />
+  <label for="box-show-mean">Show mean marker</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="box-show-n"
+    [ngModel]="chart().showSampleSize()"
+    (onChange)="chart().showSampleSize.set($event.checked)"
+  />
+  <label for="box-show-n">Show sample size (n)</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="box-show-points"
+    [ngModel]="chart().showPoints()"
+    (onChange)="chart().showPoints.set($event.checked)"
+  />
+  <label for="box-show-points">Overlay individual points</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="box-show-capability"
+    [ngModel]="chart().showCapability()"
+    (onChange)="chart().showCapability.set($event.checked)"
+  />
+  <label for="box-show-capability">Show capability (Cp/Cpk)</label>
+</div>
+<span class="panel-hint">Cp/Cpk needs a single value-axis tolerance band as the spec limits.</span>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-horizontal"
+    [ngModel]="chart().horizontal()"
+    (onChange)="chart().horizontal.set($event.checked)"
+  />
+  <label for="chart-horizontal">Horizontal boxes</label>
+</div>

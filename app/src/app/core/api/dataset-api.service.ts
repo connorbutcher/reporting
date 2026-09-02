@@ -17,6 +17,8 @@ import { DatasetQueryResult, FilterGroup } from '../models/filter';
 import {
   BarChartQueryRequest,
   BarChartQueryResult,
+  BoxPlotQueryRequest,
+  BoxPlotQueryResult,
   ChartQueryRequest,
   ChartQueryResult,
   TableQueryRequest,
@@ -86,6 +88,14 @@ export class DatasetApiService {
    */
   queryBarChart(id: number, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
     return this.http.post<BarChartQueryResult>(`/api/datasets/${id}/bar-chart-query`, request);
+  }
+
+  /**
+   * Rows shaped for a box-and-whisker chart: filtered, grouped by the category column, and
+   * each group's measure values reduced to a five-number summary with outliers.
+   */
+  queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
+    return this.http.post<BoxPlotQueryResult>(`/api/datasets/${id}/box-plot-query`, request);
   }
 
   updateColumnConfiguration(

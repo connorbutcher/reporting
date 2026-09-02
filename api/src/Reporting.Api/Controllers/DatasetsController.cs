@@ -170,6 +170,26 @@ public class DatasetsController(
         }
     }
 
+    /// <summary>
+    /// Rows shaped for a box-and-whisker chart: filtered, grouped by the category column,
+    /// and each group's measure values reduced to a five-number summary (with outliers).
+    /// </summary>
+    [HttpPost("{id:int}/box-plot-query")]
+    public async Task<ActionResult<BoxPlotQueryResultDto>> BoxPlotQuery(int id, BoxPlotQueryDto dto)
+    {
+        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
+
+        try
+        {
+            var result = await widgetQueries.QueryForBoxPlotAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
     // --- mutations (Editor, draft only) ---------------------------------------
 
     /// <summary>Replaces a column's typed display configuration; the body's kind must match the column's type.</summary>

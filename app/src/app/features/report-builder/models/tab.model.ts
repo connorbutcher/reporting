@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import {
   DEFAULT_BAR_CHART_CONFIG,
+  DEFAULT_BOX_PLOT_CONFIG,
   DEFAULT_LINE_CHART_CONFIG,
   DEFAULT_SCATTER_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
@@ -106,6 +107,12 @@ export class TabModel extends EditorNode {
           ...base,
           type: 'barChart',
           config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
+        };
+      case 'boxPlot':
+        return {
+          ...base,
+          type: 'boxPlot',
+          config: { type: 'boxPlot', ...DEFAULT_BOX_PLOT_CONFIG },
         };
       case 'staticText':
         return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };

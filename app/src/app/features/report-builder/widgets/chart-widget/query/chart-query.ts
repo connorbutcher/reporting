@@ -2,7 +2,12 @@ import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../../core/models/filter';
 import { ChartSeriesBinding, ChartWidgetConfig, readChartBindings } from '../../../../../core/models/report';
-import { BarChartQueryResult, ChartQueryResult, ChartSeriesResult } from '../../../../../core/models/widget-query';
+import {
+  BarChartQueryResult,
+  BoxPlotQueryResult,
+  ChartQueryResult,
+  ChartSeriesResult,
+} from '../../../../../core/models/widget-query';
 
 /** One binding's point-chart response, tagged with the binding it came from. */
 interface ChartQueryPart {
@@ -28,7 +33,7 @@ export class ChartQuery {
     config: ChartWidgetConfig,
     bindingFilters: Record<string, FilterGroup | null> | null,
     cache?: Map<string, ChartQueryResult>,
-  ): Observable<ChartQueryResult | BarChartQueryResult> | null {
+  ): Observable<ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult> | null {
     const bindings = readChartBindings(config);
 
     if (config.type === 'barChart') {
@@ -45,6 +50,23 @@ export class ChartQuery {
         valueColumnId: needsValue ? primary.yColumnId : null,
         aggregate: config.aggregate,
         seriesColumnId: primary.seriesColumnId,
+        toleranceBands: config.toleranceBands,
+      });
+    }
+
+    if (config.type === 'boxPlot') {
+      const primary = bindings[0];
+      if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+
+      return api.queryBoxPlot(primary.datasetId, {
+        filter: bindingFilters?.[primary.id] ?? null,
+        categoryColumnId: primary.xColumnId,
+        valueColumnId: primary.yColumnId,
+        seriesColumnId: primary.seriesColumnId,
+        whisker: config.whisker,
+        whiskerFactor: config.whiskerFactor,
+        sort: config.sort,
+        includePoints: config.showPoints,
         toleranceBands: config.toleranceBands,
       });
     }

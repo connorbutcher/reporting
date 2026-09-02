@@ -1,4 +1,10 @@
-export type WidgetType = 'dataTable' | 'staticText' | 'scatterChart' | 'lineChart' | 'barChart';
+export type WidgetType =
+  | 'dataTable'
+  | 'staticText'
+  | 'scatterChart'
+  | 'lineChart'
+  | 'barChart'
+  | 'boxPlot';
 
 /** Fields every widget config carries, regardless of type. */
 export interface WidgetConfigBase {

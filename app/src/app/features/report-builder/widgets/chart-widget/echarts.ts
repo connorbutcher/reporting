@@ -1,5 +1,5 @@
 import * as echarts from 'echarts/core';
-import { BarChart, LineChart, ScatterChart } from 'echarts/charts';
+import { BarChart, BoxplotChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   AxisPointerComponent,
   DataZoomComponent,
@@ -14,7 +14,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 
 // Only the pieces the chart widget actually renders, so the bundle carries a
 // fraction of the full echarts build:
-//   - charts: scatter, line, bar (the three widget kinds)
+//   - charts: scatter, line, bar, boxplot (the widget kinds; boxplot reuses scatter for outliers)
 //   - grid + axis pointer: the plot area and the bar tooltip's shadow pointer
 //   - tooltip / legend: hover detail and the multi-series legend
 //   - markLine / markArea: tolerance reference lines and shaded spec zones
@@ -25,6 +25,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 // component here too, or echarts silently drops it at runtime.
 echarts.use([
   BarChart,
+  BoxplotChart,
   LineChart,
   ScatterChart,
   GridComponent,

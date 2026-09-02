@@ -38,6 +38,18 @@ export class ToleranceOutline {
     };
   }
 
+  /**
+   * Outline colour for a value *range* (a box's whisker extent) against every active band, or
+   * null when the whole range sits in spec. A box is flagged by whichever of its ends is furthest
+   * out of tolerance — the most severe colour across both ends and all bands wins.
+   */
+  public static forExtent(
+    bands: readonly ResolvedToleranceBand[],
+  ): (low: number, high: number) => string | null {
+    const forValue = ToleranceOutline.forValue(bands);
+    return (low, high) => ToleranceOutline.worse(forValue(low), forValue(high));
+  }
+
   /** An outlined mark: the series colour as fill, bordered in the crossed limit's colour. */
   public static itemStyle(seriesColor: string, borderColor: string): OutlineItemStyle {
     return { color: seriesColor, borderColor, borderWidth: 2 };

@@ -38,7 +38,7 @@
           <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
         </label>
 
-        @if (!barChart() && xIsNumeric()) {
+        @if (!categorical() && xIsNumeric()) {
           <div class="panel-grid-fields">
             <label class="panel-field">
               <span class="panel-field-label">Min</span>
@@ -77,7 +77,7 @@
             />
             <label for="x-scale">Fit to data (don’t start at zero)</label>
           </div>
-        } @else if (!barChart()) {
+        } @else if (!categorical()) {
           <p class="panel-hint">Bounds and log scale apply once the X axis is a numeric column.</p>
         }
       </app-panel-group>
@@ -121,7 +121,7 @@
           <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
         </label>
 
-        @if (!barChart()) {
+        @if (!categorical()) {
           <label class="panel-field">
             <span class="panel-field-label">Side</span>
             <p-select

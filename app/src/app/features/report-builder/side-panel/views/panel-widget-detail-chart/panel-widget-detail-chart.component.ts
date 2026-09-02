@@ -3,13 +3,19 @@ import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
-import { BarChartWidgetModel, ChartWidgetModel, LineChartWidgetModel } from '../../../models/widget.model';
+import {
+  BarChartWidgetModel,
+  BoxPlotWidgetModel,
+  ChartWidgetModel,
+  LineChartWidgetModel,
+} from '../../../models/widget.model';
 import { Aggregate } from '../../../../../core/models/report';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelBarChartOptionsComponent } from '../panel-bar-chart-options/panel-bar-chart-options.component';
+import { PanelBoxPlotOptionsComponent } from '../panel-box-plot-options/panel-box-plot-options.component';
 import { PanelChartAxisListComponent } from '../panel-chart-axis-list/panel-chart-axis-list.component';
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 import { PanelChartToleranceListComponent } from '../panel-chart-tolerance-list/panel-chart-tolerance-list.component';
@@ -26,6 +32,7 @@ import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/pane
     SelectModule,
     PanelGroupComponent,
     PanelBarChartOptionsComponent,
+    PanelBoxPlotOptionsComponent,
     PanelChartAxisListComponent,
     PanelChartSeriesListComponent,
     PanelChartToleranceListComponent,
@@ -60,6 +67,15 @@ export class PanelWidgetDetailChartComponent {
     const chart = this.chart();
     return chart instanceof BarChartWidgetModel ? chart : null;
   });
+
+  /** The model narrowed to a box plot, so box-only fields render only for it. */
+  public readonly boxPlot = computed(() => {
+    const chart = this.chart();
+    return chart instanceof BoxPlotWidgetModel ? chart : null;
+  });
+
+  /** Bar and box plot both bind a category + value + optional series, unlike the point charts. */
+  public readonly categorical = computed(() => !!this.barChart() || !!this.boxPlot());
 
   private readonly navigation = inject(PanelNavigation);
 

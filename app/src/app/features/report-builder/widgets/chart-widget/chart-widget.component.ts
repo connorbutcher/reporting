@@ -5,8 +5,9 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
+import { BarChartQueryResult, BoxPlotQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
 import { WidgetDataSource } from '../widget-data-source';
+import { BoxOption } from './options/box-option';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
 import { ECOption } from './options/chart-option.types';
@@ -46,14 +47,20 @@ export class ChartWidgetComponent {
     const columns = this.source.columns();
     const data = this.source.result();
     const colors = this.seriesColors();
-    return config.type === 'barChart'
-      ? BarOption.build(config, data as BarChartQueryResult | null, columns, colors)
-      : PointOption.build(config, data as ChartQueryResult | null, columns, colors);
+    switch (config.type) {
+      case 'barChart':
+        return BarOption.build(config, data as BarChartQueryResult | null, columns, colors);
+      case 'boxPlot':
+        return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
+      default:
+        return PointOption.build(config, data as ChartQueryResult | null, columns, colors);
+    }
   });
 
   /** A "showing N of M points" note when the server capped a point chart's data, else null. */
   public readonly truncationNote = computed<string | null>(() => {
-    if (this.config().type === 'barChart') return null;
+    // Only point charts (scatter/line) cap their rows; bar and box aggregate server-side.
+    if (!this.isPointChart()) return null;
     const result = this.source.result() as ChartQueryResult | null;
     if (!result?.truncated) return null;
     const plotted = result.series.reduce((n, s) => n + s.points.length, 0);
@@ -62,11 +69,16 @@ export class ChartWidgetComponent {
   });
 
   /** Prompt shown when the chart isn't configured enough to plot, worded per kind. */
-  public readonly configHint = computed(() =>
-    this.config().type === 'barChart'
-      ? 'Pick a category column in the side panel.'
-      : 'Pick an X and a Y column in the side panel.',
-  );
+  public readonly configHint = computed(() => {
+    switch (this.config().type) {
+      case 'barChart':
+        return 'Pick a category column in the side panel.';
+      case 'boxPlot':
+        return 'Pick a category and a value column in the side panel.';
+      default:
+        return 'Pick an X and a Y column in the side panel.';
+    }
+  });
 
   /**
    * The single display state the template renders: a dataset prompt, a config
@@ -88,6 +100,12 @@ export class ChartWidgetComponent {
   public readonly reloading = computed(() => this.loading() && this.source.result() !== null);
 
   private readonly datasetApi = inject(DatasetApiService);
+
+  /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar or box plot. */
+  private readonly isPointChart = computed(() => {
+    const type = this.config().type;
+    return type !== 'barChart' && type !== 'boxPlot';
+  });
 
   /**
    * The first *bound* binding's dataset drives the loaded schema — it names the
@@ -114,13 +132,20 @@ export class ChartWidgetComponent {
       b.seriesColumnId,
     ]);
     const aggregate = config.type === 'barChart' ? config.aggregate : null;
-    return JSON.stringify({ bindings, aggregate, tol: config.toleranceBands, tip: config.tooltipColumns });
+    // Box options that change the server response: whisker mode/length (which values become
+    // outliers), the sort order, and whether raw points are pulled. Mean/n/capability/highlighting
+    // are render-only (the summary always carries mean & σ), so they don't force a reload.
+    const box =
+      config.type === 'boxPlot'
+        ? { w: config.whisker, f: config.whiskerFactor, s: config.sort, p: config.showPoints }
+        : null;
+    return JSON.stringify({ bindings, aggregate, box, tol: config.toleranceBands, tip: config.tooltipColumns });
   });
 
   /** Per-binding response cache so editing one binding doesn't refetch the others. */
   private readonly queryCache = new Map<string, ChartQueryResult>();
 
-  private readonly source = new WidgetDataSource<ChartQueryResult | BarChartQueryResult>({
+  private readonly source = new WidgetDataSource<ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult>({
     datasetId: this.datasetId,
     version: this.datasetVersion,
     api: this.datasetApi,
@@ -151,6 +176,10 @@ export class ChartWidgetComponent {
       const b = bindings[0];
       return !!(b?.datasetId && b.xColumnId && (config.aggregate === 'count' || b.yColumnId));
     }
+    if (config.type === 'boxPlot') {
+      const b = bindings[0];
+      return !!(b?.datasetId && b.xColumnId && b.yColumnId);
+    }
     return bindings.some((b) => b.datasetId && b.xColumnId && b.yColumnId);
   });
 
@@ -158,9 +187,12 @@ export class ChartWidgetComponent {
   private readonly empty = computed(() => {
     const data = this.source.result();
     if (!data) return false;
-    return this.config().type === 'barChart'
-      ? ((data as BarChartQueryResult).categories?.length ?? 0) === 0
-      : (data as ChartQueryResult).series.every((s) => s.points.length === 0);
+    const type = this.config().type;
+    // Bar and box both report emptiness by their category axis; point charts by their series.
+    if (type === 'barChart' || type === 'boxPlot') {
+      return ((data as BarChartQueryResult | BoxPlotQueryResult).categories?.length ?? 0) === 0;
+    }
+    return (data as ChartQueryResult).series.every((s) => s.points.length === 0);
   });
 
   /** Tracks the dataset version the cache was built at, to drop it when columns change. */

@@ -63,6 +63,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'chart',
   },
   {
+    type: 'boxPlot',
+    label: 'Box plot',
+    hint: 'Summarise a column’s spread per category',
+    icon: 'pi pi-chart-bar',
+    group: 'chart',
+  },
+  {
     type: 'staticText',
     label: 'Text',
     hint: 'A styled heading or block of text',

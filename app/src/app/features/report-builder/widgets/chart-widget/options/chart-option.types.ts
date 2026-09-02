@@ -1,4 +1,9 @@
-import type { BarSeriesOption, LineSeriesOption, ScatterSeriesOption } from 'echarts/charts';
+import type {
+  BarSeriesOption,
+  BoxplotSeriesOption,
+  LineSeriesOption,
+  ScatterSeriesOption,
+} from 'echarts/charts';
 import type {
   DataZoomComponentOption,
   GridComponentOption,
@@ -26,6 +31,7 @@ import type {
  */
 export type ECOption = ComposeOption<
   | BarSeriesOption
+  | BoxplotSeriesOption
   | LineSeriesOption
   | ScatterSeriesOption
   | GridComponentOption
@@ -103,6 +109,7 @@ export type LabelCallbackParams = DefaultLabelFormatterCallbackParams;
 
 export type {
   BarSeriesOption,
+  BoxplotSeriesOption,
   LineSeriesOption,
   ScatterSeriesOption,
   XAXisComponentOption,

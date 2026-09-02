@@ -6,7 +6,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { AxisLabelRotation, AxisSide } from '../../../../../core/models/report';
-import { BarChartWidgetModel } from '../../../models/widget.model';
+import { BarChartWidgetModel, BoxPlotWidgetModel } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
@@ -54,6 +54,16 @@ export class PanelChartAxisComponent {
   public readonly barChart = computed(() => {
     const chart = this.chart();
     return chart instanceof BarChartWidgetModel ? chart : null;
+  });
+
+  /**
+   * Whether this chart has a categorical X axis and a single value axis — true for bar and box
+   * plots. The X-axis bounds, log scale, and value-axis-only fields are suppressed the same way
+   * for both, so the template guards on this rather than on the bar type alone.
+   */
+  public readonly categorical = computed(() => {
+    const chart = this.chart();
+    return chart instanceof BarChartWidgetModel || chart instanceof BoxPlotWidgetModel;
   });
 
   /** The value axis being edited with its position, or null for the X axis / once removed. */

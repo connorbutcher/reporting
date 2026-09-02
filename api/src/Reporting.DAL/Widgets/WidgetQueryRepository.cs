@@ -16,6 +16,17 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     private const int MaxChartPoints = 20_000;
 
     /// <summary>
+    /// Ceiling on rows scanned for one box-plot query. A box returns only its five-number summary,
+    /// but every value must be pulled to compute the quartiles in memory, so a runaway dataset is
+    /// capped here. Far past any group size where the summary would meaningfully shift.
+    /// </summary>
+    private const int MaxBoxPlotScanRows = 200_000;
+
+    /// <summary>Ceiling on raw values returned per box for the jittered overlay — a shape-preserving
+    /// sample, not every point, so a large group doesn't bloat the payload.</summary>
+    private const int MaxBoxPointsPerGroup = 300;
+
+    /// <summary>
     /// Narrows to rows that carry a plottable value for the axis column — a string for a text
     /// axis, a date for a date axis, a number otherwise — kept as an expression EF can translate.
     /// </summary>
@@ -44,7 +55,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     public async Task<TableQueryResultDto?> QueryForTableAsync(int id, TableQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         // Keyed by RefId: the client references columns by their stable RefId, and the translator
@@ -73,14 +84,16 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var matching = predicate is null ? all : all.Where(predicate);
 
         var totalRowCount = await all.CountAsync();
-        var matchedRowCount = await matching.CountAsync();
+        // With no filter every row matches, so the second COUNT would just repeat the first.
+        var matchedRowCount = predicate is null ? totalRowCount : await matching.CountAsync();
 
         var sortColumn = dto.SortColumnId is { } sortId ? columnsByRef.GetValueOrDefault(sortId) : null;
         var ordered = ApplySort(matching, sortColumn, dto.SortDirection);
 
         var skip = Math.Max(0, dto.Skip);
         var take = Math.Clamp(dto.Take <= 0 ? 50 : dto.Take, 1, 500);
-        var rows = await ordered.Skip(skip).Take(take).Include(r => r.Cells).ToListAsync();
+        // Read-only projection to DTOs below, so skip change tracking on the materialised rows/cells.
+        var rows = await ordered.Skip(skip).Take(take).Include(r => r.Cells).AsNoTracking().ToListAsync();
 
         var resultRows = rows.Select(row =>
         {
@@ -208,7 +221,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     public async Task<ChartQueryResultDto?> QueryForChartAsync(int id, ChartQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
@@ -258,6 +271,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .OrderBy(r => r.Id)
             .Take(MaxChartPoints)
             .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
+            // Read-only: these rows/cells are projected to points below and discarded, never saved.
+            .AsNoTracking()
             .ToListAsync();
 
         var groups = new Dictionary<string, List<ChartPointDto>>();
@@ -322,7 +337,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     public async Task<BarChartQueryResultDto?> QueryForBarChartAsync(int id, BarChartQueryDto dto)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
         var empty = new BarChartQueryResultDto { Id = dataset.Id, Name = dataset.Name };
@@ -464,6 +479,291 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Series = series,
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
         };
+    }
+
+    /// <summary>
+    /// Rows shaped for a box-and-whisker chart: filtered, then grouped by the category
+    /// column and each group's values in the measure column reduced to a five-number
+    /// summary (min, Q1, median, Q3, max). Unlike bar's single SQL GROUP BY this needs
+    /// every value to compute quartiles, so the lightweight (category, series, value)
+    /// scalars are pulled back and summarised in memory. A series column, if set, splits
+    /// each category into a box per series. Whiskers reach the actual extremes, or 1.5×IQR
+    /// past the quartiles with the remainder returned as outlier points.
+    /// </summary>
+    public async Task<BoxPlotQueryResultDto?> QueryForBoxPlotAsync(int id, BoxPlotQueryDto dto)
+    {
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var empty = new BoxPlotQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+
+        // Bands sit on the value axis; a tolerance filter reuses the band on that axis to narrow
+        // rows by the measure column before they're summarised into boxes.
+        var bounds = await ResolveBandsAsync(dto.ToleranceBands);
+        var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
+
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var matching = predicate is null ? all : all.Where(predicate);
+
+        // A missing category or measure (nothing bound yet) yields an empty chart, the same
+        // graceful no-op the other chart kinds give when their axes aren't set.
+        var categoryColumn = columnsByRef.GetValueOrDefault(dto.CategoryColumnId);
+        if (categoryColumn is null) return empty;
+        var categoryId = categoryColumn.Id;
+
+        var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
+        if (valueColumn is null) return empty;
+        var valueId = valueColumn.Id;
+
+        // A sentinel id matches no cell, so with no series column every row falls into one
+        // group whose key is "" — the single unlabelled series the client expects.
+        var seriesColumn = dto.SeriesColumnId is { } sId ? columnsByRef.GetValueOrDefault(sId) : null;
+        var seriesId = seriesColumn?.Id ?? 0;
+
+        // Only rows carrying a numeric measure can feed a box; a category with none simply
+        // doesn't appear, matching bar's non-count behaviour.
+        var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
+
+        // One scalar row per dataset row — its category, a typed sort key, its series, and its
+        // measure — pivoted out of the cell table. Capped so a runaway dataset can't be pulled
+        // wholesale into memory; the summary of a very large group is unaffected in practice.
+        // Pull only the cells each box needs — the category cell (its three typed forms fetched
+        // together in one subquery, not three), the series key, and the measure — then pivot in
+        // memory. A read-only projection to scalars, so none of it is change-tracked. The value is
+        // never null here: rowsQuery already required a numeric measure on every row.
+        var scanned = await rowsQuery
+            .OrderBy(r => r.Id)
+            .Take(MaxBoxPlotScanRows)
+            .Select(r => new
+            {
+                Category = r.Cells
+                    .Where(c => c.ColumnId == categoryId)
+                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
+                    .FirstOrDefault(),
+                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
+                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var projected = scanned
+            .Select(r => new BoxProjection
+            {
+                Category = r.Category?.StringValue ?? "",
+                SortNumber = r.Category?.NumberValue,
+                SortDate = r.Category?.DateValue,
+                Series = (r.Series ?? "").Trim(),
+                Value = r.Value ?? 0d
+            })
+            .ToList();
+
+        // Values grouped by (category, series) to summarise one box at a time, and pooled per
+        // category (across series) so a median/spread sort has a single figure to rank each on.
+        var valuesByKey = projected
+            .GroupBy(p => (p.Category, p.Series))
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Value).ToList());
+        // Only a median/spread sort needs the values pooled across series, so skip that second
+        // grouping (and its copy of every value) in the common category-order case.
+        var pooledByCategory = dto.Sort == BoxSort.Category
+            ? new Dictionary<string, List<double>>()
+            : projected.GroupBy(p => p.Category).ToDictionary(g => g.Key, g => g.Select(x => x.Value).ToList());
+
+        // The category column's own order first: numerically/chronologically for numeric and date
+        // columns (blanks, whose sort key is null, sink to the end), alphabetically otherwise.
+        var numeric = categoryColumn.Type is DatasetColumnType.Int or DatasetColumnType.Double;
+        var date = categoryColumn.Type is DatasetColumnType.DateTime;
+        var baseOrder = (numeric || date)
+            ? projected
+                .GroupBy(p => p.Category)
+                .Select(g => new
+                {
+                    Category = g.Key,
+                    Sort = numeric ? g.Min(x => x.SortNumber)
+                        : date ? g.Min(x => x.SortDate)?.Ticks
+                        : (double?)null
+                })
+                .OrderBy(c => c.Sort ?? double.MaxValue)
+                .Select(c => c.Category)
+                .ToList()
+            : projected.Select(p => p.Category).Distinct().OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // A median/spread sort re-ranks from that base order (kept as the stable tiebreak).
+        var orderedCategoryKeys = SortCategories(baseOrder, pooledByCategory, dto.Sort);
+        var categoryIndex = orderedCategoryKeys
+            .Select((key, i) => (key, i))
+            .ToDictionary(x => x.key, x => x.i);
+
+        var orderedSeriesKeys = projected
+            .Select(p => p.Series)
+            .Distinct()
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        string SeriesLabel(string key) => seriesColumn is null ? "" : (key.Length == 0 ? "(blank)" : key);
+
+        var series = orderedSeriesKeys.Select(seriesKey =>
+        {
+            var boxes = new List<BoxDto?>(orderedCategoryKeys.Count);
+            var outliers = new List<BoxOutlierDto>();
+            foreach (var categoryKey in orderedCategoryKeys)
+            {
+                if (!valuesByKey.TryGetValue((categoryKey, seriesKey), out var values) || values.Count == 0)
+                {
+                    boxes.Add(null);
+                    continue;
+                }
+                var (box, groupOutliers) = Summarise(values, dto.Whisker, dto.WhiskerFactor, dto.IncludePoints);
+                boxes.Add(box);
+                foreach (var value in groupOutliers)
+                    outliers.Add(new BoxOutlierDto { CategoryIndex = categoryIndex[categoryKey], Value = value });
+            }
+            return new BoxPlotSeriesDto { Label = SeriesLabel(seriesKey), Boxes = boxes, Outliers = outliers };
+        }).ToList();
+
+        var orderedCategories = orderedCategoryKeys
+            .Select(key => key.Length == 0 ? "(blank)" : key)
+            .ToList();
+
+        return new BoxPlotQueryResultDto
+        {
+            Id = dataset.Id,
+            Name = dataset.Name,
+            Categories = orderedCategories,
+            Series = series,
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
+        };
+    }
+
+    /// <summary>
+    /// Reduces one group's values to a box summary: the quartiles, the mean and (sample) standard
+    /// deviation, and the whiskers. The whiskers reach the actual extremes (MinMax), the furthest
+    /// values within <paramref name="factor"/>×IQR of the quartiles (Tukey), or within
+    /// <paramref name="factor"/>×σ of the mean (StdDev); in the latter two, anything beyond the
+    /// fence is returned as an outlier. Quartiles use linear interpolation between closest ranks
+    /// (the type-7 / Excel PERCENTILE.INC method). When <paramref name="includePoints"/> is set the
+    /// box also carries a capped, even sample of its raw values for the jittered overlay.
+    /// </summary>
+    private static (BoxDto Box, List<double> Outliers) Summarise(
+        List<double> values, BoxWhisker whisker, double factor, bool includePoints)
+    {
+        values.Sort();
+        var q1 = Quantile(values, 0.25);
+        var median = Quantile(values, 0.5);
+        var q3 = Quantile(values, 0.75);
+        var mean = values.Average();
+        var stdDev = StdDev(values, mean);
+
+        double low, high;
+        var outliers = new List<double>();
+        if (whisker == BoxWhisker.MinMax)
+        {
+            low = values[0];
+            high = values[^1];
+        }
+        else
+        {
+            // Tukey fences off the quartiles; StdDev fences off the mean. A non-positive factor
+            // would collapse the fences onto the centre, so it's floored at zero.
+            var k = Math.Max(0, factor);
+            double lowerFence, upperFence;
+            if (whisker == BoxWhisker.StdDev)
+            {
+                lowerFence = mean - k * stdDev;
+                upperFence = mean + k * stdDev;
+            }
+            else
+            {
+                var iqr = q3 - q1;
+                lowerFence = q1 - k * iqr;
+                upperFence = q3 + k * iqr;
+            }
+            // Whiskers stop at the most extreme values still inside the fences.
+            low = values.First(v => v >= lowerFence);
+            high = values.Last(v => v <= upperFence);
+            foreach (var v in values)
+                if (v < lowerFence || v > upperFence) outliers.Add(v);
+        }
+
+        var box = new BoxDto
+        {
+            Min = low, Q1 = q1, Median = median, Q3 = q3, Max = high,
+            Mean = mean, StdDev = stdDev, Count = values.Count,
+            Points = includePoints ? SamplePoints(values) : new List<double>()
+        };
+        return (box, outliers);
+    }
+
+    /// <summary>The sample standard deviation (n−1 divisor); 0 for fewer than two values.</summary>
+    private static double StdDev(IReadOnlyList<double> values, double mean)
+    {
+        if (values.Count < 2) return 0;
+        var sum = 0.0;
+        foreach (var v in values)
+        {
+            var d = v - mean;
+            sum += d * d;
+        }
+        return Math.Sqrt(sum / (values.Count - 1));
+    }
+
+    /// <summary>A capped, evenly-spaced sample of an already-sorted list — enough to show the
+    /// distribution's shape in a jittered overlay without shipping every underlying value.</summary>
+    private static List<double> SamplePoints(List<double> sorted)
+    {
+        if (sorted.Count <= MaxBoxPointsPerGroup) return new List<double>(sorted);
+        var step = (double)sorted.Count / MaxBoxPointsPerGroup;
+        var sample = new List<double>(MaxBoxPointsPerGroup);
+        for (var i = 0; i < MaxBoxPointsPerGroup; i++) sample.Add(sorted[(int)(i * step)]);
+        return sample;
+    }
+
+    /// <summary>
+    /// Re-orders the categories by a computed statistic when asked, keeping <paramref name="baseOrder"/>
+    /// (the category column's own order) as the stable tiebreak. The statistic is pooled across every
+    /// series in a category: its median, or its spread (IQR) for the spread sort.
+    /// </summary>
+    private static List<string> SortCategories(
+        List<string> baseOrder, IReadOnlyDictionary<string, List<double>> pooled, BoxSort sort)
+    {
+        if (sort == BoxSort.Category) return baseOrder;
+
+        double Metric(string category)
+        {
+            var values = pooled[category];
+            values.Sort();
+            return sort == BoxSort.SpreadDesc
+                ? Quantile(values, 0.75) - Quantile(values, 0.25)
+                : Quantile(values, 0.5);
+        }
+
+        var indexed = baseOrder.Select((category, i) => (category, i)).ToList();
+        var ranked = sort == BoxSort.MedianAsc
+            ? indexed.OrderBy(x => Metric(x.category)).ThenBy(x => x.i)
+            : indexed.OrderByDescending(x => Metric(x.category)).ThenBy(x => x.i);
+        return ranked.Select(x => x.category).ToList();
+    }
+
+    /// <summary>The p-quantile (0..1) of an already-sorted list, linearly interpolated between ranks.</summary>
+    private static double Quantile(IReadOnlyList<double> sorted, double p)
+    {
+        if (sorted.Count == 1) return sorted[0];
+        var h = (sorted.Count - 1) * p;
+        var lo = (int)Math.Floor(h);
+        if (lo >= sorted.Count - 1) return sorted[^1];
+        return sorted[lo] + (h - lo) * (sorted[lo + 1] - sorted[lo]);
+    }
+
+    /// <summary>One dataset row pivoted to the scalars a box plot groups on: its category
+    /// (blank collapsed to ""), a typed sort key for that category, its series, and its measure.</summary>
+    private sealed class BoxProjection
+    {
+        public string Category { get; set; } = "";
+        public double? SortNumber { get; set; }
+        public DateTime? SortDate { get; set; }
+        public string Series { get; set; } = "";
+        public double Value { get; set; }
     }
 
     /// <summary>One dataset row pivoted to the scalars a bar chart groups on: its category

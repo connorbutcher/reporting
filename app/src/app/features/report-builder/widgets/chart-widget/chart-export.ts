@@ -1,6 +1,10 @@
 import { DatasetColumn } from '../../../../core/models/dataset';
 import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
-import { BarChartQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
+import {
+  BarChartQueryResult,
+  BoxPlotQueryResult,
+  ChartQueryResult,
+} from '../../../../core/models/widget-query';
 import { ChartColumns } from './options/chart-columns';
 import { ChartFormat } from './options/chart-format';
 
@@ -13,13 +17,15 @@ export class ChartExport {
 
   public static csv(
     config: ChartWidgetConfig,
-    data: ChartQueryResult | BarChartQueryResult,
+    data: ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult,
     columns: DatasetColumn[],
     name: string,
   ): void {
     let csv: string;
     if (config.type === 'barChart') {
       csv = ChartExport.barCsv(data as BarChartQueryResult);
+    } else if (config.type === 'boxPlot') {
+      csv = ChartExport.boxCsv(data as BoxPlotQueryResult);
     } else {
       // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
       const primary = readChartBindings(config).find((b) => b.datasetId);
@@ -69,6 +75,31 @@ export class ChartExport {
     data.categories.forEach((category, i) => {
       rows.push([ChartExport.csvCell(category), ...data.series.map((s) => ChartExport.csvCell(s.values[i] ?? ''))].join(','));
     });
+    return rows.join('\n');
+  }
+
+  /** One row per box: its category, series (when split), five-number summary, and row count. */
+  private static boxCsv(data: BoxPlotQueryResult): string {
+    const multi = data.series.length > 1;
+    const header = [...(multi ? ['Series'] : []), 'Category', 'Min', 'Q1', 'Median', 'Q3', 'Max', 'N'];
+    const rows = [header.map(ChartExport.csvCell).join(',')];
+    for (const series of data.series) {
+      series.boxes.forEach((box, i) => {
+        if (!box) return;
+        rows.push(
+          [
+            ...(multi ? [ChartExport.csvCell(series.label)] : []),
+            ChartExport.csvCell(data.categories[i]),
+            box.min,
+            box.q1,
+            box.median,
+            box.q3,
+            box.max,
+            box.count,
+          ].join(','),
+        );
+      });
+    }
     return rows.join('\n');
   }
 

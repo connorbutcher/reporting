@@ -102,6 +102,95 @@
     </span>
     <i class="pi pi-angle-right" aria-hidden="true"></i>
   </button>
+} @else if (boxPlot(); as box) {
+  <app-panel-group label="Data source" icon="⛁">
+    <label class="panel-field">
+      <span class="panel-field-label">Dataset</span>
+      <p-select
+        [options]="datasets()"
+        [ngModel]="box.datasetId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Select a dataset"
+        appendTo="body"
+        [showClear]="true"
+        fluid
+        (onChange)="box.setDataset($event.value ?? null)"
+      />
+    </label>
+  </app-panel-group>
+
+  <app-panel-group label="Boxes" icon="＋">
+    <label class="panel-field">
+      <span class="panel-field-label">Category</span>
+      <p-select
+        [options]="box.schema()?.columns ?? []"
+        [ngModel]="box.xColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Group boxes by"
+        appendTo="body"
+        [disabled]="!box.datasetId()"
+        fluid
+        (onChange)="box.xColumnId.set($event.value ?? null)"
+      />
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">Value</span>
+      <p-select
+        [options]="box.numericColumns()"
+        [ngModel]="box.yColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Column to summarise"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!box.datasetId()"
+        fluid
+        (onChange)="box.yColumnId.set($event.value ?? null)"
+      />
+    </label>
+  </app-panel-group>
+
+  <app-panel-group label="Series" icon="◐">
+    <label class="panel-field">
+      <span class="panel-field-label">Split by (optional)</span>
+      <p-select
+        [options]="box.schema()?.columns ?? []"
+        [ngModel]="box.seriesColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="One box per category"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!box.datasetId()"
+        fluid
+        (onChange)="box.seriesColumnId.set($event.value ?? null)"
+      />
+    </label>
+  </app-panel-group>
+
+  <button
+    type="button"
+    class="panel-menu-item"
+    [disabled]="!box.datasetId()"
+    (click)="navigate({ kind: 'widgetFilters', widgetId: box.id })"
+  >
+    <i class="pi pi-filter" aria-hidden="true"></i>
+    <span class="panel-menu-text">
+      <span class="panel-menu-label">Filters</span>
+      <span class="panel-menu-hint">
+        {{
+          !box.datasetId()
+            ? 'Pick a dataset first'
+            : box.filter.count() === 0
+              ? 'Showing every row'
+              : box.filter.count() + ' condition' + (box.filter.count() > 1 ? 's' : '')
+        }}
+      </span>
+    </span>
+    <i class="pi pi-angle-right" aria-hidden="true"></i>
+  </button>
 } @else {
   <app-panel-chart-series-list [chart]="chart()" />
 }
@@ -109,7 +198,7 @@
 <app-panel-chart-axis-list [chart]="chart()" />
 
 <app-panel-group label="Appearance" icon="▤">
-  @if (!barChart()) {
+  @if (!categorical()) {
     <label class="panel-field">
       <span class="panel-field-label">Point size (px)</span>
       <p-inputnumber
@@ -142,17 +231,19 @@
     <label for="chart-gridlines">Show gridlines</label>
   </div>
 
-  <div class="panel-inline-field">
-    <p-checkbox
-      [binary]="true"
-      inputId="chart-value-labels"
-      [ngModel]="chart().showValueLabels()"
-      (onChange)="chart().showValueLabels.set($event.checked)"
-    />
-    <label for="chart-value-labels">Show value labels</label>
-  </div>
+  @if (!boxPlot()) {
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="chart-value-labels"
+        [ngModel]="chart().showValueLabels()"
+        (onChange)="chart().showValueLabels.set($event.checked)"
+      />
+      <label for="chart-value-labels">Show value labels</label>
+    </div>
+  }
 
-  @if (!barChart()) {
+  @if (!categorical()) {
     <div class="panel-inline-field">
       <p-checkbox
         [binary]="true"
@@ -190,10 +281,13 @@
   @if (barChart(); as bar) {
     <app-panel-bar-chart-options [chart]="bar" />
   }
+  @if (boxPlot(); as box) {
+    <app-panel-box-plot-options [chart]="box" />
+  }
 </app-panel-group>
 
 <app-panel-chart-tolerance-list [chart]="chart()" />
 
-@if (!barChart()) {
+@if (!categorical()) {
   <app-panel-chart-tooltip-columns [chart]="chart()" />
 }

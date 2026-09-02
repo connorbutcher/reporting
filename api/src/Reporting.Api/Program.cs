@@ -56,6 +56,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
     db.Database.Migrate();
     DbSeeder.Seed(db);
+    DbSeeder.SeedBoxPlotShowcase(db);
     DbSeeder.SeedIdentity(db);
 }
 
