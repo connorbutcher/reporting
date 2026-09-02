@@ -69,7 +69,35 @@
             [ariaLabel]="'Operator for condition ' + ($index + 1)"
           />
 
-          @if (condition.operandIndexes().length > 0) {
+          @if (usesValueList(condition)) {
+            @if (isMultiValue(condition)) {
+              <p-multiselect
+                styleClass="filter-value-select"
+                size="small"
+                appendTo="body"
+                display="chip"
+                [filter]="true"
+                [showToggleAll]="false"
+                placeholder="Select values"
+                [options]="valueOptions(condition)"
+                [ngModel]="condition.values()"
+                (ngModelChange)="condition.setValues($event)"
+                [ariaLabel]="'Values for condition ' + ($index + 1)"
+              />
+            } @else {
+              <p-select
+                styleClass="filter-value-select"
+                size="small"
+                appendTo="body"
+                [editable]="true"
+                [options]="valueOptions(condition)"
+                placeholder="value"
+                [ngModel]="condition.values()[0] ?? ''"
+                (ngModelChange)="condition.setValue(0, $event)"
+                [ariaLabel]="'Value for condition ' + ($index + 1)"
+              />
+            }
+          } @else if (condition.operandIndexes().length > 0) {
             <div class="operands">
               @for (i of condition.operandIndexes(); track i) {
                 <input

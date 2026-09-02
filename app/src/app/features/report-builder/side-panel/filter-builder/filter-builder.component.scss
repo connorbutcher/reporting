@@ -39,6 +39,7 @@
   &.filter-row--off {
     .head ::ng-deep .filter-column,
     ::ng-deep .filter-operator,
+    ::ng-deep .filter-value-select,
     .operands {
       opacity: 0.5;
     }
@@ -65,6 +66,7 @@
   }
 }
 
-:host ::ng-deep .filter-operator {
+:host ::ng-deep .filter-operator,
+:host ::ng-deep .filter-value-select {
   width: 100%;
 }

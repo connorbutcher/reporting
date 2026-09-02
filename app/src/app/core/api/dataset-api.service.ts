@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
@@ -96,6 +96,19 @@ export class DatasetApiService {
    */
   queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
     return this.http.post<BoxPlotQueryResult>(`/api/datasets/${id}/box-plot-query`, request);
+  }
+
+  /**
+   * The distinct values a column holds, for the filter panel's value dropdowns — so a column
+   * like "shift" offers its real day/night values rather than free text. Ordered and capped;
+   * `search` narrows to matching values for type-ahead on higher-cardinality columns.
+   */
+  columnValues(datasetId: number, columnId: string, search?: string): Observable<string[]> {
+    let params = new HttpParams();
+    if (search) params = params.set('search', search);
+    return this.http.get<string[]>(`/api/datasets/${datasetId}/columns/${columnId}/values`, {
+      params,
+    });
   }
 
   updateColumnConfiguration(

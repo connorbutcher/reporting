@@ -135,6 +135,11 @@ export class FilterConditionModel extends EditorNode {
     });
   }
 
+  /** Replaces every operand at once — used by the multi-select value picker for "is any of". */
+  setValues(values: readonly string[]): void {
+    this.values.set([...values]);
+  }
+
   /** The operand slots to render — empty when the operator takes none. */
   readonly operandIndexes = computed(() =>
     Array.from({ length: this.descriptor()?.operandCount ?? 0 }, (_, i) => i),
@@ -243,12 +248,15 @@ export class FilterGroupModel extends EditorNode {
   readonly columns: Signal<DatasetColumn[]>;
   /** False until both the schema and the operator catalogue are in. */
   readonly ready: Signal<boolean>;
+  /** The dataset being filtered, for fetching a column's distinct values; null until the schema loads. */
+  readonly datasetId: Signal<number | null>;
 
   constructor(
     dto: FilterGroup | null,
     private readonly context: FilterContext,
   ) {
     super();
+    this.datasetId = computed(() => context.schema()?.id ?? null);
     this.columns = computed(() => {
       const all = context.schema()?.columns ?? [];
       const allowed = context.columns?.();

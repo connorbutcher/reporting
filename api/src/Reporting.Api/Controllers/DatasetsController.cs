@@ -190,6 +190,24 @@ public class DatasetsController(
         }
     }
 
+    /// <summary>
+    /// The distinct values a column holds, for the filter panel's value dropdowns — so a reader
+    /// filtering a column like "shift" picks from its real day/night values instead of typing.
+    /// Ordered and capped; <paramref name="search"/> narrows to matching values for type-ahead.
+    /// </summary>
+    [HttpGet("{id:int}/columns/{columnId:guid}/values")]
+    public async Task<ActionResult<List<string>>> GetColumnValues(
+        int id,
+        Guid columnId,
+        string? search = null,
+        int limit = 50)
+    {
+        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
+
+        var values = await datasets.GetColumnValuesAsync(id, columnId, search, limit);
+        return values is null ? NotFound() : values;
+    }
+
     // --- mutations (Editor, draft only) ---------------------------------------
 
     /// <summary>Replaces a column's typed display configuration; the body's kind must match the column's type.</summary>

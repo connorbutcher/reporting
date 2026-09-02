@@ -94,6 +94,37 @@ public class DatasetRepository(ReportingDbContext db)
     }
 
     /// <summary>
+    /// The distinct non-empty values a column actually holds, for the filter panel's value
+    /// dropdowns — so filtering a column like "shift" offers its real day/night values rather
+    /// than free text. Ordered and capped (a high-cardinality column isn't a dropdown); an
+    /// optional <paramref name="search"/> narrows to matching values for type-ahead. Values are
+    /// matched against the cell's canonical text, so this works for every column type. Null when
+    /// the column doesn't exist (a 404), distinct from an empty list (the column has no values).
+    /// </summary>
+    public async Task<List<string>?> GetColumnValuesAsync(int id, Guid columnId, string? search, int limit)
+    {
+        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
+        if (column is null) return null;
+
+        // A column belongs to exactly one dataset, so every cell carrying its ColumnId is already
+        // scoped to this dataset — no join back to the rows is needed. Filtering by ColumnId and the
+        // non-null string lets this ride the filtered (ColumnId, StringValue) index as an ordered
+        // range scan, which also satisfies the DISTINCT and ORDER BY without a separate sort.
+        var cells = db.DatasetCells
+            .Where(c => c.ColumnId == column.Id && c.StringValue != null && c.StringValue != "");
+
+        if (!string.IsNullOrWhiteSpace(search))
+            cells = cells.Where(c => c.StringValue!.Contains(search));
+
+        return await cells
+            .Select(c => c.StringValue!)
+            .Distinct()
+            .OrderBy(v => v)
+            .Take(Math.Clamp(limit, 1, 500))
+            .ToListAsync();
+    }
+
+    /// <summary>
     /// Replaces a column's typed display configuration. Null when the column doesn't exist; throws
     /// <see cref="DataValidationException"/> when the config's kind doesn't match the column's type.
     /// </summary>
