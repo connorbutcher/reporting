@@ -8,7 +8,8 @@ import {
   LineDashStyle,
   chartAxisDisplayName,
 } from '../../../../../core/models/report';
-import { LineChartWidgetModel } from '../../../models/widget.model';
+import { ChartBindingModel } from '../../../models/chart-binding.model';
+import { BarChartWidgetModel, LineChartWidgetModel } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
@@ -39,6 +40,18 @@ export class PanelChartSeriesComponent {
 
   /** Line-only options (line style, the 'None' marker) show only for a line chart. */
   public readonly isLine = computed(() => this.chart() instanceof LineChartWidgetModel);
+
+  /** The model narrowed to a bar chart, so a bar series shows a category + measures instead of X/Y. */
+  public readonly barChart = computed(() => {
+    const chart = this.chart();
+    return chart instanceof BarChartWidgetModel ? chart : null;
+  });
+
+  /** Whether this series belongs to a bar chart — it picks several measures, not a single Y. */
+  public readonly isBar = computed(() => !!this.barChart());
+
+  /** A bar chart counting rows needs no measure, so its value picker is hidden. */
+  public readonly needsValue = computed(() => this.barChart()?.needsValue() ?? true);
 
   /** The last series can't be removed, so a chart always keeps one. */
   public readonly canRemove = computed(() => (this.chart()?.bindings().length ?? 0) > 1);
@@ -89,6 +102,18 @@ export class PanelChartSeriesComponent {
 
   public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  /**
+   * Adds or removes one measure from a bar series. Checking appends (so the series order follows
+   * the order the user picked); unchecking drops it. Mirrors the first into yColumnId via the model.
+   */
+  public toggleValueColumn(binding: ChartBindingModel, columnId: string, checked: boolean): void {
+    const current = binding.barValueColumnIds();
+    const next = checked
+      ? [...current, columnId]
+      : current.filter((id) => id !== columnId);
+    binding.setValueColumnIds(next);
   }
 
   /** Removes this series and steps back to the list. */

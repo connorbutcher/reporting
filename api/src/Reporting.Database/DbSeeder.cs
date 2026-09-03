@@ -156,6 +156,41 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the stacked-bar showcase report ("Build Cost Breakdown") if it isn't already present.
+    /// Idempotent and independent of the main demo seed (same pattern as <see cref="SeedBoxPlotShowcase"/>),
+    /// so it tops up an existing database without touching the user's own reports. Demonstrates the
+    /// bar chart's multiple value columns stacked into one column per category.
+    /// </summary>
+    public static void SeedStackedBarShowcase(ReportingDbContext db)
+    {
+        const string name = "Build Cost Breakdown";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildCostBreakdownReport(pending, pendingTables, pendingCharts, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
     /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
     /// </summary>
@@ -559,6 +594,149 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// The stacked-bar showcase report: one dataset of per-build cost components, a hero stacked
+    /// column chart (the four costs stacked per model) and a grouped variant of the same measures,
+    /// plus the rows behind them. A single-revision draft, like the torque study.
+    /// </summary>
+    private static Report BuildCostBreakdownReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Build Cost Breakdown",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildCostBreakdown(pending);
+        revision.Datasets.Add(dataset);
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Cost breakdown", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        var modelRef = dataset.Columns.First(c => c.Name == "Engine Model").RefId;
+        var costRefs = new[] { "Material Cost", "Machining Cost", "Assembly Labour", "QA & Test" }
+            .Select(n => dataset.Columns.First(c => c.Name == n).RefId)
+            .ToArray();
+        const string yLabel = "Cost (£)";
+
+        tab.Widgets.Add(TitleWidget("Build Cost Breakdown", 0, 0, 48, 2));
+
+        // Hero stacked column: the four cost components stacked into one bar per model, so the
+        // average build cost and its composition read at a glance — multiple value columns + stacking.
+        var stackedChart = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BarChart, X = 0, Y = 2, W = 28, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(stackedChart);
+        pendingCharts.Add(new PendingChart(stackedChart, () =>
+            BarChartConfigJson("Average build cost by model", dataset, modelRef, costRefs, "average", stacked: true, horizontal: false, yLabel)));
+
+        // The same four measures grouped side by side, so each component is comparable across models.
+        var groupedChart = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BarChart, X = 28, Y = 2, W = 20, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(groupedChart);
+        pendingCharts.Add(new PendingChart(groupedChart, () =>
+            BarChartConfigJson("Cost components compared", dataset, modelRef, costRefs, "average", stacked: false, horizontal: false, yLabel)));
+
+        // The rows behind the charts, so the per-build costs are inspectable.
+        var tableColumns = new[] { "Build ID", "Engine Model", "Material Cost", "Machining Cost", "Assembly Labour", "QA & Test" };
+        var table = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 19, W = 48, H = 11, ConfigJson = "{}" };
+        tab.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, "Per-build costs", tableColumns));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A per-build cost dataset built for the stacked bar: one row per engine build, tagged with its
+    /// model and line, carrying four cost components (material, machining, assembly labour, QA/test).
+    /// Larger engines cost more across the board; each cost jitters a little around its model's base
+    /// so the aggregates differ per build. Deterministic — a fixed RNG seed keeps the data stable.
+    /// </summary>
+    private static Dataset BuildCostBreakdown(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Build Cost Breakdown",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[3,4]}",
+        };
+
+        var buildId = Column(dataset, "Build ID", DatasetColumnType.String, 0);
+        var model = Column(dataset, "Engine Model", DatasetColumnType.String, 1);
+        var line = Column(dataset, "Line", DatasetColumnType.String, 2);
+        var material = Column(dataset, "Material Cost", DatasetColumnType.Double, 3, Gbp);
+        var machining = Column(dataset, "Machining Cost", DatasetColumnType.Double, 4, Gbp);
+        var labour = Column(dataset, "Assembly Labour", DatasetColumnType.Double, 5, Gbp);
+        var qa = Column(dataset, "QA & Test", DatasetColumnType.Double, 6, Gbp);
+
+        // (model, material, machining, labour, QA) base costs in £ — larger engines cost more.
+        var models = new[]
+        {
+            ("I4 2.0L", 1800.0, 900.0, 620.0, 340.0),
+            ("I6 3.0L", 2600.0, 1300.0, 860.0, 450.0),
+            ("V8 5.0L", 4200.0, 2100.0, 1400.0, 700.0),
+            ("V12 6.5L", 6800.0, 3400.0, 2200.0, 1100.0),
+        };
+        var lines = new[] { "Line 1", "Line 2" };
+
+        // Fixed seed → identical data every rebuild.
+        var rng = new Random(20260903);
+        var build = 1;
+        const int perModel = 8;
+
+        double Jitter(double baseCost) => Math.Round(baseCost * (0.94 + rng.NextDouble() * 0.12), 0);
+
+        foreach (var (modelName, mat, mac, lab, q) in models)
+        {
+            for (var i = 0; i < perModel; i++)
+            {
+                AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+                {
+                    [buildId] = $"BC-{build:0000}",
+                    [model] = modelName,
+                    [line] = lines[i % lines.Length],
+                    [material] = Num(Jitter(mat)),
+                    [machining] = Num(Jitter(mac)),
+                    [labour] = Num(Jitter(lab)),
+                    [qa] = Num(Jitter(q)),
+                });
+                build++;
+            }
+        }
+
+        return dataset;
+    }
+
+    /// <summary>
+    /// A bar-chart widget's config JSON, built once the dataset has a primary key. The dataset is
+    /// referenced by that int id; the category and each measure by their stable RefIds.
+    /// <paramref name="valueRefs"/> becomes the binding's <c>valueColumnIds</c> — one series per
+    /// measure — with the first mirrored into <c>yColumnId</c> for single-measure readers. When
+    /// <paramref name="stacked"/> a category's measures pile into one column, else they group side by side.
+    /// </summary>
+    private static string BarChartConfigJson(
+        string title, Dataset dataset, Guid categoryRef, Guid[] valueRefs, string aggregate,
+        bool stacked, bool horizontal, string yAxisLabel)
+    {
+        var bindingId = Guid.NewGuid();
+        var valueIds = string.Join(",", valueRefs.Select(r => $"\"{r}\""));
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"barChart","title":"{{title}}","showTitle":true,
+             "aggregate":"{{aggregate}}","stacked":{{B(stacked)}},"horizontal":{{B(horizontal)}},
+             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{categoryRef}}","yColumnId":"{{valueRefs[0]}}","valueColumnIds":[{{valueIds}}],"seriesColumnId":null,"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
+             "xAxisLabel":"","yAxisLabel":"{{yAxisLabel}}",
+             "zoom":false,"showLegend":true,"pointSize":8,
+             "showGridLines":true,"showValueLabels":false,
+             "toleranceBands":[],"tooltipColumns":[]}
+            """;
+    }
+
+    /// <summary>
     /// A box-plot widget's config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; columns by their stable RefIds. A null <paramref name="seriesRef"/>
     /// plots one box per category; otherwise each category splits into a box per series value.
@@ -754,6 +932,9 @@ public static class DbSeeder
 
     /// <summary>Millimetre measurement formatting at the given precision.</summary>
     private static string Mm(int decimals) => $"{{\"decimals\":{decimals},\"suffix\":\" mm\"}}";
+
+    /// <summary>Whole-pound currency formatting for the cost columns.</summary>
+    private static string Gbp => "{\"decimals\":0,\"prefix\":\"£\"}";
 
     private static string Num(double value) => value.ToString("R", CultureInfo.InvariantCulture);
 

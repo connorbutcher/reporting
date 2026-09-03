@@ -106,6 +106,13 @@ export interface ChartSeriesBinding {
   datasetId: number | null;
   xColumnId: string | null;
   yColumnId: string | null;
+  /**
+   * A bar chart's measures, each plotted as its own series (grouped or stacked). Null/empty on
+   * point and box charts, which use the single {@link yColumnId}. When a bar binding has these,
+   * {@link yColumnId} mirrors the first so code reading a single measure still resolves one.
+   * Read through {@link barValueColumnIds}, which folds a legacy single-measure binding.
+   */
+  valueColumnIds?: string[] | null;
   /** Splits this binding into a separate coloured series per distinct value. Null plots one. */
   seriesColumnId: string | null;
   /**
@@ -309,6 +316,7 @@ export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
   datasetId: null,
   xColumnId: null,
   yColumnId: null,
+  valueColumnIds: null,
   seriesColumnId: null,
   yAxisId: null,
   label: '',

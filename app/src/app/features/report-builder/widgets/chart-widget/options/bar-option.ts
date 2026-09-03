@@ -18,13 +18,23 @@ export class BarOption {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): ECOption | null {
-    // A bar chart is single-binding; its one binding holds the category/value axes.
-    const primary = readChartBindings(config)[0];
+    // The first bound binding names the shared category axis (its dataset's columns are `columns`),
+    // matching how the widget host picks the schema; later bindings overlay their own bars.
+    const bindings = readChartBindings(config);
+    const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     if (!categoryColumn) return null;
 
     const categories = data?.categories ?? [];
     const series = data?.series ?? [];
+
+    // Each series carries the binding it came from: its colour override applies only when the
+    // binding contributes a single series, and stacking piles a binding's own series together.
+    const bindingsById = new Map(bindings.map((b) => [b.id, b]));
+    const seriesPerBinding = new Map<string, number>();
+    for (const s of series) {
+      if (s.bindingId) seriesPerBinding.set(s.bindingId, (seriesPerBinding.get(s.bindingId) ?? 0) + 1);
+    }
 
     const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     const valueConfig = ChartFormat.numericConfig(valueColumn);
@@ -96,15 +106,18 @@ export class BarOption {
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
       series: series.map((s, i): BarSeriesOption => {
-        // A single-series bar chart honours the binding's colour override; a colour-by split
-        // keeps its per-value palette colours.
-        const override = series.length === 1 ? primary?.color : null;
+        // A binding's colour override applies only when it yields a single series; once it splits
+        // (several measures or a colour-by column) each series keeps its own palette colour.
+        const binding = s.bindingId ? bindingsById.get(s.bindingId) : undefined;
+        const single = (s.bindingId ? (seriesPerBinding.get(s.bindingId) ?? 1) : series.length) === 1;
+        const override = single ? (binding?.color ?? null) : null;
         const color = override ?? SeriesColors.forSeries(colors, s.label, i);
         return {
           name: s.label || config.title || 'Series',
           type: 'bar',
-          // A shared stack name piles a category's series into one bar.
-          ...(config.stacked ? { stack: 'total' } : {}),
+          // Stacking piles each binding's own series into one column, so several overlaid
+          // datasets stand as side-by-side stacks rather than all collapsing into one.
+          ...(config.stacked ? { stack: s.bindingId ?? 'total' } : {}),
           itemStyle: { color },
           ...(config.showValueLabels
             ? {

@@ -23,6 +23,22 @@ export class ChartBindingModel extends EditorNode {
   public readonly datasetId = signal<number | null>(null);
   public readonly xColumnId = signal<string | null>(null);
   public readonly yColumnId = signal<string | null>(null);
+  /**
+   * A bar chart's measures, each a series (grouped or stacked). Empty on point/box charts, which
+   * use {@link yColumnId}. Edit through {@link setValueColumnIds}, which mirrors the first into
+   * {@link yColumnId} so single-measure readers (validation, tolerance, CSV) still resolve one.
+   */
+  public readonly valueColumnIds = signal<readonly string[]>([]);
+  /**
+   * The measures the bar editor shows: the explicit list, else a legacy single {@link yColumnId}
+   * folded in. Bar charts read this; point/box charts ignore it and use {@link yColumnId}.
+   */
+  public readonly barValueColumnIds = computed<string[]>(() => {
+    const list = this.valueColumnIds();
+    if (list.length) return [...list];
+    const y = this.yColumnId();
+    return y ? [y] : [];
+  });
   /** Splits this binding into a coloured series per distinct value; null plots one. */
   public readonly seriesColumnId = signal<string | null>(null);
   /** Which value axis to plot against, by id; null falls back to the primary axis. */
@@ -54,6 +70,9 @@ export class ChartBindingModel extends EditorNode {
     this.datasetId.set(binding.datasetId);
     this.xColumnId.set(binding.xColumnId);
     this.yColumnId.set(binding.yColumnId);
+    // Stored as-is (no fold): a legacy single-measure bar binding leaves this empty and is folded
+    // from yColumnId on read (barValueColumnIds), so a point/box binding's yColumnId is never shadowed.
+    this.valueColumnIds.set(binding.valueColumnIds?.filter((id): id is string => !!id) ?? []);
     this.seriesColumnId.set(binding.seriesColumnId);
     this.yAxisId.set(binding.yAxisId);
     this.color.set(binding.color ?? null);
@@ -96,22 +115,33 @@ export class ChartBindingModel extends EditorNode {
     });
   }
 
+  /** Sets the bar measures and mirrors the first into {@link yColumnId} for single-measure readers. */
+  public setValueColumnIds(ids: readonly string[]): void {
+    const clean = ids.filter((id) => !!id);
+    this.valueColumnIds.set(clean);
+    this.yColumnId.set(clean[0] ?? null);
+  }
+
   /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.xColumnId.set(null);
     this.yColumnId.set(null);
+    this.valueColumnIds.set([]);
     this.seriesColumnId.set(null);
     this.filter.clear();
   }
 
   public toDto(): ChartSeriesBinding {
+    const values = this.valueColumnIds();
     return {
       id: this.id,
       datasetId: this.datasetId(),
       xColumnId: this.xColumnId(),
       yColumnId: this.yColumnId(),
+      // Only bar charts populate this; empty stays null so point/box configs are unchanged.
+      valueColumnIds: values.length ? [...values] : null,
       seriesColumnId: this.seriesColumnId(),
       yAxisId: this.yAxisId(),
       color: this.color(),

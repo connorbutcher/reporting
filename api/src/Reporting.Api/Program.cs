@@ -57,6 +57,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
     DbSeeder.Seed(db);
     DbSeeder.SeedBoxPlotShowcase(db);
+    DbSeeder.SeedStackedBarShowcase(db);
     DbSeeder.SeedIdentity(db);
 }
 

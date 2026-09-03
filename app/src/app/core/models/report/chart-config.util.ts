@@ -40,6 +40,17 @@ export function readChartBindings(config: ChartWidgetConfigBase): ChartSeriesBin
 }
 
 /**
+ * A bar binding's measures, in order: prefers {@link ChartSeriesBinding.valueColumnIds}, and folds
+ * a legacy single-measure binding (saved before multiple measures existed) from its
+ * {@link ChartSeriesBinding.yColumnId}. Blanks are dropped; may be empty when nothing is bound.
+ */
+export function barValueColumnIds(binding: ChartSeriesBinding): string[] {
+  const ids = binding.valueColumnIds?.filter((id): id is string => !!id);
+  if (ids?.length) return ids;
+  return binding.yColumnId ? [binding.yColumnId] : [];
+}
+
+/**
  * The chart's value (Y) axes, normalised: prefers {@link ChartWidgetConfigBase.yAxes}, and for
  * charts saved before multiple axes existed synthesises a single primary axis from the deprecated
  * flat {@link ChartWidgetConfigBase.yAxisLabel}. Always returns at least one axis (id

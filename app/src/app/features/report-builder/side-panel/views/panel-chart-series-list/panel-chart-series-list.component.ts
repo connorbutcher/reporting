@@ -1,6 +1,6 @@
 import { Component, inject, input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { ChartBindingModel, ChartWidgetModel } from '../../../models/widget.model';
+import { BarChartWidgetModel, ChartBindingModel, ChartWidgetModel } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
@@ -43,6 +43,17 @@ export class PanelChartSeriesListComponent {
     const columns = binding.schema()?.columns ?? [];
     const nameOf = (id: string | null) => columns.find((c) => c.id === id)?.name;
     const x = nameOf(binding.xColumnId());
+
+    // A bar series groups by a category and can reduce several measures; a point series plots X→Y.
+    if (this.chart() instanceof BarChartWidgetModel) {
+      if (!x) return 'Choose a category';
+      const values = binding
+        .barValueColumnIds()
+        .map((id) => nameOf(id))
+        .filter((name): name is string => !!name);
+      return values.length > 0 ? `${x} → ${values.join(', ')}` : x;
+    }
+
     const y = nameOf(binding.yColumnId());
     if (!x || !y) return 'Choose X and Y columns';
     return `${x} → ${y}`;

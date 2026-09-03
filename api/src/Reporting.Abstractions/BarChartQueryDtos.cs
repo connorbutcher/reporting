@@ -7,8 +7,18 @@ public class BarChartQueryDto
     /// <summary>The column whose distinct values become the bars (any type).</summary>
     public Guid CategoryColumnId { get; set; }
 
-    /// <summary>The numeric column the aggregate reduces. Ignored — and may be empty — for Count.</summary>
+    /// <summary>
+    /// Deprecated single measure — kept so an older caller still resolves. Prefer
+    /// <see cref="ValueColumnIds"/>; when that is empty this is folded into it.
+    /// </summary>
     public Guid? ValueColumnId { get; set; }
+
+    /// <summary>
+    /// The numeric columns the aggregate reduces, each plotted as its own series (grouped
+    /// or stacked). Empty — and ignored — for Count, which counts rows. When empty the
+    /// deprecated <see cref="ValueColumnId"/> is folded in as the single measure.
+    /// </summary>
+    public List<Guid> ValueColumnIds { get; set; } = new();
 
     public Aggregate Aggregate { get; set; } = Aggregate.Sum;
 
@@ -20,8 +30,14 @@ public class BarChartQueryDto
 
 public class BarSeriesDto
 {
-    /// <summary>Resolved series key, "(blank)" already applied. Empty when there's no series column.</summary>
+    /// <summary>Resolved series key from the split (colour-by) column, "(blank)" already applied. Empty when there's no series column.</summary>
     public string Label { get; set; } = string.Empty;
+
+    /// <summary>Which measure this series reduces, when several value columns are plotted; null for Count. Lets the client label a measure's series.</summary>
+    public Guid? ValueColumnId { get; set; }
+
+    /// <summary>The measure column's display name, so the client can label multi-measure series without its schema; empty for Count.</summary>
+    public string ValueColumnLabel { get; set; } = string.Empty;
 
     /// <summary>One entry per category in <see cref="BarChartQueryResultDto.Categories"/> order; null where this series has no rows in that category.</summary>
     public List<double?> Values { get; set; } = new();

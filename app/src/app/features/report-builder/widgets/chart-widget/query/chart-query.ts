@@ -1,9 +1,15 @@
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../../core/models/filter';
-import { ChartSeriesBinding, ChartWidgetConfig, readChartBindings } from '../../../../../core/models/report';
+import {
+  ChartSeriesBinding,
+  ChartWidgetConfig,
+  barValueColumnIds,
+  readChartBindings,
+} from '../../../../../core/models/report';
 import {
   BarChartQueryResult,
+  BarSeriesResult,
   BoxPlotQueryResult,
   ChartQueryResult,
   ChartSeriesResult,
@@ -13,6 +19,12 @@ import {
 interface ChartQueryPart {
   binding: ChartSeriesBinding;
   result: ChartQueryResult;
+}
+
+/** One binding's bar-chart response, tagged with the binding it came from. */
+interface BarChartPart {
+  binding: ChartSeriesBinding;
+  result: BarChartQueryResult;
 }
 
 /** Builds the server query for a chart's current config. */
@@ -37,21 +49,41 @@ export class ChartQuery {
     const bindings = readChartBindings(config);
 
     if (config.type === 'barChart') {
-      const primary = bindings[0];
-      if (!primary?.datasetId) return null;
-      const category = primary.xColumnId;
-      if (!category) return null;
+      // Fan out one aggregate query per bound binding, each on its own dataset, and align their
+      // categories client-side — the bar counterpart of the point charts' per-binding overlay.
       const needsValue = config.aggregate !== 'count';
-      if (needsValue && !primary.yColumnId) return null;
+      const parts = bindings
+        .map((binding): Observable<BarChartPart | null> | null => {
+          if (!binding.datasetId || !binding.xColumnId) return null;
+          const valueColumnIds = barValueColumnIds(binding);
+          if (needsValue && valueColumnIds.length === 0) return null;
 
-      return api.queryBarChart(primary.datasetId, {
-        filter: bindingFilters?.[primary.id] ?? null,
-        categoryColumnId: category,
-        valueColumnId: needsValue ? primary.yColumnId : null,
-        aggregate: config.aggregate,
-        seriesColumnId: primary.seriesColumnId,
-        toleranceBands: config.toleranceBands,
-      });
+          return api
+            .queryBarChart(binding.datasetId, {
+              filter: bindingFilters?.[binding.id] ?? null,
+              categoryColumnId: binding.xColumnId,
+              valueColumnIds: needsValue ? valueColumnIds : [],
+              aggregate: config.aggregate,
+              seriesColumnId: binding.seriesColumnId,
+              toleranceBands: config.toleranceBands,
+            })
+            .pipe(
+              map((result): BarChartPart => ({ binding, result })),
+              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart.
+              catchError(() => of(null)),
+            );
+        })
+        .filter((part): part is Observable<BarChartPart | null> => part !== null);
+
+      if (parts.length === 0) return null;
+
+      return forkJoin(parts).pipe(
+        map((results) => {
+          const ok = results.filter((r): r is BarChartPart => r !== null);
+          if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+          return ChartQuery.mergeBar(ok);
+        }),
+      );
     }
 
     if (config.type === 'boxPlot') {
@@ -173,6 +205,81 @@ export class ChartQuery {
       toleranceBands: first.toleranceBands,
       totalPoints,
       truncated,
+    };
+  }
+
+  /**
+   * Merges each binding's bar response onto one shared category axis: the categories are unioned
+   * in first-seen order (the first binding's ordering leads, novel categories from later bindings
+   * append), and every series' values are re-indexed onto it, filling null where a binding lacks a
+   * category. Each series is tagged with its binding (for its stack group and colour) and given a
+   * composed legend label — binding · measure · split — carrying only the parts that actually vary.
+   * Colliding labels are suffixed so the legend and colour palette can still tell them apart.
+   */
+  private static mergeBar(parts: BarChartPart[]): BarChartQueryResult {
+    const first = parts[0].result;
+    const multiBinding = parts.length > 1;
+
+    // Union the categories, preserving the first binding's order and appending any new ones.
+    const categories: string[] = [];
+    const categoryIndex = new Map<string, number>();
+    for (const { result } of parts) {
+      for (const category of result.categories) {
+        if (!categoryIndex.has(category)) {
+          categoryIndex.set(category, categories.length);
+          categories.push(category);
+        }
+      }
+    }
+
+    const series: BarSeriesResult[] = parts.flatMap(({ binding, result }) => {
+      const base = binding.label.trim() || result.name;
+      // Which naming parts vary within this binding: several measures, or a colour-by split.
+      const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
+      const multiMeasure = measureIds.size > 1;
+      const hasSplit = result.series.some((s) => s.label !== '');
+
+      // This binding's own category positions, to re-index its values onto the unified axis.
+      const localIndex = new Map(result.categories.map((c, i) => [c, i]));
+
+      return result.series.map((s): BarSeriesResult => {
+        const labelParts: string[] = [];
+        if (multiBinding) labelParts.push(base);
+        if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
+        if (hasSplit) labelParts.push(s.label || '(blank)');
+        // Nothing varies (one binding, one measure, no split): fall back to a sensible single name.
+        const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
+
+        return {
+          label,
+          bindingId: binding.id,
+          valueColumnId: s.valueColumnId,
+          values: categories.map((category) => {
+            const i = localIndex.get(category);
+            return i === undefined ? null : (s.values[i] ?? null);
+          }),
+        };
+      });
+    });
+
+    // Suffix only labels that actually repeat, so the palette keys stay distinct.
+    const counts = new Map<string, number>();
+    for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
+    const seen = new Map<string, number>();
+    for (const s of series) {
+      if ((counts.get(s.label) ?? 0) <= 1) continue;
+      const n = (seen.get(s.label) ?? 0) + 1;
+      seen.set(s.label, n);
+      s.label = `${s.label} (${n})`;
+    }
+
+    return {
+      id: first.id,
+      name: first.name,
+      categories,
+      series,
+      // Bands resolve against the primary binding's dataset, matching the schema the panel offers.
+      toleranceBands: first.toleranceBands,
     };
   }
 }

@@ -3,7 +3,7 @@ import { NgxEchartsDirective } from 'ngx-echarts';
 import { ButtonModule } from 'primeng/button';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
+import { ChartWidgetConfig, barValueColumnIds, readChartBindings } from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { BarChartQueryResult, BoxPlotQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
 import { WidgetDataSource } from '../widget-data-source';
@@ -129,6 +129,8 @@ export class ChartWidgetComponent {
       b.datasetId,
       b.xColumnId,
       b.yColumnId,
+      // A bar chart plots several measures; changing them (beyond the mirrored first) must reload.
+      b.valueColumnIds ?? null,
       b.seriesColumnId,
     ]);
     const aggregate = config.type === 'barChart' ? config.aggregate : null;
@@ -173,8 +175,13 @@ export class ChartWidgetComponent {
     const config = this.config();
     const bindings = readChartBindings(config);
     if (config.type === 'barChart') {
-      const b = bindings[0];
-      return !!(b?.datasetId && b.xColumnId && (config.aggregate === 'count' || b.yColumnId));
+      // Any bound binding with a category (and, unless counting, a measure) is enough to plot.
+      return bindings.some(
+        (b) =>
+          b.datasetId &&
+          b.xColumnId &&
+          (config.aggregate === 'count' || barValueColumnIds(b).length > 0),
+      );
     }
     if (config.type === 'boxPlot') {
       const b = bindings[0];

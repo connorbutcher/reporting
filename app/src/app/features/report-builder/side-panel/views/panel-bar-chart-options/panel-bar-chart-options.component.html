@@ -12,7 +12,7 @@
     [binary]="true"
     inputId="chart-stacked"
     [ngModel]="chart().stacked()"
-    [disabled]="!chart().seriesColumnId()"
+    [disabled]="!chart().multiSeries()"
     (onChange)="chart().stacked.set($event.checked)"
   />
   <label for="chart-stacked">Stack series</label>

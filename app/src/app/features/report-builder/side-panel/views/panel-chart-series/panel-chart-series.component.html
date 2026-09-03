@@ -15,36 +15,71 @@
       />
     </label>
 
-    <div class="panel-grid-fields">
+    @if (isBar()) {
       <label class="panel-field">
-        <span class="panel-field-label">X axis</span>
+        <span class="panel-field-label">Category</span>
         <p-select
           [options]="binding.axisColumns()"
           [ngModel]="binding.xColumnId()"
           optionLabel="name"
           optionValue="id"
-          placeholder="Column"
+          placeholder="Group bars by"
           appendTo="body"
           [disabled]="!binding.datasetId()"
           fluid
           (onChange)="binding.xColumnId.set($event.value ?? null)"
         />
       </label>
-      <label class="panel-field">
-        <span class="panel-field-label">Y axis</span>
-        <p-select
-          [options]="binding.axisColumns()"
-          [ngModel]="binding.yColumnId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Column"
-          appendTo="body"
-          [disabled]="!binding.datasetId()"
-          fluid
-          (onChange)="binding.yColumnId.set($event.value ?? null)"
-        />
-      </label>
-    </div>
+      @if (needsValue()) {
+        <div class="panel-field">
+          <span class="panel-field-label">Values</span>
+          @for (col of binding.numericColumns(); track col.id) {
+            <div class="panel-inline-field">
+              <p-checkbox
+                [binary]="true"
+                [inputId]="'value-' + binding.id + '-' + col.id"
+                [ngModel]="binding.barValueColumnIds().includes(col.id)"
+                (onChange)="toggleValueColumn(binding, col.id, $event.checked)"
+              />
+              <label [for]="'value-' + binding.id + '-' + col.id">{{ col.name }}</label>
+            </div>
+          } @empty {
+            <p class="panel-hint">This dataset has no numeric columns to summarise.</p>
+          }
+        </div>
+      }
+    } @else {
+      <div class="panel-grid-fields">
+        <label class="panel-field">
+          <span class="panel-field-label">X axis</span>
+          <p-select
+            [options]="binding.axisColumns()"
+            [ngModel]="binding.xColumnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column"
+            appendTo="body"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.xColumnId.set($event.value ?? null)"
+          />
+        </label>
+        <label class="panel-field">
+          <span class="panel-field-label">Y axis</span>
+          <p-select
+            [options]="binding.axisColumns()"
+            [ngModel]="binding.yColumnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column"
+            appendTo="body"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.yColumnId.set($event.value ?? null)"
+          />
+        </label>
+      </div>
+    }
   </app-panel-group>
 
   <app-panel-group label="Appearance" icon="◐">
@@ -82,38 +117,40 @@
       }
     </div>
 
-    <div class="panel-grid-fields">
-      <label class="panel-field">
-        <span class="panel-field-label">Marker</span>
-        <p-select
-          [options]="symbolOptions()"
-          [ngModel]="binding.symbol()"
-          optionLabel="label"
-          optionValue="value"
-          appendTo="body"
-          [disabled]="!binding.datasetId()"
-          fluid
-          (onChange)="binding.symbol.set($event.value ?? null)"
-        />
-      </label>
-      @if (isLine()) {
+    @if (!isBar()) {
+      <div class="panel-grid-fields">
         <label class="panel-field">
-          <span class="panel-field-label">Line style</span>
+          <span class="panel-field-label">Marker</span>
           <p-select
-            [options]="dashOptions"
-            [ngModel]="binding.dashStyle() ?? 'solid'"
+            [options]="symbolOptions()"
+            [ngModel]="binding.symbol()"
             optionLabel="label"
             optionValue="value"
             appendTo="body"
             [disabled]="!binding.datasetId()"
             fluid
-            (onChange)="binding.dashStyle.set($event.value ?? null)"
+            (onChange)="binding.symbol.set($event.value ?? null)"
           />
         </label>
-      }
-    </div>
+        @if (isLine()) {
+          <label class="panel-field">
+            <span class="panel-field-label">Line style</span>
+            <p-select
+              [options]="dashOptions"
+              [ngModel]="binding.dashStyle() ?? 'solid'"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              [disabled]="!binding.datasetId()"
+              fluid
+              (onChange)="binding.dashStyle.set($event.value ?? null)"
+            />
+          </label>
+        }
+      </div>
+    }
 
-    @if ((chart()?.yAxes()?.length ?? 0) > 1) {
+    @if (!isBar() && (chart()?.yAxes()?.length ?? 0) > 1) {
       <label class="panel-field">
         <span class="panel-field-label">Plot on axis</span>
         <p-select

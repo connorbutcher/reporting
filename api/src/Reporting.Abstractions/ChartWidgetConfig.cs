@@ -136,6 +136,13 @@ public class ChartSeriesBinding
     public Guid? XColumnId { get; set; }
     public Guid? YColumnId { get; set; }
 
+    /// <summary>
+    /// A bar chart's measures, each plotted as its own series (grouped or stacked). Empty/null on
+    /// point and box charts, which use the single <see cref="YColumnId"/>. When a bar binding has
+    /// these, <see cref="YColumnId"/> mirrors the first so older readers still resolve a measure.
+    /// </summary>
+    public List<Guid>? ValueColumnIds { get; set; }
+
     /// <summary>Splits this binding into a separate coloured series per distinct value. Null plots one.</summary>
     public Guid? SeriesColumnId { get; set; }
 
