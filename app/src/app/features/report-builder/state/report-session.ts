@@ -14,6 +14,7 @@ import {
   ChartWidgetModel,
   DataTableWidgetModel,
   ModelSources,
+  PivotTableWidgetModel,
   WidgetModel,
 } from '../models/widget.model';
 import { WidgetSelection } from './widget-selection';
@@ -178,14 +179,16 @@ export class ReportSession {
   });
 
   /** The selected widget, when it's a kind that carries its own filter. */
-  readonly selectedFilterableWidget = computed<DataTableWidgetModel | ChartWidgetModel | null>(
-    () => {
-      const widget = this.selectedWidget();
-      return widget instanceof DataTableWidgetModel || widget instanceof ChartWidgetModel
-        ? widget
-        : null;
-    },
-  );
+  readonly selectedFilterableWidget = computed<
+    DataTableWidgetModel | PivotTableWidgetModel | ChartWidgetModel | null
+  >(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof ChartWidgetModel
+      ? widget
+      : null;
+  });
 
   /**
    * Rebuilds the tree from a snapshot (undo/redo). Built through the constructor

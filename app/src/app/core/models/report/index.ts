@@ -3,5 +3,6 @@ export * from './table-config.model';
 export * from './text-config.model';
 export * from './chart-config.model';
 export * from './chart-config.util';
+export * from './pivot-config.model';
 export * from './widget.model';
 export * from './report-content.model';

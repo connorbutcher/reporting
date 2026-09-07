@@ -5,11 +5,16 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { WidgetType } from '../../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog';
-import { ChartWidgetModel, StaticTextWidgetModel } from '../../../models/widget.model';
+import {
+  ChartWidgetModel,
+  PivotTableWidgetModel,
+  StaticTextWidgetModel,
+} from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { WidgetSelection } from '../../../state/widget-selection';
 import { WidgetCommands } from '../../../state/widget-commands';
 import { PanelWidgetDetailChartComponent } from '../panel-widget-detail-chart/panel-widget-detail-chart.component';
+import { PanelWidgetDetailPivotComponent } from '../panel-widget-detail-pivot/panel-widget-detail-pivot.component';
 import { PanelWidgetDetailTableComponent } from '../panel-widget-detail-table/panel-widget-detail-table.component';
 import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/panel-widget-detail-text.component';
 
@@ -21,6 +26,7 @@ import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/pane
     InputNumberModule,
     InputTextModule,
     PanelWidgetDetailTableComponent,
+    PanelWidgetDetailPivotComponent,
     PanelWidgetDetailChartComponent,
     PanelWidgetDetailTextComponent,
   ],
@@ -41,6 +47,10 @@ export class PanelWidgetDetailComponent {
   protected readonly widgets = this.session.widgets;
 
   protected readonly table = this.session.selectedTableWidget;
+  protected readonly pivot = computed(() => {
+    const widget = this.session.selectedWidget();
+    return widget instanceof PivotTableWidgetModel ? widget : null;
+  });
   protected readonly text = computed(() => {
     const widget = this.session.selectedWidget();
     return widget instanceof StaticTextWidgetModel ? widget : null;

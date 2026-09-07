@@ -3,6 +3,7 @@ import {
   DEFAULT_BAR_CHART_CONFIG,
   DEFAULT_BOX_PLOT_CONFIG,
   DEFAULT_HISTOGRAM_CONFIG,
+  DEFAULT_PIVOT_CONFIG,
   DEFAULT_LINE_CHART_CONFIG,
   DEFAULT_SCATTER_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
@@ -91,6 +92,8 @@ export class TabModel extends EditorNode {
     switch (type) {
       case 'dataTable':
         return { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } };
+      case 'pivotTable':
+        return { ...base, type: 'pivotTable', config: { type: 'pivotTable', ...DEFAULT_PIVOT_CONFIG } };
       case 'scatterChart':
         return {
           ...base,

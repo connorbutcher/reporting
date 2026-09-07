@@ -23,6 +23,8 @@ import {
   ChartQueryResult,
   HistogramQueryRequest,
   HistogramQueryResult,
+  PivotQueryRequest,
+  PivotQueryResult,
   TableQueryRequest,
   TableQueryResult,
 } from '../models/widget-query';
@@ -106,6 +108,14 @@ export class DatasetApiService {
    */
   queryHistogram(id: number, request: HistogramQueryRequest): Observable<HistogramQueryResult> {
     return this.http.post<HistogramQueryResult>(`/api/datasets/${id}/histogram-query`, request);
+  }
+
+  /**
+   * Rows shaped for a pivot / aggregation table: filtered, grouped by the row-dimension columns,
+   * and each group reduced to one value per measure by that measure's aggregate.
+   */
+  queryPivot(id: number, request: PivotQueryRequest): Observable<PivotQueryResult> {
+    return this.http.post<PivotQueryResult>(`/api/datasets/${id}/pivot-query`, request);
   }
 
   /**

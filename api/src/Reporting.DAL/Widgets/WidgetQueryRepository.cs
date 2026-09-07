@@ -38,6 +38,16 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     private const int MaxHistogramBins = 500;
 
     /// <summary>
+    /// Ceiling on rows scanned for one pivot query. Every row must be pulled to be grouped and
+    /// reduced in memory, so a runaway dataset is capped here; the response flags that it happened.
+    /// </summary>
+    private const int MaxPivotScanRows = 200_000;
+
+    /// <summary>Ceiling on the number of grouped rows a pivot returns, so a high-cardinality dimension
+    /// can't fan out into an unbounded table. The grand total still reduces every scanned row.</summary>
+    private const int MaxPivotRows = 2_000;
+
+    /// <summary>
     /// Narrows to rows that carry a plottable value for the axis column — a string for a text
     /// axis, a date for a date axis, a number otherwise — kept as an expression EF can translate.
     /// </summary>
@@ -139,7 +149,188 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         };
     }
 
-    /// <summary>Resolves every tolerance band's bounds in one batch, keyed by the band's client id.</summary>
+    /// <summary>
+    /// Rows shaped for a pivot / aggregation table: filtered, then grouped by the row-dimension
+    /// columns and each group reduced to one value per measure by that measure's aggregate. Because
+    /// the cells are an EAV table, the needed cells are pulled back (capped) and grouped in memory —
+    /// the tabular counterpart of the bar chart's aggregate. An optional grand-total row reduces
+    /// every matched row. Dimension and measure values come back already formatted for display.
+    /// </summary>
+    public async Task<PivotQueryResultDto?> QueryForPivotAsync(int id, PivotQueryDto dto)
+    {
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var result = new PivotQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var matching = predicate is null ? all : all.Where(predicate);
+
+        result.TotalRowCount = await all.CountAsync();
+        result.MatchedRowCount = predicate is null ? result.TotalRowCount : await matching.CountAsync();
+
+        // Dimensions in request order; an unknown column id simply drops out.
+        var rowFields = dto.RowFields
+            .Select(rf => columnsByRef.GetValueOrDefault(rf))
+            .Where(c => c is not null)
+            .Select(c => c!)
+            .ToList();
+
+        // Measures in request order — Count needs no column; every other aggregate needs a resolvable one.
+        var measures = dto.Measures
+            .Select((m, i) => new PivotMeasurePlan(
+                i, m.Aggregate, m.Label,
+                m.Aggregate == Aggregate.Count ? null : columnsByRef.GetValueOrDefault(m.ColumnId ?? Guid.Empty)))
+            .Where(m => m.Aggregate == Aggregate.Count || m.Column is not null)
+            .ToList();
+
+        // Nothing to reduce yet (no valid measure): a graceful empty result, like the charts give.
+        if (measures.Count == 0) return result;
+
+        result.RowFields = rowFields.Select(c => new PivotFieldDto { ColumnId = c.RefId, Label = c.Name }).ToList();
+        result.Measures = measures.Select(m => new PivotMeasureColumnDto
+        {
+            Key = $"m{m.Index}",
+            Label = string.IsNullOrWhiteSpace(m.Label) ? MeasureLabel(m.Aggregate, m.Column) : m.Label,
+            ColumnId = m.Column?.RefId,
+            Aggregate = m.Aggregate,
+        }).ToList();
+
+        // Pull only the cells the pivot reads — the dimensions and the measure columns — capped so a
+        // runaway dataset can't be dragged into memory wholesale.
+        var neededIds = new HashSet<int>(rowFields.Select(c => c.Id));
+        foreach (var m in measures) if (m.Column is not null) neededIds.Add(m.Column.Id);
+
+        var rows = await matching
+            .OrderBy(r => r.Id)
+            .Take(MaxPivotScanRows)
+            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
+            .AsNoTracking()
+            .ToListAsync();
+        var scanTruncated = result.MatchedRowCount > MaxPivotScanRows;
+
+        // Group the scanned rows by their dimension key, accumulating each measure as we go. The key
+        // is the tuple of formatted dimension values; a parallel tuple of typed sort keys orders them.
+        var groups = new Dictionary<string, PivotGroup>();
+        var grand = new PivotGroup(Array.Empty<string>(), Array.Empty<object?>(), measures.Count);
+
+        foreach (var row in rows)
+        {
+            var displays = new string[rowFields.Count];
+            var sortKeys = new object?[rowFields.Count];
+            for (var d = 0; d < rowFields.Count; d++)
+            {
+                var field = rowFields[d];
+                var cell = row.Cells.FirstOrDefault(c => c.ColumnId == field.Id);
+                displays[d] = DimensionDisplay(cell, field);
+                sortKeys[d] = DimensionSortKey(cell, field.Type);
+            }
+
+            var key = string.Join('', displays);
+            if (!groups.TryGetValue(key, out var group))
+            {
+                group = new PivotGroup(displays, sortKeys, measures.Count);
+                groups[key] = group;
+            }
+
+            Accumulate(group, measures, row);
+            Accumulate(grand, measures, row);
+        }
+
+        // Order groups by their dimension sort keys, position by position using each field's type.
+        var ordered = groups.Values
+            .OrderBy(g => g, new PivotGroupComparer(rowFields.Select(c => c.Type).ToList()))
+            .Take(MaxPivotRows)
+            .ToList();
+
+        result.Rows = ordered.Select(g => new PivotRowDto
+        {
+            Dimensions = g.Displays.ToList(),
+            Values = measures.Select((m, i) => MeasureCell(g, m, i)).ToList(),
+        }).ToList();
+
+        if (dto.ShowGrandTotal && rowFields.Count > 0)
+        {
+            // "Total" under the first dimension, the rest blank — the conventional totals row.
+            var totalDims = new List<string>(rowFields.Count) { "Total" };
+            for (var d = 1; d < rowFields.Count; d++) totalDims.Add(string.Empty);
+            result.GrandTotal = new PivotRowDto
+            {
+                Dimensions = totalDims,
+                Values = measures.Select((m, i) => MeasureCell(grand, m, i)).ToList(),
+                IsGrandTotal = true,
+            };
+        }
+
+        result.Truncated = scanTruncated || groups.Count > MaxPivotRows;
+        return result;
+    }
+
+    /// <summary>Adds one row's contribution to a group: each measure's running sum/count/min/max, and the row tally.</summary>
+    private static void Accumulate(PivotGroup group, List<PivotMeasurePlan> measures, DatasetRow row)
+    {
+        group.RowCount++;
+        for (var i = 0; i < measures.Count; i++)
+        {
+            var column = measures[i].Column;
+            if (column is null) continue; // Count reads only the row tally.
+            var value = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id)?.NumberValue;
+            if (value is { } v) group.Measures[i].Add(v);
+        }
+    }
+
+    /// <summary>One measure's value for a group, reduced from its accumulator and formatted for display.</summary>
+    private static PivotCellDto MeasureCell(PivotGroup group, PivotMeasurePlan measure, int index)
+    {
+        var acc = group.Measures[index];
+        double? value = measure.Aggregate switch
+        {
+            Aggregate.Count => group.RowCount,
+            Aggregate.Sum => acc.Count > 0 ? acc.Sum : null,
+            Aggregate.Average => acc.Count > 0 ? acc.Sum / acc.Count : null,
+            Aggregate.Min => acc.Count > 0 ? acc.Min : null,
+            Aggregate.Max => acc.Count > 0 ? acc.Max : null,
+            _ => null,
+        };
+
+        if (value is not { } v) return new PivotCellDto { Value = null, DisplayValue = null };
+
+        // Count is a plain tally (no column formatting); every other aggregate carries the measure
+        // column's own numeric formatting, so £/mm suffixes and decimals come through.
+        var config = measure.Aggregate == Aggregate.Count ? null : measure.Column?.GetConfig() as NumericColumnConfig;
+        return new PivotCellDto { Value = v, DisplayValue = CellFormatter.Number(v, config) };
+    }
+
+    /// <summary>A dimension cell's display string — its formatted value, blank collapsed to "(blank)".</summary>
+    private static string DimensionDisplay(DatasetCell? cell, DatasetColumn column)
+    {
+        var display = cell is null ? null : CellFormatter.Format(cell, column.Type, column.GetConfig());
+        return string.IsNullOrEmpty(display) ? "(blank)" : display;
+    }
+
+    /// <summary>A dimension cell's typed ordering key: a number (date as ticks) for numeric/date columns, else the string.</summary>
+    private static object? DimensionSortKey(DatasetCell? cell, DatasetColumnType type) => type switch
+    {
+        DatasetColumnType.Int or DatasetColumnType.Double => cell?.NumberValue,
+        DatasetColumnType.DateTime => cell?.DateValue?.Ticks,
+        DatasetColumnType.Bool => cell?.BoolValue,
+        _ => cell?.StringValue?.Trim(),
+    };
+
+    /// <summary>The derived header for a measure — "Count", else "&lt;Aggregate&gt; of &lt;Column&gt;".</summary>
+    private static string MeasureLabel(Aggregate aggregate, DatasetColumn? column) => aggregate switch
+    {
+        Aggregate.Count => "Count",
+        Aggregate.Sum => $"Sum of {column?.Name}",
+        Aggregate.Average => $"Average of {column?.Name}",
+        Aggregate.Min => $"Min of {column?.Name}",
+        Aggregate.Max => $"Max of {column?.Name}",
+        _ => column?.Name ?? "Value",
+    };
+
+    /// <summary>Resolves each tolerance band's bounds in one batch, keyed by the band's client id.</summary>
     private async Task<Dictionary<string, ToleranceBounds?>> ResolveBandsAsync(IReadOnlyList<ChartToleranceBand> bands)
     {
         var pointers = bands
@@ -1022,5 +1213,76 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         public double? SortNumber { get; set; }
         public DateTime? SortDate { get; set; }
         public double? Value { get; set; }
+    }
+
+    /// <summary>A resolved pivot measure: its position, aggregate, override label, and the column it reduces (null for Count).</summary>
+    private sealed record PivotMeasurePlan(int Index, Aggregate Aggregate, string Label, DatasetColumn? Column);
+
+    /// <summary>A running reduction of one measure within a group: enough to yield sum, count, average, min, and max.</summary>
+    private sealed class PivotMeasureAcc
+    {
+        public double Sum { get; private set; }
+        public int Count { get; private set; }
+        public double Min { get; private set; } = double.MaxValue;
+        public double Max { get; private set; } = double.MinValue;
+
+        public void Add(double value)
+        {
+            Sum += value;
+            Count++;
+            if (value < Min) Min = value;
+            if (value > Max) Max = value;
+        }
+    }
+
+    /// <summary>One pivot group: its dimension display values, their typed sort keys, and one accumulator per measure.</summary>
+    private sealed class PivotGroup
+    {
+        public string[] Displays { get; }
+        public object?[] SortKeys { get; }
+        public PivotMeasureAcc[] Measures { get; }
+        public int RowCount { get; set; }
+
+        public PivotGroup(string[] displays, object?[] sortKeys, int measureCount)
+        {
+            Displays = displays;
+            SortKeys = sortKeys;
+            Measures = new PivotMeasureAcc[measureCount];
+            for (var i = 0; i < measureCount; i++) Measures[i] = new PivotMeasureAcc();
+        }
+    }
+
+    /// <summary>
+    /// Orders pivot groups by their dimension sort keys, position by position, using each dimension's
+    /// column type — numerically/chronologically for numeric and date columns (blanks last),
+    /// alphabetically otherwise — so the nested rows read in a natural order.
+    /// </summary>
+    private sealed class PivotGroupComparer(IReadOnlyList<DatasetColumnType> types) : IComparer<PivotGroup>
+    {
+        public int Compare(PivotGroup? a, PivotGroup? b)
+        {
+            if (a is null || b is null) return 0;
+            for (var i = 0; i < types.Count; i++)
+            {
+                var order = CompareKey(a.SortKeys[i], b.SortKeys[i], types[i]);
+                if (order != 0) return order;
+            }
+            return 0;
+        }
+
+        private static int CompareKey(object? a, object? b, DatasetColumnType type)
+        {
+            // A missing key sinks to the end, so blank dimensions trail their populated siblings.
+            if (a is null) return b is null ? 0 : 1;
+            if (b is null) return -1;
+
+            return type switch
+            {
+                DatasetColumnType.Int or DatasetColumnType.Double => ((double)a).CompareTo((double)b),
+                DatasetColumnType.DateTime => ((long)a).CompareTo((long)b),
+                DatasetColumnType.Bool => ((bool)a).CompareTo((bool)b),
+                _ => string.Compare((string)a, (string)b, StringComparison.OrdinalIgnoreCase),
+            };
+        }
     }
 }

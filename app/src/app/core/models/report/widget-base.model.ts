@@ -5,7 +5,8 @@ export type WidgetType =
   | 'lineChart'
   | 'barChart'
   | 'boxPlot'
-  | 'histogram';
+  | 'histogram'
+  | 'pivotTable';
 
 /** Fields every widget config carries, regardless of type. */
 export interface WidgetConfigBase {

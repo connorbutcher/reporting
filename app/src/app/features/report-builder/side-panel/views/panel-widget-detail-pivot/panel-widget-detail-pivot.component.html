@@ -1,0 +1,158 @@
+<app-panel-group label="Data source" icon="⛁">
+  <label class="panel-field">
+    <span class="panel-field-label">Dataset</span>
+    <p-select
+      [options]="datasets()"
+      [ngModel]="pivot().datasetId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Select a dataset"
+      appendTo="body"
+      [showClear]="true"
+      fluid
+      (onChange)="pivot().setDataset($event.value ?? null)"
+    />
+  </label>
+</app-panel-group>
+
+<app-panel-group label="Rows" icon="≡">
+  <p class="panel-hint">Group rows by these columns, nested top to bottom.</p>
+  @for (columnId of pivot().rowFields(); track columnId; let i = $index, count = $count) {
+    <div class="panel-pivot-row">
+      <span class="name">{{ columnName().get(columnId) ?? '(removed column)' }}</span>
+      <button
+        type="button"
+        class="icon"
+        aria-label="Move up"
+        [disabled]="i === 0"
+        (click)="pivot().moveRowField(i, -1)"
+      >
+        <i class="pi pi-chevron-up" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="icon"
+        aria-label="Move down"
+        [disabled]="i === count - 1"
+        (click)="pivot().moveRowField(i, 1)"
+      >
+        <i class="pi pi-chevron-down" aria-hidden="true"></i>
+      </button>
+      <button
+        type="button"
+        class="icon remove"
+        aria-label="Remove dimension"
+        (click)="pivot().removeRowField(columnId)"
+      >
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+  <p-select
+    [options]="pivot().availableRowFields()"
+    [ngModel]="null"
+    optionLabel="name"
+    optionValue="id"
+    placeholder="Add a dimension"
+    appendTo="body"
+    [disabled]="!pivot().datasetId()"
+    fluid
+    (onChange)="addRowField($event.value ?? null)"
+  />
+</app-panel-group>
+
+<app-panel-group label="Values" icon="∑">
+  <p class="panel-hint">Each measure summarises a column into its own value column.</p>
+  @for (measure of pivot().measures(); track measure.id) {
+    <div class="panel-pivot-measure">
+      <div class="head">
+        <p-select
+          [options]="aggregates"
+          [ngModel]="measure.aggregate"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="pivot().setMeasureAggregate(measure.id, $event.value)"
+        />
+        <button
+          type="button"
+          class="icon remove"
+          aria-label="Remove measure"
+          (click)="pivot().removeMeasure(measure.id)"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      @if (measure.aggregate !== 'count') {
+        <label class="panel-field">
+          <span class="panel-field-label">Column</span>
+          <p-select
+            [options]="pivot().numericColumns()"
+            [ngModel]="measure.columnId"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column to summarise"
+            appendTo="body"
+            [showClear]="true"
+            [disabled]="!pivot().datasetId()"
+            fluid
+            (onChange)="pivot().updateMeasure(measure.id, { columnId: $event.value ?? null })"
+          />
+        </label>
+      }
+      <label class="panel-field">
+        <span class="panel-field-label">Header (optional)</span>
+        <input
+          pInputText
+          [ngModel]="measure.label"
+          (ngModelChange)="pivot().updateMeasure(measure.id, { label: $event })"
+          placeholder="Auto"
+        />
+      </label>
+    </div>
+  }
+  <p-button
+    label="Add measure"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    [disabled]="!pivot().datasetId()"
+    (onClick)="pivot().addMeasure()"
+  />
+</app-panel-group>
+
+<app-panel-group label="Options" icon="▤">
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="pivot-grand-total"
+      [ngModel]="pivot().showGrandTotal()"
+      (onChange)="pivot().showGrandTotal.set($event.checked)"
+    />
+    <label for="pivot-grand-total">Show grand total row</label>
+  </div>
+</app-panel-group>
+
+<button
+  type="button"
+  class="panel-menu-item"
+  [disabled]="!pivot().datasetId()"
+  (click)="navigate({ kind: 'widgetFilters', widgetId: pivot().id })"
+>
+  <i class="pi pi-filter" aria-hidden="true"></i>
+  <span class="panel-menu-text">
+    <span class="panel-menu-label">Filters</span>
+    <span class="panel-menu-hint">
+      {{
+        !pivot().datasetId()
+          ? 'Pick a dataset first'
+          : pivot().filter.count() === 0
+            ? 'Aggregating every row'
+            : pivot().filter.count() + ' condition' + (pivot().filter.count() > 1 ? 's' : '')
+      }}
+    </span>
+  </span>
+  <i class="pi pi-angle-right" aria-hidden="true"></i>
+</button>

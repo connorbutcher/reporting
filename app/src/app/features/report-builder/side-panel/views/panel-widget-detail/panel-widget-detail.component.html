@@ -59,6 +59,9 @@
     @if (table(); as table) {
       <app-panel-widget-detail-table [table]="table" />
     }
+    @if (pivot(); as pivot) {
+      <app-panel-widget-detail-pivot [pivot]="pivot" />
+    }
     @if (text(); as text) {
       <app-panel-widget-detail-text [text]="text" />
     }

@@ -156,6 +156,9 @@ public static class Mapping
                 foreach (var binding in chart.Bindings) binding.DatasetId = Remap(binding.DatasetId);
                 foreach (var band in chart.ToleranceBands) band.SourceDatasetId = Remap0(band.SourceDatasetId);
                 break;
+            case PivotTableWidgetConfig pivot:
+                pivot.DatasetId = Remap(pivot.DatasetId);
+                break;
         }
 
         return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);

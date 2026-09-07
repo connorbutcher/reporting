@@ -42,6 +42,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'data',
   },
   {
+    type: 'pivotTable',
+    label: 'Pivot table',
+    hint: 'Group rows and summarise columns',
+    icon: 'pi pi-table',
+    group: 'data',
+  },
+  {
     type: 'scatterChart',
     label: 'Scatter chart',
     hint: 'Plot two columns as points',

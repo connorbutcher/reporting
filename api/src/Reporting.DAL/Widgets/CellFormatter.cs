@@ -24,6 +24,12 @@ public static class CellFormatter
         _ => string.IsNullOrEmpty(cell.StringValue) ? null : cell.StringValue
     };
 
+    /// <summary>
+    /// Formats a raw numeric value with a column's numeric configuration — for values that never
+    /// existed as a cell, such as a pivot's aggregated measures. Null config uses the numeric defaults.
+    /// </summary>
+    public static string Number(double value, NumericColumnConfig? config) => FormatNumber(value, config);
+
     private static string FormatNumber(double value, NumericColumnConfig? config)
     {
         config ??= new NumericColumnConfig();

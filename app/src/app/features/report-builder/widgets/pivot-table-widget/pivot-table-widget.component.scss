@@ -1,0 +1,104 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+
+  .count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 4px 10px;
+    border-top: 1px solid var(--app-card-border);
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.7rem;
+
+    .pi {
+      font-size: 0.65rem;
+    }
+
+    // More rows exist than were reduced (the scan/group cap) — worth drawing the eye.
+    &.truncated {
+      color: #92400e;
+      background: #fffbeb;
+    }
+  }
+
+  .status .retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--app-card-border);
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--p-primary-50, #eef3fa);
+      color: var(--app-navy);
+    }
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    padding: 12px;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-align: center;
+
+    &.error {
+      flex-direction: column;
+      color: #e5484d;
+    }
+  }
+
+  .empty {
+    color: #64748b;
+    text-align: center;
+    padding: 16px;
+  }
+}
+
+:host ::ng-deep .p-datatable {
+  font-size: 0.82rem;
+
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  th {
+    background: #f8fafc;
+    color: var(--app-navy, #152a55);
+    font-weight: 600;
+  }
+
+  // Measure values are the numbers to read down a column, so give them the same
+  // tabular monospace the data table uses for its cells; dimension labels stay in
+  // the UI face so they read as headings for their group.
+  td.measure {
+    font-family: var(--app-font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The grand-total row is the summary of the whole pivot — set it apart.
+  tr.grand-total td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: var(--app-navy, #152a55);
+    border-top: 2px solid var(--app-card-border);
+  }
+}

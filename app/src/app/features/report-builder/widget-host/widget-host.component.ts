@@ -2,7 +2,12 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection } from '../../../core/models/report';
 import { GridPreview } from '../grid.util';
-import { ChartWidgetModel, DataTableWidgetModel, WidgetModel } from '../models/widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  PivotTableWidgetModel,
+  WidgetModel,
+} from '../models/widget.model';
 import { DatasetSchema } from '../state/dataset-schema';
 import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
@@ -69,6 +74,13 @@ export class WidgetHostComponent {
     const widget = this.widget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
+  /** The table and pivot both carry a single dataset + own filter, wired identically. */
+  private readonly filterableModel = computed(() => {
+    const widget = this.widget();
+    return widget instanceof DataTableWidgetModel || widget instanceof PivotTableWidgetModel
+      ? widget
+      : null;
+  });
 
   protected readonly datasetVersion = computed(() => this.schema.datasetVersion());
 
@@ -80,12 +92,12 @@ export class WidgetHostComponent {
       this.onColumnReorder(move),
   };
 
-  /** Only the finished conditions, so a half-typed row doesn't blank the table. */
-  protected readonly widgetFilter = computed(() => this.tableModel()?.filter.toQueryDto() ?? null);
+  /** Only the finished conditions, so a half-typed row doesn't blank the table or pivot. */
+  protected readonly widgetFilter = computed(() => this.filterableModel()?.filter.toQueryDto() ?? null);
 
-  /** The report-level filter for a table's dataset, layered over its own. */
+  /** The report-level filter for a table's or pivot's dataset, layered over its own. */
   protected readonly reportFilter = computed(() => {
-    const datasetId = this.tableModel()?.datasetId();
+    const datasetId = this.filterableModel()?.datasetId();
     if (!datasetId) return null;
     return this.reportFilterFor(datasetId);
   });

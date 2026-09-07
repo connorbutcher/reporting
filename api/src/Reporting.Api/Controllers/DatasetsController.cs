@@ -191,6 +191,26 @@ public class DatasetsController(
     }
 
     /// <summary>
+    /// Rows shaped for a pivot / aggregation table: filtered, grouped by the row-dimension columns,
+    /// and each group reduced to one value per measure by that measure's aggregate.
+    /// </summary>
+    [HttpPost("{id:int}/pivot-query")]
+    public async Task<ActionResult<PivotQueryResultDto>> PivotQuery(int id, PivotQueryDto dto)
+    {
+        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
+
+        try
+        {
+            var result = await widgetQueries.QueryForPivotAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
     /// equal ranges with each bin's frequency returned as a bar height.
     /// </summary>

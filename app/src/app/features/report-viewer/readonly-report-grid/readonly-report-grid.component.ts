@@ -39,9 +39,9 @@ export class ReadonlyReportGridComponent {
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
 
-  /** Only a table or chart bound to a dataset has anything to filter. */
+  /** Only a table, pivot, or chart bound to a dataset has anything to filter. */
   protected canFilter(widget: Widget): boolean {
-    if (widget.type === 'dataTable') return !!widget.config.datasetId;
+    if (widget.type === 'dataTable' || widget.type === 'pivotTable') return !!widget.config.datasetId;
     return isChartWidget(widget) && readChartBindings(widget.config).some((b) => !!b.datasetId);
   }
 
@@ -64,7 +64,9 @@ export class ReadonlyReportGridComponent {
   protected widgetFilterFor(widget: Widget): FilterGroup | null {
     const override = this.widgetFilters()?.get(widget.id);
     if (override) return override();
-    return widget.type === 'dataTable' ? widget.config.filter : null;
+    return widget.type === 'dataTable' || widget.type === 'pivotTable'
+      ? widget.config.filter
+      : null;
   }
 
   /**
@@ -114,8 +116,10 @@ export class ReadonlyReportGridComponent {
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
   }
 
-  /** The dataset a table is bound to; charts filter per binding, not through this. */
+  /** The dataset a table or pivot is bound to; charts filter per binding, not through this. */
   private datasetIdOf(widget: Widget): number | null {
-    return widget.type === 'dataTable' ? widget.config.datasetId : null;
+    return widget.type === 'dataTable' || widget.type === 'pivotTable'
+      ? widget.config.datasetId
+      : null;
   }
 }

@@ -5,6 +5,7 @@ import {
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
 } from './chart-config.model';
+import { PivotTableWidgetConfig } from './pivot-config.model';
 import { DataTableWidgetConfig } from './table-config.model';
 import { StaticTextWidgetConfig } from './text-config.model';
 import { WidgetBase } from './widget-base.model';
@@ -16,7 +17,8 @@ export type WidgetConfig =
   | LineChartWidgetConfig
   | BarChartWidgetConfig
   | BoxPlotWidgetConfig
-  | HistogramWidgetConfig;
+  | HistogramWidgetConfig
+  | PivotTableWidgetConfig;
 
 /**
  * A discriminated union on `type`, so narrowing `type` also narrows `config`
@@ -58,6 +60,11 @@ export interface HistogramWidget extends WidgetBase {
   config: HistogramWidgetConfig;
 }
 
+export interface PivotTableWidget extends WidgetBase {
+  type: 'pivotTable';
+  config: PivotTableWidgetConfig;
+}
+
 /** Every chart kind, for code that treats charts uniformly. */
 export type ChartWidget =
   | ScatterChartWidget
@@ -73,4 +80,5 @@ export type Widget =
   | LineChartWidget
   | BarChartWidget
   | BoxPlotWidget
-  | HistogramWidget;
+  | HistogramWidget
+  | PivotTableWidget;

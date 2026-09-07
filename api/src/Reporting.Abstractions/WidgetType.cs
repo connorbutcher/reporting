@@ -8,5 +8,6 @@ public enum WidgetType
     LineChart,
     BarChart,
     BoxPlot,
-    Histogram
+    Histogram,
+    PivotTable
 }

@@ -226,6 +226,41 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the pivot showcase report ("Production Summary") if it isn't already present. Idempotent
+    /// and independent of the main demo seed (same pattern as <see cref="SeedBoxPlotShowcase"/>), so
+    /// it tops up an existing database without touching the user's own reports. Demonstrates the pivot
+    /// grouping by one and by two dimensions, with several measures and a grand-total row.
+    /// </summary>
+    public static void SeedPivotShowcase(ReportingDbContext db)
+    {
+        const string name = "Production Summary";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildProductionSummaryReport(pending, pendingTables, pendingCharts, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
     /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
     /// </summary>
@@ -913,6 +948,165 @@ public static class DbSeeder
              "toleranceBands":{{bandsJson}},"tooltipColumns":[],
              "binMode":"{{binMode}}","binCount":{{binCount}},"binWidth":1,"rangeMin":null,"rangeMax":null,
              "normalize":"{{normalize}}","cumulative":{{B(cumulative)}},"horizontal":false}
+            """;
+    }
+
+    /// <summary>
+    /// A standalone draft report showcasing the pivot table: a run of engine builds tagged with model
+    /// and assembly line, carrying a build cost, build hours, and a rework count. A hero pivot groups
+    /// by model then line and reduces each group to several measures (count, total cost, average
+    /// hours, worst rework); a companion pivot rolls the same measures up to model alone. Both carry a
+    /// grand-total row, and the raw builds sit beneath them.
+    /// </summary>
+    private static Report BuildProductionSummaryReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Production Summary",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildProductionRuns(pending);
+        revision.Datasets.Add(dataset);
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Summary", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        Guid Ref(string columnName) => dataset.Columns.First(c => c.Name == columnName).RefId;
+        var modelRef = Ref("Engine Model");
+        var lineRef = Ref("Assembly Line");
+        var costRef = Ref("Build Cost");
+        var hoursRef = Ref("Build Hours");
+        var reworkRef = Ref("Rework Count");
+
+        // The measures both pivots share: how many builds, their total cost, their average hours, and
+        // the worst rework count — one of each aggregate kind so the showcase covers them all.
+        (Guid? Column, string Aggregate, string Label)[] measures =
+        [
+            (null, "count", "Builds"),
+            (costRef, "sum", "Total cost"),
+            (hoursRef, "average", "Avg hours"),
+            (reworkRef, "max", "Worst rework"),
+        ];
+
+        tab.Widgets.Add(TitleWidget("Production Summary", 0, 0, 48, 2));
+
+        // Hero pivot: grouped by model then line, so each build line reads as its own row nested
+        // under its model, with the four measures across and a grand total beneath.
+        var byModelLine = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.PivotTable, X = 0, Y = 2, W = 28, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(byModelLine);
+        pendingCharts.Add(new PendingChart(byModelLine, () =>
+            PivotConfigJson("Builds by model & line", dataset, [modelRef, lineRef], measures)));
+
+        // Companion pivot: the same measures rolled up to model alone — the higher-level summary.
+        var byModel = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.PivotTable, X = 28, Y = 2, W = 20, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(byModel);
+        pendingCharts.Add(new PendingChart(byModel, () =>
+            PivotConfigJson("Builds by model", dataset, [modelRef], measures)));
+
+        // The rows behind the pivots, so the individual builds are inspectable.
+        var tableColumns = new[] { "Build ID", "Engine Model", "Assembly Line", "Build Cost", "Build Hours", "Rework Count" };
+        var table = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 19, W = 48, H = 11, ConfigJson = "{}" };
+        tab.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, "Production runs", tableColumns));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A per-build dataset built for the pivot: one row per engine build, tagged with its model and
+    /// assembly line, carrying a build cost, build hours, and a rework count. Larger engines cost more
+    /// and take longer; Line 2 runs a little slower and reworks a little more, so the grouped figures
+    /// differ per model and line. Deterministic — a fixed RNG seed keeps the data stable.
+    /// </summary>
+    private static Dataset BuildProductionRuns(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Production Runs",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[2,3]}",
+        };
+
+        var buildId = Column(dataset, "Build ID", DatasetColumnType.String, 0);
+        var model = Column(dataset, "Engine Model", DatasetColumnType.String, 1);
+        var line = Column(dataset, "Assembly Line", DatasetColumnType.String, 2);
+        var cost = Column(dataset, "Build Cost", DatasetColumnType.Double, 3, Gbp);
+        var hours = Column(dataset, "Build Hours", DatasetColumnType.Double, 4, "{\"decimals\":1,\"suffix\":\" h\"}");
+        var rework = Column(dataset, "Rework Count", DatasetColumnType.Int, 5);
+
+        // (model, base cost £, base hours) — larger engines cost more and take longer to build.
+        var models = new[]
+        {
+            ("I4 2.0L", 3600.0, 18.0),
+            ("I6 3.0L", 5200.0, 24.0),
+            ("V8 5.0L", 8400.0, 33.0),
+        };
+        var lines = new[] { "Line 1", "Line 2" };
+
+        // Fixed seed → identical data every rebuild.
+        var rng = new Random(20260908);
+        var build = 1;
+        const int perGroup = 8;
+
+        double Jitter(double baseValue, double spread) => baseValue * (1 - spread + rng.NextDouble() * spread * 2);
+
+        foreach (var (modelName, baseCost, baseHours) in models)
+        {
+            foreach (var lineName in lines)
+            {
+                // Line 2 runs a touch slower and reworks a little more than Line 1 — a visible gap
+                // between the two lines' grouped figures.
+                var slow = lineName == "Line 2";
+                for (var i = 0; i < perGroup; i++)
+                {
+                    var hoursValue = Jitter(baseHours * (slow ? 1.08 : 1.0), 0.10);
+                    var reworkValue = rng.Next(0, slow ? 5 : 3);
+                    AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+                    {
+                        [buildId] = $"PR-{build:0000}",
+                        [model] = modelName,
+                        [line] = lineName,
+                        [cost] = Num(Math.Round(Jitter(baseCost, 0.08), 0)),
+                        [hours] = Num(Math.Round(hoursValue, 1)),
+                        [rework] = reworkValue.ToString(CultureInfo.InvariantCulture),
+                    });
+                    build++;
+                }
+            }
+        }
+
+        return dataset;
+    }
+
+    /// <summary>
+    /// A pivot-table widget's config JSON, built once the dataset has a primary key. The dataset is
+    /// referenced by that int id; the row-dimension and measure columns by their stable RefIds. Each
+    /// measure carries an explicit header; a null measure column is a row count.
+    /// </summary>
+    private static string PivotConfigJson(
+        string title, Dataset dataset, Guid[] rowFieldRefs,
+        (Guid? Column, string Aggregate, string Label)[] measures)
+    {
+        var rows = string.Join(",", rowFieldRefs.Select(r => $"\"{r}\""));
+        var measuresJson = string.Join(",", measures.Select(m =>
+        {
+            var column = m.Column is { } c ? $"\"{c}\"" : "null";
+            return $$"""{"id":"{{Guid.NewGuid()}}","columnId":{{column}},"aggregate":"{{m.Aggregate}}","label":"{{m.Label}}"}""";
+        }));
+        return $$"""
+            {"type":"pivotTable","title":"{{title}}","showTitle":true,
+             "datasetId":{{dataset.Id}},
+             "rowFields":[{{rows}}],
+             "measures":[{{measuresJson}}],
+             "showGrandTotal":true,"filter":null}
             """;
     }
 
