@@ -239,11 +239,28 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Accumulate(grand, measures, row);
         }
 
-        // Order groups by their dimension sort keys, position by position using each field's type.
-        var ordered = groups.Values
-            .OrderBy(g => g, new PivotGroupComparer(rowFields.Select(c => c.Type).ToList()))
-            .Take(MaxPivotRows)
-            .ToList();
+        // Order the groups: by a chosen measure's value when asked (a genuine top-N, since it's
+        // applied before the row cap), otherwise by the dimension keys. The client's sort index is a
+        // request position, so it's mapped to this (filtered) list's position — which is how the
+        // accumulators are keyed. A measure sort keeps the dimension order as the stable tiebreak;
+        // groups with no value for the measure sink last.
+        var dimensionOrder = new PivotGroupComparer(rowFields.Select(c => c.Type).ToList());
+        var sortPos = dto.SortMeasureIndex is { } si ? measures.FindIndex(m => m.Index == si) : -1;
+        IEnumerable<PivotGroup> orderedGroups;
+        if (sortPos >= 0)
+        {
+            var sortMeasure = measures[sortPos];
+            double SortKey(PivotGroup g) => MeasureValue(g, sortMeasure, sortPos)
+                ?? (dto.SortDescending ? double.NegativeInfinity : double.PositiveInfinity);
+            orderedGroups = dto.SortDescending
+                ? groups.Values.OrderByDescending(SortKey).ThenBy(g => g, dimensionOrder)
+                : groups.Values.OrderBy(SortKey).ThenBy(g => g, dimensionOrder);
+        }
+        else
+        {
+            orderedGroups = groups.Values.OrderBy(g => g, dimensionOrder);
+        }
+        var ordered = orderedGroups.Take(MaxPivotRows).ToList();
 
         result.Rows = ordered.Select(g => new PivotRowDto
         {
@@ -281,11 +298,11 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         }
     }
 
-    /// <summary>One measure's value for a group, reduced from its accumulator and formatted for display.</summary>
-    private static PivotCellDto MeasureCell(PivotGroup group, PivotMeasurePlan measure, int index)
+    /// <summary>One measure's reduced value for a group — the figure both the cell and a measure sort read.</summary>
+    private static double? MeasureValue(PivotGroup group, PivotMeasurePlan measure, int index)
     {
         var acc = group.Measures[index];
-        double? value = measure.Aggregate switch
+        return measure.Aggregate switch
         {
             Aggregate.Count => group.RowCount,
             Aggregate.Sum => acc.Count > 0 ? acc.Sum : null,
@@ -294,8 +311,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Aggregate.Max => acc.Count > 0 ? acc.Max : null,
             _ => null,
         };
+    }
 
-        if (value is not { } v) return new PivotCellDto { Value = null, DisplayValue = null };
+    /// <summary>One measure's value for a group, reduced from its accumulator and formatted for display.</summary>
+    private static PivotCellDto MeasureCell(PivotGroup group, PivotMeasurePlan measure, int index)
+    {
+        if (MeasureValue(group, measure, index) is not { } v) return new PivotCellDto { Value = null, DisplayValue = null };
 
         // Count is a plain tally (no column formatting); every other aggregate carries the measure
         // column's own numeric formatting, so £/mm suffixes and decimals come through.

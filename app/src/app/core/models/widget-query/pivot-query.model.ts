@@ -14,6 +14,9 @@ export interface PivotQueryRequest {
   /** The columns rows are grouped by, in order. */
   rowFields: string[];
   measures: PivotMeasureRequest[];
+  /** Index into {@link measures} to order rows by; null orders by the dimension keys. */
+  sortMeasureIndex: number | null;
+  sortDescending: boolean;
   showGrandTotal: boolean;
 }
 

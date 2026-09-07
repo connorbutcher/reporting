@@ -34,6 +34,12 @@ public class PivotTableWidgetConfig : WidgetConfig
     /// <summary>The measures computed for each group, each shown as its own value column.</summary>
     public List<PivotMeasureConfig> Measures { get; set; } = new();
 
+    /// <summary>The measure (by its <see cref="PivotMeasureConfig.Id"/>) the rows are ordered by; null orders by the dimensions.</summary>
+    public string? SortMeasureId { get; set; }
+
+    /// <summary>Orders the measure sort highest-first when true.</summary>
+    public bool SortDescending { get; set; }
+
     /// <summary>Appends a totals row aggregating every matched row.</summary>
     public bool ShowGrandTotal { get; set; } = true;
 

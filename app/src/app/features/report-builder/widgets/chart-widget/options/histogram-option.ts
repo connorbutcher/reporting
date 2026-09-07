@@ -6,7 +6,7 @@ import {
   readChartBindings,
 } from '../../../../../core/models/report';
 import { HistogramQueryResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
-import { BarSeriesOption, ECOption, LabelCallbackParams } from './chart-option.types';
+import { BarSeriesOption, ECOption, LabelCallbackParams, LineSeriesOption } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -77,7 +77,13 @@ export class HistogramOption {
     const countLen = HistogramOption.countLabelLen(series, config.normalize);
     const countAxis = {
       ...countScale,
-      ...(countRotate !== 0 ? { axisLabel: { ...countScale.axisLabel, rotate: countRotate } } : {}),
+      axisLabel: {
+        ...countScale.axisLabel,
+        // Count / frequency (%) / density share one formatter across the axis, tooltip, and labels.
+        formatter: (value: number | string) =>
+          typeof value === 'number' ? HistogramOption.formatCount(value, config.normalize) : String(value),
+        ...(countRotate !== 0 ? { rotate: countRotate } : {}),
+      },
       name: countLabel,
       nameLocation: 'middle' as const,
       nameGap: ChartScale.nameGap(countLen, countRotate, countOrientation),
@@ -95,30 +101,52 @@ export class HistogramOption {
       ...(showLegend ? { legend: { top: 0, data: series.map((s) => s.label), type: 'scroll' } } : {}),
       xAxis: horizontal ? countAxis : binAxis,
       yAxis: horizontal ? binAxis : countAxis,
-      series: series.map((s, i): BarSeriesOption => {
+      series: series.map((s, i): BarSeriesOption | LineSeriesOption => {
         // A colour override applies only to a single, unsplit distribution; once a series column
         // splits it, each series keeps its own palette colour.
         const override = series.length === 1 ? (primary?.color ?? null) : null;
         const color = override ?? SeriesColors.forSeries(colors, s.label, i);
+
+        const label = config.showValueLabels
+          ? {
+              label: {
+                show: true,
+                position: (horizontal ? 'right' : 'top') as 'right' | 'top',
+                formatter: (p: LabelCallbackParams) =>
+                  typeof p.value === 'number' ? HistogramOption.formatCount(p.value, config.normalize) : '',
+              },
+            }
+          : {};
+        const overlays = {
+          ...(i === 0 && marks.length > 0 ? { markLine: { silent: true, symbol: 'none', data: marks } } : {}),
+          ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
+        };
+
+        // A cumulative distribution reads as a rising step line, not a bank of bars; the plain
+        // distribution stays as bars that butt together so adjacent bins read as continuous.
+        if (config.cumulative) {
+          return {
+            name: s.label || config.title || 'Series',
+            type: 'line',
+            step: 'end',
+            symbol: 'none',
+            lineStyle: { color, width: 2 },
+            itemStyle: { color },
+            areaStyle: series.length === 1 ? { color, opacity: 0.12 } : undefined,
+            data: s.values,
+            ...label,
+            ...overlays,
+          };
+        }
+
         return {
           name: s.label || config.title || 'Series',
           type: 'bar',
-          // Adjacent bins read as a continuous distribution, so bars butt together with no gap.
           barCategoryGap: series.length > 1 ? '20%' : '0%',
           itemStyle: { color },
-          ...(config.showValueLabels
-            ? {
-                label: {
-                  show: true,
-                  position: horizontal ? 'right' : 'top',
-                  formatter: (p: LabelCallbackParams) =>
-                    typeof p.value === 'number' ? HistogramOption.formatCount(p.value, config.normalize) : '',
-                },
-              }
-            : {}),
           data: s.values,
-          ...(i === 0 && marks.length > 0 ? { markLine: { silent: true, symbol: 'none', data: marks } } : {}),
-          ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
+          ...label,
+          ...overlays,
         };
       }),
     };
@@ -127,8 +155,10 @@ export class HistogramOption {
   /**
    * Re-expresses each spec band's bounds as positions on the bin *category* axis. A value v sits at
    * fractional category index (v − firstLower) / binWidth − 0.5, so a spec line lands where its
-   * value falls across the bars rather than being snapped to a bin. Bands are dropped when the bins
-   * are missing or degenerate (no width to map onto).
+   * value falls across the bars rather than being snapped to a bin. Only bands on the binned
+   * variable (the X axis) are mapped — a band on the count axis has no meaning across the bins, so
+   * it's dropped rather than drawn in the wrong place. Bands are also dropped when the bins are
+   * missing or degenerate (no width to map onto).
    */
   private static bandsOnBinAxis(
     bands: readonly ResolvedToleranceBand[],
@@ -142,13 +172,15 @@ export class HistogramOption {
     const toIndex = (v: number): number => (v - firstLower) / binWidth - 0.5;
     const at = (v: number | null): number | null => (v === null ? null : toIndex(v));
 
-    return bands.map((band) => ({
-      ...band,
-      min: at(band.min),
-      max: at(band.max),
-      concessionLower: at(band.concessionLower),
-      concessionUpper: at(band.concessionUpper),
-    }));
+    return bands
+      .filter((band) => band.axis === 'x')
+      .map((band) => ({
+        ...band,
+        min: at(band.min),
+        max: at(band.max),
+        concessionLower: at(band.concessionLower),
+        concessionUpper: at(band.concessionUpper),
+      }));
   }
 
   /** The longest formatted count label, in characters, to size a non-overlapping count-axis gap. */
@@ -163,10 +195,15 @@ export class HistogramOption {
   }
 
   private static formatCount(value: number, normalize: HistogramNormalize): string {
-    // Raw counts are whole numbers; a frequency or density is fractional, so keep a few decimals.
-    return normalize === 'count'
-      ? ChartFormat.numeric(value, undefined)
-      : value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    // A relative frequency reads best as a percentage; a density stays a plain fraction; a raw
+    // count is a whole number with grouping.
+    if (normalize === 'frequency') {
+      return `${(value * 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+    }
+    if (normalize === 'density') {
+      return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    }
+    return ChartFormat.numeric(value, undefined);
   }
 
   private static normalizeLabel(normalize: HistogramNormalize): string {

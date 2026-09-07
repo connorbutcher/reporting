@@ -10,6 +10,15 @@ public class PivotQueryDto
     /// <summary>The value columns computed for each group — one output column per measure, in order.</summary>
     public List<PivotMeasureDto> Measures { get; set; } = new();
 
+    /// <summary>
+    /// Index into <see cref="Measures"/> to order the rows by that measure's value; null orders by
+    /// the dimension keys. Applied before the row cap, so it yields a genuine top-N.
+    /// </summary>
+    public int? SortMeasureIndex { get; set; }
+
+    /// <summary>Orders a measure sort highest-first when true; ignored without <see cref="SortMeasureIndex"/>.</summary>
+    public bool SortDescending { get; set; }
+
     /// <summary>Appends a totals row aggregating every matched row across the whole pivot.</summary>
     public bool ShowGrandTotal { get; set; } = true;
 }

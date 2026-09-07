@@ -124,6 +124,34 @@
 </app-panel-group>
 
 <app-panel-group label="Options" icon="▤">
+  <label class="panel-field">
+    <span class="panel-field-label">Sort rows by</span>
+    <p-select
+      [options]="sortOptions()"
+      [ngModel]="pivot().sortMeasureId()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="pivot().sortMeasureId.set($event.value ?? null)"
+    />
+  </label>
+
+  @if (pivot().sortMeasureId()) {
+    <label class="panel-field">
+      <span class="panel-field-label">Direction</span>
+      <p-select
+        [options]="directions"
+        [ngModel]="pivot().sortDescending()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="pivot().sortDescending.set($event.value)"
+      />
+    </label>
+  }
+
   <div class="panel-inline-field">
     <p-checkbox
       [binary]="true"

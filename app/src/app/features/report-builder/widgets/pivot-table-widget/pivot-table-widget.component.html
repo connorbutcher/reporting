@@ -17,6 +17,13 @@
     Add a measure to summarise in the side panel.
   </div>
 } @else {
+  @if (columns().length > 0) {
+    <div class="pivot-actions">
+      <button type="button" aria-label="Download data (CSV)" title="Download data (CSV)" (click)="downloadCsv()">
+        <i class="pi pi-download" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
   <p-table
     [value]="rows()"
     [loading]="loading()"

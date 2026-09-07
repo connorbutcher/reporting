@@ -32,6 +32,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   public readonly rowFields = signal<readonly string[]>([]);
   /** The measures computed per group, each a value column. */
   public readonly measures = signal<readonly PivotMeasure[]>([]);
+  /** The measure the rows are ordered by (by its id); null orders by the dimensions. */
+  public readonly sortMeasureId = signal<string | null>(null);
+  public readonly sortDescending = signal(true);
   public readonly showGrandTotal = signal(true);
 
   /** Rows this widget aggregates, narrowed server-side. */
@@ -53,6 +56,8 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.datasetId.set(config.datasetId);
     this.rowFields.set([...config.rowFields]);
     this.measures.set(config.measures.map((m) => ({ ...m })));
+    this.sortMeasureId.set(config.sortMeasureId ?? null);
+    this.sortDescending.set(config.sortDescending ?? true);
     this.showGrandTotal.set(config.showGrandTotal);
 
     this.schema = computed(() => {
@@ -83,6 +88,7 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.datasetId.set(datasetId);
     this.rowFields.set([]);
     this.measures.set([]);
+    this.sortMeasureId.set(null);
     this.filter.clear();
   }
 
@@ -127,6 +133,9 @@ export class PivotTableWidgetModel extends WidgetModel {
 
   public removeMeasure(id: string): void {
     this.measures.update((measures) => measures.filter((m) => m.id !== id));
+    // Sorting by a measure that's gone would silently fall back to dimension order; clear it so the
+    // panel and the query agree there's no measure sort any more.
+    if (this.sortMeasureId() === id) this.sortMeasureId.set(null);
   }
 
   public moveMeasure(index: number, offset: number): void {
@@ -145,6 +154,8 @@ export class PivotTableWidgetModel extends WidgetModel {
       datasetId: this.datasetId(),
       rowFields: [...this.rowFields()],
       measures: this.measures().map((m) => ({ ...m })),
+      sortMeasureId: this.sortMeasureId(),
+      sortDescending: this.sortDescending(),
       showGrandTotal: this.showGrandTotal(),
       filter: this.filter.toDto(),
     };

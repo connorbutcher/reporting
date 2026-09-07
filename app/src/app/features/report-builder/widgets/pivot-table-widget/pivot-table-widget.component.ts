@@ -20,6 +20,12 @@ interface PivotDisplayRow {
   isGrandTotal: boolean;
 }
 
+/** A CSV cell, quoted and escaped only when it contains a comma, quote, or newline. */
+function csvCell(value: unknown): string {
+  const text = String(value ?? '');
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
 @Component({
   selector: 'app-pivot-table-widget',
   imports: [TableModule],
@@ -51,11 +57,32 @@ export class PivotTableWidgetComponent {
     ];
   });
 
-  /** The grouped rows, each flattened to display strings in column order. */
+  /**
+   * The grouped rows, each flattened to display strings in column order. A dimension cell is blanked
+   * when it — and every dimension to its left — repeats the row above, so a nested grouping reads as
+   * an outline (the parent value shown once) rather than repeating the parent on every child row.
+   */
   public readonly rows = computed<PivotDisplayRow[]>(() => {
     const data = this.source.result();
     if (!data) return [];
-    return data.rows.map((row) => this.toDisplayRow(row));
+
+    const dimCount = data.rowFields.length;
+    let previous: string[] | null = null;
+
+    return data.rows.map((row) => {
+      const display = this.toDisplayRow(row);
+      const cells = [...display.cells];
+      if (previous) {
+        // Blank leading dimension cells while the whole prefix still matches the row above.
+        let samePrefix = true;
+        for (let i = 0; i < dimCount; i++) {
+          if (samePrefix && row.dimensions[i] === previous[i]) cells[i] = '';
+          else samePrefix = false;
+        }
+      }
+      previous = row.dimensions;
+      return { cells, isGrandTotal: display.isGrandTotal };
+    });
   });
 
   /** The totals row when the server returned one, else null. */
@@ -92,19 +119,27 @@ export class PivotTableWidgetComponent {
     version: this.datasetVersion,
     api: this.datasetApi,
     fetch: () => {
-      const datasetId = this.config().datasetId;
-      const measures = this.config().measures;
+      const config = this.config();
+      const datasetId = config.datasetId;
+      const measures = config.measures;
       if (!datasetId || measures.length === 0) return null;
+
+      // The config stores the sort measure by id; the request wants its position in the measures list.
+      const sortIndex = config.sortMeasureId
+        ? measures.findIndex((m) => m.id === config.sortMeasureId)
+        : -1;
 
       return this.datasetApi.queryPivot(datasetId, {
         filter: this.effectiveFilter(),
-        rowFields: this.config().rowFields,
+        rowFields: config.rowFields,
         measures: measures.map((m) => ({
           columnId: m.columnId,
           aggregate: m.aggregate,
           label: m.label,
         })),
-        showGrandTotal: this.config().showGrandTotal,
+        sortMeasureIndex: sortIndex >= 0 ? sortIndex : null,
+        sortDescending: config.sortDescending,
+        showGrandTotal: config.showGrandTotal,
       });
     },
   });
@@ -138,6 +173,8 @@ export class PivotTableWidgetComponent {
       this.effectiveFilter();
       this.config().rowFields;
       this.config().measures;
+      this.config().sortMeasureId;
+      this.config().sortDescending;
       this.config().showGrandTotal;
 
       untracked(() => {
@@ -153,6 +190,29 @@ export class PivotTableWidgetComponent {
     this.source.error.set(false);
     this.source.loading.set(true);
     this.source.reloadNow();
+  }
+
+  /** Saves the pivot as a CSV: a header, one line per group, then the grand total. */
+  public downloadCsv(): void {
+    const data = this.source.result();
+    if (!data) return;
+
+    const header = [...data.rowFields.map((f) => f.label), ...data.measures.map((m) => m.label)];
+    const lines = [header.map(csvCell).join(',')];
+    // Raw numeric measure values (not the £/% display) so the CSV drops straight into a spreadsheet.
+    const rowLine = (r: PivotRow): string =>
+      [...r.dimensions, ...r.values.map((v) => v.value ?? '')].map(csvCell).join(',');
+    for (const row of data.rows) lines.push(rowLine(row));
+    if (data.grandTotal) lines.push(rowLine(data.grandTotal));
+
+    const name = this.config().title?.trim() || 'pivot';
+    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${name}.csv`;
+    anchor.click();
+    // Give the click a beat to start before releasing the object URL.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   /** Source-derived signals, exposed as getters so their backing field stays below the public block. */
