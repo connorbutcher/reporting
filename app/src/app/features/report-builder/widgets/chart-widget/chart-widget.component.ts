@@ -5,12 +5,18 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { ChartWidgetConfig, barValueColumnIds, readChartBindings } from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { BarChartQueryResult, BoxPlotQueryResult, ChartQueryResult } from '../../../../core/models/widget-query';
+import {
+  BarChartQueryResult,
+  BoxPlotQueryResult,
+  ChartQueryResult,
+  HistogramQueryResult,
+} from '../../../../core/models/widget-query';
 import { WidgetDataSource } from '../widget-data-source';
 import { BoxOption } from './options/box-option';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
 import { ECOption } from './options/chart-option.types';
+import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
 import { SeriesPalette } from './options/series-colors';
 import { ChartQuery } from './query/chart-query';
@@ -52,6 +58,8 @@ export class ChartWidgetComponent {
         return BarOption.build(config, data as BarChartQueryResult | null, columns, colors);
       case 'boxPlot':
         return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
+      case 'histogram':
+        return HistogramOption.build(config, data as HistogramQueryResult | null, columns, colors);
       default:
         return PointOption.build(config, data as ChartQueryResult | null, columns, colors);
     }
@@ -75,6 +83,8 @@ export class ChartWidgetComponent {
         return 'Pick a category column in the side panel.';
       case 'boxPlot':
         return 'Pick a category and a value column in the side panel.';
+      case 'histogram':
+        return 'Pick a numeric column in the side panel.';
       default:
         return 'Pick an X and a Y column in the side panel.';
     }
@@ -101,10 +111,10 @@ export class ChartWidgetComponent {
 
   private readonly datasetApi = inject(DatasetApiService);
 
-  /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar or box plot. */
+  /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar, box, or histogram. */
   private readonly isPointChart = computed(() => {
     const type = this.config().type;
-    return type !== 'barChart' && type !== 'boxPlot';
+    return type !== 'barChart' && type !== 'boxPlot' && type !== 'histogram';
   });
 
   /**
@@ -141,13 +151,29 @@ export class ChartWidgetComponent {
       config.type === 'boxPlot'
         ? { w: config.whisker, f: config.whiskerFactor, s: config.sort, p: config.showPoints }
         : null;
-    return JSON.stringify({ bindings, aggregate, box, tol: config.toleranceBands, tip: config.tooltipColumns });
+    // Every histogram binning option changes what the server returns (the bins and their heights),
+    // so all of them force a reload — none is render-only.
+    const hist =
+      config.type === 'histogram'
+        ? {
+            m: config.binMode,
+            c: config.binCount,
+            w: config.binWidth,
+            lo: config.rangeMin,
+            hi: config.rangeMax,
+            n: config.normalize,
+            cu: config.cumulative,
+          }
+        : null;
+    return JSON.stringify({ bindings, aggregate, box, hist, tol: config.toleranceBands, tip: config.tooltipColumns });
   });
 
   /** Per-binding response cache so editing one binding doesn't refetch the others. */
   private readonly queryCache = new Map<string, ChartQueryResult>();
 
-  private readonly source = new WidgetDataSource<ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult>({
+  private readonly source = new WidgetDataSource<
+    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult
+  >({
     datasetId: this.datasetId,
     version: this.datasetVersion,
     api: this.datasetApi,
@@ -187,6 +213,10 @@ export class ChartWidgetComponent {
       const b = bindings[0];
       return !!(b?.datasetId && b.xColumnId && b.yColumnId);
     }
+    if (config.type === 'histogram') {
+      const b = bindings[0];
+      return !!(b?.datasetId && b.xColumnId);
+    }
     return bindings.some((b) => b.datasetId && b.xColumnId && b.yColumnId);
   });
 
@@ -195,9 +225,13 @@ export class ChartWidgetComponent {
     const data = this.source.result();
     if (!data) return false;
     const type = this.config().type;
-    // Bar and box both report emptiness by their category axis; point charts by their series.
+    // Bar and box both report emptiness by their category axis; a histogram by its bins; point
+    // charts by their series.
     if (type === 'barChart' || type === 'boxPlot') {
       return ((data as BarChartQueryResult | BoxPlotQueryResult).categories?.length ?? 0) === 0;
+    }
+    if (type === 'histogram') {
+      return ((data as HistogramQueryResult).bins?.length ?? 0) === 0;
     }
     return (data as ChartQueryResult).series.every((s) => s.points.length === 0);
   });

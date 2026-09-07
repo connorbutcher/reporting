@@ -7,5 +7,6 @@ public enum WidgetType
     ScatterChart,
     LineChart,
     BarChart,
-    BoxPlot
+    BoxPlot,
+    Histogram
 }

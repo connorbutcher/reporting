@@ -70,6 +70,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'chart',
   },
   {
+    type: 'histogram',
+    label: 'Histogram',
+    hint: 'Show how one column’s values are distributed',
+    icon: 'pi pi-chart-bar',
+    group: 'chart',
+  },
+  {
     type: 'staticText',
     label: 'Text',
     hint: 'A styled heading or block of text',

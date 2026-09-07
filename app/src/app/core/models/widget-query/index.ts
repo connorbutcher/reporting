@@ -2,3 +2,4 @@ export * from './table-query.model';
 export * from './chart-query.model';
 export * from './bar-chart-query.model';
 export * from './box-plot-query.model';
+export * from './histogram-query.model';

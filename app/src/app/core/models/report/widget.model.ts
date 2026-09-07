@@ -1,6 +1,7 @@
 import {
   BarChartWidgetConfig,
   BoxPlotWidgetConfig,
+  HistogramWidgetConfig,
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
 } from './chart-config.model';
@@ -14,7 +15,8 @@ export type WidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
   | BarChartWidgetConfig
-  | BoxPlotWidgetConfig;
+  | BoxPlotWidgetConfig
+  | HistogramWidgetConfig;
 
 /**
  * A discriminated union on `type`, so narrowing `type` also narrows `config`
@@ -51,12 +53,18 @@ export interface BoxPlotWidget extends WidgetBase {
   config: BoxPlotWidgetConfig;
 }
 
+export interface HistogramWidget extends WidgetBase {
+  type: 'histogram';
+  config: HistogramWidgetConfig;
+}
+
 /** Every chart kind, for code that treats charts uniformly. */
 export type ChartWidget =
   | ScatterChartWidget
   | LineChartWidget
   | BarChartWidget
-  | BoxPlotWidget;
+  | BoxPlotWidget
+  | HistogramWidget;
 
 export type Widget =
   | DataTableWidget
@@ -64,4 +72,5 @@ export type Widget =
   | ScatterChartWidget
   | LineChartWidget
   | BarChartWidget
-  | BoxPlotWidget;
+  | BoxPlotWidget
+  | HistogramWidget;

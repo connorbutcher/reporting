@@ -191,6 +191,41 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the histogram showcase report ("Bore Diameter Capability") if it isn't already present.
+    /// Idempotent and independent of the main demo seed (same pattern as <see cref="SeedBoxPlotShowcase"/>),
+    /// so it tops up an existing database without touching the user's own reports. Demonstrates the
+    /// histogram's binning and a spec band drawn across the distribution, plus a machine-split overlay.
+    /// </summary>
+    public static void SeedHistogramShowcase(ReportingDbContext db)
+    {
+        const string name = "Bore Diameter Capability";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildBoreCapabilityReport(pending, pendingTables, pendingCharts, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
     /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
     /// </summary>
@@ -711,6 +746,177 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// A standalone draft report showcasing the histogram: a single machined dimension (bore
+    /// diameter) measured across many engine builds on three machines. The pooled distribution is a
+    /// believable bell whose tails cross the spec limits, and one machine sits high while another
+    /// runs low — so the hero histogram (with its spec band) reads as a process-capability view and
+    /// the machine-split overlay shows where each machine's distribution sits. Carries both plus the
+    /// raw table behind them.
+    /// </summary>
+    private static Report BuildBoreCapabilityReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Bore Diameter Capability",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildBoreStudy(pending);
+        revision.Datasets.Add(dataset);
+
+        // A one-row limits dataset gives the binned (X) axis its spec band (LSL/USL) — the reference
+        // lines the distribution's capability is read against, drawn straight across the histogram.
+        var specRowRef = Guid.NewGuid();
+        var spec = new Dataset
+        {
+            Name = "Bore Diameter Spec",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[7]}",
+        };
+        var characteristic = Column(spec, "Characteristic", DatasetColumnType.String, 0);
+        var lsl = Column(spec, "LSL", DatasetColumnType.Double, 1, Mm(2));
+        var usl = Column(spec, "USL", DatasetColumnType.Double, 2, Mm(2));
+        var specRow = new DatasetRow { RefId = specRowRef };
+        spec.Rows.Add(specRow);
+        pending.Add(new PendingCell(specRow, characteristic, "Bore Diameter"));
+        pending.Add(new PendingCell(specRow, lsl, Num(101.55)));
+        pending.Add(new PendingCell(specRow, usl, Num(101.65)));
+        revision.Datasets.Add(spec);
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Distribution", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        var boreRef = dataset.Columns.First(c => c.Name == "Bore Diameter").RefId;
+        var machineRef = dataset.Columns.First(c => c.Name == "Machine").RefId;
+        const string xLabel = "Bore Diameter (mm)";
+
+        tab.Widgets.Add(TitleWidget("Bore Diameter Capability", 0, 0, 48, 2));
+
+        // Hero histogram: the pooled bore-diameter distribution with the spec band drawn across it,
+        // so the process centre, spread, and the tails that fall outside spec read at a glance.
+        var overall = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 0, Y = 2, W = 28, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(overall);
+        pendingCharts.Add(new PendingChart(overall, () =>
+            HistogramConfigJson("Bore diameter distribution", dataset, boreRef, null, xLabel, "Number of builds",
+                binMode: "count", binCount: 20, normalize: "count",
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
+
+        // The same measure split per machine and shown as a relative frequency, so three differently
+        // sized batches are comparable and the high/low machine drift is obvious.
+        var byMachine = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 28, Y = 2, W = 20, H = 17, ConfigJson = "{}" };
+        tab.Widgets.Add(byMachine);
+        pendingCharts.Add(new PendingChart(byMachine, () =>
+            HistogramConfigJson("By machine (relative)", dataset, boreRef, machineRef, xLabel, "Share of builds",
+                binMode: "count", binCount: 20, normalize: "frequency")));
+
+        // The rows behind the histograms, so the individual measurements are inspectable.
+        var tableColumns = new[] { "Sample ID", "Machine", "Bore Diameter", "Measured At" };
+        var table = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 19, W = 48, H = 11, ConfigJson = "{}" };
+        tab.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, "Bore measurements", tableColumns));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A single-measurement dataset built for the histogram: one row per machined bore, tagged with
+    /// the machine it was cut on. Each machine draws from its own normal distribution — one centred,
+    /// one drifted high and wider, one drifted low — so the pooled bell has tails past both spec
+    /// limits. Deterministic: a fixed RNG seed keeps the seeded data identical across rebuilds.
+    /// </summary>
+    private static Dataset BuildBoreStudy(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Bore Diameter Capability",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[7,8]}",
+        };
+
+        var sampleId = Column(dataset, "Sample ID", DatasetColumnType.String, 0);
+        var machine = Column(dataset, "Machine", DatasetColumnType.String, 1);
+        var bore = Column(dataset, "Bore Diameter", DatasetColumnType.Double, 2, Mm(3));
+        var measuredAt = Column(dataset, "Measured At", DatasetColumnType.DateTime, 3, "{\"dateFormat\":\"d MMM yyyy\"}");
+
+        // (machine, mean, sd) — the nominal bore is 101.60 mm with a ±0.05 spec. CNC-02 sits high and
+        // runs wider (tail past the USL); CNC-03 sits low (tail past the LSL); CNC-01 is well centred.
+        var machines = new[]
+        {
+            ("CNC-01", 101.601, 0.011),
+            ("CNC-02", 101.618, 0.016),
+            ("CNC-03", 101.589, 0.013),
+        };
+
+        // Fixed seed → identical data every rebuild.
+        var rng = new Random(20260907);
+        var start = new DateTime(2026, 6, 1);
+        var sample = 1;
+        var day = 0;
+
+        // Standard-normal sample via Box–Muller, so each machine is a believable spread rather than noise.
+        double NextNormal()
+        {
+            var u1 = 1.0 - rng.NextDouble();
+            var u2 = 1.0 - rng.NextDouble();
+            return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
+        }
+
+        const int perMachine = 44;
+        foreach (var (machineName, mean, sd) in machines)
+        {
+            for (var i = 0; i < perMachine; i++)
+            {
+                var value = Math.Clamp(mean + sd * NextNormal(), 101.53, 101.67);
+                AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+                {
+                    [sampleId] = $"BD-{sample:0000}",
+                    [machine] = machineName,
+                    [bore] = Num(Math.Round(value, 3)),
+                    [measuredAt] = Iso(start.AddDays(day)),
+                });
+                sample++;
+                day++;
+            }
+        }
+
+        return dataset;
+    }
+
+    /// <summary>
+    /// A histogram widget's config JSON, built once the dataset has a primary key. The dataset is
+    /// referenced by that int id; the binned column (and any split column) by their stable RefIds.
+    /// A null <paramref name="seriesRef"/> plots one distribution; otherwise each distinct value of
+    /// that column becomes an overlaid series. Bins are a fixed count over the data's own range.
+    /// </summary>
+    private static string HistogramConfigJson(
+        string title, Dataset dataset, Guid valueRef, Guid? seriesRef,
+        string xAxisLabel, string yAxisLabel, string binMode, int binCount, string normalize,
+        bool cumulative = false, string bandsJson = "[]")
+    {
+        var bindingId = Guid.NewGuid();
+        var series = seriesRef is { } s ? $"\"{s}\"" : "null";
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"histogram","title":"{{title}}","showTitle":true,
+             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{valueRef}}","yColumnId":null,"seriesColumnId":{{series}},"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
+             "xAxisLabel":"{{xAxisLabel}}","yAxisLabel":"{{yAxisLabel}}",
+             "zoom":false,"showLegend":{{B(seriesRef is not null)}},"pointSize":8,
+             "showGridLines":true,"showValueLabels":false,
+             "toleranceBands":{{bandsJson}},"tooltipColumns":[],
+             "binMode":"{{binMode}}","binCount":{{binCount}},"binWidth":1,"rangeMin":null,"rangeMax":null,
+             "normalize":"{{normalize}}","cumulative":{{B(cumulative)}},"horizontal":false}
+            """;
+    }
+
+    /// <summary>
     /// A bar-chart widget's config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; the category and each measure by their stable RefIds.
     /// <paramref name="valueRefs"/> becomes the binding's <c>valueColumnIds</c> — one series per
@@ -764,14 +970,16 @@ public static class DbSeeder
     }
 
     /// <summary>
-    /// A single value-axis tolerance band pointing at the spec row's LSL/USL columns, shaded and set
-    /// to outline out-of-spec boxes. Built once the limits dataset has its <paramref name="specDatasetId"/>.
+    /// A single tolerance band pointing at the spec row's LSL/USL columns, shaded and set to outline
+    /// out-of-spec marks. Built once the limits dataset has its <paramref name="specDatasetId"/>. The
+    /// band sits on the value axis for a box plot (<paramref name="axis"/> "y"); a histogram passes
+    /// "x" so the lines fall on the binned variable it plots along.
     /// </summary>
-    private static string SpecBandJson(int specDatasetId, Guid rowRef, Guid minRef, Guid maxRef)
+    private static string SpecBandJson(int specDatasetId, Guid rowRef, Guid minRef, Guid maxRef, string axis = "y")
     {
         var bandId = Guid.NewGuid();
         return $$"""
-            [{"id":"{{bandId}}","axis":"y","yAxisId":null,"sourceDatasetId":{{specDatasetId}},"sourceRowId":"{{rowRef}}","minColumnId":"{{minRef}}","maxColumnId":"{{maxRef}}","fill":true,"outlinePoints":true}]
+            [{"id":"{{bandId}}","axis":"{{axis}}","yAxisId":null,"sourceDatasetId":{{specDatasetId}},"sourceRowId":"{{rowRef}}","minColumnId":"{{minRef}}","maxColumnId":"{{maxRef}}","fill":true,"outlinePoints":true}]
             """;
     }
 

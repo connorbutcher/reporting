@@ -1,0 +1,95 @@
+<label class="panel-field">
+  <span class="panel-field-label">Bins</span>
+  <p-select
+    [options]="binModes"
+    [ngModel]="chart().binMode()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().binMode.set($event.value)"
+  />
+</label>
+
+@if (showBinCount()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Number of bins</span>
+    <p-inputnumber
+      [ngModel]="chart().binCount()"
+      (ngModelChange)="chart().binCount.set($event ?? 10)"
+      [min]="1"
+      [max]="500"
+      [step]="1"
+      showButtons
+      fluid
+    />
+  </label>
+}
+
+@if (showBinWidth()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Bin width</span>
+    <p-inputnumber
+      [ngModel]="chart().binWidth()"
+      (ngModelChange)="chart().binWidth.set($event ?? 1)"
+      [min]="0"
+      [maxFractionDigits]="4"
+      fluid
+    />
+  </label>
+}
+
+<label class="panel-field">
+  <span class="panel-field-label">Range min</span>
+  <p-inputnumber
+    [ngModel]="chart().rangeMin()"
+    (ngModelChange)="chart().rangeMin.set($event ?? null)"
+    [maxFractionDigits]="4"
+    placeholder="Auto (data minimum)"
+    fluid
+  />
+</label>
+
+<label class="panel-field">
+  <span class="panel-field-label">Range max</span>
+  <p-inputnumber
+    [ngModel]="chart().rangeMax()"
+    (ngModelChange)="chart().rangeMax.set($event ?? null)"
+    [maxFractionDigits]="4"
+    placeholder="Auto (data maximum)"
+    fluid
+  />
+</label>
+
+<label class="panel-field">
+  <span class="panel-field-label">Bar height</span>
+  <p-select
+    [options]="normalizations"
+    [ngModel]="chart().normalize()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().normalize.set($event.value)"
+  />
+</label>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="hist-cumulative"
+    [ngModel]="chart().cumulative()"
+    (onChange)="chart().cumulative.set($event.checked)"
+  />
+  <label for="hist-cumulative">Cumulative</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-horizontal"
+    [ngModel]="chart().horizontal()"
+    (onChange)="chart().horizontal.set($event.checked)"
+  />
+  <label for="chart-horizontal">Horizontal bars</label>
+</div>

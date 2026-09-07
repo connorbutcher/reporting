@@ -21,6 +21,8 @@ import {
   BoxPlotQueryResult,
   ChartQueryRequest,
   ChartQueryResult,
+  HistogramQueryRequest,
+  HistogramQueryResult,
   TableQueryRequest,
   TableQueryResult,
 } from '../models/widget-query';
@@ -96,6 +98,14 @@ export class DatasetApiService {
    */
   queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
     return this.http.post<BoxPlotQueryResult>(`/api/datasets/${id}/box-plot-query`, request);
+  }
+
+  /**
+   * Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
+   * equal ranges with each bin's frequency returned as a bar height.
+   */
+  queryHistogram(id: number, request: HistogramQueryRequest): Observable<HistogramQueryResult> {
+    return this.http.post<HistogramQueryResult>(`/api/datasets/${id}/histogram-query`, request);
   }
 
   /**

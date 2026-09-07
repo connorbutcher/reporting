@@ -191,6 +191,26 @@ public class DatasetsController(
     }
 
     /// <summary>
+    /// Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
+    /// equal ranges with each bin's frequency returned as a bar height.
+    /// </summary>
+    [HttpPost("{id:int}/histogram-query")]
+    public async Task<ActionResult<HistogramQueryResultDto>> HistogramQuery(int id, HistogramQueryDto dto)
+    {
+        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
+
+        try
+        {
+            var result = await widgetQueries.QueryForHistogramAsync(id, dto);
+            return result is null ? NotFound() : result;
+        }
+        catch (FilterException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
     /// The distinct values a column holds, for the filter panel's value dropdowns — so a reader
     /// filtering a column like "shift" picks from its real day/night values instead of typing.
     /// Ordered and capped; <paramref name="search"/> narrows to matching values for type-ahead.

@@ -4,6 +4,7 @@ import {
   BarChartQueryResult,
   BoxPlotQueryResult,
   ChartQueryResult,
+  HistogramQueryResult,
 } from '../../../../core/models/widget-query';
 import { ChartColumns } from './options/chart-columns';
 import { ChartFormat } from './options/chart-format';
@@ -17,7 +18,7 @@ export class ChartExport {
 
   public static csv(
     config: ChartWidgetConfig,
-    data: ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult,
+    data: ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult,
     columns: DatasetColumn[],
     name: string,
   ): void {
@@ -26,6 +27,8 @@ export class ChartExport {
       csv = ChartExport.barCsv(data as BarChartQueryResult);
     } else if (config.type === 'boxPlot') {
       csv = ChartExport.boxCsv(data as BoxPlotQueryResult);
+    } else if (config.type === 'histogram') {
+      csv = ChartExport.histogramCsv(data as HistogramQueryResult);
     } else {
       // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
       const primary = readChartBindings(config).find((b) => b.datasetId);
@@ -100,6 +103,24 @@ export class ChartExport {
         );
       });
     }
+    return rows.join('\n');
+  }
+
+  /** One row per bin: its range bounds, then one value column per series. */
+  private static histogramCsv(data: HistogramQueryResult): string {
+    const multi = data.series.length > 1;
+    const header = ['Bin', 'Lower', 'Upper', ...(multi ? data.series.map((s) => s.label || 'Value') : ['Value'])];
+    const rows = [header.map(ChartExport.csvCell).join(',')];
+    data.bins.forEach((bin, i) => {
+      rows.push(
+        [
+          ChartExport.csvCell(bin.label),
+          bin.lower,
+          bin.upper,
+          ...data.series.map((s) => ChartExport.csvCell(s.values[i] ?? '')),
+        ].join(','),
+      );
+    });
     return rows.join('\n');
   }
 

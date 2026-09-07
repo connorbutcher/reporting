@@ -58,6 +58,7 @@ using (var scope = app.Services.CreateScope())
     DbSeeder.Seed(db);
     DbSeeder.SeedBoxPlotShowcase(db);
     DbSeeder.SeedStackedBarShowcase(db);
+    DbSeeder.SeedHistogramShowcase(db);
     DbSeeder.SeedIdentity(db);
 }
 

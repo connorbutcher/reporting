@@ -2,6 +2,7 @@ import { Widget } from '../../../core/models/report';
 import { BarChartWidgetModel } from './bar-chart-widget.model';
 import { BoxPlotWidgetModel } from './box-plot-widget.model';
 import { DataTableWidgetModel } from './data-table-widget.model';
+import { HistogramWidgetModel } from './histogram-widget.model';
 import { LineChartWidgetModel } from './line-chart-widget.model';
 import { ScatterChartWidgetModel } from './scatter-chart-widget.model';
 import { StaticTextWidgetModel } from './static-text-widget.model';
@@ -15,6 +16,7 @@ export * from './scatter-chart-widget.model';
 export * from './line-chart-widget.model';
 export * from './bar-chart-widget.model';
 export * from './box-plot-widget.model';
+export * from './histogram-widget.model';
 export * from './static-text-widget.model';
 
 /** Rebuilds the right model class for a stored widget. */
@@ -30,6 +32,8 @@ export function widgetModelFromDto(widget: Widget, sources: ModelSources): Widge
       return new BarChartWidgetModel(widget, sources);
     case 'boxPlot':
       return new BoxPlotWidgetModel(widget, sources);
+    case 'histogram':
+      return new HistogramWidgetModel(widget, sources);
     default:
       return new StaticTextWidgetModel(widget);
   }

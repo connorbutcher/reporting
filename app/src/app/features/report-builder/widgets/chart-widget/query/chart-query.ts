@@ -13,6 +13,7 @@ import {
   BoxPlotQueryResult,
   ChartQueryResult,
   ChartSeriesResult,
+  HistogramQueryResult,
 } from '../../../../../core/models/widget-query';
 
 /** One binding's point-chart response, tagged with the binding it came from. */
@@ -45,7 +46,9 @@ export class ChartQuery {
     config: ChartWidgetConfig,
     bindingFilters: Record<string, FilterGroup | null> | null,
     cache?: Map<string, ChartQueryResult>,
-  ): Observable<ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult> | null {
+  ): Observable<
+    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult
+  > | null {
     const bindings = readChartBindings(config);
 
     if (config.type === 'barChart') {
@@ -99,6 +102,27 @@ export class ChartQuery {
         whiskerFactor: config.whiskerFactor,
         sort: config.sort,
         includePoints: config.showPoints,
+        toleranceBands: config.toleranceBands,
+      });
+    }
+
+    if (config.type === 'histogram') {
+      // A histogram bins one numeric column of a single dataset, so like the box plot it queries
+      // its primary binding only — reading xColumnId as the column whose distribution it draws.
+      const primary = bindings[0];
+      if (!primary?.datasetId || !primary.xColumnId) return null;
+
+      return api.queryHistogram(primary.datasetId, {
+        filter: bindingFilters?.[primary.id] ?? null,
+        valueColumnId: primary.xColumnId,
+        seriesColumnId: primary.seriesColumnId,
+        binMode: config.binMode,
+        binCount: config.binCount,
+        binWidth: config.binWidth,
+        rangeMin: config.rangeMin,
+        rangeMax: config.rangeMax,
+        normalize: config.normalize,
+        cumulative: config.cumulative,
         toleranceBands: config.toleranceBands,
       });
     }

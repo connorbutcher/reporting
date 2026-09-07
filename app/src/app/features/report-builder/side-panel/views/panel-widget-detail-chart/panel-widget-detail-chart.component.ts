@@ -7,6 +7,7 @@ import {
   BarChartWidgetModel,
   BoxPlotWidgetModel,
   ChartWidgetModel,
+  HistogramWidgetModel,
   LineChartWidgetModel,
 } from '../../../models/widget.model';
 import { Aggregate } from '../../../../../core/models/report';
@@ -20,6 +21,7 @@ import { PanelChartAxisListComponent } from '../panel-chart-axis-list/panel-char
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 import { PanelChartToleranceListComponent } from '../panel-chart-tolerance-list/panel-chart-tolerance-list.component';
 import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-columns/panel-chart-tooltip-columns.component';
+import { PanelHistogramOptionsComponent } from '../panel-histogram-options/panel-histogram-options.component';
 import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/panel-line-chart-options.component';
 
 /** The chart branch of the widget-detail panel: dataset, axes, series, and appearance. Tolerance bands and tooltip are their own groups. */
@@ -37,6 +39,7 @@ import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/pane
     PanelChartSeriesListComponent,
     PanelChartToleranceListComponent,
     PanelChartTooltipColumnsComponent,
+    PanelHistogramOptionsComponent,
     PanelLineChartOptionsComponent,
   ],
   templateUrl: './panel-widget-detail-chart.component.html',
@@ -74,8 +77,16 @@ export class PanelWidgetDetailChartComponent {
     return chart instanceof BoxPlotWidgetModel ? chart : null;
   });
 
-  /** Bar and box plot both bind a category + value + optional series, unlike the point charts. */
-  public readonly categorical = computed(() => !!this.barChart() || !!this.boxPlot());
+  /** The model narrowed to a histogram, so histogram-only fields render only for it. */
+  public readonly histogram = computed(() => {
+    const chart = this.chart();
+    return chart instanceof HistogramWidgetModel ? chart : null;
+  });
+
+  /** Bar, box plot, and histogram are category/bar charts, unlike the point (scatter/line) charts. */
+  public readonly categorical = computed(
+    () => !!this.barChart() || !!this.boxPlot() || !!this.histogram(),
+  );
 
   private readonly navigation = inject(PanelNavigation);
 

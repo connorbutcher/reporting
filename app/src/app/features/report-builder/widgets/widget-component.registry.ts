@@ -17,4 +17,5 @@ export const WIDGET_COMPONENTS: Record<WidgetType, Type<unknown>> = {
   lineChart: ChartWidgetComponent,
   barChart: ChartWidgetComponent,
   boxPlot: ChartWidgetComponent,
+  histogram: ChartWidgetComponent,
 };

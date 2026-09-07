@@ -14,6 +14,7 @@ namespace Reporting.Abstractions;
 [JsonDerivedType(typeof(LineChartWidgetConfig), typeDiscriminator: "lineChart")]
 [JsonDerivedType(typeof(BarChartWidgetConfig), typeDiscriminator: "barChart")]
 [JsonDerivedType(typeof(BoxPlotWidgetConfig), typeDiscriminator: "boxPlot")]
+[JsonDerivedType(typeof(HistogramWidgetConfig), typeDiscriminator: "histogram")]
 public abstract class WidgetConfig
 {
     public string Title { get; set; } = "Widget";

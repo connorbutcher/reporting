@@ -14,6 +14,19 @@ export type BoxWhisker = 'tukey' | 'minMax' | 'stdDev';
 /** How a box plot orders its categories: the column's own order, or by each group's pooled median/spread. */
 export type BoxSort = 'category' | 'medianAsc' | 'medianDesc' | 'spreadDesc';
 
+/**
+ * How a histogram chooses its bin edges. `count` divides the range into a fixed number of equal
+ * bins; `width` tiles bins of a fixed width across it; `auto` picks the count from the data
+ * (Freedman–Diaconis, falling back to Sturges).
+ */
+export type HistogramBinMode = 'count' | 'width' | 'auto';
+
+/**
+ * What a histogram bar's height represents: the raw `count` of values in the bin, its `frequency`
+ * (share of all values), or its `density` (frequency divided by bin width, so the bars integrate to 1).
+ */
+export type HistogramNormalize = 'count' | 'frequency' | 'density';
+
 export type ChartAxis = 'x' | 'y';
 
 /** Which side of the plot a value axis sits on. */
@@ -255,11 +268,38 @@ export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
 }
 
+/**
+ * A histogram. Unlike the other charts it plots the distribution of a single numeric column
+ * (`xColumnId`): its values are binned into equal ranges and each bin's frequency drawn as a bar.
+ * A series column, if set, overlays a separate distribution per distinct value.
+ */
+export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
+  type: 'histogram';
+
+  /** How the bin edges are chosen. */
+  binMode: HistogramBinMode;
+  /** The number of bins for `count` mode; ignored otherwise. */
+  binCount: number;
+  /** The width of each bin for `width` mode; ignored otherwise. */
+  binWidth: number;
+  /** Fixed lower bound of the binned range; null/undefined uses the data's minimum. */
+  rangeMin?: number | null;
+  /** Fixed upper bound of the binned range; null/undefined uses the data's maximum. */
+  rangeMax?: number | null;
+  /** Whether each bar shows a raw count, a relative frequency, or a density. */
+  normalize: HistogramNormalize;
+  /** Accumulates each bin into the ones before it, drawing a cumulative distribution. */
+  cumulative: boolean;
+  /** Draws bars horizontally (bins down the Y axis) rather than as vertical columns. */
+  horizontal: boolean;
+}
+
 export type ChartWidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
   | BarChartWidgetConfig
-  | BoxPlotWidgetConfig;
+  | BoxPlotWidgetConfig
+  | HistogramWidgetConfig;
 
 const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
@@ -308,6 +348,19 @@ export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
   showSampleSize: false,
   showPoints: false,
   showCapability: false,
+  horizontal: false,
+};
+
+export const DEFAULT_HISTOGRAM_CONFIG: Omit<HistogramWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Histogram',
+  binMode: 'auto',
+  binCount: 10,
+  binWidth: 1,
+  rangeMin: null,
+  rangeMax: null,
+  normalize: 'count',
+  cumulative: false,
   horizontal: false,
 };
 
