@@ -74,12 +74,23 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
         // and everyone's. Loading the rest (grants for other users/groups) would be discarded, so
         // the query filters them out up front, riding the (SubjectType, SubjectId) index.
         var groupIds = user.GroupIds.ToList();
-        var grants = await db.AccessGrants
+        // Grants carry typed foreign keys; normalise each back to the (type, id) pair the resolver
+        // works in right at the materialisation boundary, so everything below is unchanged.
+        var grants = (await db.AccessGrants
             .Where(g => g.SubjectType == GrantSubjectType.Everyone
-                || (g.SubjectType == GrantSubjectType.User && g.SubjectId == user.Id)
-                || (g.SubjectType == GrantSubjectType.Group && g.SubjectId != null && groupIds.Contains(g.SubjectId.Value)))
-            .Select(g => new { g.SecurableType, g.SecurableId, g.SubjectType, g.SubjectId, g.Level })
-            .ToListAsync();
+                || (g.SubjectType == GrantSubjectType.User && g.UserId == user.Id)
+                || (g.SubjectType == GrantSubjectType.Group && g.UserGroupId != null && groupIds.Contains(g.UserGroupId.Value)))
+            .Select(g => new { g.SecurableType, g.FolderId, g.ReportId, g.SubjectType, g.UserId, g.UserGroupId, g.Level })
+            .ToListAsync())
+            .Select(g => new
+            {
+                g.SecurableType,
+                SecurableId = g.SecurableType == SecurableType.Folder ? g.FolderId : g.ReportId,
+                g.SubjectType,
+                SubjectId = g.SubjectType == GrantSubjectType.User ? g.UserId : g.UserGroupId,
+                g.Level
+            })
+            .ToList();
 
         List<GrantLine> Lines(SecurableType type) => grants
             .Where(g => g.SecurableType == type)

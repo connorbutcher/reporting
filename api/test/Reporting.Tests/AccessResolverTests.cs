@@ -12,6 +12,7 @@ public class AccessResolverTests
     {
         public Guid RefId => Guid.Empty;
         public string DisplayName => "test";
+        public string Email => "test@local";
         public IReadOnlyCollection<int> GroupIds => Groups ?? [];
     }
 

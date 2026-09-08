@@ -43,7 +43,10 @@ builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<WidgetQueryRepository>();
 builder.Services.AddScoped<PermissionService>();
 builder.Services.AddScoped<PermissionAdminService>();
+builder.Services.AddScoped<AppPermissionService>();
 builder.Services.AddScoped<UserRepository>();
+builder.Services.AddScoped<UserAdminService>();
+builder.Services.AddScoped<UserGroupAdminService>();
 
 // Until authentication is wired up the app runs as the seeded default user. Real auth
 // swaps this single registration for a claims-backed accessor.

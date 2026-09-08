@@ -1,0 +1,122 @@
+<section class="admin-card">
+  <header class="admin-card-head">
+    <button type="button" class="admin-back" aria-label="Back to groups" (click)="cancel()">
+      <i class="pi pi-arrow-left" aria-hidden="true"></i>
+    </button>
+    <div>
+      <h2 class="admin-card-title">{{ title() }}</h2>
+      @if (!isNew() && !loading()) {
+        <p class="admin-card-subtitle">{{ memberIds().length }} {{ memberIds().length === 1 ? 'member' : 'members' }}</p>
+      }
+    </div>
+    <span class="admin-card-spacer"></span>
+  </header>
+
+  @if (loading()) {
+    <div class="admin-card-body">
+      <p class="admin-hint">Loading…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="admin-card-body">
+      <p class="admin-error">{{ loadError() }}</p>
+    </div>
+  } @else {
+    <div class="admin-card-body">
+      @if (saveError()) {
+        <p class="admin-error">{{ saveError() }}</p>
+      }
+
+      <div class="admin-form">
+        <div class="admin-field">
+          <label class="admin-label" for="group-name">Name</label>
+          <input
+            id="group-name"
+            pInputText
+            class="admin-input"
+            [value]="form.name().value()"
+            (input)="form.name().value.set($any($event.target).value)"
+            (blur)="form.name().markAsTouched()"
+            [invalid]="form.name().dirty() && form.name().invalid()"
+            placeholder="QA Leads"
+            autocomplete="off"
+          />
+          @if (nameError(); as message) {
+            <p class="admin-error">{{ message }}</p>
+          }
+        </div>
+
+        <hr class="admin-divider" />
+        <span class="admin-section-label">Access</span>
+
+        <label class="admin-check">
+          <p-checkbox
+            [binary]="true"
+            inputId="group-manage"
+            [ngModel]="canManageUsers()"
+            (onChange)="canManageUsers.set($event.checked)"
+          />
+          <span class="admin-check-text">
+            <span class="admin-check-label">Can manage users &amp; groups</span>
+            <span class="admin-hint">Every member of this group gets access to the admin area.</span>
+          </span>
+        </label>
+
+        <div class="admin-field">
+          <label class="admin-label">
+            Members <span class="admin-hint">({{ memberIds().length }} selected)</span>
+          </label>
+          @if (userOptions().length > 8) {
+            <input
+              pInputText
+              class="admin-input"
+              [value]="memberFilter()"
+              (input)="memberFilter.set($any($event.target).value)"
+              placeholder="Filter people"
+              aria-label="Filter people"
+            />
+          }
+          <div class="admin-picker">
+            @for (user of filteredUsers(); track user.id) {
+              <label class="admin-picker-item">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="memberIds().includes(user.id)"
+                  (onChange)="toggleMember(user.id, $event.checked)"
+                />
+                <span class="admin-picker-person">
+                  <span class="admin-picker-name">{{ user.displayName }}</span>
+                  <span class="admin-hint">{{ user.email }}</span>
+                </span>
+              </label>
+            } @empty {
+              <p class="admin-hint admin-picker-empty">
+                {{ userOptions().length === 0 ? 'No users exist yet.' : 'No people match.' }}
+              </p>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="admin-actions">
+      @if (!isNew()) {
+        <p-button
+          label="Delete"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          [disabled]="saving()"
+          (onClick)="remove()"
+        />
+      }
+      <span class="admin-actions-spacer"></span>
+      <p-button label="Cancel" severity="secondary" outlined [disabled]="saving()" (onClick)="cancel()" />
+      <p-button
+        [label]="isNew() ? 'Create group' : 'Save changes'"
+        [loading]="saving()"
+        [disabled]="!form().valid()"
+        (onClick)="save()"
+      />
+    </footer>
+  }
+</section>

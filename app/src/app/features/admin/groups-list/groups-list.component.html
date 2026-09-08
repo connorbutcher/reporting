@@ -1,0 +1,55 @@
+<section class="admin-card">
+  <header class="admin-card-head">
+    <div>
+      <h2 class="admin-card-title">Groups</h2>
+      <p class="admin-card-subtitle">{{ groups().length }} {{ groups().length === 1 ? 'group' : 'groups' }}</p>
+    </div>
+    <span class="admin-card-spacer"></span>
+    <p-button label="New group" icon="pi pi-plus" size="small" (onClick)="create()" />
+  </header>
+
+  <div class="admin-card-body">
+    @if (loading() && groups().length === 0) {
+      <div class="admin-skeleton">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <p-skeleton height="2.5rem" />
+        }
+      </div>
+    } @else if (failed()) {
+      <p class="admin-empty">Couldn't load groups. Refresh to try again.</p>
+    } @else {
+      <p-table class="admin-table-wrapper" [value]="groups()" sortMode="single" dataKey="id" size="small">
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
+            <th class="admin-col-access">Access</th>
+            <th class="admin-col-count" pSortableColumn="memberCount">Members <p-sort-icon field="memberCount" /></th>
+            <th class="admin-col-chevron"></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-group>
+          <tr class="admin-row" tabindex="0" (click)="open(group)" (keydown.enter)="open(group)">
+            <td>
+              <span class="admin-row-name">
+                <i class="pi pi-users" aria-hidden="true"></i>
+                {{ group.name }}
+              </span>
+            </td>
+            <td class="admin-col-access">
+              @if (group.canManageUsers) {
+                <p-tag value="User admin" severity="info" />
+              } @else {
+                <span class="admin-col-muted">Standard</span>
+              }
+            </td>
+            <td class="admin-col-count">{{ group.memberCount }}</td>
+            <td class="admin-col-chevron"><i class="pi pi-chevron-right" aria-hidden="true"></i></td>
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr><td colspan="4"><p class="admin-empty">No groups yet.</p></td></tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>

@@ -1,0 +1,343 @@
+// Shared styling for the admin area: the two-column layout, the card shell, and the
+// list/detail building blocks. Each admin component pulls this in with `@use '../admin';`
+// (or `@use './admin';` at the feature root) so they stay one visual system.
+
+// --- layout -----------------------------------------------------------------
+.admin-page {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.admin-nav {
+  flex: 0 0 220px;
+  align-self: stretch;
+}
+
+.admin-outlet {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+// --- card shell -------------------------------------------------------------
+.admin-card {
+  background: #fff;
+  border: 1px solid var(--app-card-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.admin-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--app-card-border);
+}
+
+.admin-card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--app-navy);
+}
+
+.admin-card-subtitle {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.admin-card-spacer {
+  flex: 1;
+}
+
+.admin-card-body {
+  padding: 16px 20px;
+}
+
+// --- left nav ---------------------------------------------------------------
+.admin-nav-head {
+  padding: 16px 18px 12px;
+}
+
+.admin-nav-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--app-navy);
+}
+
+.admin-nav-caption {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.admin-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px 12px;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  .pi {
+    font-size: 0.95rem;
+    color: #94a3b8;
+  }
+
+  &:hover {
+    background: #f1f5f9;
+    color: var(--app-navy);
+  }
+
+  &--active {
+    background: var(--app-navy);
+    color: #fff;
+
+    .pi {
+      color: #fff;
+    }
+  }
+}
+
+// --- back link --------------------------------------------------------------
+.admin-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+
+  &:hover {
+    background: #f8fafc;
+    color: var(--app-navy);
+  }
+}
+
+// --- tables -----------------------------------------------------------------
+.admin-table-wrapper {
+  display: block;
+  overflow: auto;
+}
+
+.admin-row {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-400, #6b93c9);
+    outline-offset: -2px;
+  }
+}
+
+.admin-row-name {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: var(--app-navy);
+
+  .pi {
+    color: var(--app-navy);
+    margin-right: 8px;
+  }
+}
+
+.admin-col-muted {
+  color: #64748b;
+}
+
+.admin-col-access {
+  width: 150px;
+}
+
+.admin-col-count {
+  width: 110px;
+}
+
+.admin-col-chevron {
+  width: 44px;
+  text-align: right;
+  color: #cbd5e1;
+}
+
+.admin-empty {
+  margin: 0;
+  padding: 16px 4px;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.admin-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+// --- detail form ------------------------------------------------------------
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 560px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.admin-input {
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.admin-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.admin-error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #b42318;
+}
+
+.admin-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.admin-divider {
+  height: 1px;
+  background: var(--app-card-border);
+  border: 0;
+  margin: 2px 0;
+}
+
+.admin-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.admin-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-meta-key {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.admin-meta-value {
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+// --- checkbox picker --------------------------------------------------------
+.admin-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.admin-check-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-check-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
+.admin-picker {
+  display: flex;
+  flex-direction: column;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--app-card-border);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.admin-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.admin-picker-person {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.admin-picker-name {
+  font-size: 0.85rem;
+  color: #1e293b;
+}
+
+.admin-picker-empty {
+  padding: 10px 8px;
+}
+
+// --- footer actions ---------------------------------------------------------
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--app-card-border);
+}
+
+.admin-actions-spacer {
+  flex: 1;
+}

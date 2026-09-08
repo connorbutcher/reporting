@@ -22,7 +22,9 @@ public class ReportingDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UserGroup> UserGroups => Set<UserGroup>();
     public DbSet<UserGroupMember> UserGroupMembers => Set<UserGroupMember>();
+    public DbSet<UserGroupManager> UserGroupManagers => Set<UserGroupManager>();
     public DbSet<AccessGrant> AccessGrants => Set<AccessGrant>();
+    public DbSet<AppPermissionGrant> AppPermissionGrants => Set<AppPermissionGrant>();
     public DbSet<GrantAuditEntry> GrantAuditEntries => Set<GrantAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -200,23 +202,81 @@ public class ReportingDbContext : DbContext
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Delegated group managers: a plain join keyed by its two sides, cascading from either end,
+        // mirroring membership. (The user side has no inverse navigation.)
+        modelBuilder.Entity<UserGroupManager>().HasKey(m => new { m.UserGroupId, m.UserId });
+        modelBuilder.Entity<UserGroupManager>()
+            .HasOne(m => m.UserGroup)
+            .WithMany(g => g.Managers)
+            .HasForeignKey(m => m.UserGroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserGroupManager>()
+            .HasOne(m => m.User)
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Enums stored as text, matching the rest of the model. AccessLevel's ordering is
         // only ever compared in memory (during resolution), never in SQL.
         modelBuilder.Entity<AccessGrant>().Property(g => g.SecurableType).HasConversion<string>();
         modelBuilder.Entity<AccessGrant>().Property(g => g.SubjectType).HasConversion<string>();
         modelBuilder.Entity<AccessGrant>().Property(g => g.Level).HasConversion<string>();
 
-        // At most one grant per subject per securable; and a fast lookup of everything granted
-        // to a given subject. Securable/subject are polymorphic, so neither has a FK.
-        // HasFilter(null) drops EF's default "IS NOT NULL" filter so SQL Server's own unique
-        // index (NULLs compared equal) enforces the constraint for the null cases too — a
-        // single Root/Everyone baseline, one Everyone grant per folder, and so on.
+        // The securable and the subject are discriminated unions: the type column says which kind,
+        // and exactly one matching typed FK carries the id (none for the singleton Root/Everyone
+        // cases). Real foreign keys (no navigation properties — the FK property is enough) give the
+        // database referential integrity and cascade the grant away when its target is deleted.
         modelBuilder.Entity<AccessGrant>()
-            .HasIndex(g => new { g.SecurableType, g.SecurableId, g.SubjectType, g.SubjectId })
+            .HasOne<Folder>().WithMany().HasForeignKey(g => g.FolderId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessGrant>()
+            .HasOne<Report>().WithMany().HasForeignKey(g => g.ReportId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessGrant>()
+            .HasOne<User>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AccessGrant>()
+            .HasOne<UserGroup>().WithMany().HasForeignKey(g => g.UserGroupId).OnDelete(DeleteBehavior.Cascade);
+
+        // The type discriminator and its typed FK must agree — enforced in the database.
+        modelBuilder.Entity<AccessGrant>().ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_AccessGrant_Securable",
+                "([SecurableType] = 'Folder' AND [FolderId] IS NOT NULL AND [ReportId] IS NULL) OR "
+                + "([SecurableType] = 'Report' AND [ReportId] IS NOT NULL AND [FolderId] IS NULL) OR "
+                + "([SecurableType] = 'Root' AND [FolderId] IS NULL AND [ReportId] IS NULL)");
+            t.HasCheckConstraint("CK_AccessGrant_Subject",
+                "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR "
+                + "([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL) OR "
+                + "([SubjectType] = 'Everyone' AND [UserId] IS NULL AND [UserGroupId] IS NULL)");
+        });
+
+        // At most one grant per subject per securable. HasFilter(null) drops EF's default
+        // "IS NOT NULL" filter so SQL Server's unique index (NULLs compared equal) enforces the
+        // constraint for the null cases too — a single Root/Everyone baseline, one Everyone grant
+        // per folder, and so on. The per-FK indexes EF creates for the four foreign keys above also
+        // serve the resolver's "everything granted to this subject" lookup.
+        modelBuilder.Entity<AccessGrant>()
+            .HasIndex(g => new { g.SecurableType, g.FolderId, g.ReportId, g.SubjectType, g.UserId, g.UserGroupId })
             .IsUnique()
             .HasFilter(null);
-        modelBuilder.Entity<AccessGrant>()
-            .HasIndex(g => new { g.SubjectType, g.SubjectId });
+
+        // App permissions attach to the app, not a securable. Enums as text, matching the rest of
+        // the model. The subject is a discriminated union with typed, cascading foreign keys, like
+        // AccessGrant's subject side (but Everyone is not a valid app-permission subject).
+        modelBuilder.Entity<AppPermissionGrant>().Property(g => g.Permission).HasConversion<string>();
+        modelBuilder.Entity<AppPermissionGrant>().Property(g => g.SubjectType).HasConversion<string>();
+        modelBuilder.Entity<AppPermissionGrant>()
+            .HasOne<User>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppPermissionGrant>()
+            .HasOne<UserGroup>().WithMany().HasForeignKey(g => g.UserGroupId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AppPermissionGrant>().ToTable(t =>
+            t.HasCheckConstraint("CK_AppPermissionGrant_Subject",
+                "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR "
+                + "([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL)"));
+        // At most one grant per (permission, subject); HasFilter(null) lets SQL Server's own unique
+        // index enforce it. The per-FK indexes serve "does this subject hold X" lookups.
+        modelBuilder.Entity<AppPermissionGrant>()
+            .HasIndex(g => new { g.Permission, g.SubjectType, g.UserId, g.UserGroupId })
+            .IsUnique()
+            .HasFilter(null);
 
         modelBuilder.Entity<GrantAuditEntry>().Property(a => a.SecurableType).HasConversion<string>();
         modelBuilder.Entity<GrantAuditEntry>().Property(a => a.Action).HasConversion<string>();

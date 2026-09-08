@@ -39,10 +39,9 @@ public static class DbSeeder
         {
             db.AccessGrants.Add(new AccessGrant
             {
+                // Root/Everyone: no typed securable or subject foreign key is set.
                 SecurableType = SecurableType.Root,
-                SecurableId = null,
                 SubjectType = GrantSubjectType.Everyone,
-                SubjectId = null,
                 Level = AccessLevel.Viewer,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = 0

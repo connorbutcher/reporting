@@ -15,5 +15,14 @@
     >
       Home
     </a>
+    @if (canManageUsers()) {
+      <a
+        class="app-header-link"
+        routerLink="/admin"
+        routerLinkActive="app-header-link--active"
+      >
+        Admin
+      </a>
+    }
   </nav>
 </header>

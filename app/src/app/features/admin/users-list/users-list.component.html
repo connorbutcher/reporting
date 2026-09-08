@@ -1,0 +1,59 @@
+<section class="admin-card">
+  <header class="admin-card-head">
+    <div>
+      <h2 class="admin-card-title">Users</h2>
+      <p class="admin-card-subtitle">{{ users().length }} {{ users().length === 1 ? 'person' : 'people' }}</p>
+    </div>
+    <span class="admin-card-spacer"></span>
+    <p-button label="New user" icon="pi pi-user-plus" size="small" (onClick)="create()" />
+  </header>
+
+  <div class="admin-card-body">
+    @if (loading() && users().length === 0) {
+      <div class="admin-skeleton">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+          <p-skeleton height="2.5rem" />
+        }
+      </div>
+    } @else if (failed()) {
+      <p class="admin-empty">Couldn't load users. Refresh to try again.</p>
+    } @else {
+      <p-table class="admin-table-wrapper" [value]="users()" sortMode="single" dataKey="id" size="small">
+        <ng-template #header>
+          <tr>
+            <th pSortableColumn="displayName">Name <p-sort-icon field="displayName" /></th>
+            <th pSortableColumn="email">Email <p-sort-icon field="email" /></th>
+            <th class="admin-col-access">Access</th>
+            <th class="admin-col-count" pSortableColumn="groupCount">Groups <p-sort-icon field="groupCount" /></th>
+            <th class="admin-col-chevron"></th>
+          </tr>
+        </ng-template>
+        <ng-template #body let-user>
+          <tr class="admin-row" tabindex="0" (click)="open(user)" (keydown.enter)="open(user)">
+            <td>
+              <span class="admin-row-name">
+                <i class="pi pi-user" aria-hidden="true"></i>
+                {{ user.displayName }}
+              </span>
+            </td>
+            <td class="admin-col-muted">{{ user.email }}</td>
+            <td class="admin-col-access">
+              @if (user.isGlobalAdmin) {
+                <p-tag value="Global admin" severity="warn" />
+              } @else if (user.canManageUsers) {
+                <p-tag value="User admin" severity="info" />
+              } @else {
+                <span class="admin-col-muted">Standard</span>
+              }
+            </td>
+            <td class="admin-col-count">{{ user.groupCount }}</td>
+            <td class="admin-col-chevron"><i class="pi pi-chevron-right" aria-hidden="true"></i></td>
+          </tr>
+        </ng-template>
+        <ng-template #emptymessage>
+          <tr><td colspan="5"><p class="admin-empty">No users yet.</p></td></tr>
+        </ng-template>
+      </p-table>
+    }
+  </div>
+</section>

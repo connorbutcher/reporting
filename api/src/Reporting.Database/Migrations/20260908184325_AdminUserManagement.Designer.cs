@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reporting.Database;
 
@@ -11,9 +12,11 @@ using Reporting.Database;
 namespace Reporting.Database.Migrations
 {
     [DbContext(typeof(ReportingDbContext))]
-    partial class ReportingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908184325_AdminUserManagement")]
+    partial class AdminUserManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -36,49 +39,32 @@ namespace Reporting.Database.Migrations
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("FolderId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Level")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ReportId")
+                    b.Property<int?>("SecurableId")
                         .HasColumnType("int");
 
                     b.Property<string>("SecurableType")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SubjectType")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("FolderId");
+                    b.HasIndex("SubjectType", "SubjectId");
 
-                    b.HasIndex("ReportId");
-
-                    b.HasIndex("UserGroupId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("SecurableType", "FolderId", "ReportId", "SubjectType", "UserId", "UserGroupId")
+                    b.HasIndex("SecurableType", "SecurableId", "SubjectType", "SubjectId")
                         .IsUnique();
 
-                    b.ToTable("AccessGrants", t =>
-                        {
-                            t.HasCheckConstraint("CK_AccessGrant_Securable", "([SecurableType] = 'Folder' AND [FolderId] IS NOT NULL AND [ReportId] IS NULL) OR ([SecurableType] = 'Report' AND [ReportId] IS NOT NULL AND [FolderId] IS NULL) OR ([SecurableType] = 'Root' AND [FolderId] IS NULL AND [ReportId] IS NULL)");
-
-                            t.HasCheckConstraint("CK_AccessGrant_Subject", "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR ([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL) OR ([SubjectType] = 'Everyone' AND [UserId] IS NULL AND [UserGroupId] IS NULL)");
-                        });
+                    b.ToTable("AccessGrants");
                 });
 
             modelBuilder.Entity("Reporting.Database.AppPermissionGrant", b =>
@@ -99,29 +85,21 @@ namespace Reporting.Database.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("SubjectId")
+                        .HasColumnType("int");
+
                     b.Property<string>("SubjectType")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("UserGroupId");
+                    b.HasIndex("SubjectType", "SubjectId");
 
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("Permission", "SubjectType", "UserId", "UserGroupId")
+                    b.HasIndex("Permission", "SubjectType", "SubjectId")
                         .IsUnique();
 
-                    b.ToTable("AppPermissionGrants", t =>
-                        {
-                            t.HasCheckConstraint("CK_AppPermissionGrant_Subject", "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR ([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL)");
-                        });
+                    b.ToTable("AppPermissionGrants");
                 });
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>
@@ -625,42 +603,6 @@ namespace Reporting.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("Widgets");
-                });
-
-            modelBuilder.Entity("Reporting.Database.AccessGrant", b =>
-                {
-                    b.HasOne("Reporting.Database.Folder", null)
-                        .WithMany()
-                        .HasForeignKey("FolderId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("Reporting.Database.Report", null)
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("Reporting.Database.UserGroup", null)
-                        .WithMany()
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("Reporting.Database.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
-                });
-
-            modelBuilder.Entity("Reporting.Database.AppPermissionGrant", b =>
-                {
-                    b.HasOne("Reporting.Database.UserGroup", null)
-                        .WithMany()
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("Reporting.Database.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>

@@ -146,9 +146,11 @@ public class PermissionAdminService(
         var leaf = chain[0];
         var (subjectId, subjectName) = await ResolveSubjectAsync(dto.SubjectType, dto.SubjectId);
 
+        var (folderId, reportId) = SecurableIds(leaf.Type, leaf.Id);
+        var (userId, groupId) = SubjectIds(dto.SubjectType, subjectId);
         var existing = await db.AccessGrants.FirstOrDefaultAsync(g =>
-            g.SecurableType == leaf.Type && g.SecurableId == leaf.Id
-            && g.SubjectType == dto.SubjectType && g.SubjectId == subjectId);
+            g.SecurableType == leaf.Type && g.FolderId == folderId && g.ReportId == reportId
+            && g.SubjectType == dto.SubjectType && g.UserId == userId && g.UserGroupId == groupId);
         var oldLevel = existing?.Level;
 
         var actor = await currentUserAccessor.GetAsync();
@@ -166,9 +168,11 @@ public class PermissionAdminService(
             db.AccessGrants.Add(new AccessGrant
             {
                 SecurableType = leaf.Type,
-                SecurableId = leaf.Id,
+                FolderId = folderId,
+                ReportId = reportId,
                 SubjectType = dto.SubjectType,
-                SubjectId = subjectId,
+                UserId = userId,
+                UserGroupId = groupId,
                 Level = dto.Level,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = actor.Id
@@ -196,9 +200,11 @@ public class PermissionAdminService(
         var leaf = chain[0];
         var (subjectId, _) = await ResolveSubjectAsync(subjectType, subjectRef);
 
+        var (folderId, reportId) = SecurableIds(leaf.Type, leaf.Id);
+        var (userId, groupId) = SubjectIds(subjectType, subjectId);
         var existing = await db.AccessGrants.FirstOrDefaultAsync(g =>
-            g.SecurableType == leaf.Type && g.SecurableId == leaf.Id
-            && g.SubjectType == subjectType && g.SubjectId == subjectId);
+            g.SecurableType == leaf.Type && g.FolderId == folderId && g.ReportId == reportId
+            && g.SubjectType == subjectType && g.UserId == userId && g.UserGroupId == groupId);
         if (existing is null) return;
 
         var actor = await currentUserAccessor.GetAsync();
@@ -234,11 +240,13 @@ public class PermissionAdminService(
         var leaf = chain[0];
         var effective = ComputeEffective(chain, await LoadChainGrantsAsync(chain));
 
+        var (folderId, reportId) = SecurableIds(leaf.Type, leaf.Id);
         foreach (var ((subjectType, subjectId), (level, _)) in effective)
         {
+            var (userId, groupId) = SubjectIds(subjectType, subjectId);
             var existing = await db.AccessGrants.FirstOrDefaultAsync(g =>
-                g.SecurableType == leaf.Type && g.SecurableId == leaf.Id
-                && g.SubjectType == subjectType && g.SubjectId == subjectId);
+                g.SecurableType == leaf.Type && g.FolderId == folderId && g.ReportId == reportId
+                && g.SubjectType == subjectType && g.UserId == userId && g.UserGroupId == groupId);
 
             if (existing is null)
             {
@@ -246,9 +254,11 @@ public class PermissionAdminService(
                 db.AccessGrants.Add(new AccessGrant
                 {
                     SecurableType = leaf.Type,
-                    SecurableId = leaf.Id,
+                    FolderId = folderId,
+                    ReportId = reportId,
                     SubjectType = subjectType,
-                    SubjectId = subjectId,
+                    UserId = userId,
+                    UserGroupId = groupId,
                     Level = level,
                     CreatedAt = DateTime.UtcNow,
                     CreatedByUserId = actor.Id
@@ -382,14 +392,32 @@ public class PermissionAdminService(
         var reportIds = chain.Where(n => n.Type == SecurableType.Report).Select(n => n.Id!.Value).ToList();
         var wantsRoot = chain.Any(n => n.Type == SecurableType.Root);
 
-        return await db.AccessGrants
+        return (await db.AccessGrants
             .Where(g =>
-                (g.SecurableType == SecurableType.Folder && g.SecurableId != null && folderIds.Contains(g.SecurableId.Value))
-                || (g.SecurableType == SecurableType.Report && g.SecurableId != null && reportIds.Contains(g.SecurableId.Value))
+                (g.SecurableType == SecurableType.Folder && g.FolderId != null && folderIds.Contains(g.FolderId.Value))
+                || (g.SecurableType == SecurableType.Report && g.ReportId != null && reportIds.Contains(g.ReportId.Value))
                 || (wantsRoot && g.SecurableType == SecurableType.Root))
-            .Select(g => new GrantRow(g.SecurableType, g.SecurableId, g.SubjectType, g.SubjectId, g.Level))
-            .ToListAsync();
+            .Select(g => new { g.SecurableType, g.FolderId, g.ReportId, g.SubjectType, g.UserId, g.UserGroupId, g.Level })
+            .ToListAsync())
+            // Normalise the typed foreign keys back to the (type, id) pair the resolution logic works in.
+            .Select(g => new GrantRow(
+                g.SecurableType,
+                g.SecurableType == SecurableType.Folder ? g.FolderId : g.ReportId,
+                g.SubjectType,
+                g.SubjectType == GrantSubjectType.User ? g.UserId : g.UserGroupId,
+                g.Level))
+            .ToList();
     }
+
+    // --- typed foreign-key mapping ---------------------------------------
+
+    /// <summary>Splits a securable (type, id) into the typed folder/report foreign keys.</summary>
+    private static (int? FolderId, int? ReportId) SecurableIds(SecurableType type, int? id) =>
+        type == SecurableType.Folder ? (id, null) : type == SecurableType.Report ? (null, id) : (null, null);
+
+    /// <summary>Splits a subject (type, id) into the typed user/group foreign keys.</summary>
+    private static (int? UserId, int? UserGroupId) SubjectIds(GrantSubjectType type, int? id) =>
+        type == GrantSubjectType.User ? (id, null) : type == GrantSubjectType.Group ? (null, id) : (null, null);
 
     /// <summary>Walks the chain leaf→root (stopping at a broken node), keeping each subject's highest grant and where it lives.</summary>
     private static Dictionary<(GrantSubjectType, int?), (AccessLevel Level, ChainNode Source)> ComputeEffective(

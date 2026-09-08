@@ -11,4 +11,7 @@ public class UserGroup
     public string Name { get; set; } = string.Empty;
 
     public List<UserGroupMember> Members { get; set; } = new();
+
+    /// <summary>The users delegated to manage this group (a subset of its members).</summary>
+    public List<UserGroupManager> Managers { get; set; } = new();
 }

@@ -9,6 +9,7 @@ public sealed record CurrentUser(
     int Id,
     Guid RefId,
     string DisplayName,
+    string Email,
     bool IsGlobalAdmin,
     IReadOnlyCollection<int> GroupIds) : ICurrentUser;
 
@@ -33,6 +34,7 @@ public class DevCurrentUserAccessor(ReportingDbContext db) : ICurrentUserAccesso
                 u.Id,
                 u.RefId,
                 u.DisplayName,
+                u.Email,
                 u.IsGlobalAdmin,
                 GroupIds = u.Memberships.Select(m => m.UserGroupId).ToList()
             })
@@ -40,7 +42,7 @@ public class DevCurrentUserAccessor(ReportingDbContext db) : ICurrentUserAccesso
             ?? throw new InvalidOperationException(
                 "The default user has not been seeded. Ensure DbSeeder.SeedIdentity runs at startup.");
 
-        cached = new CurrentUser(user.Id, user.RefId, user.DisplayName, user.IsGlobalAdmin, user.GroupIds);
+        cached = new CurrentUser(user.Id, user.RefId, user.DisplayName, user.Email, user.IsGlobalAdmin, user.GroupIds);
         return cached;
     }
 }

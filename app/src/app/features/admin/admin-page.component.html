@@ -1,0 +1,22 @@
+<div class="admin-page">
+  <nav class="admin-card admin-nav" aria-label="Admin sections">
+    <div class="admin-nav-head">
+      <h1 class="admin-nav-title">Administration</h1>
+      <p class="admin-nav-caption">People &amp; groups</p>
+    </div>
+    <div class="admin-nav-list">
+      <a class="admin-nav-link" routerLink="users" routerLinkActive="admin-nav-link--active">
+        <i class="pi pi-users" aria-hidden="true"></i>
+        Users
+      </a>
+      <a class="admin-nav-link" routerLink="groups" routerLinkActive="admin-nav-link--active">
+        <i class="pi pi-sitemap" aria-hidden="true"></i>
+        Groups
+      </a>
+    </div>
+  </nav>
+
+  <div class="admin-outlet">
+    <router-outlet />
+  </div>
+</div>

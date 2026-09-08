@@ -1,0 +1,149 @@
+<section class="admin-card">
+  <header class="admin-card-head">
+    <button type="button" class="admin-back" aria-label="Back to users" (click)="cancel()">
+      <i class="pi pi-arrow-left" aria-hidden="true"></i>
+    </button>
+    <div>
+      <h2 class="admin-card-title">{{ title() }}</h2>
+      @if (!isNew() && !loading()) {
+        <p class="admin-card-subtitle">{{ form.email().value() }}</p>
+      }
+    </div>
+    <span class="admin-card-spacer"></span>
+    @if (isGlobalAdmin()) {
+      <p-tag value="Global admin" severity="warn" />
+    }
+  </header>
+
+  @if (loading()) {
+    <div class="admin-card-body">
+      <p class="admin-hint">Loading…</p>
+    </div>
+  } @else if (loadError()) {
+    <div class="admin-card-body">
+      <p class="admin-error">{{ loadError() }}</p>
+    </div>
+  } @else {
+    <div class="admin-card-body">
+      @if (saveError()) {
+        <p class="admin-error">{{ saveError() }}</p>
+      }
+
+      <div class="admin-form">
+        <div class="admin-field">
+          <label class="admin-label" for="user-name">Display name</label>
+          <input
+            id="user-name"
+            pInputText
+            class="admin-input"
+            [value]="form.displayName().value()"
+            (input)="form.displayName().value.set($any($event.target).value)"
+            (blur)="form.displayName().markAsTouched()"
+            [invalid]="form.displayName().dirty() && form.displayName().invalid()"
+            placeholder="Jane Cooper"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label" for="user-email">Email</label>
+          <input
+            id="user-email"
+            pInputText
+            class="admin-input"
+            [value]="form.email().value()"
+            (input)="form.email().value.set($any($event.target).value)"
+            (blur)="form.email().markAsTouched()"
+            [invalid]="form.email().dirty() && form.email().invalid()"
+            [disabled]="!isNew()"
+            placeholder="jane@company.com"
+            autocomplete="off"
+          />
+          @if (!isNew()) {
+            <p class="admin-hint">The email identifies the account and can't be changed here.</p>
+          } @else if (emailError(); as message) {
+            <p class="admin-error">{{ message }}</p>
+          }
+        </div>
+
+        <hr class="admin-divider" />
+        <span class="admin-section-label">Access</span>
+
+        <label class="admin-check">
+          <p-checkbox
+            [binary]="true"
+            inputId="user-manage"
+            [ngModel]="canManageUsers() || isGlobalAdmin() || lockManageUsers()"
+            [disabled]="isGlobalAdmin() || lockManageUsers()"
+            (onChange)="canManageUsers.set($event.checked)"
+          />
+          <span class="admin-check-text">
+            <span class="admin-check-label">Can manage users &amp; groups</span>
+            <span class="admin-hint">
+              @if (isGlobalAdmin()) {
+                Global admins can always manage the directory.
+              } @else if (lockManageUsers()) {
+                You can't remove your own manage-users permission.
+              } @else {
+                Grants access to this admin area.
+              }
+            </span>
+          </span>
+        </label>
+
+        <div class="admin-field">
+          <label class="admin-label">
+            Groups <span class="admin-hint">({{ groupIds().length }} selected)</span>
+          </label>
+          @if (groupOptions().length > 8) {
+            <input
+              pInputText
+              class="admin-input"
+              [value]="groupFilter()"
+              (input)="groupFilter.set($any($event.target).value)"
+              placeholder="Filter groups"
+              aria-label="Filter groups"
+            />
+          }
+          <div class="admin-picker">
+            @for (group of filteredGroups(); track group.id) {
+              <label class="admin-picker-item">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="groupIds().includes(group.id)"
+                  (onChange)="toggleGroup(group.id, $event.checked)"
+                />
+                <span>{{ group.name }}</span>
+              </label>
+            } @empty {
+              <p class="admin-hint admin-picker-empty">
+                {{ groupOptions().length === 0 ? 'No groups exist yet.' : 'No groups match.' }}
+              </p>
+            }
+          </div>
+        </div>
+
+        @if (!isNew() && createdAt()) {
+          <hr class="admin-divider" />
+          <div class="admin-meta">
+            <div class="admin-meta-item">
+              <span class="admin-meta-key">Created</span>
+              <span class="admin-meta-value">{{ createdAt() | date: 'medium' }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <footer class="admin-actions">
+      <span class="admin-actions-spacer"></span>
+      <p-button label="Cancel" severity="secondary" outlined [disabled]="saving()" (onClick)="cancel()" />
+      <p-button
+        [label]="isNew() ? 'Create user' : 'Save changes'"
+        [loading]="saving()"
+        [disabled]="!form().valid()"
+        (onClick)="save()"
+      />
+    </footer>
+  }
+</section>
