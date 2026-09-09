@@ -39,6 +39,7 @@ builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
+builder.Services.AddScoped<ReportPersonalizationService>();
 builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<WidgetQueryRepository>();
 builder.Services.AddScoped<PermissionService>();

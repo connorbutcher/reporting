@@ -9,7 +9,13 @@ import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder.model';
-import { ReportSearchResult, ReportSummary } from '../../core/models/report';
+import {
+  OpenableReport,
+  ReportSearchResult,
+  ReportSummary,
+  defaultOpenOption,
+  reportOpenOptions,
+} from '../../core/models/report';
 import { ContentRow, FolderRow, ReportRow, folderToRow, reportToRow } from './content-row';
 import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';
 import { HomeItemActionsService } from './home-item-actions.service';
@@ -73,6 +79,17 @@ export class HomeStore {
     { defaultValue: [] },
   );
 
+  // Personal, whole-account state — independent of the folder being browsed, so it's fetched once
+  // and surfaced in the nav rail's Favourites/Recent regardless of which folder is open. Reloaded
+  // after any action that could change it: starring, and the row actions that can add/remove/hide a report.
+  private readonly favoritesResource = httpResource<ReportSummary[]>(() => '/api/me/favorites', {
+    defaultValue: [],
+  });
+  private readonly recentResource = httpResource<ReportSummary[]>(
+    () => ({ url: '/api/me/recent', params: { take: '8' } }),
+    { defaultValue: [] },
+  );
+
   // Guarded with hasValue(): httpResource's .value() throws once a resource is in its error
   // state, defaultValue notwithstanding — reading it unguarded (as this used to) took the whole
   // page down on a 404/403 from any of these three endpoints, e.g. a stale or permission-denied
@@ -132,11 +149,28 @@ export class HomeStore {
   );
   readonly hasContent = computed(() => this.folderRows().length + this.reportRows().length > 0);
 
+  readonly favorites = computed<ReportSummary[]>(() =>
+    this.favoritesResource.hasValue() ? this.favoritesResource.value() : [],
+  );
+  readonly recent = computed<ReportSummary[]>(() =>
+    this.recentResource.hasValue() ? this.recentResource.value() : [],
+  );
+
   readonly contextMenuItems = computed<MenuItem[]>(() => {
     const row = this.contextRow();
     if (!row) return [];
+    // A report offers its real open methods (view published / edit draft) rather than one generic
+    // "Open" — this is where a reader gets only "Open published" while an editor sees both.
+    const openItems: MenuItem[] =
+      row.kind === 'folder'
+        ? [{ label: 'Open', icon: 'pi pi-folder-open', command: () => this.selectFolder(row.id) }]
+        : reportOpenOptions(row.report).map((option) => ({
+            label: option.label,
+            icon: option.icon,
+            command: () => this.router.navigate(option.route),
+          }));
     return [
-      { label: 'Open', icon: 'pi pi-external-link', command: () => this.openRow(row) },
+      ...openItems,
       { label: 'Rename', icon: 'pi pi-pencil', command: () => this.rename(row) },
       { label: 'Move', icon: 'pi pi-arrows-alt', command: () => this.move(row) },
       { label: 'Sharing', icon: 'pi pi-users', command: () => this.permissions(row) },
@@ -223,6 +257,13 @@ export class HomeStore {
   private reload(): void {
     this.foldersResource.reload();
     this.reportsResource.reload();
+    this.reloadPersonal();
+  }
+
+  /** Refetches the Favourites and Recently-viewed strips — after starring, or an action that reshapes a report. */
+  private reloadPersonal(): void {
+    this.favoritesResource.reload();
+    this.recentResource.reload();
   }
 
   // --- search -------------------------------------------------------------
@@ -238,7 +279,7 @@ export class HomeStore {
   }
 
   openSearchResult(result: ReportSearchResult): void {
-    this.router.navigate(['/reports', result.id]);
+    this.openReport(result);
   }
 
   // --- tree rail ----------------------------------------------------------
@@ -251,7 +292,28 @@ export class HomeStore {
 
   openRow(row: ContentRow): void {
     if (row.kind === 'folder') this.selectFolder(row.id);
-    else this.router.navigate(['/reports', row.id]);
+    else this.openReport(row.report);
+  }
+
+  /**
+   * Opens a report by its default method: the latest published version when there is one, otherwise
+   * the draft editor (only ever reached by an editor). The explicit view-vs-edit choice, when both
+   * exist, lives in the context menu and the strip cards.
+   */
+  openReport(report: OpenableReport): void {
+    const option = defaultOpenOption(report);
+    if (option) this.router.navigate(option.route);
+  }
+
+  /** Stars or un-stars a report, then refreshes the strips and the contents table so its star updates. */
+  toggleFavorite(report: ReportSummary): void {
+    this.reportApi.setFavorite(report.id, !report.isFavorite).subscribe({
+      next: () => {
+        this.reloadPersonal();
+        this.reportsResource.reload();
+      },
+      error: () => this.notify.error("Couldn't update your favourites. Please try again."),
+    });
   }
 
   /** Arms the shared context menu for a row; the shell component then shows the overlay. */

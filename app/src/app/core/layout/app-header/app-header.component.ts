@@ -13,8 +13,8 @@ export class AppHeaderComponent {
 
   private readonly currentUser = inject(CurrentUserService);
 
-  /** The admin area is only offered to users who can manage the directory. */
-  public get canManageUsers() {
-    return this.currentUser.canManageUsers;
+  /** The admin area is offered to full admins and to delegated group managers. */
+  public get canAccessAdmin() {
+    return this.currentUser.canManageUsers() || this.currentUser.canManageGroups();
   }
 }

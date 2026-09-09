@@ -11,7 +11,7 @@ namespace Reporting.DAL.Repositories;
 /// and a lookup of it returns null → 404); mutations and draft/publish actions are guarded to
 /// the level the enforcement matrix requires.
 /// </summary>
-public class ReportRepository(ReportingDbContext db, PermissionService permissions)
+public class ReportRepository(ReportingDbContext db, PermissionService permissions, ICurrentUserAccessor currentUser)
 {
     /// <summary>Reports directly inside <paramref name="folderId"/> (root if null) — not the whole tree.</summary>
     public async Task<List<ReportSummaryDto>> GetAllAsync(int? folderId)
@@ -23,7 +23,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             .Where(r => r.FolderId == folderId)
             .OrderBy(r => r.Name)
             .ToListAsync();
-        return await FilterVisibleAsync(reports, r => r.ToSummaryDto());
+        return await FilterVisibleAsync(reports, (r, level, fav) => r.ToSummaryDto(level, fav));
     }
 
     /// <summary>Every report across every folder, flat — for building a whole-tree picker like the "copy from" report select.</summary>
@@ -33,19 +33,32 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             .Include(r => r.Revisions)
             .OrderBy(r => r.Name)
             .ToListAsync();
-        return await FilterVisibleAsync(reports, r => r.ToSummaryDto());
+        return await FilterVisibleAsync(reports, (r, level, fav) => r.ToSummaryDto(level, fav));
     }
 
-    /// <summary>Keeps only the reports the current user can see, projecting each survivor.</summary>
-    private async Task<List<T>> FilterVisibleAsync<T>(IEnumerable<Report> reports, Func<Report, T> project)
+    /// <summary>
+    /// Keeps only the reports the current user can see, projecting each survivor with the caller's
+    /// effective access level and whether they've starred it. The favourite set is loaded once up front.
+    /// </summary>
+    private async Task<List<T>> FilterVisibleAsync<T>(IEnumerable<Report> reports, Func<Report, AccessLevel, bool, T> project)
     {
+        var favorites = await FavoriteReportIdsAsync();
         var visible = new List<T>();
         foreach (var report in reports)
         {
-            if (await permissions.CanSeeReportAsync(report.Id, report.FolderId, report.InheritsPermissions))
-                visible.Add(project(report));
+            var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+            if (!ReportVisibility.IsVisibleAtLevel(report, level)) continue;
+            visible.Add(project(report, level, favorites.Contains(report.Id)));
         }
         return visible;
+    }
+
+    /// <summary>The report ids the current user has starred, for stamping <c>IsFavorite</c> onto summaries.</summary>
+    private async Task<HashSet<int>> FavoriteReportIdsAsync()
+    {
+        var userId = (await currentUser.GetAsync()).Id;
+        var ids = await db.ReportFavorites.Where(f => f.UserId == userId).Select(f => f.ReportId).ToListAsync();
+        return ids.ToHashSet();
     }
 
     /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42").</summary>
@@ -90,7 +103,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             return segments.Count == 0 ? "Home" : "Home / " + string.Join(" / ", segments);
         }
 
-        return await FilterVisibleAsync(matches, r => r.ToSearchResultDto(PathFor(r.FolderId)));
+        return await FilterVisibleAsync(matches, (r, level, fav) => r.ToSearchResultDto(PathFor(r.FolderId), level, fav));
     }
 
     public async Task<ReportSummaryDto?> GetByIdAsync(int id)
@@ -98,8 +111,11 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         var report = await db.Reports
             .Include(r => r.Revisions)
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null || !await CanSeeAsync(report)) return null;
-        return report.ToSummaryDto();
+        if (report is null) return null;
+        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+        if (!ReportVisibility.IsVisibleAtLevel(report, level)) return null;
+        var favorites = await FavoriteReportIdsAsync();
+        return report.ToSummaryDto(level, favorites.Contains(report.Id));
     }
 
     /// <summary>Whether the current user can see the report at all (≥ Viewer).</summary>
@@ -175,7 +191,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
 
         // Saves the report and deep-copies any source content (widgets + datasets) into the draft.
         await CopyContentIntoAsync(draft, source);
-        return report.ToSummaryDto();
+        // Freshly created, so never yet favourited; the creator is at least Editor (they had create rights).
+        var createdLevel = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+        return report.ToSummaryDto(createdLevel, isFavorite: false);
     }
 
     /// <summary>Null if <paramref name="id"/> doesn't exist. Throws <see cref="DataValidationException"/> if the folder doesn't exist.</summary>
@@ -202,7 +220,9 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
         report.FolderId = folder?.Id;
         report.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        return report.ToSummaryDto();
+        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+        var favorites = await FavoriteReportIdsAsync();
+        return report.ToSummaryDto(level, favorites.Contains(report.Id));
     }
 
     public async Task<bool> DeleteAsync(int id)

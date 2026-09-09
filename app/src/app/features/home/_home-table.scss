@@ -1,6 +1,5 @@
-// Row/column styles shared by the reports table and the search-results table.
-// Each of those components pulls this in with `@use '../home-table';` so the
-// two stay visually identical without duplicating the rules.
+// Row/column styles for the search-results table. Pulled in with `@use '../home-table';`.
+// (Folder/report browsing now uses the lighter `contents-list` component, not a p-table.)
 
 .home-table-wrapper {
   display: block;

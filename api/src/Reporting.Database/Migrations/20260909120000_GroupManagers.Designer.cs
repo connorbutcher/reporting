@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Reporting.Database;
 
@@ -11,9 +12,10 @@ using Reporting.Database;
 namespace Reporting.Database.Migrations
 {
     [DbContext(typeof(ReportingDbContext))]
-    partial class ReportingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909120000_GroupManagers")]
+    partial class GroupManagers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -428,33 +430,6 @@ namespace Reporting.Database.Migrations
                     b.ToTable("Reports");
                 });
 
-            modelBuilder.Entity("Reporting.Database.ReportFavorite", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ReportId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportId");
-
-                    b.HasIndex("UserId", "ReportId")
-                        .IsUnique();
-
-                    b.ToTable("ReportFavorites");
-                });
-
             modelBuilder.Entity("Reporting.Database.ReportRevision", b =>
                 {
                     b.Property<int>("Id")
@@ -497,35 +472,6 @@ namespace Reporting.Database.Migrations
                     b.HasIndex("ReportId");
 
                     b.ToTable("ReportRevisions");
-                });
-
-            modelBuilder.Entity("Reporting.Database.ReportView", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ReportId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ViewedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReportId");
-
-                    b.HasIndex("UserId", "ReportId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "ViewedAt");
-
-                    b.ToTable("ReportViews");
                 });
 
             modelBuilder.Entity("Reporting.Database.Tab", b =>
@@ -626,21 +572,6 @@ namespace Reporting.Database.Migrations
                     b.ToTable("UserGroups");
                 });
 
-            modelBuilder.Entity("Reporting.Database.UserGroupManager", b =>
-                {
-                    b.Property<int>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserGroupId", "UserId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserGroupManagers");
-                });
-
             modelBuilder.Entity("Reporting.Database.UserGroupMember", b =>
                 {
                     b.Property<int>("UserGroupId")
@@ -654,6 +585,21 @@ namespace Reporting.Database.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserGroupMembers");
+                });
+
+            modelBuilder.Entity("Reporting.Database.UserGroupManager", b =>
+                {
+                    b.Property<int>("UserGroupId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserGroupId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserGroupManagers");
                 });
 
             modelBuilder.Entity("Reporting.Database.Widget", b =>
@@ -806,21 +752,6 @@ namespace Reporting.Database.Migrations
                     b.Navigation("Folder");
                 });
 
-            modelBuilder.Entity("Reporting.Database.ReportFavorite", b =>
-                {
-                    b.HasOne("Reporting.Database.Report", null)
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Reporting.Database.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Reporting.Database.ReportRevision", b =>
                 {
                     b.HasOne("Reporting.Database.Report", "Report")
@@ -830,21 +761,6 @@ namespace Reporting.Database.Migrations
                         .IsRequired();
 
                     b.Navigation("Report");
-                });
-
-            modelBuilder.Entity("Reporting.Database.ReportView", b =>
-                {
-                    b.HasOne("Reporting.Database.Report", null)
-                        .WithMany()
-                        .HasForeignKey("ReportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Reporting.Database.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Reporting.Database.Tab", b =>
@@ -858,25 +774,6 @@ namespace Reporting.Database.Migrations
                     b.Navigation("ReportRevision");
                 });
 
-            modelBuilder.Entity("Reporting.Database.UserGroupManager", b =>
-                {
-                    b.HasOne("Reporting.Database.UserGroup", "UserGroup")
-                        .WithMany("Managers")
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Reporting.Database.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-
-                    b.Navigation("UserGroup");
-                });
-
             modelBuilder.Entity("Reporting.Database.UserGroupMember", b =>
                 {
                     b.HasOne("Reporting.Database.UserGroup", "UserGroup")
@@ -887,6 +784,25 @@ namespace Reporting.Database.Migrations
 
                     b.HasOne("Reporting.Database.User", "User")
                         .WithMany("Memberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("UserGroup");
+                });
+
+            modelBuilder.Entity("Reporting.Database.UserGroupManager", b =>
+                {
+                    b.HasOne("Reporting.Database.UserGroup", "UserGroup")
+                        .WithMany("Managers")
+                        .HasForeignKey("UserGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Reporting.Database.User", "User")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

@@ -8,12 +8,22 @@ import {
   AdminUserDetail,
   SaveGroup,
   SaveUser,
+  UserRef,
 } from '../models/admin';
 
-/** The `/api/admin` endpoints for managing users and groups. All require the manage-users permission. */
+/**
+ * The `/api/admin` endpoints for managing users and groups. The user/group admin endpoints require
+ * the manage-users permission (delegated group managers are scoped by the server); {@link directory}
+ * is the ungated people list used to pick members and managers.
+ */
 @Service()
 export class AdminApiService {
   private readonly http = inject(HttpClient);
+
+  /** The full people directory (ungated), for member/manager pickers. */
+  public directory(): Observable<UserRef[]> {
+    return this.http.get<UserRef[]>('/api/users');
+  }
 
   public listUsers(): Observable<AdminUser[]> {
     return this.http.get<AdminUser[]>('/api/admin/users');

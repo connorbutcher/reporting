@@ -8,7 +8,8 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
-import { AdminUser, SaveGroup } from '../../../core/models/admin';
+import { SaveGroup, UserRef } from '../../../core/models/admin';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   ConfirmDialogComponent,
@@ -16,9 +17,10 @@ import {
 } from '../../home/confirm-dialog/confirm-dialog.component';
 
 /**
- * The detail card for one group, reached from the groups list — create when the route id is "new",
- * otherwise edit. Shown in place of the list (no dialog) with room for the full record: name, the
- * manage-users permission, and its members. Existing groups can also be deleted from here.
+ * The detail card for one group — create when the route id is "new", otherwise edit. Shown in
+ * place of the list (no dialog) with room for the full record: name, members, and the managers
+ * delegated to run the group. A full admin also sees the "can manage users & groups" permission
+ * toggle; a delegated manager sees everything else but not that (they can't escalate the group).
  */
 @Component({
   selector: 'app-group-detail',
@@ -33,11 +35,14 @@ export class GroupDetailComponent {
   public readonly saveError = signal<string | null>(null);
 
   public readonly isNew = signal(true);
+  /** Full admins may set the app-permission toggle; delegated managers may not. */
+  public readonly isFullAdmin = inject(CurrentUserService).canManageUsers;
 
   public readonly canManageUsers = signal(false);
   public readonly memberIds = signal<string[]>([]);
+  public readonly managerIds = signal<string[]>([]);
   public readonly memberFilter = signal('');
-  public readonly userOptions = signal<AdminUser[]>([]);
+  public readonly userOptions = signal<UserRef[]>([]);
 
   public readonly filteredUsers = computed(() => {
     const query = this.memberFilter().trim().toLowerCase();
@@ -48,6 +53,14 @@ export class GroupDetailComponent {
             u.displayName.toLowerCase().includes(query) || u.email.toLowerCase().includes(query),
         )
       : options;
+  });
+
+  /** Managers are chosen from the group's current members. */
+  public readonly managerCandidates = computed(() => {
+    const members = new Set(this.memberIds());
+    return [...this.userOptions()]
+      .filter((u) => members.has(u.id))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
   });
 
   public readonly title = computed(() => (this.isNew() ? 'New group' : 'Edit group'));
@@ -87,6 +100,14 @@ export class GroupDetailComponent {
     this.memberIds.update((ids) =>
       checked ? [...new Set([...ids, id])] : ids.filter((existing) => existing !== id),
     );
+    // A manager must stay a member; dropping the membership drops the manager role too.
+    if (!checked) this.managerIds.update((ids) => ids.filter((existing) => existing !== id));
+  }
+
+  public toggleManager(id: string, checked: boolean): void {
+    this.managerIds.update((ids) =>
+      checked ? [...new Set([...ids, id])] : ids.filter((existing) => existing !== id),
+    );
   }
 
   public save(): void {
@@ -98,6 +119,7 @@ export class GroupDetailComponent {
       name: this.form.name().value().trim(),
       canManageUsers: this.canManageUsers(),
       memberIds: this.memberIds(),
+      managerIds: this.managerIds(),
     };
     const request = this.isNew()
       ? this.api.createGroup(dto)
@@ -148,7 +170,7 @@ export class GroupDetailComponent {
   }
 
   private loadForCreate(): void {
-    forkJoin({ users: this.api.listUsers(), groups: this.api.listGroups() }).subscribe({
+    forkJoin({ users: this.api.directory(), groups: this.api.listGroups() }).subscribe({
       next: ({ users, groups }) => {
         this.userOptions.set(users);
         this.existingNames.set(groups.map((g) => g.name.trim().toLowerCase()));
@@ -164,7 +186,7 @@ export class GroupDetailComponent {
   private loadForEdit(id: string): void {
     forkJoin({
       detail: this.api.getGroup(id),
-      users: this.api.listUsers(),
+      users: this.api.directory(),
       groups: this.api.listGroups(),
     }).subscribe({
       next: ({ detail, users, groups }) => {
@@ -174,6 +196,7 @@ export class GroupDetailComponent {
         );
         this.canManageUsers.set(detail.canManageUsers);
         this.memberIds.set(detail.members.map((m) => m.id));
+        this.managerIds.set(detail.managers.map((m) => m.id));
         this.form.name().value.set(detail.name);
         this.loading.set(false);
       },

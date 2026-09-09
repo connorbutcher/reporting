@@ -23,37 +23,44 @@ public static class Mapping
         ModifiedAt = folder.UpdatedAt
     };
 
-    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded.</summary>
-    public static ReportSummaryDto ToSummaryDto(this Report report) => new()
+    /// <summary>
+    /// Assumes <see cref="Report.Revisions"/> is loaded. <paramref name="level"/> is the calling user's
+    /// effective access: it gates <see cref="ReportSummaryDto.HasDraft"/> so only an editor learns a draft
+    /// exists. <paramref name="isFavorite"/> is whether the caller has starred the report.
+    /// </summary>
+    public static ReportSummaryDto ToSummaryDto(this Report report, AccessLevel level, bool isFavorite) => new()
     {
         Id = report.Id,
         Number = report.Number,
         Name = report.Name,
         FolderId = report.FolderId,
-        HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
-        LatestVersionNumber = report.Revisions
-            .Where(r => r.Kind == RevisionKind.Published)
-            .Select(r => r.VersionNumber)
-            .DefaultIfEmpty(null)
-            .Max(),
+        HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+        LatestVersionNumber = report.LatestPublishedVersionNumber(),
+        AccessLevel = level,
+        IsFavorite = isFavorite,
         ModifiedAt = report.UpdatedAt
     };
 
-    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded, to derive draft/latest-version state.</summary>
-    public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath) => new()
+    /// <summary>Assumes <see cref="Report.Revisions"/> is loaded. See <see cref="ToSummaryDto"/> for the parameters.</summary>
+    public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath, AccessLevel level, bool isFavorite) => new()
     {
         Id = report.Id,
         Number = report.Number,
         Name = report.Name,
-        HasDraft = report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
-        LatestVersionNumber = report.Revisions
-            .Where(r => r.Kind == RevisionKind.Published)
-            .Select(r => r.VersionNumber)
-            .DefaultIfEmpty(null)
-            .Max(),
+        HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+        LatestVersionNumber = report.LatestPublishedVersionNumber(),
+        AccessLevel = level,
+        IsFavorite = isFavorite,
         ModifiedAt = report.UpdatedAt,
         FolderPath = folderPath
     };
+
+    /// <summary>The highest published version number, or null if the report has never been published.</summary>
+    public static int? LatestPublishedVersionNumber(this Report report) => report.Revisions
+        .Where(r => r.Kind == RevisionKind.Published)
+        .Select(r => r.VersionNumber)
+        .DefaultIfEmpty(null)
+        .Max();
 
     public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()
     {

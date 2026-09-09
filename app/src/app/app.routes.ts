@@ -1,27 +1,30 @@
 import { Routes } from '@angular/router';
-import { canManageUsersGuard } from './features/admin/admin.guard';
+import { adminAreaGuard, fullAdminGuard } from './features/admin/admin.guard';
 import { unsavedChangesGuard } from './features/report-builder/report-canvas/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
     path: 'admin',
-    canMatch: [canManageUsersGuard],
+    canMatch: [adminAreaGuard],
     loadComponent: () =>
       import('./features/admin/admin-page.component').then((m) => m.AdminPageComponent),
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'users' },
       {
         path: 'users',
+        canMatch: [fullAdminGuard],
         loadComponent: () =>
           import('./features/admin/users-list/users-list.component').then((m) => m.UsersListComponent),
       },
       {
         path: 'users/new',
+        canMatch: [fullAdminGuard],
         loadComponent: () =>
           import('./features/admin/user-detail/user-detail.component').then((m) => m.UserDetailComponent),
       },
       {
         path: 'users/:id',
+        canMatch: [fullAdminGuard],
         loadComponent: () =>
           import('./features/admin/user-detail/user-detail.component').then((m) => m.UserDetailComponent),
       },

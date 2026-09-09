@@ -33,6 +33,8 @@ export class ReportLifecycle {
 
   /** The report id we've already tried to check out a draft for, so we only try once. */
   private checkoutAttemptedFor: number | null = null;
+  /** The report id whose view we've recorded, so opening the editor logs it once for "recently viewed". */
+  private recordedViewFor: number | null = null;
   /** Set when even a checkout couldn't produce a draft, so the skeleton stops. */
   private readonly loadFailed = signal(false);
 
@@ -104,5 +106,12 @@ export class ReportLifecycle {
     // defaults and key order, so anything else would look like a change and
     // leave an undo step available before the user has done anything.
     this.autosave.reset(model.serialized());
+
+    // Opening a report to edit counts as visiting it — record it once so it surfaces in the
+    // editor's "recently viewed". Fire-and-forget: a failed record must never disrupt editing.
+    if (report.reportId !== this.recordedViewFor) {
+      this.recordedViewFor = report.reportId;
+      this.reportApi.recordView(report.reportId).subscribe({ error: () => {} });
+    }
   }
 }

@@ -1,0 +1,247 @@
+:host {
+  display: block;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.contents {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.contents-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contents-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+}
+
+.contents-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// One row. A subtle separator keeps a long list scannable without boxing every item.
+.crow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+
+  & + .crow {
+    border-top-color: var(--app-card-border, #e2e8f0);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  &:hover {
+    background: #f8fafc;
+    border-color: transparent;
+
+    & + .crow {
+      border-top-color: transparent;
+    }
+  }
+}
+
+// The name/icon is the primary click target: it opens the row's default (a folder, a report's
+// published version, or its draft when that's all there is).
+.crow-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.crow-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+
+  .pi {
+    font-size: 0.95rem;
+  }
+
+  &--folder {
+    background: #eef2f7;
+    color: var(--app-navy, #152a55);
+  }
+
+  &--report {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+}
+
+.crow-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.crow-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--app-navy, #152a55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crow-meta {
+  font-family: var(--app-font-mono);
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+// Star sits before the icon so favouriting is always in the same place down the list.
+.crow-star {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: #cbd5e1;
+  cursor: pointer;
+
+  &:hover {
+    background: #eef2f7;
+    color: #f59e0b;
+  }
+
+  &--on {
+    color: #f59e0b;
+  }
+}
+
+.crow-badges {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  .pi {
+    font-size: 0.7rem;
+  }
+
+  &--draft {
+    background: #fef3c7;
+    color: #b45309;
+  }
+}
+
+.crow-actions {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  // A little air between the status zone (the lone Draft pill, when present) and the buttons, so
+  // the two stop reading as one cluster.
+  margin-left: 8px;
+}
+
+.crow-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--app-card-border, #e2e8f0);
+  border-radius: 7px;
+  background: #fff;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--app-navy, #152a55);
+  cursor: pointer;
+
+  .pi {
+    font-size: 0.72rem;
+  }
+
+  &:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+
+  // The default action (published view, or edit when that's all there is) is the filled one.
+  &--primary {
+    background: var(--app-navy, #152a55);
+    border-color: var(--app-navy, #152a55);
+    color: #fff;
+
+    &:hover {
+      background: var(--app-navy-dark, #101f3f);
+      border-color: var(--app-navy-dark, #101f3f);
+    }
+  }
+}
+
+.crow-more {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+
+  &:hover {
+    background: #eef2f7;
+    color: var(--app-navy, #152a55);
+  }
+}
+
+// On tighter widths the row can't hold name + badges + two buttons in one line; let the right-hand
+// cluster drop under the name rather than clipping or forcing the page wider.
+@media (max-width: 720px) {
+  .crow--report {
+    flex-wrap: wrap;
+  }
+
+  .crow-main {
+    flex-basis: calc(100% - 76px);
+  }
+
+  .crow-badges,
+  .crow-actions {
+    margin-left: 46px;
+  }
+}

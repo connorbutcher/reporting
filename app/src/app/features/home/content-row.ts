@@ -1,4 +1,5 @@
 import { Folder } from '../../core/models/folder.model';
+import { AccessLevel } from '../../core/models/permission';
 import { ReportSummary } from '../../core/models/report';
 
 /** A row plus the mouse event that triggered its context menu, emitted up to the page which owns the shared menu. */
@@ -28,6 +29,10 @@ export interface ReportRow extends ContentRowBase {
   number: number;
   status: string;
   statusKind: 'draft' | 'published' | 'empty';
+  /** The current user's access — drives whether editing is offered on the row. */
+  accessLevel: AccessLevel;
+  /** Whether the current user has starred this report — drives the star toggle's filled state. */
+  isFavorite: boolean;
   report: ReportSummary;
 }
 
@@ -64,6 +69,8 @@ export function reportToRow(report: ReportSummary): ReportRow {
         ? `Published · v${report.latestVersionNumber}`
         : 'No versions',
     statusKind,
+    accessLevel: report.accessLevel,
+    isFavorite: report.isFavorite,
     modifiedAt: report.modifiedAt,
     report,
   };

@@ -50,6 +50,9 @@ export class ReportViewerStore {
   /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
   readonly openFilterKey = signal<string | null>(null);
 
+  /** The last report id whose view we recorded, so switching version doesn't re-record the same report. */
+  private lastRecordedView: number | null = null;
+
   private readonly params = toSignal(this.route.paramMap);
   private readonly reportId = computed(() => {
     const raw = this.params()?.get('reportId');
@@ -132,7 +135,10 @@ export class ReportViewerStore {
             : null,
         );
         this.openFilterKey.set(null);
-        if (content) this.loadSchemas(content);
+        if (content) {
+          this.loadSchemas(content);
+          this.recordView(content.reportId);
+        }
       });
     });
 
@@ -178,6 +184,17 @@ export class ReportViewerStore {
         this.schemas.update((all) => ({ ...all, [datasetId]: schema }));
       });
     }
+  }
+
+  /**
+   * Records that the reader opened this report, for their "recently viewed" list. Guarded so
+   * switching between versions of the same report doesn't re-record it. Fire-and-forget: a failure
+   * to record a view should never disrupt viewing.
+   */
+  private recordView(reportId: number): void {
+    if (reportId === this.lastRecordedView) return;
+    this.lastRecordedView = reportId;
+    this.reportApi.recordView(reportId).subscribe({ error: () => {} });
   }
 
   showTab(tab: AsideTab): void {

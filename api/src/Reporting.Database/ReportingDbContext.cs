@@ -26,6 +26,8 @@ public class ReportingDbContext : DbContext
     public DbSet<AccessGrant> AccessGrants => Set<AccessGrant>();
     public DbSet<AppPermissionGrant> AppPermissionGrants => Set<AppPermissionGrant>();
     public DbSet<GrantAuditEntry> GrantAuditEntries => Set<GrantAuditEntry>();
+    public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>();
+    public DbSet<ReportView> ReportViews => Set<ReportView>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -286,5 +288,24 @@ public class ReportingDbContext : DbContext
         // Retrieval is always "the trail for this securable, newest first".
         modelBuilder.Entity<GrantAuditEntry>()
             .HasIndex(a => new { a.SecurableType, a.SecurableId, a.CreatedAt });
+
+        // --- per-user report state (favourites, recently viewed) ----------
+
+        // Both are per-(user, report) junctions with a cascading FK to each side, and no navigation
+        // properties — the FK property alone gives the database referential integrity and the cascade.
+        // A unique index on the pair means a user stars, and records a view of, a report at most once.
+        modelBuilder.Entity<ReportFavorite>().HasIndex(f => new { f.UserId, f.ReportId }).IsUnique();
+        modelBuilder.Entity<ReportFavorite>()
+            .HasOne<User>().WithMany().HasForeignKey(f => f.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReportFavorite>()
+            .HasOne<Report>().WithMany().HasForeignKey(f => f.ReportId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ReportView>().HasIndex(v => new { v.UserId, v.ReportId }).IsUnique();
+        // Recency lookup per user: the list is "this user's views, newest first".
+        modelBuilder.Entity<ReportView>().HasIndex(v => new { v.UserId, v.ViewedAt });
+        modelBuilder.Entity<ReportView>()
+            .HasOne<User>().WithMany().HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReportView>()
+            .HasOne<Report>().WithMany().HasForeignKey(v => v.ReportId).OnDelete(DeleteBehavior.Cascade);
     }
 }

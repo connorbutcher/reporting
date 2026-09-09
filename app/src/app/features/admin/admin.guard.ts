@@ -5,18 +5,28 @@ import { filter, map, take } from 'rxjs';
 import { CurrentUserService } from '../../core/services/current-user.service';
 
 /**
- * Keeps the admin area to users who can manage the directory. Waits for `/api/me` to settle (so a
- * first navigation isn't decided on the empty initial value), then allows through or redirects
- * home. Mirrors the server-side guard — the API returns 403 regardless, this just avoids showing a
- * shell the user can't use.
+ * Waits for `/api/me` to settle (so a first navigation isn't decided on the empty initial value),
+ * then allows the route or redirects to `fallback`. Mirrors the server-side guards — this just
+ * avoids showing a shell the user can't use.
  */
-export const canManageUsersGuard: CanMatchFn = () => {
+function decide(allowed: () => boolean, fallback: string) {
   const currentUser = inject(CurrentUserService);
   const router = inject(Router);
-
   return toObservable(currentUser.loaded).pipe(
     filter((loaded) => loaded),
     take(1),
-    map(() => (currentUser.canManageUsers() ? true : router.parseUrl('/'))),
+    map(() => (allowed() ? true : router.parseUrl(fallback))),
   );
+}
+
+/** The admin area is open to full admins and to delegated group managers; others go home. */
+export const adminAreaGuard: CanMatchFn = () => {
+  const currentUser = inject(CurrentUserService);
+  return decide(() => currentUser.canManageUsers() || currentUser.canManageGroups(), '/');
+};
+
+/** The Users section is full-admin-only; a delegated manager is sent to the Groups section. */
+export const fullAdminGuard: CanMatchFn = () => {
+  const currentUser = inject(CurrentUserService);
+  return decide(() => currentUser.canManageUsers(), '/admin/groups');
 };

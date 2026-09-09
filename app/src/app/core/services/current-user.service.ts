@@ -15,6 +15,7 @@ export class CurrentUserService {
   );
 
   public readonly canManageUsers = computed(() => this.user()?.canManageUsers ?? false);
+  public readonly canManageGroups = computed(() => this.user()?.canManageGroups ?? false);
   public readonly isGlobalAdmin = computed(() => this.user()?.isGlobalAdmin ?? false);
 
   /** True once the fetch has settled (value or error), so a guard can wait before deciding. */

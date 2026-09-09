@@ -272,7 +272,7 @@ public class AdminServicesTests : IDisposable
         Assert.Equal(2, (await Groups(admin.Id).ListAsync()).Count);
         Assert.NotNull(await Groups(bob.Id).GetAsync(mine.Id));
         Assert.True(await Groups(bob.Id).CurrentUserManagesAnyGroupAsync());
-        Assert.False(await Groups(await NewUserId("c@x"), managing: false).CurrentUserManagesAnyGroupAsync());
+        Assert.False(await Groups(await NewUserId("c@x")).CurrentUserManagesAnyGroupAsync());
     }
 
     [Fact]
@@ -299,27 +299,28 @@ public class AdminServicesTests : IDisposable
     }
 
     [Fact]
-    public async Task Delegate_cannot_grant_manage_users_or_create_or_touch_admin_groups()
+    public async Task Delegate_cannot_grant_manage_users_or_create_or_reach_other_groups()
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);
         var bob = await SeedUserAsync("b@x", "Bob");
-        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId], ManagerIds = [bob.RefId] });
+        var team = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId], ManagerIds = [bob.RefId] });
+        var others = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Others" }); // Bob doesn't manage this
 
         // The manage-users flag is ignored for a delegate — the group must not gain the permission.
-        await Groups(bob.Id).UpdateAsync(group.Id, new SaveGroupDto
+        await Groups(bob.Id).UpdateAsync(team.Id, new SaveGroupDto
         {
             Name = "Team", CanManageUsers = true, MemberIds = [bob.RefId], ManagerIds = [bob.RefId]
         });
-        Assert.False((await Groups(admin.Id).GetAsync(group.Id))!.CanManageUsers);
+        Assert.False((await Groups(admin.Id).GetAsync(team.Id))!.CanManageUsers);
 
         // Creating groups is full-admin-only.
         await Assert.ThrowsAsync<AccessDeniedException>(() => Groups(bob.Id).CreateAsync(new SaveGroupDto { Name = "New" }));
 
-        // A group that itself grants ManageUsers is out of a delegate's reach, even as its manager.
-        var adminGroup = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Admins", CanManageUsers = true, MemberIds = [bob.RefId], ManagerIds = [bob.RefId] });
-        Assert.DoesNotContain(await Groups(bob.Id).ListAsync(), g => g.Name == "Admins");
-        Assert.Null(await Groups(bob.Id).GetAsync(adminGroup.Id));
-        Assert.Null(await Groups(bob.Id).UpdateAsync(adminGroup.Id, new SaveGroupDto { Name = "Admins", MemberIds = [bob.RefId], ManagerIds = [bob.RefId] }));
+        // A group Bob doesn't manage is invisible and untouchable to him.
+        Assert.DoesNotContain(await Groups(bob.Id).ListAsync(), g => g.Name == "Others");
+        Assert.Null(await Groups(bob.Id).GetAsync(others.Id));
+        Assert.Null(await Groups(bob.Id).UpdateAsync(others.Id, new SaveGroupDto { Name = "Others" }));
+        Assert.False(await Groups(bob.Id).DeleteAsync(others.Id));
     }
 
     [Fact]

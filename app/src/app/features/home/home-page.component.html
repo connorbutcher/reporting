@@ -46,13 +46,7 @@
       } @else if (!store.hasContent()) {
         <p class="home-empty">This folder is empty.</p>
       } @else {
-        @if (store.folderRows().length > 0) {
-          <app-folder-chips (rowAction)="onRowAction($event)" />
-        }
-
-        @if (store.reportRows().length > 0) {
-          <app-reports-table (rowAction)="onRowAction($event)" />
-        }
+        <app-contents-list (rowAction)="onRowAction($event)" />
       }
     }
   </section>

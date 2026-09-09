@@ -1,4 +1,7 @@
 <div class="layout">
   <app-dataset-list [reportId]="reportId" />
-  <app-dataset-editor />
+  <div class="editor-pane">
+    <app-dataset-revision-card [reportId]="reportId" />
+    <app-dataset-editor />
+  </div>
 </div>

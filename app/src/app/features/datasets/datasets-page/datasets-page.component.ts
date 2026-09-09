@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { DatasetEditorComponent } from '../dataset-editor/dataset-editor.component';
 import { DatasetListComponent } from '../dataset-list/dataset-list.component';
+import { DatasetRevisionCardComponent } from '../dataset-revision-card/dataset-revision-card.component';
 import { DatasetsStore } from '../datasets.store';
 import { DatasetAutosave } from '../state/dataset-autosave';
 import { DatasetCollection } from '../state/dataset-collection';
@@ -21,7 +22,7 @@ import { DatasetValidation } from '../state/dataset-validation';
  */
 @Component({
   selector: 'app-datasets-page',
-  imports: [DatasetListComponent, DatasetEditorComponent],
+  imports: [DatasetListComponent, DatasetEditorComponent, DatasetRevisionCardComponent],
   templateUrl: './datasets-page.component.html',
   styleUrl: './datasets-page.component.scss',
   // The store is a thin facade over these focused collaborator services; all are

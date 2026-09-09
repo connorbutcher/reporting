@@ -12,3 +12,14 @@
   padding: 16px;
   box-sizing: border-box;
 }
+
+// The right side stacks the revision-info card (natural height) above the editor card, which grows
+// to fill the rest and scrolls its panels internally.
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}

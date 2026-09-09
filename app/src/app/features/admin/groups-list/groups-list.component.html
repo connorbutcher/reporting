@@ -5,7 +5,9 @@
       <p class="admin-card-subtitle">{{ groups().length }} {{ groups().length === 1 ? 'group' : 'groups' }}</p>
     </div>
     <span class="admin-card-spacer"></span>
-    <p-button label="New group" icon="pi pi-plus" size="small" (onClick)="create()" />
+    @if (canCreate()) {
+      <p-button label="New group" icon="pi pi-plus" size="small" (onClick)="create()" />
+    }
   </header>
 
   <div class="admin-card-body">

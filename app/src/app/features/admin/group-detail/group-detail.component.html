@@ -45,22 +45,24 @@
           }
         </div>
 
+        @if (isFullAdmin()) {
+          <hr class="admin-divider" />
+          <span class="admin-section-label">Access</span>
+          <label class="admin-check">
+            <p-checkbox
+              [binary]="true"
+              inputId="group-manage"
+              [ngModel]="canManageUsers()"
+              (onChange)="canManageUsers.set($event.checked)"
+            />
+            <span class="admin-check-text">
+              <span class="admin-check-label">Can manage users &amp; groups</span>
+              <span class="admin-hint">Every member of this group gets full access to the admin area.</span>
+            </span>
+          </label>
+        }
+
         <hr class="admin-divider" />
-        <span class="admin-section-label">Access</span>
-
-        <label class="admin-check">
-          <p-checkbox
-            [binary]="true"
-            inputId="group-manage"
-            [ngModel]="canManageUsers()"
-            (onChange)="canManageUsers.set($event.checked)"
-          />
-          <span class="admin-check-text">
-            <span class="admin-check-label">Can manage users &amp; groups</span>
-            <span class="admin-hint">Every member of this group gets access to the admin area.</span>
-          </span>
-        </label>
-
         <div class="admin-field">
           <label class="admin-label">
             Members <span class="admin-hint">({{ memberIds().length }} selected)</span>
@@ -92,6 +94,30 @@
               <p class="admin-hint admin-picker-empty">
                 {{ userOptions().length === 0 ? 'No users exist yet.' : 'No people match.' }}
               </p>
+            }
+          </div>
+        </div>
+
+        <div class="admin-field">
+          <label class="admin-label">
+            Managers <span class="admin-hint">({{ managerIds().length }} of {{ memberIds().length }} members)</span>
+          </label>
+          <span class="admin-hint">Managers can edit this group — its members, name, managers, and deletion — without full admin rights.</span>
+          <div class="admin-picker">
+            @for (user of managerCandidates(); track user.id) {
+              <label class="admin-picker-item">
+                <p-checkbox
+                  [binary]="true"
+                  [ngModel]="managerIds().includes(user.id)"
+                  (onChange)="toggleManager(user.id, $event.checked)"
+                />
+                <span class="admin-picker-person">
+                  <span class="admin-picker-name">{{ user.displayName }}</span>
+                  <span class="admin-hint">{{ user.email }}</span>
+                </span>
+              </label>
+            } @empty {
+              <p class="admin-hint admin-picker-empty">Add members first, then choose who can manage the group.</p>
             }
           </div>
         </div>

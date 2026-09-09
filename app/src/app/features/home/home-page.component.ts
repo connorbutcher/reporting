@@ -4,11 +4,10 @@ import { ButtonModule } from 'primeng/button';
 import { ContextMenu, ContextMenuModule } from 'primeng/contextmenu';
 import { SkeletonModule } from 'primeng/skeleton';
 import { RowAction } from './content-row';
-import { FolderChipsComponent } from './folder-chips/folder-chips.component';
+import { ContentsListComponent } from './contents-list/contents-list.component';
 import { FolderTreeRailComponent } from './folder-tree-rail/folder-tree-rail.component';
 import { HomeItemActionsService } from './home-item-actions.service';
 import { HomeStore } from './home.store';
-import { ReportsTableComponent } from './reports-table/reports-table.component';
 import { SearchBoxComponent } from './search-box/search-box.component';
 import { SearchResultsComponent } from './search-results/search-results.component';
 
@@ -27,8 +26,7 @@ import { SearchResultsComponent } from './search-results/search-results.componen
     FolderTreeRailComponent,
     SearchBoxComponent,
     SearchResultsComponent,
-    FolderChipsComponent,
-    ReportsTableComponent,
+    ContentsListComponent,
   ],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',

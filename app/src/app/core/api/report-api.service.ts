@@ -22,6 +22,28 @@ export class ReportApiService {
     return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
   }
 
+  /** The reports the current user has starred. */
+  favorites(): Observable<ReportSummary[]> {
+    return this.http.get<ReportSummary[]>('/api/me/favorites');
+  }
+
+  /** The current user's most-recently-opened reports, newest first. */
+  recent(take = 8): Observable<ReportSummary[]> {
+    return this.http.get<ReportSummary[]>('/api/me/recent', { params: { take } });
+  }
+
+  /** Stars (favorite=true) or un-stars (false) a report for the current user. */
+  setFavorite(id: number, favorite: boolean): Observable<void> {
+    return favorite
+      ? this.http.post<void>(`/api/reports/${id}/favorite`, {})
+      : this.http.delete<void>(`/api/reports/${id}/favorite`);
+  }
+
+  /** Records that the current user just opened a report, for their "recently viewed" list. */
+  recordView(id: number): Observable<void> {
+    return this.http.post<void>(`/api/reports/${id}/view`, {});
+  }
+
   create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {
     return this.http.post<ReportSummary>('/api/reports', { name, folderId, sourceReportId });
   }

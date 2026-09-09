@@ -6,7 +6,7 @@ namespace Reporting.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ReportsController(ReportRepository reports) : ControllerBase
+public class ReportsController(ReportRepository reports, ReportPersonalizationService personalization) : ControllerBase
 {
     /// <summary>Reports directly inside <paramref name="folderId"/> (root if omitted) — not the whole tree.</summary>
     [HttpGet]
@@ -137,4 +137,24 @@ public class ReportsController(ReportRepository reports) : ControllerBase
     [HttpDelete("{id:int}/draft")]
     public async Task<IActionResult> DiscardDraft(int id) =>
         await reports.DiscardDraftAsync(id) ? NoContent() : NotFound();
+
+    // --- per-user state (favourite / recently viewed) ---------------------
+
+    /// <summary>Stars the report for the current user. Idempotent; 404 if they can't see it.</summary>
+    [HttpPost("{id:int}/favorite")]
+    public async Task<IActionResult> AddFavorite(int id) =>
+        await personalization.AddFavoriteAsync(id) ? NoContent() : NotFound();
+
+    /// <summary>Removes the current user's star. Idempotent.</summary>
+    [HttpDelete("{id:int}/favorite")]
+    public async Task<IActionResult> RemoveFavorite(int id)
+    {
+        await personalization.RemoveFavoriteAsync(id);
+        return NoContent();
+    }
+
+    /// <summary>Records that the current user just opened the report, for their "recently viewed" list.</summary>
+    [HttpPost("{id:int}/view")]
+    public async Task<IActionResult> RecordView(int id) =>
+        await personalization.RecordViewAsync(id) ? NoContent() : NotFound();
 }

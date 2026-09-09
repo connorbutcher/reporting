@@ -1,0 +1,77 @@
+<div class="contents">
+  @if (store.folderRows().length > 0) {
+    <div class="contents-group">
+      <span class="contents-label">Folders</span>
+      <ul class="contents-list">
+        @for (row of store.folderRows(); track row.id) {
+          <li class="crow crow--folder" (contextmenu)="onContextMenu($event, row)">
+            <button type="button" class="crow-main" (click)="store.openRow(row)">
+              <span class="crow-icon crow-icon--folder"><i class="pi pi-folder" aria-hidden="true"></i></span>
+              <span class="crow-name">{{ row.name }}</span>
+            </button>
+            <button type="button" class="crow-more" aria-label="More actions" (click)="onActions($event, row)">
+              <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (store.reportRows().length > 0) {
+    <div class="contents-group">
+      <span class="contents-label">Reports</span>
+      <ul class="contents-list">
+        @for (row of store.reportRows(); track row.id) {
+          <li class="crow crow--report" (contextmenu)="onContextMenu($event, row)">
+            <button
+              type="button"
+              class="crow-star"
+              [class.crow-star--on]="row.isFavorite"
+              [attr.aria-label]="row.isFavorite ? 'Remove from favourites' : 'Add to favourites'"
+              [attr.aria-pressed]="row.isFavorite"
+              (click)="toggleFavorite($event, row)"
+            >
+              <i class="pi" [class.pi-star-fill]="row.isFavorite" [class.pi-star]="!row.isFavorite" aria-hidden="true"></i>
+            </button>
+
+            <button type="button" class="crow-main" (click)="store.openReport(row.report)">
+              <span class="crow-icon crow-icon--report"><i class="pi pi-file" aria-hidden="true"></i></span>
+              <span class="crow-text">
+                <span class="crow-name">{{ row.name }}</span>
+                <span class="crow-meta">R-{{ row.number }} · {{ publishedLabel(row.report) }} · {{ row.modifiedAt | date: 'mediumDate' }}</span>
+              </span>
+            </button>
+
+            <span class="crow-badges">
+              @if (row.report.hasDraft) {
+                <span class="crow-badge crow-badge--draft">
+                  <i class="pi pi-pencil" aria-hidden="true"></i>
+                  {{ draftLabel(row.report) }}
+                </span>
+              }
+            </span>
+
+            <span class="crow-actions">
+              @for (option of openOptions(row.report); track option.kind; let first = $first) {
+                <button
+                  type="button"
+                  class="crow-action"
+                  [class.crow-action--primary]="first"
+                  (click)="openOption($event, option)"
+                >
+                  <i [class]="option.icon" aria-hidden="true"></i>
+                  {{ shortLabel(option) }}
+                </button>
+              }
+            </span>
+
+            <button type="button" class="crow-more" aria-label="More actions" (click)="onActions($event, row)">
+              <i class="pi pi-ellipsis-h" aria-hidden="true"></i>
+            </button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

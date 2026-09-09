@@ -51,9 +51,11 @@ export interface AdminGroup {
   canManageUsers: boolean;
 }
 
-/** A group with its members, for the edit dialog. */
+/** A group with its members and managers, for the detail card. */
 export interface AdminGroupDetail extends AdminGroup {
   members: UserRef[];
+  /** The users delegated to manage this group (always a subset of `members`). */
+  managers: UserRef[];
 }
 
 /** Create or update a group. */
@@ -62,6 +64,8 @@ export interface SaveGroup {
   canManageUsers: boolean;
   /** RefIds of the users that should be members (set to exactly this). */
   memberIds: string[];
+  /** RefIds of the users that should manage this group (must be a subset of `memberIds`). */
+  managerIds: string[];
 }
 
 /** The signed-in user's own identity and resolved app permissions. */
@@ -71,5 +75,8 @@ export interface CurrentUser {
   email: string;
   isGlobalAdmin: boolean;
   permissions: AppPermission[];
+  /** Full admin — the Users section and every group. */
   canManageUsers: boolean;
+  /** Can reach the Groups section — a full admin, or a delegated manager of at least one group. */
+  canManageGroups: boolean;
 }

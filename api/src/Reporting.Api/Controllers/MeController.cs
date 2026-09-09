@@ -11,7 +11,8 @@ namespace Reporting.Api.Controllers;
 public class MeController(
     ICurrentUserAccessor currentUserAccessor,
     AppPermissionService appPermissions,
-    UserGroupAdminService userGroups) : ControllerBase
+    UserGroupAdminService userGroups,
+    ReportPersonalizationService personalization) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<CurrentUserDto>> Get()
@@ -29,4 +30,14 @@ public class MeController(
             CanManageGroups = await userGroups.CurrentUserManagesAnyGroupAsync()
         };
     }
+
+    /// <summary>The reports the current user has starred.</summary>
+    [HttpGet("favorites")]
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetFavorites() =>
+        await personalization.GetFavoritesAsync();
+
+    /// <summary>The current user's most-recently-opened reports, newest first.</summary>
+    [HttpGet("recent")]
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetRecent([FromQuery] int take = 8) =>
+        await personalization.GetRecentAsync(Math.Clamp(take, 1, 24));
 }

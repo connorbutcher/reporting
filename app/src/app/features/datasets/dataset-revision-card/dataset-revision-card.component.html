@@ -1,0 +1,23 @@
+@if (report(); as report) {
+  <span class="rev-icon"><i class="pi pi-file-edit" aria-hidden="true"></i></span>
+
+  <div class="rev-body">
+    <div class="rev-title">
+      <span class="rev-name">{{ report.name }}</span>
+      <span class="rev-rnum">R-{{ report.number }}</span>
+      <span class="rev-badge">
+        <i class="pi pi-pencil" aria-hidden="true"></i>
+        {{ draftLabel() }}
+      </span>
+    </div>
+    <div class="rev-meta">
+      <span>Editing draft</span>
+      <span class="rev-sep" aria-hidden="true">·</span>
+      <span>{{ basedOn() }}</span>
+      <span class="rev-sep" aria-hidden="true">·</span>
+      <span>{{ datasetCount().length }} {{ datasetCount().length === 1 ? 'dataset' : 'datasets' }}</span>
+    </div>
+  </div>
+} @else if (loading()) {
+  <span class="rev-loading">Loading report…</span>
+}

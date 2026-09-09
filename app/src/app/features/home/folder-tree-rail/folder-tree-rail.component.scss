@@ -3,14 +3,14 @@
   display: contents;
 }
 
-.home-tree {
+.home-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 260px;
-  flex: 0 0 260px;
+  gap: 14px;
+  width: 264px;
+  flex: 0 0 264px;
   padding: 14px;
-  overflow-y: auto;
+  overflow: hidden;
   transition:
     flex-basis 0.16s ease,
     width 0.16s ease;
@@ -18,28 +18,35 @@
   &--collapsed {
     width: 44px;
     flex: 0 0 44px;
-    overflow: hidden;
     padding: 14px 6px;
+    gap: 0;
   }
 }
 
-.home-tree-header {
+.home-nav-header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 4px;
 
-  .home-tree--collapsed & {
+  .home-nav--collapsed & {
     justify-content: center;
   }
 }
 
-.home-tree--collapsed .home-heading {
+.home-nav--collapsed .home-heading {
   display: none;
 }
 
-.home-tree-toggle {
+.home-heading {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--app-navy);
+}
+
+.home-nav-toggle {
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
@@ -58,12 +65,124 @@
   }
 }
 
-.home-heading {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--app-navy);
+// --- sections (Favourites / Recent / Folders) --------------------------
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
 }
+
+// Quick-access lists are secondary to browsing, so each is capped and scrolls internally rather than
+// pushing the folder tree off-screen.
+.nav-section--quick .nav-list {
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+// Folders take the remaining height and scroll on their own.
+.nav-section--folders {
+  flex: 1;
+  min-height: 120px;
+  overflow-y: auto;
+}
+
+.nav-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+
+  .pi {
+    font-size: 0.78rem;
+  }
+}
+
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+
+  // The star reveals on hover/focus so the resting list stays quiet; a filled (favourited) star stays lit.
+  &:hover .nav-item-star,
+  .nav-item-star--on,
+  .nav-item-star:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover {
+    background: #f1f5f9;
+  }
+}
+
+.nav-item-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 8px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-item-icon {
+  flex: none;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.nav-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--app-navy, #152a55);
+}
+
+.nav-item-star {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 2px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+
+  &:hover {
+    color: #f59e0b;
+  }
+
+  &--on {
+    color: #f59e0b;
+  }
+}
+
+// --- folder tree -------------------------------------------------------
 
 .home-tree-widget {
   display: block;
