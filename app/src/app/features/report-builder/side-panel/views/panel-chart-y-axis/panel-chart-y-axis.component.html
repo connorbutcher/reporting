@@ -1,0 +1,103 @@
+<div class="panel-section">
+  <app-panel-group label="Value axis" icon="✛">
+    <label class="panel-field">
+      <span class="panel-field-label">Axis label</span>
+      <input
+        pInputText
+        [ngModel]="axis().label"
+        (ngModelChange)="chart().updateYAxis(axis().id, { label: $event })"
+        [placeholder]="yPlaceholder()"
+      />
+    </label>
+
+    <label class="panel-field">
+      <span class="panel-field-label">Label rotation</span>
+      <p-select
+        [options]="axisRotations"
+        [ngModel]="axis().rotate ?? null"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Default"
+        [showClear]="true"
+        appendTo="body"
+        fluid
+        (ngModelChange)="chart().updateYAxis(axis().id, { rotate: $event ?? undefined })"
+      />
+    </label>
+
+    <label class="panel-field">
+      <span class="panel-field-label">Interval</span>
+      <p-inputnumber
+        [ngModel]="axis().interval ?? null"
+        (ngModelChange)="chart().updateYAxis(axis().id, { interval: $event ?? null })"
+        placeholder="Auto"
+        fluid
+      />
+      <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
+    </label>
+
+    @if (!categorical()) {
+      <label class="panel-field">
+        <span class="panel-field-label">Side</span>
+        <p-select
+          [options]="axisSides"
+          [ngModel]="axis().side"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="chart().updateYAxis(axis().id, { side: $event.value })"
+        />
+      </label>
+      <div class="panel-grid-fields">
+        <label class="panel-field">
+          <span class="panel-field-label">Min</span>
+          <p-inputnumber
+            [ngModel]="axis().min ?? null"
+            (ngModelChange)="chart().updateYAxis(axis().id, { min: $event ?? null })"
+            placeholder="Auto"
+            fluid
+          />
+        </label>
+        <label class="panel-field">
+          <span class="panel-field-label">Max</span>
+          <p-inputnumber
+            [ngModel]="axis().max ?? null"
+            (ngModelChange)="chart().updateYAxis(axis().id, { max: $event ?? null })"
+            placeholder="Auto"
+            fluid
+          />
+        </label>
+      </div>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          [inputId]="'yaxis-log-' + axis().id"
+          [ngModel]="axis().logScale ?? false"
+          (onChange)="chart().updateYAxis(axis().id, { logScale: $event.checked })"
+        />
+        <label [for]="'yaxis-log-' + axis().id">Log scale</label>
+      </div>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          [inputId]="'yaxis-scale-' + axis().id"
+          [ngModel]="axis().scale ?? false"
+          (onChange)="chart().updateYAxis(axis().id, { scale: $event.checked })"
+        />
+        <label [for]="'yaxis-scale-' + axis().id">Fit to data (don’t start at zero)</label>
+      </div>
+    }
+  </app-panel-group>
+
+  @if (canRemove()) {
+    <p-button
+      label="Remove axis"
+      icon="pi pi-times"
+      severity="danger"
+      outlined
+      fluid
+      (onClick)="remove()"
+    />
+  }
+</div>

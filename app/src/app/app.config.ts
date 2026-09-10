@@ -1,10 +1,11 @@
 import { OVERLAY_DEFAULT_CONFIG } from '@angular/cdk/overlay';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideEchartsCore } from 'ngx-echarts';
 import { MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
+import { httpErrorNotificationInterceptor } from './core/http/http-error-notification.interceptor';
 import { routes } from './app.routes';
 import { ReportingPreset } from './theme';
 
@@ -12,7 +13,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch()),
+    provideHttpClient(withFetch(), withInterceptors([httpErrorNotificationInterceptor])),
     providePrimeNG({
       theme: {
         preset: ReportingPreset,

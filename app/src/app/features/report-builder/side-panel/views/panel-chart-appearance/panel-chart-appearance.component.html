@@ -1,0 +1,23 @@
+<app-panel-group label="Appearance" icon="▤">
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-legend"
+      [ngModel]="chart().showLegend()"
+      (onChange)="chart().showLegend.set($event.checked)"
+    />
+    <label for="chart-legend">Show legend</label>
+  </div>
+
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-gridlines"
+      [ngModel]="chart().showGridLines()"
+      (onChange)="chart().showGridLines.set($event.checked)"
+    />
+    <label for="chart-gridlines">Show gridlines</label>
+  </div>
+
+  <ng-container [appChartTypePanel]="chart()" [panels]="panels" />
+</app-panel-group>

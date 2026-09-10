@@ -41,7 +41,7 @@ export class DatasetColumnCommands {
 
     this.autosave.track(this.api.addColumn(id, trimmed, type)).subscribe({
       next: (column) => this.schema.columns.update((columns) => [...columns, column]),
-      error: () => this.notify.error(`Couldn't add the column "${trimmed}". Please try again.`),
+      error: (err) => this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
     });
   }
 
@@ -58,7 +58,7 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
         ),
-      error: () => this.notify.error("Couldn't rename the column. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't rename the column. Please try again."),
     });
   }
 
@@ -70,7 +70,7 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
         ),
-      error: () => this.notify.error("Couldn't change the column type. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't change the column type. Please try again."),
     });
   }
 
@@ -90,7 +90,7 @@ export class DatasetColumnCommands {
         // The server strips the value too, so mirror that on the loaded rows.
         this.rows.stripColumn(column.id);
       },
-      error: () => this.notify.error(`Couldn't delete "${column.name}". Please try again.`),
+      error: (err) => this.notify.apiError(err, `Couldn't delete "${column.name}". Please try again.`),
     });
   }
 
@@ -112,9 +112,9 @@ export class DatasetColumnCommands {
       )
       .subscribe({
         next: (schema) => this.schema.columns.set(schema.columns),
-        error: () => {
+        error: (err) => {
           this.schema.columns.set(previous);
-          this.notify.error("Couldn't reorder the columns — the change was reverted.");
+          this.notify.apiError(err, "Couldn't reorder the columns — the change was reverted.");
         },
       });
   }

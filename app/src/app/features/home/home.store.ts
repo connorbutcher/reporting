@@ -312,7 +312,7 @@ export class HomeStore {
         this.reloadPersonal();
         this.reportsResource.reload();
       },
-      error: () => this.notify.error("Couldn't update your favourites. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't update your favourites. Please try again."),
     });
   }
 
@@ -350,7 +350,9 @@ export class HomeStore {
         this.notify.success(`${this.label(row)} deleted.`);
       },
       error: (err: { status?: number }) => {
-        this.notify.error(
+        // A 403 is surfaced by the global interceptor; keep the conflict and generic messages here.
+        this.notify.apiError(
+          err,
           err?.status === 409
             ? 'That folder still has folders or reports in it — empty it first.'
             : 'Something went wrong deleting that.',

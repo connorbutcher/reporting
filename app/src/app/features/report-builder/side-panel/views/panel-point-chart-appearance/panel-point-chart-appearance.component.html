@@ -1,0 +1,54 @@
+<label class="panel-field">
+  <span class="panel-field-label">Point size (px)</span>
+  <p-inputnumber
+    [ngModel]="chart().pointSize()"
+    (ngModelChange)="chart().pointSize.set($event ?? 8)"
+    [min]="2"
+    [max]="40"
+    fluid
+  />
+</label>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-value-labels"
+    [ngModel]="chart().showValueLabels()"
+    (onChange)="chart().showValueLabels.set($event.checked)"
+  />
+  <label for="chart-value-labels">Show value labels</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-color-by-value"
+    [ngModel]="chart().colorByValue()"
+    (onChange)="chart().colorByValue.set($event.checked)"
+  />
+  <label for="chart-color-by-value">Colour by value</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-zoom"
+    [ngModel]="chart().zoom()"
+    (onChange)="chart().zoom.set($event.checked)"
+  />
+  <label for="chart-zoom">Zoom &amp; pan — X axis (wheel, drag, slider)</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-zoom-y"
+    [ngModel]="chart().zoomY()"
+    (onChange)="chart().zoomY.set($event.checked)"
+  />
+  <label for="chart-zoom-y">Zoom — Y axis (wheel, drag)</label>
+</div>
+
+@if (lineChart(); as line) {
+  <app-panel-line-chart-options [chart]="line" />
+}

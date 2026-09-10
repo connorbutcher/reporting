@@ -1,96 +1,43 @@
-import { Component, computed, inject, input } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { CheckboxModule } from 'primeng/checkbox';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { SelectModule } from 'primeng/select';
+import { Component, computed, input } from '@angular/core';
 import {
   BarChartWidgetModel,
   BoxPlotWidgetModel,
   ChartWidgetModel,
   HistogramWidgetModel,
-  LineChartWidgetModel,
 } from '../../../models/widget.model';
-import { Aggregate } from '../../../../../core/models/report';
-import { ReportSession } from '../../../state/report-session';
-import { PanelNavigation } from '../../../state/panel-navigation';
-import { PanelView } from '../../panel-view';
-import { PanelGroupComponent } from '../../panel-group.component';
-import { PanelBarChartOptionsComponent } from '../panel-bar-chart-options/panel-bar-chart-options.component';
-import { PanelBoxPlotOptionsComponent } from '../panel-box-plot-options/panel-box-plot-options.component';
+import { PanelChartAppearanceComponent } from '../panel-chart-appearance/panel-chart-appearance.component';
 import { PanelChartAxisListComponent } from '../panel-chart-axis-list/panel-chart-axis-list.component';
-import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
+import { PanelChartSourceComponent } from '../panel-chart-source/panel-chart-source.component';
 import { PanelChartToleranceListComponent } from '../panel-chart-tolerance-list/panel-chart-tolerance-list.component';
 import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-columns/panel-chart-tooltip-columns.component';
-import { PanelHistogramOptionsComponent } from '../panel-histogram-options/panel-histogram-options.component';
-import { PanelLineChartOptionsComponent } from '../panel-line-chart-options/panel-line-chart-options.component';
 
-/** The chart branch of the widget-detail panel: dataset, axes, series, and appearance. Tolerance bands and tooltip are their own groups. */
+/**
+ * The chart branch of the widget-detail panel. A fixed frame — data source, axes,
+ * appearance, tolerance bands — each of which resolves its own chart-type differences,
+ * so this component holds no per-kind branching itself. Only the tooltip is gated here,
+ * since it exists solely for point charts.
+ */
 @Component({
   selector: 'app-panel-widget-detail-chart',
   imports: [
-    FormsModule,
-    CheckboxModule,
-    InputNumberModule,
-    SelectModule,
-    PanelGroupComponent,
-    PanelBarChartOptionsComponent,
-    PanelBoxPlotOptionsComponent,
+    PanelChartSourceComponent,
     PanelChartAxisListComponent,
-    PanelChartSeriesListComponent,
+    PanelChartAppearanceComponent,
     PanelChartToleranceListComponent,
     PanelChartTooltipColumnsComponent,
-    PanelHistogramOptionsComponent,
-    PanelLineChartOptionsComponent,
   ],
   templateUrl: './panel-widget-detail-chart.component.html',
 })
 export class PanelWidgetDetailChartComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
-  /** The datasets on this report, for the data-source picker. */
-  public readonly datasets = inject(ReportSession).datasets;
-
-  /** The aggregate options offered for a bar chart, in menu order. */
-  public readonly aggregates: { label: string; value: Aggregate }[] = [
-    { label: 'Sum', value: 'sum' },
-    { label: 'Average', value: 'average' },
-    { label: 'Count', value: 'count' },
-    { label: 'Min', value: 'min' },
-    { label: 'Max', value: 'max' },
-  ];
-
-  /** The model narrowed to a line chart, so line-only options render only for it. */
-  public readonly lineChart = computed(() => {
+  /** A point chart (scatter/line) has a per-point tooltip; category charts (bar/box/histogram) don't. */
+  public readonly isPointChart = computed(() => {
     const chart = this.chart();
-    return chart instanceof LineChartWidgetModel ? chart : null;
+    return !(
+      chart instanceof BarChartWidgetModel ||
+      chart instanceof BoxPlotWidgetModel ||
+      chart instanceof HistogramWidgetModel
+    );
   });
-
-  /** The model narrowed to a bar chart, so bar-only fields render only for it. */
-  public readonly barChart = computed(() => {
-    const chart = this.chart();
-    return chart instanceof BarChartWidgetModel ? chart : null;
-  });
-
-  /** The model narrowed to a box plot, so box-only fields render only for it. */
-  public readonly boxPlot = computed(() => {
-    const chart = this.chart();
-    return chart instanceof BoxPlotWidgetModel ? chart : null;
-  });
-
-  /** The model narrowed to a histogram, so histogram-only fields render only for it. */
-  public readonly histogram = computed(() => {
-    const chart = this.chart();
-    return chart instanceof HistogramWidgetModel ? chart : null;
-  });
-
-  /** Bar, box plot, and histogram are category/bar charts, unlike the point (scatter/line) charts. */
-  public readonly categorical = computed(
-    () => !!this.barChart() || !!this.boxPlot() || !!this.histogram(),
-  );
-
-  private readonly navigation = inject(PanelNavigation);
-
-  public navigate(view: PanelView): void {
-    this.navigation.navigate(view);
-  }
 }

@@ -1,18 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Permissions;
 
 /// <summary>
-/// Resolves and enforces the current user's access. On first use it loads a snapshot of the
-/// folder tree and the grants that can affect this user once, then answers any number of
-/// folder/report/root questions from memory via the pure <see cref="AccessResolver"/> — so
-/// filtering a whole list costs no extra round trips. Only grants for the user, their groups,
-/// or everyone are loaded (the only ones resolution can match), each folder's node and resolved
-/// level is memoised, and global admins short-circuit before anything is loaded at all. Scoped,
-/// so the snapshot lives for one request.
+/// Resolves the current user's effective access <em>level</em> on a securable — the raw material the
+/// policy layer (<see cref="ResourceAuthorizer"/>) turns into allow/deny decisions. On first use it
+/// loads a snapshot of the folder tree and the grants that can affect this user once, then answers any
+/// number of folder/report/root questions from memory via the pure <see cref="AccessResolver"/> — so
+/// filtering a whole list costs no extra round trips. Only grants for the user, their groups, or
+/// everyone are loaded (the only ones resolution can match), each folder's node and resolved level is
+/// memoised, and global admins short-circuit before anything is loaded at all. Scoped, so the snapshot
+/// lives for one request.
 /// </summary>
 public class PermissionService(ReportingDbContext db, ICurrentUserAccessor currentUserAccessor)
 {
@@ -26,34 +26,6 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
 
     public async Task<AccessLevel> LevelForReportAsync(int reportId, int? folderId, bool inheritsPermissions) =>
         (await LoadAsync()).ResolveReport(reportId, folderId, inheritsPermissions);
-
-    // --- visibility (>= Viewer) ------------------------------------------
-
-    public async Task<bool> CanSeeFolderAsync(int folderId) =>
-        await LevelForFolderAsync(folderId) >= AccessLevel.Viewer;
-
-    public async Task<bool> CanSeeReportAsync(int reportId, int? folderId, bool inheritsPermissions) =>
-        await LevelForReportAsync(reportId, folderId, inheritsPermissions) >= AccessLevel.Viewer;
-
-    // --- guards (throw AccessDeniedException below the required level) -----
-
-    public async Task RequireFolderAsync(int folderId, AccessLevel required) =>
-        Require(await LevelForFolderAsync(folderId), required);
-
-    public async Task RequireReportAsync(int reportId, int? folderId, bool inheritsPermissions, AccessLevel required) =>
-        Require(await LevelForReportAsync(reportId, folderId, inheritsPermissions), required);
-
-    /// <summary>Creating an item inside a folder (or at the root when null) needs Editor on that container.</summary>
-    public Task RequireCreateInAsync(int? folderId) => folderId is { } id
-        ? RequireFolderAsync(id, AccessLevel.Editor)
-        : RootEditorAsync();
-
-    private async Task RootEditorAsync() => Require(await LevelForRootAsync(), AccessLevel.Editor);
-
-    private static void Require(AccessLevel actual, AccessLevel required)
-    {
-        if (actual < required) throw new AccessDeniedException($"This action requires {required} access.");
-    }
 
     // --- snapshot ---------------------------------------------------------
 

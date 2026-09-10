@@ -41,9 +41,9 @@ export class DatasetExport {
         this._exporting.set(false);
         this.notify.success(`Exported ${body.length} ${body.length === 1 ? 'row' : 'rows'}.`);
       },
-      error: () => {
+      error: (err) => {
         this._exporting.set(false);
-        this.notify.error("Couldn't export this dataset. Please try again.");
+        this.notify.loadError(err, "Couldn't export this dataset. Please try again.");
       },
     });
   }

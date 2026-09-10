@@ -34,7 +34,7 @@ export class DatasetSourceCommands {
         this.schema.columns.set(schema.columns);
         this.collection.reloadList();
       },
-      error: () => this.notify.error("Couldn't change the source. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't change the source. Please try again."),
     });
   }
 
@@ -46,9 +46,9 @@ export class DatasetSourceCommands {
     this.schema.sourceConfig.set(config);
     this.autosave.track(this.api.updateSourceConfig(id, config)).subscribe({
       next: (schema) => this.schema.sourceConfig.set(schema.sourceConfig),
-      error: () => {
+      error: (err) => {
         this.schema.sourceConfig.set(previous);
-        this.notify.error("Couldn't save the source configuration — the change was reverted.");
+        this.notify.apiError(err, "Couldn't save the source configuration — the change was reverted.");
       },
     });
   }

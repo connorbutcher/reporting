@@ -102,7 +102,7 @@ export class DatasetRowWindow {
           this.pendingScroll = null;
         }
       },
-      error: () => {
+      error: (err) => {
         if (seq !== this.requestSeq) return; // A newer request (or selection) superseded this one.
         this.loading.set(false);
         // Forget the window so an identical follow-up load (e.g. the grid's
@@ -112,7 +112,7 @@ export class DatasetRowWindow {
         // Let the grid mount on whatever rows already loaded rather than sitting
         // on the skeleton — but tell the user this window didn't load.
         this._ready.set(true);
-        this.notify.error("Couldn't load these rows. Scroll again or reopen the dataset.");
+        this.notify.loadError(err, "Couldn't load these rows. Scroll again or reopen the dataset.");
       },
     });
   }

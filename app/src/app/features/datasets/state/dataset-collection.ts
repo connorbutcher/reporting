@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetSource, DatasetSummary } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
@@ -37,8 +38,13 @@ export class DatasetCollection {
   });
   readonly sources = this.sourcesResource.value;
 
+  // A 404 here is expected control flow (the report may simply have no checked-out draft), and the
+  // sidebar already explains a load failure inline, so this opts out of the global not-found toast.
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
-    () => (this.reportId() !== null ? `/api/reports/${this.reportId()}/datasets` : undefined),
+    () =>
+      this.reportId() !== null
+        ? { url: `/api/reports/${this.reportId()}/datasets`, context: skipHttpErrorNotification() }
+        : undefined,
     { defaultValue: [] },
   );
   readonly datasets = this.datasetsResource.value;
@@ -143,7 +149,7 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Dataset "${trimmed}" created.`);
       },
-      error: () => this.notify.error(`Couldn't create "${trimmed}". Please try again.`),
+      error: (err) => this.notify.apiError(err, `Couldn't create "${trimmed}". Please try again.`),
     });
   }
 
@@ -164,7 +170,7 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Dataset renamed to "${trimmed}".`);
       },
-      error: () => this.notify.error(`Couldn't rename the dataset to "${trimmed}". Please try again.`),
+      error: (err) => this.notify.apiError(err, `Couldn't rename the dataset to "${trimmed}". Please try again.`),
     });
   }
 
@@ -188,7 +194,7 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Duplicated "${dataset.name}".`);
       },
-      error: () => this.notify.error(`Couldn't duplicate "${dataset.name}". Please try again.`),
+      error: (err) => this.notify.apiError(err, `Couldn't duplicate "${dataset.name}". Please try again.`),
     });
   }
 
@@ -205,8 +211,8 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Deleted "${name ?? 'the dataset'}".`);
       },
-      error: () =>
-        this.notify.error(`Couldn't delete "${name ?? 'the dataset'}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, `Couldn't delete "${name ?? 'the dataset'}". Please try again.`),
     });
   }
 }

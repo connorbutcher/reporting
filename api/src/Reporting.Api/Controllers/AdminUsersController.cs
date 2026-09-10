@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
+using Reporting.Api.Authorization;
 using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Admin-area user management: list, view, create, and edit. Requires the manage-users permission (403 otherwise).</summary>
+/// <summary>Admin-area user management: list, view, create, and edit. The whole controller requires the manage-users permission (403 otherwise).</summary>
 [ApiController]
 [Route("api/admin/users")]
+[RequireAppPermission(AppPermission.ManageUsers)]
 public class AdminUsersController(UserAdminService users) : ControllerBase
 {
     [HttpGet]

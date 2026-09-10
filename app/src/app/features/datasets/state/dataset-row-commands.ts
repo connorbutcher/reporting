@@ -26,7 +26,7 @@ export class DatasetRowCommands {
       // The new row lands at the end; re-seat the grid onto the final window and
       // scroll it into view for editing.
       next: () => this.window.afterAdd(),
-      error: () => this.notify.error("Couldn't add the row. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't add the row. Please try again."),
     });
   }
 
@@ -40,9 +40,9 @@ export class DatasetRowCommands {
     this.window.replaceRow({ ...row, values });
     this.autosave.track(this.api.updateRow(id, row.id, values)).subscribe({
       next: (updated) => this.window.replaceRow(updated),
-      error: () => {
+      error: (err) => {
         this.window.replaceRow(row);
-        this.notify.error("That edit couldn't be saved — the cell was reverted.");
+        this.notify.apiError(err, "That edit couldn't be saved — the cell was reverted.");
       },
     });
   }
@@ -52,7 +52,7 @@ export class DatasetRowCommands {
     if (!id) return;
     this.autosave.track(this.api.removeRow(id, row.id)).subscribe({
       next: () => this.window.removeRow(row.id),
-      error: () => this.notify.error("Couldn't delete the row. Please try again."),
+      error: (err) => this.notify.apiError(err, "Couldn't delete the row. Please try again."),
     });
   }
 }

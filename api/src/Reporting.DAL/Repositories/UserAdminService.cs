@@ -1,27 +1,23 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Permissions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
 
 /// <summary>
-/// The admin-area directory operations for users: list, view, create, and edit. Every operation
-/// requires the <see cref="AppPermission.ManageUsers"/> permission (a user who lacks it gets a 403,
-/// since the whole admin area is hidden from them anyway). Users are addressed by their RefId.
-/// There is deliberately no delete — users are referenced by grants and the audit trail, so the
-/// scope is view/create/edit only.
+/// The admin-area directory operations for users: list, view, create, and edit. The whole area
+/// requires the <see cref="AppPermission.ManageUsers"/> permission, enforced once at the controller
+/// by <c>[RequireAppPermission(ManageUsers)]</c> (a user who lacks it gets a 403 before reaching
+/// here), so these methods don't re-check. Users are addressed by their RefId. There is deliberately
+/// no delete — users are referenced by grants and the audit trail, so the scope is view/create/edit only.
 /// </summary>
 public partial class UserAdminService(
     ReportingDbContext db,
-    AppPermissionService appPermissions,
     ICurrentUserAccessor currentUserAccessor)
 {
     public async Task<List<AdminUserDto>> ListAsync()
     {
-        await appPermissions.RequireAsync(AppPermission.ManageUsers);
-
         var users = await db.Users
             .OrderBy(u => u.DisplayName)
             .Select(u => new
@@ -51,8 +47,6 @@ public partial class UserAdminService(
 
     public async Task<AdminUserDetailDto?> GetAsync(Guid refId)
     {
-        await appPermissions.RequireAsync(AppPermission.ManageUsers);
-
         var user = await db.Users
             .Where(u => u.RefId == refId)
             .Select(u => new
@@ -87,8 +81,6 @@ public partial class UserAdminService(
 
     public async Task<AdminUserDetailDto> CreateAsync(SaveUserDto dto)
     {
-        await appPermissions.RequireAsync(AppPermission.ManageUsers);
-
         var displayName = (dto.DisplayName ?? string.Empty).Trim();
         var email = (dto.Email ?? string.Empty).Trim();
         if (displayName.Length == 0) throw new DataValidationException("A display name is required.");
@@ -115,8 +107,6 @@ public partial class UserAdminService(
 
     public async Task<AdminUserDetailDto?> UpdateAsync(Guid refId, SaveUserDto dto)
     {
-        await appPermissions.RequireAsync(AppPermission.ManageUsers);
-
         var user = await db.Users.FirstOrDefaultAsync(u => u.RefId == refId);
         if (user is null) return null;
 

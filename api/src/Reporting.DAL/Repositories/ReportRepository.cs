@@ -1,70 +1,50 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Permissions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
 
+/// <summary>The reports matching a search, each paired with its "Home / …" folder path, before visibility filtering.</summary>
+public sealed record ReportSearchResults(List<Report> Matches, IReadOnlyDictionary<int, string> PathByReportId);
+
 /// <summary>
-/// All querying and persistence for reports, their published versions, and the checked-out
-/// draft. Reads are filtered to reports the current user can see (an invisible one is absent,
-/// and a lookup of it returns null → 404); mutations and draft/publish actions are guarded to
-/// the level the enforcement matrix requires.
+/// All querying and persistence for reports, their published versions, and the checked-out draft.
+/// Pure data access: it makes no authorization decisions — the controller authorizes each action
+/// (via an <c>[AuthorizeReport]</c> attribute or the <see cref="Permissions.ResourceAuthorizer"/>)
+/// and filters listings to what the caller may see before projecting. Read methods hand back the
+/// loaded entities; the caller stamps each with the effective level and favourite state.
 /// </summary>
-public class ReportRepository(ReportingDbContext db, PermissionService permissions, ICurrentUserAccessor currentUser)
+public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor currentUser)
 {
-    /// <summary>Reports directly inside <paramref name="folderId"/> (root if null) — not the whole tree.</summary>
-    public async Task<List<ReportSummaryDto>> GetAllAsync(int? folderId)
+    /// <summary>Reports directly inside <paramref name="folderId"/> (root if null), name-ordered, with revisions loaded — unfiltered.</summary>
+    public async Task<List<Report>> GetInFolderAsync(int? folderId)
     {
         if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid)) return [];
 
-        var reports = await db.Reports
+        return await db.Reports
             .Include(r => r.Revisions)
             .Where(r => r.FolderId == folderId)
             .OrderBy(r => r.Name)
             .ToListAsync();
-        return await FilterVisibleAsync(reports, (r, level, fav) => r.ToSummaryDto(level, fav));
     }
 
-    /// <summary>Every report across every folder, flat — for building a whole-tree picker like the "copy from" report select.</summary>
-    public async Task<List<ReportSummaryDto>> GetAllFlatAsync()
-    {
-        var reports = await db.Reports
-            .Include(r => r.Revisions)
-            .OrderBy(r => r.Name)
-            .ToListAsync();
-        return await FilterVisibleAsync(reports, (r, level, fav) => r.ToSummaryDto(level, fav));
-    }
-
-    /// <summary>
-    /// Keeps only the reports the current user can see, projecting each survivor with the caller's
-    /// effective access level and whether they've starred it. The favourite set is loaded once up front.
-    /// </summary>
-    private async Task<List<T>> FilterVisibleAsync<T>(IEnumerable<Report> reports, Func<Report, AccessLevel, bool, T> project)
-    {
-        var favorites = await FavoriteReportIdsAsync();
-        var visible = new List<T>();
-        foreach (var report in reports)
-        {
-            var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-            if (!ReportVisibility.IsVisibleAtLevel(report, level)) continue;
-            visible.Add(project(report, level, favorites.Contains(report.Id)));
-        }
-        return visible;
-    }
+    /// <summary>Every report across every folder, flat — for a whole-tree picker like the "copy from" report select. Unfiltered.</summary>
+    public async Task<List<Report>> GetAllAsync() =>
+        await db.Reports.Include(r => r.Revisions).OrderBy(r => r.Name).ToListAsync();
 
     /// <summary>The report ids the current user has starred, for stamping <c>IsFavorite</c> onto summaries.</summary>
-    private async Task<HashSet<int>> FavoriteReportIdsAsync()
+    public async Task<HashSet<int>> FavoriteReportIdsAsync()
     {
         var userId = (await currentUser.GetAsync()).Id;
         var ids = await db.ReportFavorites.Where(f => f.UserId == userId).Select(f => f.ReportId).ToListAsync();
         return ids.ToHashSet();
     }
 
-    /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42").</summary>
-    public async Task<List<ReportSearchResultDto>> SearchAsync(string? query)
+    /// <summary>Finds reports anywhere in the tree by name (contains) or exact report number (accepts "42" or "R-42"). Unfiltered.</summary>
+    public async Task<ReportSearchResults> SearchAsync(string? query)
     {
-        if (string.IsNullOrWhiteSpace(query)) return [];
+        if (string.IsNullOrWhiteSpace(query))
+            return new ReportSearchResults([], new Dictionary<int, string>());
 
         var trimmed = query.Trim();
         var numericPart = trimmed.StartsWith("R-", StringComparison.OrdinalIgnoreCase) ? trimmed[2..] : trimmed;
@@ -103,43 +83,20 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
             return segments.Count == 0 ? "Home" : "Home / " + string.Join(" / ", segments);
         }
 
-        return await FilterVisibleAsync(matches, (r, level, fav) => r.ToSearchResultDto(PathFor(r.FolderId), level, fav));
+        var paths = matches.ToDictionary(r => r.Id, r => PathFor(r.FolderId));
+        return new ReportSearchResults(matches, paths);
     }
 
-    public async Task<ReportSummaryDto?> GetByIdAsync(int id)
-    {
-        var report = await db.Reports
-            .Include(r => r.Revisions)
-            .FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
-        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        if (!ReportVisibility.IsVisibleAtLevel(report, level)) return null;
-        var favorites = await FavoriteReportIdsAsync();
-        return report.ToSummaryDto(level, favorites.Contains(report.Id));
-    }
-
-    /// <summary>Whether the current user can see the report at all (≥ Viewer).</summary>
-    private Task<bool> CanSeeAsync(Report report) =>
-        permissions.CanSeeReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+    /// <summary>Loads a report (with its revisions) by id, or null if it doesn't exist. Visibility is the caller's to enforce.</summary>
+    public Task<Report?> GetEntityAsync(int id) =>
+        db.Reports.Include(r => r.Revisions).FirstOrDefaultAsync(r => r.Id == id);
 
     /// <summary>
-    /// Enforces a level on a report the caller has already loaded: an invisible report is hidden
-    /// (returns false → the caller 404s), a visible one below <paramref name="required"/> throws
-    /// (403). Returns true when the action may proceed.
+    /// Creates a report (optionally duplicating <paramref name="sourceReportId"/>'s latest content) and
+    /// returns the new entity. The caller authorizes the create and the source's visibility first;
+    /// this throws <see cref="DataValidationException"/> only if the folder or source report doesn't exist.
     /// </summary>
-    private async Task<bool> AuthorizeAsync(Report report, AccessLevel required)
-    {
-        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        if (level < AccessLevel.Viewer) return false; // hidden — surfaces as 404
-        if (level < required) throw new AccessDeniedException($"This action requires {required} access.");
-        return true;
-    }
-
-    /// <summary>
-    /// Throws <see cref="DataValidationException"/> if the folder, or the source report
-    /// named by <paramref name="sourceReportId"/>, doesn't exist.
-    /// </summary>
-    public async Task<ReportSummaryDto> CreateAsync(string name, int? folderId, int? sourceReportId = null)
+    public async Task<Report> CreateAsync(string name, int? folderId, int? sourceReportId = null)
     {
         Folder? folder = null;
         if (folderId is { } fid)
@@ -148,18 +105,11 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
                 ?? throw new DataValidationException("Folder does not exist.");
         }
 
-        // Creating a report is an Editor action on the destination folder (or the root).
-        await permissions.RequireCreateInAsync(folder?.Id);
-
         ReportRevision? source = null;
         if (sourceReportId is { } sid)
         {
             var sourceReport = await db.Reports.FirstOrDefaultAsync(r => r.Id == sid)
                 ?? throw new DataValidationException("Source report does not exist.");
-
-            // You can only duplicate a report you're allowed to see.
-            if (!await CanSeeAsync(sourceReport))
-                throw new DataValidationException("Source report does not exist.");
 
             source = await IncludeContent(db.ReportRevisions)
                 .Where(rv => rv.ReportId == sourceReport.Id && rv.Kind == RevisionKind.Published)
@@ -191,46 +141,40 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
 
         // Saves the report and deep-copies any source content (widgets + datasets) into the draft.
         await CopyContentIntoAsync(draft, source);
-        // Freshly created, so never yet favourited; the creator is at least Editor (they had create rights).
-        var createdLevel = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        return report.ToSummaryDto(createdLevel, isFavorite: false);
+        return report;
     }
 
-    /// <summary>Null if <paramref name="id"/> doesn't exist. Throws <see cref="DataValidationException"/> if the folder doesn't exist.</summary>
-    public async Task<ReportSummaryDto?> UpdateAsync(int id, string name, int? folderId)
+    /// <summary>
+    /// Renames/moves a report. The caller authorizes it (Manager on the report, Editor on the
+    /// destination when moved) first; returns the updated entity, or throws
+    /// <see cref="DataValidationException"/> if the destination folder doesn't exist. The
+    /// <paramref name="destinationFolderId"/> is resolved to a real folder here so the move validates.
+    /// </summary>
+    public async Task<Report?> UpdateAsync(int id, string name, int? destinationFolderId)
     {
         var report = await db.Reports
             .Include(r => r.Revisions)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
-        // Renaming or moving a report is a Manager action on it.
-        if (!await AuthorizeAsync(report, AccessLevel.Manager)) return null;
 
         Folder? folder = null;
-        if (folderId is { } fid)
+        if (destinationFolderId is { } fid)
         {
             folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == fid)
                 ?? throw new DataValidationException("Folder does not exist.");
         }
 
-        // Moving into a different folder also needs Editor on the destination.
-        if (report.FolderId != folder?.Id) await permissions.RequireCreateInAsync(folder?.Id);
-
         report.Name = name;
         report.FolderId = folder?.Id;
         report.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        var favorites = await FavoriteReportIdsAsync();
-        return report.ToSummaryDto(level, favorites.Contains(report.Id));
+        return report;
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return false;
-        // Hide an invisible report as a 404; deleting one you can see needs Manager.
-        if (!await AuthorizeAsync(report, AccessLevel.Manager)) return false;
 
         db.Reports.Remove(report);
         await db.SaveChangesAsync();
@@ -242,7 +186,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     public async Task<List<ReportVersionSummaryDto>?> GetVersionsAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null || !await CanSeeAsync(report)) return null;
+        if (report is null) return null;
 
         var versions = await db.ReportRevisions
             .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
@@ -255,7 +199,7 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     public async Task<ReportRevisionDto?> GetVersionAsync(int id, int versionNumber)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null || !await CanSeeAsync(report)) return null;
+        if (report is null) return null;
 
         var revision = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -269,8 +213,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
-        // The draft is the editing surface, so seeing it is an Editor action.
-        if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -287,7 +229,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
-        if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var existingDraft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -470,7 +411,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
-        if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -527,8 +467,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return null;
-        // Publishing is an Editor action.
-        if (!await AuthorizeAsync(report, AccessLevel.Editor)) return null;
 
         var draft = await IncludeContent(db.ReportRevisions)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
@@ -564,8 +502,6 @@ public class ReportRepository(ReportingDbContext db, PermissionService permissio
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
         if (report is null) return false;
-        // Discarding a draft is an Editor action; an invisible report is hidden as a 404.
-        if (!await AuthorizeAsync(report, AccessLevel.Editor)) return false;
 
         var draft = await db.ReportRevisions
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);

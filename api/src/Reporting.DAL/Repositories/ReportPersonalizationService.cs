@@ -8,12 +8,14 @@ namespace Reporting.DAL.Repositories;
 /// <summary>
 /// Per-user report state: the reports a user has starred (favourites) and the reports they've recently
 /// opened (recently viewed). Both key on the report, not a version — the report is the durable identity
-/// a user returns to. Every list is filtered to what the caller may see and stamped with their access
-/// level, the same way the folder listing is, so a viewer never learns a draft exists here either.
+/// a user returns to. Every list is filtered to what the caller may see (through the one
+/// <see cref="ResourceAuthorizer"/>) and stamped with their access level, so a viewer never learns a
+/// draft exists here either. The star/record-view writes are authorized at the controller by an
+/// <c>[AuthorizeReport(Viewer)]</c> attribute, so those don't re-check visibility.
 /// </summary>
 public class ReportPersonalizationService(
     ReportingDbContext db,
-    PermissionService permissions,
+    ResourceAuthorizer authorizer,
     ICurrentUserAccessor currentUser)
 {
     /// <summary>The reports the current user has starred that they can still see, name-ordered.</summary>
@@ -51,11 +53,9 @@ public class ReportPersonalizationService(
         return await ProjectVisibleAsync(ordered, take: take);
     }
 
-    /// <summary>Stars a report for the current user. Idempotent. Returns false (→ 404) if they can't see it.</summary>
+    /// <summary>Stars a report for the current user. Idempotent. The controller has already authorized visibility (≥ Viewer).</summary>
     public async Task<bool> AddFavoriteAsync(int reportId)
     {
-        if (!await CanSeeReportAsync(reportId)) return false;
-
         var userId = (await currentUser.GetAsync()).Id;
         var exists = await db.ReportFavorites.AnyAsync(f => f.UserId == userId && f.ReportId == reportId);
         if (!exists)
@@ -80,13 +80,10 @@ public class ReportPersonalizationService(
 
     /// <summary>
     /// Records that the current user just opened a report, updating its timestamp if already present so
-    /// the table stays one row per report. Returns false (→ 404) if they can't see it — we don't record a
-    /// view of a report the caller couldn't have opened.
+    /// the table stays one row per report. The controller has already authorized visibility (≥ Viewer).
     /// </summary>
     public async Task<bool> RecordViewAsync(int reportId)
     {
-        if (!await CanSeeReportAsync(reportId)) return false;
-
         var userId = (await currentUser.GetAsync()).Id;
         var view = await db.ReportViews.FirstOrDefaultAsync(v => v.UserId == userId && v.ReportId == reportId);
         if (view is null)
@@ -101,33 +98,17 @@ public class ReportPersonalizationService(
         return true;
     }
 
-    /// <summary>Projects reports the caller may see, stamping each with the caller's level and favourite state.</summary>
+    /// <summary>Projects reports the caller may see (via the central authorizer), stamping each with the caller's level and favourite state.</summary>
     private async Task<List<ReportSummaryDto>> ProjectVisibleAsync(
         IEnumerable<Report> reports,
         bool alwaysFavorite = false,
         int? take = null)
     {
         var favorites = alwaysFavorite ? null : await FavoriteReportIdsAsync();
-        var result = new List<ReportSummaryDto>();
-        foreach (var report in reports)
-        {
-            var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-            if (!ReportVisibility.IsVisibleAtLevel(report, level)) continue;
-            var isFavorite = alwaysFavorite || favorites!.Contains(report.Id);
-            result.Add(report.ToSummaryDto(level, isFavorite));
-            if (take is { } t && result.Count >= t) break;
-        }
-        return result;
-    }
-
-    private async Task<bool> CanSeeReportAsync(int reportId)
-    {
-        var report = await db.Reports
-            .Include(r => r.Revisions)
-            .FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return false;
-        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        return ReportVisibility.IsVisibleAtLevel(report, level);
+        return await authorizer.FilterVisibleReportsAsync(
+            reports,
+            (report, level) => report.ToSummaryDto(level, alwaysFavorite || favorites!.Contains(report.Id)),
+            take);
     }
 
     private async Task<HashSet<int>> FavoriteReportIdsAsync()

@@ -1,0 +1,11 @@
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-value-labels"
+    [ngModel]="chart().showValueLabels()"
+    (onChange)="chart().showValueLabels.set($event.checked)"
+  />
+  <label for="chart-value-labels">Show value labels</label>
+</div>
+
+<app-panel-histogram-options [chart]="chart()" />

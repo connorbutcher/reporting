@@ -60,9 +60,9 @@ export class FolderTreeStore {
       },
       // Clear the key either way, so a failed expand stops spinning instead of
       // hanging on its loading indicator forever.
-      error: () => {
+      error: (err) => {
         this.clearLoading(key);
-        this.notify.error("Couldn't load that folder's contents. Please try again.");
+        this.notify.loadError(err, "Couldn't load that folder's contents. Please try again.");
       },
     });
   }

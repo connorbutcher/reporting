@@ -6,17 +6,16 @@ using Reporting.Database;
 namespace Reporting.DAL.Permissions;
 
 /// <summary>
-/// Reads and edits the grants on folders and reports. Every operation requires Manager on the
-/// target (an object the caller can't see is hidden as a 404 first). Managing permissions can't
-/// escalate anyone past Manager, since Manager is the highest grantable level — global admin is
-/// not a grant. Every change is written to an append-only audit trail, and a change that would
-/// leave an object with no one able to manage it is refused (global admins excepted). Kept apart
-/// from <see cref="PermissionService"/> (which caches a read snapshot per request) because these
-/// methods mutate that same data.
+/// Reads and edits the grants on folders and reports. The controller authorizes every operation —
+/// Manager on the target, hidden ⇒ 404 — with an <c>[AuthorizeReport(Manager)]</c> /
+/// <c>[AuthorizeFolder(Manager)]</c> attribute before this service is reached, so the methods here
+/// assume the caller may manage the target (a missing target still returns null → 404 defensively).
+/// Managing permissions can't escalate anyone past Manager, since Manager is the highest grantable
+/// level — global admin is not a grant. Every change is written to an append-only audit trail, and a
+/// change that would leave an object with no one able to manage it is refused (global admins excepted).
 /// </summary>
 public class PermissionAdminService(
     ReportingDbContext db,
-    PermissionService permissions,
     ICurrentUserAccessor currentUserAccessor)
 {
     // --- reads ------------------------------------------------------------
@@ -24,28 +23,28 @@ public class PermissionAdminService(
     public async Task<PermissionsDto?> GetFolderPermissionsAsync(int folderId)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null || !await CanManageFolderAsync(folder)) return null;
+        if (folder is null) return null;
         return await BuildPermissionsAsync(await BuildFolderChainAsync(folder.Id), folder.InheritsPermissions);
     }
 
     public async Task<PermissionsDto?> GetReportPermissionsAsync(int reportId)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null || !await CanManageReportAsync(report)) return null;
+        if (report is null) return null;
         return await BuildPermissionsAsync(await BuildReportChainAsync(report), report.InheritsPermissions);
     }
 
     public async Task<List<GrantAuditEntryDto>?> GetFolderAuditAsync(int folderId)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null || !await CanManageFolderAsync(folder)) return null;
+        if (folder is null) return null;
         return await BuildAuditAsync(SecurableType.Folder, folder.Id);
     }
 
     public async Task<List<GrantAuditEntryDto>?> GetReportAuditAsync(int reportId)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null || !await CanManageReportAsync(report)) return null;
+        if (report is null) return null;
         return await BuildAuditAsync(SecurableType.Report, report.Id);
     }
 
@@ -54,7 +53,7 @@ public class PermissionAdminService(
     public async Task<bool> SetFolderInheritanceAsync(int folderId, SetInheritanceDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null || !await CanManageFolderAsync(folder)) return false;
+        if (folder is null) return false;
 
         if (folder.InheritsPermissions != dto.Inherits)
         {
@@ -71,7 +70,7 @@ public class PermissionAdminService(
     public async Task<bool> SetReportInheritanceAsync(int reportId, SetInheritanceDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null || !await CanManageReportAsync(report)) return false;
+        if (report is null) return false;
 
         if (report.InheritsPermissions != dto.Inherits)
         {
@@ -90,21 +89,21 @@ public class PermissionAdminService(
     public async Task<AccessGrantDto?> UpsertFolderGrantAsync(int folderId, SaveGrantDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null || !await CanManageFolderAsync(folder)) return null;
+        if (folder is null) return null;
         return await UpsertGrantAsync(await BuildFolderChainAsync(folder.Id), dto);
     }
 
     public async Task<AccessGrantDto?> UpsertReportGrantAsync(int reportId, SaveGrantDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null || !await CanManageReportAsync(report)) return null;
+        if (report is null) return null;
         return await UpsertGrantAsync(await BuildReportChainAsync(report), dto);
     }
 
     public async Task<bool> RemoveFolderGrantAsync(int folderId, RemoveGrantDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null || !await CanManageFolderAsync(folder)) return false;
+        if (folder is null) return false;
         await RemoveGrantAsync(await BuildFolderChainAsync(folder.Id), dto.SubjectType, dto.SubjectId);
         return true;
     }
@@ -112,27 +111,8 @@ public class PermissionAdminService(
     public async Task<bool> RemoveReportGrantAsync(int reportId, RemoveGrantDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null || !await CanManageReportAsync(report)) return false;
+        if (report is null) return false;
         await RemoveGrantAsync(await BuildReportChainAsync(report), dto.SubjectType, dto.SubjectId);
-        return true;
-    }
-
-    // --- guards -----------------------------------------------------------
-
-    /// <summary>Hidden (→ null/404) below Viewer; throws (→403) when visible but below Manager.</summary>
-    private async Task<bool> CanManageFolderAsync(Folder folder)
-    {
-        var level = await permissions.LevelForFolderAsync(folder.Id);
-        if (level < AccessLevel.Viewer) return false;
-        await permissions.RequireFolderAsync(folder.Id, AccessLevel.Manager);
-        return true;
-    }
-
-    private async Task<bool> CanManageReportAsync(Report report)
-    {
-        var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        if (level < AccessLevel.Viewer) return false;
-        await permissions.RequireReportAsync(report.Id, report.FolderId, report.InheritsPermissions, AccessLevel.Manager);
         return true;
     }
 

@@ -79,9 +79,8 @@ public class UserGroupAdminService(
 
     public async Task<AdminGroupDetailDto> CreateAsync(SaveGroupDto dto)
     {
-        // Creating groups is a full-admin action; delegation is only over existing groups.
-        await appPermissions.RequireAsync(AppPermission.ManageUsers);
-
+        // Creating groups is a full-admin action; the controller gates this with
+        // [RequireAppPermission(ManageUsers)] (delegation is only ever over existing groups).
         var name = (dto.Name ?? string.Empty).Trim();
         if (name.Length == 0) throw new DataValidationException("A group name is required.");
         if (await db.UserGroups.AnyAsync(g => g.Name == name))

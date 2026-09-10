@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
+import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   ReportRevisionContent,
   ReportSearchResult,
@@ -39,9 +40,9 @@ export class ReportApiService {
       : this.http.delete<void>(`/api/reports/${id}/favorite`);
   }
 
-  /** Records that the current user just opened a report, for their "recently viewed" list. */
+  /** Records that the current user just opened a report, for their "recently viewed" list. Fire-and-forget: failures are swallowed, so it opts out of the global error toast. */
   recordView(id: number): Observable<void> {
-    return this.http.post<void>(`/api/reports/${id}/view`, {});
+    return this.http.post<void>(`/api/reports/${id}/view`, {}, { context: skipHttpErrorNotification() });
   }
 
   create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {

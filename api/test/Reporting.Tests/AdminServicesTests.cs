@@ -67,22 +67,25 @@ public class AdminServicesTests : IDisposable
     }
 
     private AppPermissionService AppPerms(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
-    private UserAdminService Users(int actingUserId) => new(_db, AppPerms(actingUserId), new FakeAccessor(_db, actingUserId));
+    private UserAdminService Users(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
     private UserGroupAdminService Groups(int actingUserId) => new(_db, AppPerms(actingUserId), new FakeAccessor(_db, actingUserId));
 
-    // --- guard ------------------------------------------------------------
+    // --- app-permission guard (the primitive the [RequireAppPermission] attribute enforces) ----
 
     [Fact]
-    public async Task Non_admin_without_permission_is_denied()
+    public async Task Non_admin_without_permission_lacks_manage_users_and_require_throws()
     {
         var user = await SeedUserAsync("u@x", "U");
-        await Assert.ThrowsAsync<AccessDeniedException>(() => Users(user.Id).ListAsync());
+        Assert.False(await AppPerms(user.Id).HasAsync(AppPermission.ManageUsers));
+        var ex = await Assert.ThrowsAsync<AccessDeniedException>(() => AppPerms(user.Id).RequireAsync(AppPermission.ManageUsers));
+        Assert.Contains("manage-users", ex.Message);
     }
 
     [Fact]
-    public async Task Global_admin_bypasses_the_guard()
+    public async Task Global_admin_holds_manage_users()
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);
+        Assert.True(await AppPerms(admin.Id).HasAsync(AppPermission.ManageUsers));
         var list = await Users(admin.Id).ListAsync();
         Assert.Single(list);
     }
@@ -313,8 +316,9 @@ public class AdminServicesTests : IDisposable
         });
         Assert.False((await Groups(admin.Id).GetAsync(team.Id))!.CanManageUsers);
 
-        // Creating groups is full-admin-only.
-        await Assert.ThrowsAsync<AccessDeniedException>(() => Groups(bob.Id).CreateAsync(new SaveGroupDto { Name = "New" }));
+        // Creating groups is full-admin-only — enforced at the controller by
+        // [RequireAppPermission(ManageUsers)], so a delegate never reaches CreateAsync.
+        Assert.False(await AppPerms(bob.Id).HasAsync(AppPermission.ManageUsers));
 
         // A group Bob doesn't manage is invisible and untouchable to him.
         Assert.DoesNotContain(await Groups(bob.Id).ListAsync(), g => g.Name == "Others");

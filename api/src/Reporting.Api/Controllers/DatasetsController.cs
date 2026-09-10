@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
+using Reporting.Api.Authorization;
 using Reporting.DAL.Filtering;
-using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 
@@ -11,15 +11,15 @@ namespace Reporting.Api.Controllers;
 /// Datasets belong to a report revision. List and create are scoped to a report's checked-out draft;
 /// every other operation addresses a dataset by its primary key and is authorized against the report
 /// that owns it — Viewer to read/query, Editor to mutate, and mutations are refused on the immutable
-/// data of a published version.
+/// data of a published version. Authorization is declared per action with <c>[AuthorizeReport]</c> /
+/// <c>[AuthorizeDataset]</c>, which resolve against the one <see cref="ResourceAuthorizer"/> at the edge.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class DatasetsController(
     DatasetRepository datasets,
     DatasetRowRepository rows,
-    WidgetQueryRepository widgetQueries,
-    PermissionService permissions) : ControllerBase
+    WidgetQueryRepository widgetQueries) : ControllerBase
 {
     // --- source reference data ------------------------------------------------
 
@@ -30,26 +30,22 @@ public class DatasetsController(
     // --- report-scoped list & create (the draft revision) ---------------------
 
     [HttpGet("~/api/reports/{reportId:int}/datasets")]
+    [AuthorizeReport(AccessLevel.Viewer)]
     public async Task<ActionResult<List<DatasetSummaryDto>>> GetForReport(int reportId)
     {
         var context = await datasets.GetDraftContextAsync(reportId);
         if (context is null) return NotFound();
-        if (await LevelForAsync(context.FolderId, context.InheritsPermissions, reportId) < AccessLevel.Viewer)
-            return NotFound();
-
         return await datasets.GetAllForRevisionAsync(context.RevisionId);
     }
 
     [HttpPost("~/api/reports/{reportId:int}/datasets")]
+    [AuthorizeReport(AccessLevel.Editor)]
     public async Task<ActionResult<DatasetSummaryDto>> Create(int reportId, CreateDatasetDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
 
         var context = await datasets.GetDraftContextAsync(reportId);
         if (context is null) return NotFound();
-        var level = await LevelForAsync(context.FolderId, context.InheritsPermissions, reportId);
-        if (level < AccessLevel.Viewer) return NotFound();
-        if (level < AccessLevel.Editor) return StatusCode(StatusCodes.Status403Forbidden);
 
         var dataset = await datasets.CreateAsync(context.RevisionId, dto.Name.Trim(), dto.SourceId);
         if (dataset is null) return BadRequest("Unknown dataset source.");
@@ -59,19 +55,17 @@ public class DatasetsController(
     // --- reads (Viewer) -------------------------------------------------------
 
     [HttpGet("{id:int}/schema")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetSchemaDto>> GetSchema(int id)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         var schema = await datasets.GetSchemaAsync(id);
         return schema is null ? NotFound() : schema;
     }
 
     [HttpGet("{id:int}/data")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetDataDto>> GetData(int id)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         var data = await rows.GetDataAsync(id);
         return data is null ? NotFound() : data;
     }
@@ -82,10 +76,9 @@ public class DatasetsController(
     /// total row count. Keeps a large dataset from loading into the editor at once.
     /// </summary>
     [HttpGet("{id:int}/rows")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetRowWindowDto>> GetRowWindow(int id, int first = 0, int count = 100)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         var window = await rows.GetRowWindowAsync(id, first, count);
         return window is null ? NotFound() : window;
     }
@@ -95,10 +88,9 @@ public class DatasetsController(
     /// tree; filtering runs in SQL so a widget never pulls rows it won't show.
     /// </summary>
     [HttpPost("{id:int}/query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetQueryResultDto>> Query(int id, DatasetQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await datasets.QueryAsync(id, dto.Filter);
@@ -115,10 +107,9 @@ public class DatasetsController(
     /// server-side, with each cell already formatted and tolerance-classified.
     /// </summary>
     [HttpPost("{id:int}/table-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<TableQueryResultDto>> TableQuery(int id, TableQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForTableAsync(id, dto);
@@ -135,10 +126,9 @@ public class DatasetsController(
     /// tolerance bounds resolved and tooltip lines pre-formatted.
     /// </summary>
     [HttpPost("{id:int}/chart-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<ChartQueryResultDto>> ChartQuery(int id, ChartQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForChartAsync(id, dto);
@@ -155,10 +145,9 @@ public class DatasetsController(
     /// reduced to one value per category (per series) by the chosen aggregate.
     /// </summary>
     [HttpPost("{id:int}/bar-chart-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BarChartQueryResultDto>> BarChartQuery(int id, BarChartQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForBarChartAsync(id, dto);
@@ -175,10 +164,9 @@ public class DatasetsController(
     /// and each group's measure values reduced to a five-number summary (with outliers).
     /// </summary>
     [HttpPost("{id:int}/box-plot-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BoxPlotQueryResultDto>> BoxPlotQuery(int id, BoxPlotQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForBoxPlotAsync(id, dto);
@@ -195,10 +183,9 @@ public class DatasetsController(
     /// and each group reduced to one value per measure by that measure's aggregate.
     /// </summary>
     [HttpPost("{id:int}/pivot-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<PivotQueryResultDto>> PivotQuery(int id, PivotQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForPivotAsync(id, dto);
@@ -215,10 +202,9 @@ public class DatasetsController(
     /// equal ranges with each bin's frequency returned as a bar height.
     /// </summary>
     [HttpPost("{id:int}/histogram-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<HistogramQueryResultDto>> HistogramQuery(int id, HistogramQueryDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         try
         {
             var result = await widgetQueries.QueryForHistogramAsync(id, dto);
@@ -236,14 +222,13 @@ public class DatasetsController(
     /// Ordered and capped; <paramref name="search"/> narrows to matching values for type-ahead.
     /// </summary>
     [HttpGet("{id:int}/columns/{columnId:guid}/values")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<List<string>>> GetColumnValues(
         int id,
         Guid columnId,
         string? search = null,
         int limit = 50)
     {
-        if (await GuardAsync(id, AccessLevel.Viewer) is { } denied) return denied;
-
         var values = await datasets.GetColumnValuesAsync(id, columnId, search, limit);
         return values is null ? NotFound() : values;
     }
@@ -252,13 +237,12 @@ public class DatasetsController(
 
     /// <summary>Replaces a column's typed display configuration; the body's kind must match the column's type.</summary>
     [HttpPut("{id:int}/columns/{columnId:guid}/configuration")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetColumnDto>> UpdateColumnConfiguration(
         int id,
         Guid columnId,
         [FromBody] DatasetColumnConfig configuration)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         try
         {
             var column = await datasets.UpdateColumnConfigurationAsync(id, columnId, configuration);
@@ -271,10 +255,10 @@ public class DatasetsController(
     }
 
     [HttpPut("{id:int}")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSummaryDto>> Rename(int id, SaveDatasetDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
 
         var dataset = await datasets.RenameAsync(id, dto.Name.Trim());
         return dataset is null ? NotFound() : dataset;
@@ -282,30 +266,27 @@ public class DatasetsController(
 
     /// <summary>Deep-copies a dataset within its report's draft, under a caller-supplied name.</summary>
     [HttpPost("{id:int}/clone")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSummaryDto>> Clone(int id, SaveDatasetDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
 
         var dataset = await datasets.CloneAsync(id, dto.Name.Trim());
         return dataset is null ? NotFound() : CreatedAtAction(nameof(GetSchema), new { id = dataset.Id }, dataset);
     }
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-        return await datasets.DeleteAsync(id) ? NoContent() : NotFound();
-    }
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<IActionResult> Delete(int id) =>
+        await datasets.DeleteAsync(id) ? NoContent() : NotFound();
 
     // --- source & source configuration ----------------------------------------
 
     /// <summary>Repoints a dataset at a different source; its configuration resets to that source's default.</summary>
     [HttpPut("{id:int}/source")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSchemaDto>> SetSource(int id, SetDatasetSourceDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         try
         {
             var schema = await datasets.SetSourceAsync(id, dto.SourceId);
@@ -319,10 +300,9 @@ public class DatasetsController(
 
     /// <summary>Replaces a dataset's source configuration. The body's source must match the dataset's.</summary>
     [HttpPut("{id:int}/source-config")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSchemaDto>> UpdateSourceConfig(int id, DatasetSourceConfig config)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         try
         {
             var schema = await datasets.UpdateSourceConfigAsync(id, config);
@@ -337,40 +317,37 @@ public class DatasetsController(
     // --- columns --------------------------------------------------------------
 
     [HttpPost("{id:int}/columns")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetColumnDto>> AddColumn(int id, SaveDatasetColumnDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
 
         var column = await datasets.AddColumnAsync(id, dto.Name.Trim(), dto.Type);
         return column is null ? NotFound() : column;
     }
 
     [HttpPut("{id:int}/columns/{columnId:guid}")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetColumnDto>> UpdateColumn(
         int id,
         Guid columnId,
         SaveDatasetColumnDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
 
         var column = await datasets.UpdateColumnAsync(id, columnId, dto.Name.Trim(), dto.Type);
         return column is null ? NotFound() : column;
     }
 
     [HttpDelete("{id:int}/columns/{columnId:guid}")]
-    public async Task<IActionResult> DeleteColumn(int id, Guid columnId)
-    {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-        return await datasets.DeleteColumnAsync(id, columnId) ? NoContent() : NotFound();
-    }
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<IActionResult> DeleteColumn(int id, Guid columnId) =>
+        await datasets.DeleteColumnAsync(id, columnId) ? NoContent() : NotFound();
 
     [HttpPut("{id:int}/columns/order")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSchemaDto>> ReorderColumns(int id, ReorderColumnsDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         var schema = await datasets.ReorderColumnsAsync(id, dto.ColumnIds);
         return schema is null ? NotFound() : schema;
     }
@@ -378,49 +355,23 @@ public class DatasetsController(
     // --- rows -----------------------------------------------------------------
 
     [HttpPost("{id:int}/rows")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetRowDto>> AddRow(int id, SaveDatasetRowDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         var row = await rows.AddRowAsync(id, dto.Values);
         return row is null ? NotFound() : row;
     }
 
     [HttpPut("{id:int}/rows/{rowId:guid}")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetRowDto>> UpdateRow(int id, Guid rowId, SaveDatasetRowDto dto)
     {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-
         var row = await rows.UpdateRowAsync(id, rowId, dto.Values);
         return row is null ? NotFound() : row;
     }
 
     [HttpDelete("{id:int}/rows/{rowId:guid}")]
-    public async Task<IActionResult> DeleteRow(int id, Guid rowId)
-    {
-        if (await GuardAsync(id, AccessLevel.Editor, mutation: true) is { } denied) return denied;
-        return await rows.DeleteRowAsync(id, rowId) ? NoContent() : NotFound();
-    }
-
-    // --- authorization --------------------------------------------------------
-
-    /// <summary>
-    /// Authorizes an operation on a dataset against the report that owns it: a dataset the caller
-    /// can't see (or that doesn't exist) is a 404, one below the required level is a 403, and a
-    /// mutation against a published version's immutable data is a 400. Null means "go ahead".
-    /// </summary>
-    private async Task<ActionResult?> GuardAsync(int datasetId, AccessLevel required, bool mutation = false)
-    {
-        var owner = await datasets.GetOwnerAsync(datasetId);
-        if (owner is null) return NotFound();
-
-        var level = await LevelForAsync(owner.FolderId, owner.InheritsPermissions, owner.ReportId);
-        if (level < AccessLevel.Viewer) return NotFound();
-        if (level < required) return StatusCode(StatusCodes.Status403Forbidden);
-        if (mutation && !owner.IsDraft) return BadRequest("This report version's data is read-only.");
-        return null;
-    }
-
-    private Task<AccessLevel> LevelForAsync(int? folderId, bool inheritsPermissions, int reportId) =>
-        permissions.LevelForReportAsync(reportId, folderId, inheritsPermissions);
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<IActionResult> DeleteRow(int id, Guid rowId) =>
+        await rows.DeleteRowAsync(id, rowId) ? NoContent() : NotFound();
 }

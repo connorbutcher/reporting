@@ -113,16 +113,17 @@ export class ToleranceSourcePicker {
     this.loadingSource.set(true);
     this.datasetApi.getSchema(datasetId).subscribe({
       next: (schema) => this.sourceSchema.set(schema),
-      error: () => this.notify.error("Couldn't load the limits dataset's columns. Please try again."),
+      error: (err) =>
+        this.notify.loadError(err, "Couldn't load the limits dataset's columns. Please try again."),
     });
     this.datasetApi.getData(datasetId).subscribe({
       next: (data) => {
         this.sourceData.set(data);
         this.loadingSource.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.loadingSource.set(false);
-        this.notify.error("Couldn't load the limits dataset's rows. Please try again.");
+        this.notify.loadError(err, "Couldn't load the limits dataset's rows. Please try again.");
       },
     });
   }

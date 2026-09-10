@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
+using Reporting.Api.Authorization;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 
@@ -8,6 +9,7 @@ namespace Reporting.Api.Controllers;
 /// <summary>Manage the grants on a folder. Every action needs Manager on the folder (an invisible one 404s).</summary>
 [ApiController]
 [Route("api/folders/{folderId:int}/permissions")]
+[AuthorizeFolder(AccessLevel.Manager)]
 public class FolderPermissionsController(PermissionAdminService admin) : ControllerBase
 {
     [HttpGet]

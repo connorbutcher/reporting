@@ -219,7 +219,8 @@ export class ReportViewerStore {
     if (!id) return;
     this.reportApi.checkout(id, fromVersion).subscribe({
       next: () => this.router.navigate(['/reports', id, 'edit']),
-      error: () => this.notify.error("Couldn't open this report for editing. Please try again."),
+      // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.
+      error: (err) => this.notify.apiError(err, "Couldn't open this report for editing. Please try again."),
     });
   }
 

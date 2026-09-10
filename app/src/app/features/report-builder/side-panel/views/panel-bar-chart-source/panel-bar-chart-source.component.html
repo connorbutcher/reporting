@@ -1,0 +1,19 @@
+<app-panel-group label="Bars" icon="＋">
+  <label class="panel-field">
+    <span class="panel-field-label">Summarise</span>
+    <p-select
+      [options]="aggregates"
+      [ngModel]="chart().aggregate()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="chart().aggregate.set($event.value)"
+    />
+  </label>
+  <p class="panel-hint">
+    Each series picks its own dataset, category and measures — add one per dataset to overlay them.
+  </p>
+</app-panel-group>
+
+<app-panel-chart-series-list [chart]="chart()" />

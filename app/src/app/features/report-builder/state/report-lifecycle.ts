@@ -2,6 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportApiService } from '../../../core/api/report-api.service';
+import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { ReportRevisionContent } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportModel } from '../models/report.model';
@@ -25,10 +26,16 @@ export class ReportLifecycle {
   private readonly autosave = inject(ReportAutosave);
   private readonly notify = inject(NotificationService);
 
-  /** The checked-out draft for the current report; refetched whenever the route id changes. */
+  /**
+   * The checked-out draft for the current report; refetched whenever the route id changes. A missing
+   * draft is expected — the GET 404s and we check one out below — so this opts out of the global
+   * not-found toast; the checkout fallback owns any real failure message.
+   */
   private readonly draftResource = httpResource<ReportRevisionContent>(() => {
     const id = this.session.reportId();
-    return id !== null ? `/api/reports/${id}/draft` : undefined;
+    return id !== null
+      ? { url: `/api/reports/${id}/draft`, context: skipHttpErrorNotification() }
+      : undefined;
   });
 
   /** The report id we've already tried to check out a draft for, so we only try once. */
@@ -68,9 +75,10 @@ export class ReportLifecycle {
         this.checkoutAttemptedFor = id;
         this.reportApi.checkout(id).subscribe({
           next: () => this.draftResource.reload(),
-          error: () => {
+          error: (err) => {
             this.loadFailed.set(true);
-            this.notify.error("This report couldn't be opened for editing. Please try again.");
+            // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.
+            this.notify.apiError(err, "This report couldn't be opened for editing. Please try again.");
           },
         });
       });
@@ -95,7 +103,7 @@ export class ReportLifecycle {
         this.router.navigate(['/reports', model.reportId]);
         this.notify.success('Report published.');
       },
-      error: () => this.notify.error("The report couldn't be published. Please try again."),
+      error: (err) => this.notify.apiError(err, "The report couldn't be published. Please try again."),
     });
   }
 

@@ -19,11 +19,11 @@ public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor cu
     public async Task<bool> HasAsync(AppPermission permission) =>
         (await LoadAsync()).Contains(permission);
 
-    /// <summary>Throws <see cref="AccessDeniedException"/> (→ 403) when the current user lacks the permission.</summary>
+    /// <summary>Throws <see cref="AccessDeniedException"/> (→ 403) naming the permission when the current user lacks it.</summary>
     public async Task RequireAsync(AppPermission permission)
     {
         if (!await HasAsync(permission))
-            throw new AccessDeniedException("This action requires the manage-users permission.");
+            throw new AccessDeniedException($"This action requires {permission.Describe()}.");
     }
 
     public async Task<IReadOnlyCollection<AppPermission>> ForCurrentUserAsync() =>

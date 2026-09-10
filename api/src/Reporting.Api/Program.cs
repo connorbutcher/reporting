@@ -43,6 +43,7 @@ builder.Services.AddScoped<ReportPersonalizationService>();
 builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<WidgetQueryRepository>();
 builder.Services.AddScoped<PermissionService>();
+builder.Services.AddScoped<ResourceAuthorizer>();
 builder.Services.AddScoped<PermissionAdminService>();
 builder.Services.AddScoped<AppPermissionService>();
 builder.Services.AddScoped<UserRepository>();

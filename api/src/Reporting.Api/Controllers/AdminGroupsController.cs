@@ -1,10 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
+using Reporting.Api.Authorization;
 using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Admin-area group management: list, view, create, edit, and delete. Requires the manage-users permission (403 otherwise).</summary>
+/// <summary>
+/// Admin-area group management: list, view, create, edit, and delete. Creating a group is full-admin
+/// only (<c>[RequireAppPermission(ManageUsers)]</c>); the rest are scoped in the service so a delegated
+/// group manager can reach the groups they manage without holding the manage-users permission.
+/// </summary>
 [ApiController]
 [Route("api/admin/user-groups")]
 public class AdminGroupsController(UserGroupAdminService groups) : ControllerBase
@@ -20,6 +25,7 @@ public class AdminGroupsController(UserGroupAdminService groups) : ControllerBas
     }
 
     [HttpPost]
+    [RequireAppPermission(AppPermission.ManageUsers)]
     public async Task<ActionResult<AdminGroupDetailDto>> Create(SaveGroupDto dto)
     {
         try

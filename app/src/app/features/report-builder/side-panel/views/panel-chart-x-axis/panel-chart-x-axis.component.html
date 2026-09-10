@@ -1,0 +1,82 @@
+<div class="panel-section">
+  <app-panel-group label="X axis" icon="✛">
+    <label class="panel-field">
+      <span class="panel-field-label">Axis label</span>
+      <input
+        pInputText
+        [ngModel]="chart().xAxisLabel()"
+        (ngModelChange)="chart().xAxisLabel.set($event)"
+        [placeholder]="xPlaceholder()"
+      />
+    </label>
+
+    <label class="panel-field">
+      <span class="panel-field-label">Label rotation</span>
+      <p-select
+        [options]="axisRotations"
+        [ngModel]="chart().xAxisRotate()"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Default"
+        [showClear]="true"
+        appendTo="body"
+        fluid
+        (ngModelChange)="chart().xAxisRotate.set($event ?? null)"
+      />
+    </label>
+
+    <label class="panel-field">
+      <span class="panel-field-label">Interval</span>
+      <p-inputnumber
+        [ngModel]="chart().xAxisInterval()"
+        (ngModelChange)="chart().xAxisInterval.set($event ?? null)"
+        placeholder="Auto"
+        fluid
+      />
+      <span class="panel-hint">On a text axis, labels to skip between shown ones (0 shows all).</span>
+    </label>
+
+    @if (!categorical() && xIsNumeric()) {
+      <div class="panel-grid-fields">
+        <label class="panel-field">
+          <span class="panel-field-label">Min</span>
+          <p-inputnumber
+            [ngModel]="chart().xAxisMin()"
+            (ngModelChange)="chart().xAxisMin.set($event ?? null)"
+            placeholder="Auto"
+            fluid
+          />
+        </label>
+        <label class="panel-field">
+          <span class="panel-field-label">Max</span>
+          <p-inputnumber
+            [ngModel]="chart().xAxisMax()"
+            (ngModelChange)="chart().xAxisMax.set($event ?? null)"
+            placeholder="Auto"
+            fluid
+          />
+        </label>
+      </div>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="x-log"
+          [ngModel]="chart().xLogScale()"
+          (onChange)="chart().xLogScale.set($event.checked)"
+        />
+        <label for="x-log">Log scale</label>
+      </div>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="x-scale"
+          [ngModel]="chart().xAxisScale()"
+          (onChange)="chart().xAxisScale.set($event.checked)"
+        />
+        <label for="x-scale">Fit to data (don’t start at zero)</label>
+      </div>
+    } @else if (!categorical()) {
+      <p class="panel-hint">Bounds and log scale apply once the X axis is a numeric column.</p>
+    }
+  </app-panel-group>
+</div>

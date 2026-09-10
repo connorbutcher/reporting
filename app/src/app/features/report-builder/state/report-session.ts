@@ -7,6 +7,7 @@ import { DatasetSummary } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
 import { ReportRevisionContent, WidgetType } from '../../../core/models/report';
 import { FilterApiService } from '../../../core/api/filter-api.service';
+import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
 import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from '../models/report.model';
 import { ValidationIssue } from '../models/validation-issue';
@@ -48,9 +49,15 @@ export class ReportSession {
 
   readonly model = signal<ReportModel | null>(null);
 
-  /** The datasets available to this report's draft, for the pickers. Keyed off the route id. */
+  /**
+   * The datasets available to this report's draft, for the pickers. Keyed off the route id. A 404
+   * is expected when the draft isn't checked out yet, so it opts out of the global not-found toast.
+   */
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
-    () => (this.reportId() !== null ? `/api/reports/${this.reportId()}/datasets` : undefined),
+    () =>
+      this.reportId() !== null
+        ? { url: `/api/reports/${this.reportId()}/datasets`, context: skipHttpErrorNotification() }
+        : undefined,
     { defaultValue: [] },
   );
   readonly datasets = this.datasetsResource.value;

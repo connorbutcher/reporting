@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
+using Reporting.Api.Authorization;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Manage the grants on a report — its own overrides on top of what it inherits from its folder.</summary>
+/// <summary>Manage the grants on a report — its own overrides on top of what it inherits from its folder. Managing permissions needs Manager on the report.</summary>
 [ApiController]
 [Route("api/reports/{reportId:int}/permissions")]
+[AuthorizeReport(AccessLevel.Manager)]
 public class ReportPermissionsController(PermissionAdminService admin) : ControllerBase
 {
     [HttpGet]
