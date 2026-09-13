@@ -24,7 +24,6 @@
         <ng-template #header>
           <tr>
             <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>
-            <th class="admin-col-access">Access</th>
             <th class="admin-col-count" pSortableColumn="memberCount">Members <p-sort-icon field="memberCount" /></th>
             <th class="admin-col-chevron"></th>
           </tr>
@@ -37,19 +36,12 @@
                 {{ group.name }}
               </span>
             </td>
-            <td class="admin-col-access">
-              @if (group.canManageUsers) {
-                <p-tag value="User admin" severity="info" />
-              } @else {
-                <span class="admin-col-muted">Standard</span>
-              }
-            </td>
             <td class="admin-col-count">{{ group.memberCount }}</td>
             <td class="admin-col-chevron"><i class="pi pi-chevron-right" aria-hidden="true"></i></td>
           </tr>
         </ng-template>
         <ng-template #emptymessage>
-          <tr><td colspan="4"><p class="admin-empty">No groups yet.</p></td></tr>
+          <tr><td colspan="3"><p class="admin-empty">No groups yet.</p></td></tr>
         </ng-template>
       </p-table>
     }

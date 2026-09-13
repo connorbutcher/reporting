@@ -24,28 +24,14 @@ public class AdminUsersController(UserAdminService users) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<AdminUserDetailDto>> Create(SaveUserDto dto)
     {
-        try
-        {
-            var user = await users.CreateAsync(dto);
-            return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var user = await users.CreateAsync(dto);
+        return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
     }
 
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<AdminUserDetailDto>> Update(Guid id, SaveUserDto dto)
     {
-        try
-        {
-            var user = await users.UpdateAsync(id, dto);
-            return user is null ? NotFound() : user;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var user = await users.UpdateAsync(id, dto);
+        return user is null ? NotFound() : user;
     }
 }

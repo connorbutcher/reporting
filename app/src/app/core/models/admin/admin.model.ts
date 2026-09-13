@@ -20,15 +20,13 @@ export interface AdminUser {
   email: string;
   /** Seed-level super-admin; implies every permission and is read-only in the admin UI. */
   isGlobalAdmin: boolean;
-  /** Holds the manage-users permission directly or via a group. */
+  /** Holds the manage-users permission, granted directly to them. */
   canManageUsers: boolean;
   groupCount: number;
 }
 
 /** A user with the extra detail the edit dialog needs. */
 export interface AdminUserDetail extends AdminUser {
-  /** True when manage-users is granted directly (not only inherited from a group). */
-  canManageUsersDirect: boolean;
   groups: GroupRef[];
   createdAt: string;
 }
@@ -47,8 +45,6 @@ export interface AdminGroup {
   id: string;
   name: string;
   memberCount: number;
-  /** Holds the manage-users permission (given to all its members). */
-  canManageUsers: boolean;
 }
 
 /** A group with its members and managers, for the detail card. */
@@ -61,7 +57,6 @@ export interface AdminGroupDetail extends AdminGroup {
 /** Create or update a group. */
 export interface SaveGroup {
   name: string;
-  canManageUsers: boolean;
   /** RefIds of the users that should be members (set to exactly this). */
   memberIds: string[];
   /** RefIds of the users that should manage this group (must be a subset of `memberIds`). */

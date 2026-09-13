@@ -68,7 +68,7 @@ public class AdminServicesTests : IDisposable
 
     private AppPermissionService AppPerms(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
     private UserAdminService Users(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
-    private UserGroupAdminService Groups(int actingUserId) => new(_db, AppPerms(actingUserId), new FakeAccessor(_db, actingUserId));
+    private UserGroupAdminService Groups(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
 
     // --- app-permission guard (the primitive the [RequireAppPermission] attribute enforces) ----
 
@@ -91,20 +91,19 @@ public class AdminServicesTests : IDisposable
     }
 
     [Fact]
-    public async Task Direct_grant_and_group_grant_both_confer_manage_users()
+    public async Task Direct_grant_confers_manage_users_but_group_membership_never_does()
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);
         var direct = await SeedUserAsync("d@x", "D");
-        var viaGroup = await SeedUserAsync("g@x", "G");
+        var inGroup = await SeedUserAsync("g@x", "G");
 
         // Direct grant on `direct`.
         await Users(admin.Id).UpdateAsync(direct.RefId, new SaveUserDto { DisplayName = "D", CanManageUsers = true });
-        // Group grant covering `viaGroup`.
-        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Admins", CanManageUsers = true, MemberIds = [viaGroup.RefId] });
+        // A group can't hold the permission, so being a member never confers it.
+        await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Admins", MemberIds = [inGroup.RefId] });
 
         Assert.True(await AppPerms(direct.Id).HasAsync(AppPermission.ManageUsers));
-        Assert.True(await AppPerms(viaGroup.Id).HasAsync(AppPermission.ManageUsers));
-        Assert.NotNull(group);
+        Assert.False(await AppPerms(inGroup.Id).HasAsync(AppPermission.ManageUsers));
     }
 
     // --- users ------------------------------------------------------------
@@ -193,7 +192,7 @@ public class AdminServicesTests : IDisposable
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);
         var member = await SeedUserAsync("m@x", "Member");
-        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Temp", CanManageUsers = true, MemberIds = [member.RefId] });
+        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Temp", MemberIds = [member.RefId] });
 
         // An ACL grant to the group, to prove the cascade (not app code) cleans it up too.
         var gid = await _db.UserGroups.Where(g => g.RefId == group.Id).Select(g => g.Id).FirstAsync();
@@ -205,7 +204,6 @@ public class AdminServicesTests : IDisposable
         Assert.False(await _db.UserGroups.AnyAsync(g => g.Id == gid));
         Assert.False(await _db.UserGroupMembers.AnyAsync(m => m.UserGroupId == gid));
         Assert.False(await _db.AccessGrants.AnyAsync(a => a.SubjectType == GrantSubjectType.Group && a.UserGroupId == gid));
-        Assert.False(await _db.AppPermissionGrants.AnyAsync(a => a.SubjectType == GrantSubjectType.Group && a.UserGroupId == gid));
     }
 
     // --- referential integrity --------------------------------------------
@@ -258,6 +256,22 @@ public class AdminServicesTests : IDisposable
         await Assert.ThrowsAnyAsync<DbUpdateException>(() => _db.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task Manage_users_permission_grants_no_group_access()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var userAdmin = await SeedUserAsync("u@x", "U");
+        await Users(admin.Id).UpdateAsync(userAdmin.RefId, new SaveUserDto { DisplayName = "U", CanManageUsers = true });
+
+        // Holds the manage-users permission, but that governs only the Users section — with no
+        // manager row (and not a global admin) they can't reach or create groups.
+        Assert.True(await AppPerms(userAdmin.Id).HasAsync(AppPermission.ManageUsers));
+        Assert.False(await Groups(userAdmin.Id).CurrentUserManagesAnyGroupAsync());
+        await Assert.ThrowsAsync<AccessDeniedException>(() => Groups(userAdmin.Id).ListAsync());
+        await Assert.ThrowsAsync<AccessDeniedException>(() =>
+            Groups(userAdmin.Id).CreateAsync(new SaveGroupDto { Name = "Nope" }));
+    }
+
     // --- delegated group managers -----------------------------------------
 
     [Fact]
@@ -302,25 +316,19 @@ public class AdminServicesTests : IDisposable
     }
 
     [Fact]
-    public async Task Delegate_cannot_grant_manage_users_or_create_or_reach_other_groups()
+    public async Task Delegate_cannot_create_or_reach_other_groups()
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);
         var bob = await SeedUserAsync("b@x", "Bob");
         var team = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId], ManagerIds = [bob.RefId] });
         var others = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Others" }); // Bob doesn't manage this
 
-        // The manage-users flag is ignored for a delegate — the group must not gain the permission.
-        await Groups(bob.Id).UpdateAsync(team.Id, new SaveGroupDto
-        {
-            Name = "Team", CanManageUsers = true, MemberIds = [bob.RefId], ManagerIds = [bob.RefId]
-        });
-        Assert.False((await Groups(admin.Id).GetAsync(team.Id))!.CanManageUsers);
+        // Creating groups is reserved for a full admin (global admin); a delegate is refused by the service.
+        await Assert.ThrowsAsync<AccessDeniedException>(() =>
+            Groups(bob.Id).CreateAsync(new SaveGroupDto { Name = "Bob's group" }));
 
-        // Creating groups is full-admin-only — enforced at the controller by
-        // [RequireAppPermission(ManageUsers)], so a delegate never reaches CreateAsync.
-        Assert.False(await AppPerms(bob.Id).HasAsync(AppPermission.ManageUsers));
-
-        // A group Bob doesn't manage is invisible and untouchable to him.
+        // Bob can reach the group he manages, but not one he doesn't — the latter is invisible and untouchable.
+        Assert.NotNull(await Groups(bob.Id).GetAsync(team.Id));
         Assert.DoesNotContain(await Groups(bob.Id).ListAsync(), g => g.Name == "Others");
         Assert.Null(await Groups(bob.Id).GetAsync(others.Id));
         Assert.Null(await Groups(bob.Id).UpdateAsync(others.Id, new SaveGroupDto { Name = "Others" }));

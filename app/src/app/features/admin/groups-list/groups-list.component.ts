@@ -4,14 +4,13 @@ import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
 import { AdminGroup } from '../../../core/models/admin';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 
 /** The Groups section: a table of groups; a row opens that group's detail card, and New opens a blank one. */
 @Component({
   selector: 'app-groups-list',
-  imports: [TableModule, TagModule, ButtonModule, SkeletonModule],
+  imports: [TableModule, ButtonModule, SkeletonModule],
   templateUrl: './groups-list.component.html',
   styleUrl: './groups-list.component.scss',
 })
@@ -21,8 +20,8 @@ export class GroupsListComponent {
   );
   public readonly loading = computed(() => this.resource.isLoading());
   public readonly failed = computed(() => this.resource.error() != null);
-  /** Only full admins can create groups; delegated managers only edit the ones they manage. */
-  public readonly canCreate = inject(CurrentUserService).canManageUsers;
+  /** Only a global admin can create groups; delegated managers only edit the ones they manage. */
+  public readonly canCreate = inject(CurrentUserService).isGlobalAdmin;
 
   private readonly router = inject(Router);
   private readonly resource = httpResource<AdminGroup[]>(() => '/api/admin/user-groups', {

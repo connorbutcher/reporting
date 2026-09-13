@@ -68,16 +68,9 @@ public class ReportsController(
         if (dto.SourceReportId is { } sourceId && !(await authorizer.AuthorizeReportAsync(sourceId, AccessLevel.Viewer)).Allowed)
             return BadRequest("Source report does not exist.");
 
-        try
-        {
-            var report = await reports.CreateAsync(dto.Name.Trim(), dto.FolderId, dto.SourceReportId);
-            var level = await authorizer.LevelForReportAsync(report);
-            return CreatedAtAction(nameof(GetAll), report.ToSummaryDto(level, isFavorite: false));
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var report = await reports.CreateAsync(dto.Name.Trim(), dto.FolderId, dto.SourceReportId);
+        var level = await authorizer.LevelForReportAsync(report);
+        return CreatedAtAction(nameof(GetAll), report.ToSummaryDto(level, isFavorite: false));
     }
 
     [HttpPut("{id:int}")]
@@ -98,18 +91,11 @@ public class ReportsController(
             if (!moveAuth.Allowed) return this.ToActionResult(moveAuth, AccessLevel.Editor);
         }
 
-        try
-        {
-            var updated = await reports.UpdateAsync(id, dto.Name.Trim(), dto.FolderId);
-            if (updated is null) return NotFound();
-            var level = await authorizer.LevelForReportAsync(updated);
-            var favorites = await reports.FavoriteReportIdsAsync();
-            return updated.ToSummaryDto(level, favorites.Contains(updated.Id));
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var updated = await reports.UpdateAsync(id, dto.Name.Trim(), dto.FolderId);
+        if (updated is null) return NotFound();
+        var level = await authorizer.LevelForReportAsync(updated);
+        var favorites = await reports.FavoriteReportIdsAsync();
+        return updated.ToSummaryDto(level, favorites.Contains(updated.Id));
     }
 
     [HttpDelete("{id:int}")]
@@ -150,45 +136,24 @@ public class ReportsController(
     [AuthorizeReport(AccessLevel.Editor)]
     public async Task<ActionResult<ReportRevisionDto>> Checkout(int id, CheckoutDraftDto dto)
     {
-        try
-        {
-            var draft = await reports.CheckoutAsync(id, dto.FromVersionNumber);
-            return draft is null ? NotFound() : draft;
-        }
-        catch (DataNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        var draft = await reports.CheckoutAsync(id, dto.FromVersionNumber);
+        return draft is null ? NotFound() : draft;
     }
 
     [HttpPut("{id:int}/draft")]
     [AuthorizeReport(AccessLevel.Editor)]
     public async Task<ActionResult<ReportRevisionDto>> UpdateDraft(int id, ReportRevisionDto dto)
     {
-        try
-        {
-            var draft = await reports.UpdateDraftAsync(id, dto);
-            return draft is null ? NotFound() : draft;
-        }
-        catch (DataNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        var draft = await reports.UpdateDraftAsync(id, dto);
+        return draft is null ? NotFound() : draft;
     }
 
     [HttpPost("{id:int}/draft/publish")]
     [AuthorizeReport(AccessLevel.Editor)]
     public async Task<ActionResult<ReportVersionSummaryDto>> Publish(int id, PublishDraftDto dto)
     {
-        try
-        {
-            var published = await reports.PublishAsync(id, dto.Notes);
-            return published is null ? NotFound() : published;
-        }
-        catch (DataNotFoundException ex)
-        {
-            return NotFound(ex.Message);
-        }
+        var published = await reports.PublishAsync(id, dto.Notes);
+        return published is null ? NotFound() : published;
     }
 
     [HttpDelete("{id:int}/draft")]

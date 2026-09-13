@@ -4,6 +4,39 @@
   gap: 10px;
 }
 
+// Live "matches N of M rows" readout above the conditions.
+.filter-match {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #475569;
+
+  strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  // Numbers held from the previous count while the next is in flight.
+  &.is-pending {
+    opacity: 0.55;
+  }
+
+  // The filter currently matches nothing — the most common "why is my table empty" case.
+  &.is-empty {
+    color: #b45309;
+
+    strong {
+      color: #b45309;
+    }
+  }
+
+  &.is-error {
+    color: #dc2626;
+  }
+}
+
 .filter-rows {
   list-style: none;
   margin: 0;
@@ -45,6 +78,18 @@
     }
   }
 
+  // An enabled condition that isn't narrowing anything yet — no value, a deleted
+  // column, or tolerance banding that's gone. Colour the border to match the inline
+  // note below it. A disabled row never runs, so it's never flagged (problem() is null).
+  &.filter-row--error {
+    border-color: #fecaca;
+    background: #fef2f2;
+  }
+
+  &.filter-row--warning {
+    border-color: #fbbf24;
+  }
+
   .operands {
     display: flex;
     gap: 6px;
@@ -63,6 +108,21 @@
       outline: 2px solid var(--p-primary-400, #527ac0);
       outline-offset: -1px;
     }
+  }
+}
+
+// The inline note under a row explaining why it isn't narrowing the data.
+.filter-row-problem {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.3;
+
+  &.is-error {
+    color: #dc2626;
+  }
+
+  &.is-warning {
+    color: #b45309;
   }
 }
 

@@ -19,14 +19,20 @@ function decide(allowed: () => boolean, fallback: string) {
   );
 }
 
-/** The admin area is open to full admins and to delegated group managers; others go home. */
+/** The admin area is open to anyone who manages users or groups; others go home. */
 export const adminAreaGuard: CanMatchFn = () => {
   const currentUser = inject(CurrentUserService);
   return decide(() => currentUser.canManageUsers() || currentUser.canManageGroups(), '/');
 };
 
-/** The Users section is full-admin-only; a delegated manager is sent to the Groups section. */
+/** The Users section needs the manage-users permission; someone who only manages groups is sent there. */
 export const fullAdminGuard: CanMatchFn = () => {
   const currentUser = inject(CurrentUserService);
   return decide(() => currentUser.canManageUsers(), '/admin/groups');
+};
+
+/** The Groups section needs to manage at least one group; someone who only manages users is sent there. */
+export const groupManagerGuard: CanMatchFn = () => {
+  const currentUser = inject(CurrentUserService);
+  return decide(() => currentUser.canManageGroups(), '/admin/users');
 };

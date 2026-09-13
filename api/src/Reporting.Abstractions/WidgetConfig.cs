@@ -13,6 +13,7 @@ namespace Reporting.Abstractions;
 [JsonDerivedType(typeof(ScatterChartWidgetConfig), typeDiscriminator: "scatterChart")]
 [JsonDerivedType(typeof(LineChartWidgetConfig), typeDiscriminator: "lineChart")]
 [JsonDerivedType(typeof(BarChartWidgetConfig), typeDiscriminator: "barChart")]
+[JsonDerivedType(typeof(ComboChartWidgetConfig), typeDiscriminator: "comboChart")]
 [JsonDerivedType(typeof(BoxPlotWidgetConfig), typeDiscriminator: "boxPlot")]
 [JsonDerivedType(typeof(HistogramWidgetConfig), typeDiscriminator: "histogram")]
 [JsonDerivedType(typeof(PivotTableWidgetConfig), typeDiscriminator: "pivotTable")]

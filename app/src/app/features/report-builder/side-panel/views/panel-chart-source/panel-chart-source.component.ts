@@ -4,6 +4,7 @@ import { ChartTypePanelDirective, ChartTypePanels } from '../../chart-type-panel
 import { PanelBarChartSourceComponent } from '../panel-bar-chart-source/panel-bar-chart-source.component';
 import { PanelBoxPlotSourceComponent } from '../panel-box-plot-source/panel-box-plot-source.component';
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
+import { PanelComboChartSourceComponent } from '../panel-combo-chart-source/panel-combo-chart-source.component';
 import { PanelHistogramSourceComponent } from '../panel-histogram-source/panel-histogram-source.component';
 
 /**
@@ -24,6 +25,7 @@ export class PanelChartSourceComponent {
     scatterChart: PanelChartSeriesListComponent,
     lineChart: PanelChartSeriesListComponent,
     barChart: PanelBarChartSourceComponent,
+    comboChart: PanelComboChartSourceComponent,
     boxPlot: PanelBoxPlotSourceComponent,
     histogram: PanelHistogramSourceComponent,
   };

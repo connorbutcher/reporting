@@ -25,7 +25,7 @@ export class PanelRootComponent {
   protected readonly reportFilterSummary = computed(() => {
     const filters = this.session.model()?.filters() ?? [];
     const count = filters.reduce((n, f) => n + f.group.count(), 0);
-    if (count === 0) return 'Applied to every table on this report';
+    if (count === 0) return 'Applied per dataset to every widget on this report';
     return `${count} condition${count > 1 ? 's' : ''} across ${filters.filter((f) => f.group.count() > 0).length} dataset(s)`;
   });
 

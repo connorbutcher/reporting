@@ -9,7 +9,6 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
 import { SaveGroup, UserRef } from '../../../core/models/admin';
-import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   ConfirmDialogComponent,
@@ -19,8 +18,7 @@ import {
 /**
  * The detail card for one group — create when the route id is "new", otherwise edit. Shown in
  * place of the list (no dialog) with room for the full record: name, members, and the managers
- * delegated to run the group. A full admin also sees the "can manage users & groups" permission
- * toggle; a delegated manager sees everything else but not that (they can't escalate the group).
+ * delegated to run the group.
  */
 @Component({
   selector: 'app-group-detail',
@@ -35,10 +33,6 @@ export class GroupDetailComponent {
   public readonly saveError = signal<string | null>(null);
 
   public readonly isNew = signal(true);
-  /** Full admins may set the app-permission toggle; delegated managers may not. */
-  public readonly isFullAdmin = inject(CurrentUserService).canManageUsers;
-
-  public readonly canManageUsers = signal(false);
   public readonly memberIds = signal<string[]>([]);
   public readonly managerIds = signal<string[]>([]);
   public readonly memberFilter = signal('');
@@ -117,7 +111,6 @@ export class GroupDetailComponent {
 
     const dto: SaveGroup = {
       name: this.form.name().value().trim(),
-      canManageUsers: this.canManageUsers(),
       memberIds: this.memberIds(),
       managerIds: this.managerIds(),
     };
@@ -194,7 +187,6 @@ export class GroupDetailComponent {
         this.existingNames.set(
           groups.filter((g) => g.id !== detail.id).map((g) => g.name.trim().toLowerCase()),
         );
-        this.canManageUsers.set(detail.canManageUsers);
         this.memberIds.set(detail.members.map((m) => m.id));
         this.managerIds.set(detail.managers.map((m) => m.id));
         this.form.name().value.set(detail.name);

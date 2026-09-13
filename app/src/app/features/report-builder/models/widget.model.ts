@@ -1,6 +1,7 @@
 import { Widget } from '../../../core/models/report';
 import { BarChartWidgetModel } from './bar-chart-widget.model';
 import { BoxPlotWidgetModel } from './box-plot-widget.model';
+import { ComboChartWidgetModel } from './combo-chart-widget.model';
 import { DataTableWidgetModel } from './data-table-widget.model';
 import { HistogramWidgetModel } from './histogram-widget.model';
 import { LineChartWidgetModel } from './line-chart-widget.model';
@@ -16,6 +17,7 @@ export * from './chart-widget.model';
 export * from './scatter-chart-widget.model';
 export * from './line-chart-widget.model';
 export * from './bar-chart-widget.model';
+export * from './combo-chart-widget.model';
 export * from './box-plot-widget.model';
 export * from './histogram-widget.model';
 export * from './pivot-table-widget.model';
@@ -34,6 +36,8 @@ export function widgetModelFromDto(widget: Widget, sources: ModelSources): Widge
       return new LineChartWidgetModel(widget, sources);
     case 'barChart':
       return new BarChartWidgetModel(widget, sources);
+    case 'comboChart':
+      return new ComboChartWidgetModel(widget, sources);
     case 'boxPlot':
       return new BoxPlotWidgetModel(widget, sources);
     case 'histogram':

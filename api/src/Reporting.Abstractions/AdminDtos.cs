@@ -25,7 +25,7 @@ public class AdminUserDto
     /// <summary>Seed-level super-admin flag; implies every app permission and is read-only in the admin UI.</summary>
     public bool IsGlobalAdmin { get; set; }
 
-    /// <summary>Whether the user holds the <see cref="AppPermission.ManageUsers"/> permission directly or via a group.</summary>
+    /// <summary>Whether the user holds the <see cref="AppPermission.ManageUsers"/> permission (granted directly to them).</summary>
     public bool CanManageUsers { get; set; }
 
     public int GroupCount { get; set; }
@@ -34,9 +34,6 @@ public class AdminUserDto
 /// <summary>A user with the extra detail the edit dialog needs.</summary>
 public class AdminUserDetailDto : AdminUserDto
 {
-    /// <summary>True when the ManageUsers permission is granted to the user directly (not only inherited from a group).</summary>
-    public bool CanManageUsersDirect { get; set; }
-
     public List<GroupRefDto> Groups { get; set; } = new();
     public DateTime CreatedAt { get; set; }
 }
@@ -60,9 +57,6 @@ public class AdminGroupDto
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public int MemberCount { get; set; }
-
-    /// <summary>Whether the group holds the <see cref="AppPermission.ManageUsers"/> permission (given to all its members).</summary>
-    public bool CanManageUsers { get; set; }
 }
 
 /// <summary>A group with its members and managers, for the detail card.</summary>
@@ -78,9 +72,6 @@ public class AdminGroupDetailDto : AdminGroupDto
 public class SaveGroupDto
 {
     public string Name { get; set; } = string.Empty;
-
-    /// <summary>Grants or revokes the ManageUsers app permission on this group (full admins only; ignored for delegated managers).</summary>
-    public bool CanManageUsers { get; set; }
 
     /// <summary>The RefIds of the users that should be members (membership is set to exactly this).</summary>
     public List<Guid> MemberIds { get; set; } = new();

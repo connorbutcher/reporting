@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminAreaGuard, fullAdminGuard } from './features/admin/admin.guard';
+import { adminAreaGuard, fullAdminGuard, groupManagerGuard } from './features/admin/admin.guard';
 import { unsavedChangesGuard } from './features/report-builder/report-canvas/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -30,16 +30,19 @@ export const routes: Routes = [
       },
       {
         path: 'groups',
+        canMatch: [groupManagerGuard],
         loadComponent: () =>
           import('./features/admin/groups-list/groups-list.component').then((m) => m.GroupsListComponent),
       },
       {
         path: 'groups/new',
+        canMatch: [groupManagerGuard],
         loadComponent: () =>
           import('./features/admin/group-detail/group-detail.component').then((m) => m.GroupDetailComponent),
       },
       {
         path: 'groups/:id',
+        canMatch: [groupManagerGuard],
         loadComponent: () =>
           import('./features/admin/group-detail/group-detail.component').then((m) => m.GroupDetailComponent),
       },

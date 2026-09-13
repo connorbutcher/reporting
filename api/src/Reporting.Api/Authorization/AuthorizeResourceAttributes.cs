@@ -30,7 +30,8 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
 
         var authorizer = context.HttpContext.RequestServices.GetRequiredService<ResourceAuthorizer>();
         var result = await AuthorizeAsync(authorizer, id);
-        if (!result.Allowed) context.Result = ToResult(result);
+        // The same outcome→status mapping the imperative actions use, so the two can't drift.
+        if (!result.Allowed) context.Result = AuthorizationResultExtensions.Map(result, Required);
     }
 
     protected abstract Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id);
@@ -46,13 +47,6 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
         id = 0;
         return false;
     }
-
-    private IActionResult ToResult(ResourceAuthorization result) => result.Outcome switch
-    {
-        AccessOutcome.NotFound => new NotFoundResult(),
-        AccessOutcome.ReadOnly => new BadRequestObjectResult("This report version's data is read-only."),
-        _ => new ObjectResult($"This action requires {Required} access.") { StatusCode = StatusCodes.Status403Forbidden }
-    };
 }
 
 /// <summary>Requires <paramref name="required"/> on the report named by the route (default key "reportId", falling back to "id").</summary>

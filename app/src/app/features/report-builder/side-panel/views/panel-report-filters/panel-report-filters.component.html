@@ -1,9 +1,11 @@
 @if (datasetIds().length === 0) {
   <p class="panel-empty">
-    Add a table and bind it to a dataset — report filters apply per dataset.
+    Add a widget and bind it to a dataset — report filters apply per dataset.
   </p>
 } @else {
-  <p class="panel-hint">Applies to every table on this report using the selected dataset.</p>
+  <p class="panel-hint">
+    Applies to every table, chart, and pivot on this report using the selected dataset.
+  </p>
 
   @if (datasetIds().length > 1) {
     <nav class="panel-menu">
@@ -25,6 +27,7 @@
   }
 
   @if (activeFilter(); as filter) {
+    <app-panel-filter-reuse [target]="filter.group" [datasetId]="filter.datasetId" />
     <app-filter-builder [group]="filter.group" [hint]="'Filtering ' + filter.datasetName()" />
   }
 }

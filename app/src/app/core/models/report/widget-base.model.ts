@@ -4,6 +4,7 @@ export type WidgetType =
   | 'scatterChart'
   | 'lineChart'
   | 'barChart'
+  | 'comboChart'
   | 'boxPlot'
   | 'histogram'
   | 'pivotTable';

@@ -260,25 +260,16 @@ public class ReportingDbContext : DbContext
             .IsUnique()
             .HasFilter(null);
 
-        // App permissions attach to the app, not a securable. Enums as text, matching the rest of
-        // the model. The subject is a discriminated union with typed, cascading foreign keys, like
-        // AccessGrant's subject side (but Everyone is not a valid app-permission subject).
+        // App permissions attach to the app, not a securable, and are only ever granted to a user
+        // (never a group or Everyone). Enum as text, matching the rest of the model; the user
+        // foreign key cascades so a deleted user's grants go with them.
         modelBuilder.Entity<AppPermissionGrant>().Property(g => g.Permission).HasConversion<string>();
-        modelBuilder.Entity<AppPermissionGrant>().Property(g => g.SubjectType).HasConversion<string>();
         modelBuilder.Entity<AppPermissionGrant>()
             .HasOne<User>().WithMany().HasForeignKey(g => g.UserId).OnDelete(DeleteBehavior.Cascade);
+        // At most one grant per (permission, user).
         modelBuilder.Entity<AppPermissionGrant>()
-            .HasOne<UserGroup>().WithMany().HasForeignKey(g => g.UserGroupId).OnDelete(DeleteBehavior.Cascade);
-        modelBuilder.Entity<AppPermissionGrant>().ToTable(t =>
-            t.HasCheckConstraint("CK_AppPermissionGrant_Subject",
-                "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR "
-                + "([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL)"));
-        // At most one grant per (permission, subject); HasFilter(null) lets SQL Server's own unique
-        // index enforce it. The per-FK indexes serve "does this subject hold X" lookups.
-        modelBuilder.Entity<AppPermissionGrant>()
-            .HasIndex(g => new { g.Permission, g.SubjectType, g.UserId, g.UserGroupId })
-            .IsUnique()
-            .HasFilter(null);
+            .HasIndex(g => new { g.Permission, g.UserId })
+            .IsUnique();
 
         modelBuilder.Entity<GrantAuditEntry>().Property(a => a.SecurableType).HasConversion<string>();
         modelBuilder.Entity<GrantAuditEntry>().Property(a => a.Action).HasConversion<string>();

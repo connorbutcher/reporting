@@ -1,22 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Permissions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
 
 /// <summary>
-/// The admin-area directory operations for groups. Access is scoped: a full admin (the
-/// <see cref="AppPermission.ManageUsers"/> permission, or global admin) sees and manages every
-/// group, while a delegated manager — a user with a <see cref="UserGroupManager"/> row — sees only
-/// the groups they manage and may edit their membership, name, managers, and deletion. A delegated
-/// manager can never grant the ManageUsers permission, create groups, or manage a group that itself
-/// holds ManageUsers (that would escalate its members to full admin), and can't remove themselves as
-/// a manager. Groups are addressed by their RefId; all child rows cascade on delete.
+/// The admin-area directory operations for groups. Group management is independent of the
+/// <see cref="AppPermission.ManageUsers"/> permission (which governs only the Users section):
+/// access is scoped by whether the caller manages groups. A global admin sees and manages every
+/// group (and creates them); everyone else is a delegated manager — a user with a
+/// <see cref="UserGroupManager"/> row — who sees only the groups they manage and may edit their
+/// membership, name, managers, and deletion, but can't create groups or remove themselves as a
+/// manager. App permissions are never granted to a group (only to a user directly), so managing a
+/// group can't escalate anyone. Groups are addressed by their RefId; all child rows cascade on delete.
 /// </summary>
 public class UserGroupAdminService(
     ReportingDbContext db,
-    AppPermissionService appPermissions,
     ICurrentUserAccessor currentUserAccessor)
 {
     public async Task<List<AdminGroupDto>> ListAsync()
@@ -31,14 +30,12 @@ public class UserGroupAdminService(
             .Select(g => new { g.Id, g.RefId, g.Name, MemberCount = g.Members.Count })
             .ToListAsync();
 
-        var adminGroups = await ManageUsersGroupIdsAsync();
         return groups
             .Select(g => new AdminGroupDto
             {
                 Id = g.RefId,
                 Name = g.Name,
-                MemberCount = g.MemberCount,
-                CanManageUsers = adminGroups.Contains(g.Id)
+                MemberCount = g.MemberCount
             })
             .ToList();
     }
@@ -65,13 +62,11 @@ public class UserGroupAdminService(
         if (group is null) return null;
         if (!full && !scope.Contains(group.Id)) return null; // hidden from a delegate who can't manage it
 
-        var adminGroups = await ManageUsersGroupIdsAsync();
         return new AdminGroupDetailDto
         {
             Id = group.RefId,
             Name = group.Name,
             MemberCount = group.Members.Count,
-            CanManageUsers = adminGroups.Contains(group.Id),
             Members = group.Members.OrderBy(m => m.DisplayName).ToList(),
             Managers = group.Managers.OrderBy(m => m.DisplayName).ToList()
         };
@@ -79,8 +74,11 @@ public class UserGroupAdminService(
 
     public async Task<AdminGroupDetailDto> CreateAsync(SaveGroupDto dto)
     {
-        // Creating groups is a full-admin action; the controller gates this with
-        // [RequireAppPermission(ManageUsers)] (delegation is only ever over existing groups).
+        // Creating groups is reserved for a full admin (a global admin). Delegated managers only ever
+        // manage existing groups, so a new group is a bootstrap the top-level admin performs.
+        var (full, _) = await ScopeAsync();
+        if (!full) throw new AccessDeniedException("Only an administrator can create groups.");
+
         var name = (dto.Name ?? string.Empty).Trim();
         if (name.Length == 0) throw new DataValidationException("A group name is required.");
         if (await db.UserGroups.AnyAsync(g => g.Name == name))
@@ -93,7 +91,6 @@ public class UserGroupAdminService(
 
         await SetMembersAsync(group.Id, dto.MemberIds);
         await SetManagersAsync(group.Id, dto.ManagerIds);
-        await SetManageUsersAsync(group.Id, dto.CanManageUsers);
         await db.SaveChangesAsync();
 
         return (await GetAsync(group.RefId))!;
@@ -124,8 +121,6 @@ public class UserGroupAdminService(
         group.Name = name;
         await SetMembersAsync(group.Id, dto.MemberIds);
         await SetManagersAsync(group.Id, dto.ManagerIds);
-        // Only full admins can grant/revoke the ManageUsers permission; a delegate's flag is ignored.
-        if (full) await SetManageUsersAsync(group.Id, dto.CanManageUsers);
         await db.SaveChangesAsync();
 
         return await GetAsync(refId);
@@ -139,7 +134,7 @@ public class UserGroupAdminService(
         if (group is null) return false;
         if (!full && !scope.Contains(group.Id)) return false; // hidden
 
-        // Membership, manager, ACL-grant and app-permission-grant rows all cascade from the group.
+        // Membership, manager, and ACL-grant rows all cascade from the group.
         db.UserGroups.Remove(group);
         await db.SaveChangesAsync();
         return true;
@@ -155,22 +150,21 @@ public class UserGroupAdminService(
     // --- scope ------------------------------------------------------------
 
     /// <summary>
-    /// The current user's group-management reach: full admins manage everything; otherwise the
-    /// groups they hold a manager row for, excluding any that themselves grant ManageUsers (those
-    /// stay full-admin-only, so a delegate can't add members to escalate them to full admin).
+    /// The current user's group-management reach: a global admin manages every group; everyone else
+    /// manages only the groups they hold a manager row for. The <see cref="AppPermission.ManageUsers"/>
+    /// permission grants no group access — only global-admin status or a manager row does.
     /// </summary>
     private async Task<(bool FullAdmin, HashSet<int> ManagedGroupIds)> ScopeAsync()
     {
-        if (await appPermissions.HasAsync(AppPermission.ManageUsers))
+        var actor = await currentUserAccessor.GetAsync();
+        if (actor.IsGlobalAdmin)
             return (true, new HashSet<int>());
 
-        var actor = await currentUserAccessor.GetAsync();
         var managed = await db.UserGroupManagers
             .Where(m => m.UserId == actor.Id)
             .Select(m => m.UserGroupId)
             .ToListAsync();
-        var adminGroups = await ManageUsersGroupIdsAsync();
-        return (false, managed.Where(id => !adminGroups.Contains(id)).ToHashSet());
+        return (false, managed.ToHashSet());
     }
 
     // --- helpers ----------------------------------------------------------
@@ -214,36 +208,4 @@ public class UserGroupAdminService(
             db.UserGroupManagers.Add(new UserGroupManager { UserGroupId = groupId, UserId = userId });
     }
 
-    /// <summary>Adds or removes the group's ManageUsers grant to match <paramref name="canManage"/>.</summary>
-    private async Task SetManageUsersAsync(int groupId, bool canManage)
-    {
-        var existing = await db.AppPermissionGrants.FirstOrDefaultAsync(g =>
-            g.Permission == AppPermission.ManageUsers
-            && g.SubjectType == GrantSubjectType.Group && g.UserGroupId == groupId);
-
-        if (canManage && existing is null)
-        {
-            var actor = await currentUserAccessor.GetAsync();
-            db.AppPermissionGrants.Add(new AppPermissionGrant
-            {
-                Permission = AppPermission.ManageUsers,
-                SubjectType = GrantSubjectType.Group,
-                UserGroupId = groupId,
-                CreatedAt = DateTime.UtcNow,
-                CreatedByUserId = actor.Id
-            });
-        }
-        else if (!canManage && existing is not null)
-        {
-            db.AppPermissionGrants.Remove(existing);
-        }
-    }
-
-    /// <summary>The ids of groups that hold the ManageUsers permission (their members become full admins).</summary>
-    private async Task<HashSet<int>> ManageUsersGroupIdsAsync() =>
-        (await db.AppPermissionGrants
-            .Where(g => g.Permission == AppPermission.ManageUsers && g.SubjectType == GrantSubjectType.Group && g.UserGroupId != null)
-            .Select(g => g.UserGroupId!.Value)
-            .ToListAsync())
-        .ToHashSet();
 }

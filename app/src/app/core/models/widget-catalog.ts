@@ -70,6 +70,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'chart',
   },
   {
+    type: 'comboChart',
+    label: 'Combination chart',
+    hint: 'Summarise columns as bars and lines together',
+    icon: 'pi pi-chart-bar',
+    group: 'chart',
+  },
+  {
     type: 'boxPlot',
     label: 'Box plot',
     hint: 'Summarise a column’s spread per category',

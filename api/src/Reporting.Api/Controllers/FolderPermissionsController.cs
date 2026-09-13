@@ -33,27 +33,11 @@ public class FolderPermissionsController(PermissionAdminService admin) : Control
     [HttpPut]
     public async Task<ActionResult<AccessGrantDto>> Upsert(int folderId, SaveGrantDto dto)
     {
-        try
-        {
-            var grant = await admin.UpsertFolderGrantAsync(folderId, dto);
-            return grant is null ? NotFound() : grant;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var grant = await admin.UpsertFolderGrantAsync(folderId, dto);
+        return grant is null ? NotFound() : grant;
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Remove(int folderId, [FromBody] RemoveGrantDto dto)
-    {
-        try
-        {
-            return await admin.RemoveFolderGrantAsync(folderId, dto) ? NoContent() : NotFound();
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-    }
+    public async Task<IActionResult> Remove(int folderId, [FromBody] RemoveGrantDto dto) =>
+        await admin.RemoveFolderGrantAsync(folderId, dto) ? NoContent() : NotFound();
 }

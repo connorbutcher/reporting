@@ -15,6 +15,7 @@ import { WidgetDataSource } from '../widget-data-source';
 import { BoxOption } from './options/box-option';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
+import { ComboOption } from './options/combo-option';
 import { ECOption } from './options/chart-option.types';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
@@ -56,6 +57,8 @@ export class ChartWidgetComponent {
     switch (config.type) {
       case 'barChart':
         return BarOption.build(config, data as BarChartQueryResult | null, columns, colors);
+      case 'comboChart':
+        return ComboOption.build(config, data as BarChartQueryResult | null, columns, colors);
       case 'boxPlot':
         return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
       case 'histogram':
@@ -80,6 +83,7 @@ export class ChartWidgetComponent {
   public readonly configHint = computed(() => {
     switch (this.config().type) {
       case 'barChart':
+      case 'comboChart':
         return 'Pick a category column in the side panel.';
       case 'boxPlot':
         return 'Pick a category and a value column in the side panel.';
@@ -114,7 +118,7 @@ export class ChartWidgetComponent {
   /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar, box, or histogram. */
   private readonly isPointChart = computed(() => {
     const type = this.config().type;
-    return type !== 'barChart' && type !== 'boxPlot' && type !== 'histogram';
+    return type !== 'barChart' && type !== 'comboChart' && type !== 'boxPlot' && type !== 'histogram';
   });
 
   /**
@@ -143,7 +147,7 @@ export class ChartWidgetComponent {
       b.valueColumnIds ?? null,
       b.seriesColumnId,
     ]);
-    const aggregate = config.type === 'barChart' ? config.aggregate : null;
+    const aggregate = config.type === 'barChart' || config.type === 'comboChart' ? config.aggregate : null;
     // Box options that change the server response: whisker mode/length (which values become
     // outliers), the sort order, and whether raw points are pulled. Mean/n/capability/highlighting
     // are render-only (the summary always carries mean & σ), so they don't force a reload.
@@ -200,7 +204,7 @@ export class ChartWidgetComponent {
   private readonly configured = computed(() => {
     const config = this.config();
     const bindings = readChartBindings(config);
-    if (config.type === 'barChart') {
+    if (config.type === 'barChart' || config.type === 'comboChart') {
       // Any bound binding with a category (and, unless counting, a measure) is enough to plot.
       return bindings.some(
         (b) =>
@@ -227,7 +231,7 @@ export class ChartWidgetComponent {
     const type = this.config().type;
     // Bar and box both report emptiness by their category axis; a histogram by its bins; point
     // charts by their series.
-    if (type === 'barChart' || type === 'boxPlot') {
+    if (type === 'barChart' || type === 'comboChart' || type === 'boxPlot') {
       return ((data as BarChartQueryResult | BoxPlotQueryResult).categories?.length ?? 0) === 0;
     }
     if (type === 'histogram') {

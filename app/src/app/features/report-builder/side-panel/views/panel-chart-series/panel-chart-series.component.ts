@@ -8,8 +8,13 @@ import {
   LineDashStyle,
   chartAxisDisplayName,
 } from '../../../../../core/models/report';
+import { ChartSeriesRenderAs } from '../../../../../core/models/report';
 import { ChartBindingModel } from '../../../models/chart-binding.model';
-import { BarChartWidgetModel, LineChartWidgetModel } from '../../../models/widget.model';
+import {
+  BarChartWidgetModel,
+  ComboChartWidgetModel,
+  LineChartWidgetModel,
+} from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
@@ -38,7 +43,7 @@ export class PanelChartSeriesComponent {
     return id ? (this.chart()?.binding(id) ?? null) : null;
   });
 
-  /** Line-only options (line style, the 'None' marker) show only for a line chart. */
+  /** Line-only options (line style, the 'None' marker) show for a line chart, or a combo line series. */
   public readonly isLine = computed(() => this.chart() instanceof LineChartWidgetModel);
 
   /** The model narrowed to a bar chart, so a bar series shows a category + measures instead of X/Y. */
@@ -47,11 +52,31 @@ export class PanelChartSeriesComponent {
     return chart instanceof BarChartWidgetModel ? chart : null;
   });
 
+  /** The model narrowed to a combination chart — like a bar for data binding, but with a per-series render type. */
+  public readonly comboChart = computed(() => {
+    const chart = this.chart();
+    return chart instanceof ComboChartWidgetModel ? chart : null;
+  });
+
   /** Whether this series belongs to a bar chart — it picks several measures, not a single Y. */
   public readonly isBar = computed(() => !!this.barChart());
 
-  /** A bar chart counting rows needs no measure, so its value picker is hidden. */
-  public readonly needsValue = computed(() => this.barChart()?.needsValue() ?? true);
+  /** Whether this series belongs to a combination chart, whose series pick their own bar/line type. */
+  public readonly isCombo = computed(() => !!this.comboChart());
+
+  /** Bar and combo bind the same way — a category and one or more measures, not a single X/Y pair. */
+  public readonly isBarLike = computed(() => this.isBar() || this.isCombo());
+
+  /** Bars/lines whose aggregate is Count need no measure, so the value picker is hidden. */
+  public readonly needsValue = computed(
+    () => this.barChart()?.needsValue() ?? this.comboChart()?.needsValue() ?? true,
+  );
+
+  /** How a combo series can be drawn, for the per-series type picker. */
+  public readonly renderAsOptions: { label: string; value: ChartSeriesRenderAs }[] = [
+    { label: 'Bars', value: 'bar' },
+    { label: 'Line', value: 'line' },
+  ];
 
   /** The last series can't be removed, so a chart always keeps one. */
   public readonly canRemove = computed(() => (this.chart()?.bindings().length ?? 0) > 1);
@@ -69,7 +94,7 @@ export class PanelChartSeriesComponent {
       { label: 'Triangle', value: 'triangle' },
       { label: 'Diamond', value: 'diamond' },
     ];
-    return this.isLine() ? [...shapes, { label: 'None', value: 'none' }] : shapes;
+    return this.isLine() || this.isCombo() ? [...shapes, { label: 'None', value: 'none' }] : shapes;
   });
 
   /** Per-series line dash for line charts. */
@@ -102,6 +127,16 @@ export class PanelChartSeriesComponent {
 
   public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  /** Whether a series is drawn as a line — a point line chart, or a combo series set to 'line'. */
+  public isLineSeries(binding: ChartBindingModel): boolean {
+    return this.isLine() || (this.isCombo() && binding.renderAs() === 'line');
+  }
+
+  /** Markers (and the 'None' option) apply to point charts and combo line series, never to bars. */
+  public showMarker(binding: ChartBindingModel): boolean {
+    return !this.isBarLike() || this.isLineSeries(binding);
   }
 
   /**

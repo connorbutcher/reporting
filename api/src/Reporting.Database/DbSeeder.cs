@@ -260,6 +260,48 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the grand feature-tour report ("Engine Build — Feature Tour") if it isn't already present.
+    /// Idempotent and independent of the other seeds (same pattern as <see cref="SeedBoxPlotShowcase"/>).
+    /// One engine-build dataset shown through every widget and option the builder offers — a data table,
+    /// a widget-filtered table, a pivot, scatter/line/bar/combination/box/histogram charts, tolerance
+    /// bands, tooltip columns, dual value axes, a report-level filter, and four tabs.
+    /// </summary>
+    public static void SeedFeatureShowcase(ReportingDbContext db)
+    {
+        const string name = "Engine Build — Feature Tour";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+        var pendingFilters = new List<Action>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildFeatureShowcaseReport(pending, pendingTables, pendingCharts, pendingFilters, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        // Report-level filters live on the revision and reference the dataset's now-assigned int id.
+        foreach (var apply in pendingFilters)
+        {
+            apply();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
     /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
     /// </summary>
@@ -1118,15 +1160,16 @@ public static class DbSeeder
     /// </summary>
     private static string BarChartConfigJson(
         string title, Dataset dataset, Guid categoryRef, Guid[] valueRefs, string aggregate,
-        bool stacked, bool horizontal, string yAxisLabel)
+        bool stacked, bool horizontal, string yAxisLabel, Guid? seriesRef = null)
     {
         var bindingId = Guid.NewGuid();
         var valueIds = string.Join(",", valueRefs.Select(r => $"\"{r}\""));
+        var series = seriesRef is { } s ? $"\"{s}\"" : "null";
         static string B(bool value) => value ? "true" : "false";
         return $$"""
             {"type":"barChart","title":"{{title}}","showTitle":true,
              "aggregate":"{{aggregate}}","stacked":{{B(stacked)}},"horizontal":{{B(horizontal)}},
-             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{categoryRef}}","yColumnId":"{{valueRefs[0]}}","valueColumnIds":[{{valueIds}}],"seriesColumnId":null,"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{categoryRef}}","yColumnId":"{{valueRefs[0]}}","valueColumnIds":[{{valueIds}}],"seriesColumnId":{{series}},"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
              "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
              "xAxisLabel":"","yAxisLabel":"{{yAxisLabel}}",
              "zoom":false,"showLegend":true,"pointSize":8,
@@ -1175,6 +1218,404 @@ public static class DbSeeder
             [{"id":"{{bandId}}","axis":"{{axis}}","yAxisId":null,"sourceDatasetId":{{specDatasetId}},"sourceRowId":"{{rowRef}}","minColumnId":"{{minRef}}","maxColumnId":"{{maxRef}}","fill":true,"outlinePoints":true}]
             """;
     }
+
+    /// <summary>
+    /// The feature-tour report: one engine-build dataset (plus a one-row clearance spec) laid out across
+    /// four tabs so every widget and option is on show. Tab 1 pairs a full data table with a
+    /// widget-filtered table and a pivot; tab 2 the point charts (a series-split scatter with tooltip
+    /// columns, a colour-by-value scatter, and a line with a spec band); tab 3 a grouped bar and the
+    /// combination chart (bars + a line on a second axis); tab 4 a box plot and a histogram, both against
+    /// the clearance spec. A report-level filter drops the R&D-bench builds from every widget.
+    /// </summary>
+    private static Report BuildFeatureShowcaseReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
+        List<Action> pendingFilters, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Engine Build — Feature Tour",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildEngineBuildLog(pending);
+        revision.Datasets.Add(dataset);
+
+        // A one-row limits dataset gives the clearance charts their spec band (LSL/USL) — the reference
+        // the box plot's capability figures, the histogram's spec lines, and the line's band read against.
+        var specRowRef = Guid.NewGuid();
+        var spec = new Dataset
+        {
+            Name = "Bearing Clearance Spec",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":7788,\"phaseIds\":[9]}",
+        };
+        var characteristic = Column(spec, "Characteristic", DatasetColumnType.String, 0);
+        var lsl = Column(spec, "LSL", DatasetColumnType.Double, 1, Mm(4));
+        var usl = Column(spec, "USL", DatasetColumnType.Double, 2, Mm(4));
+        var specRow = new DatasetRow { RefId = specRowRef };
+        spec.Rows.Add(specRow);
+        pending.Add(new PendingCell(specRow, characteristic, "Main Bearing Clearance"));
+        pending.Add(new PendingCell(specRow, lsl, Num(0.030)));
+        pending.Add(new PendingCell(specRow, usl, Num(0.060)));
+        revision.Datasets.Add(spec);
+
+        Guid Ref(string columnName) => dataset.Columns.First(c => c.Name == columnName).RefId;
+        var buildIdRef = Ref("Build ID");
+        var engineRef = Ref("Engine Type");
+        var lineRef = Ref("Assembly Line");
+        var inspectorRef = Ref("Inspector");
+        var dateRef = Ref("Build Date");
+        var powerRef = Ref("Peak Power");
+        var torqueRef = Ref("Peak Torque");
+        var clearanceRef = Ref("Main Bearing Clearance");
+        var costRef = Ref("Build Cost");
+        var hoursRef = Ref("Build Hours");
+        var reworkRef = Ref("Rework Count");
+
+        // Report-level filter: the R&D-bench builds are excluded from every widget on the report — set
+        // once the dataset has its int id (which the filter references).
+        pendingFilters.Add(() => revision.FiltersJson =
+            ReportFiltersJson((dataset.Id, FilterGroupJson("and", ConditionJson(lineRef, "notEquals", "R&D Bench")))));
+
+        // ---- Tab 1: the data, as a table, a filtered table, and a pivot ----
+        var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0 };
+        revision.Tabs.Add(overview);
+        overview.Widgets.Add(TitleWidget("Engine Build — Feature Tour", 0, 0, 48, 2));
+        overview.Widgets.Add(ParagraphWidget(
+            "One dataset of engine builds, shown through every widget and option the builder offers — a table and a pivot, each chart kind, tolerance bands, per-widget and report-level filters, dual axes, and four tabs.",
+            0, 2, 48, 3));
+
+        var logColumns = new[]
+        {
+            "Build ID", "Engine Type", "Assembly Line", "Inspector", "Build Date", "Peak Power",
+            "Peak Torque", "Main Bearing Clearance", "Build Cost", "Build Hours", "Rework Count", "Passed",
+        };
+        var logTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 5, W = 48, H = 13, ConfigJson = "{}" };
+        overview.Widgets.Add(logTable);
+        pendingTables.Add(new PendingTable(logTable, dataset, "Engine build log", logColumns));
+
+        // A widget-level filter: the same table narrowed to builds that needed rework.
+        var reworkTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 18, W = 24, H = 11, ConfigJson = "{}" };
+        overview.Widgets.Add(reworkTable);
+        pendingCharts.Add(new PendingChart(reworkTable, () =>
+            TableConfigJson("Builds needing rework", dataset,
+                new[] { "Build ID", "Engine Type", "Assembly Line", "Rework Count", "Passed" },
+                FilterGroupJson("and", ConditionJson(reworkRef, "greaterThan", "0")))));
+
+        // A pivot rolling the builds up by engine then line, with one measure of each aggregate kind.
+        (Guid? Column, string Aggregate, string Label)[] measures =
+        [
+            (null, "count", "Builds"),
+            (costRef, "sum", "Total cost"),
+            (hoursRef, "average", "Avg hours"),
+            (reworkRef, "max", "Worst rework"),
+        ];
+        var pivot = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.PivotTable, X = 24, Y = 18, W = 24, H = 11, ConfigJson = "{}" };
+        overview.Widgets.Add(pivot);
+        pendingCharts.Add(new PendingChart(pivot, () =>
+            PivotConfigJson("Builds by engine & line", dataset, [engineRef, lineRef], measures)));
+
+        // ---- Tab 2: the point charts ----
+        var trends = new Tab { RefId = Guid.NewGuid(), Name = "Trends", Order = 1 };
+        revision.Tabs.Add(trends);
+        trends.Widgets.Add(TitleWidget("Performance trends", 0, 0, 48, 2));
+
+        // Scatter: power against torque, one colour per engine type, with extra tooltip columns and zoom.
+        var scatter = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.ScatterChart, X = 0, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        trends.Widgets.Add(scatter);
+        pendingCharts.Add(new PendingChart(scatter, () =>
+            PointChartConfigJson("scatterChart", "Power vs torque by engine",
+                ChartBindingJson(dataset.Id, powerRef, yRef: torqueRef, seriesRef: engineRef),
+                AxesJson(("primary", "Peak torque (Nm)", "left")),
+                xAxisLabel: "Peak power (kW)",
+                tooltipColumnsJson: TooltipColumnsJson(buildIdRef, inspectorRef),
+                zoom: true)));
+
+        // The same points coloured continuously by their torque value (an echarts visualMap).
+        var heat = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.ScatterChart, X = 24, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        trends.Widgets.Add(heat);
+        pendingCharts.Add(new PendingChart(heat, () =>
+            PointChartConfigJson("scatterChart", "Torque shaded by value",
+                ChartBindingJson(dataset.Id, powerRef, yRef: torqueRef),
+                AxesJson(("primary", "Peak torque (Nm)", "left")),
+                xAxisLabel: "Peak power (kW)", colorByValue: true, showLegend: false)));
+
+        // A line over build date, split by line, with the clearance spec drawn across and out-of-spec
+        // points outlined — a smoothed time series with a tolerance band.
+        var line = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.LineChart, X = 0, Y = 18, W = 48, H = 11, ConfigJson = "{}" };
+        trends.Widgets.Add(line);
+        pendingCharts.Add(new PendingChart(line, () =>
+            PointChartConfigJson("lineChart", "Bearing clearance over time",
+                ChartBindingJson(dataset.Id, dateRef, yRef: clearanceRef, seriesRef: lineRef),
+                AxesJson(("primary", "Clearance (mm)", "left")),
+                xAxisLabel: "Build date",
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId),
+                smooth: true, showPoints: true)));
+
+        // ---- Tab 3: the aggregating bar + the combination chart ----
+        var costEffort = new Tab { RefId = Guid.NewGuid(), Name = "Cost & effort", Order = 2 };
+        revision.Tabs.Add(costEffort);
+        costEffort.Widgets.Add(TitleWidget("Cost & effort", 0, 0, 48, 2));
+
+        // Grouped bar: average build cost per engine, split into a bar per assembly line.
+        var bar = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BarChart, X = 0, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        costEffort.Widgets.Add(bar);
+        pendingCharts.Add(new PendingChart(bar, () =>
+            BarChartConfigJson("Average build cost by engine", dataset, engineRef, [costRef], "average",
+                stacked: false, horizontal: false, "Cost (£)", seriesRef: lineRef)));
+
+        // The combination chart: average cost as bars on the left axis, average build hours as a line on
+        // a second axis — two bindings, two value axes, one shared category.
+        var combo = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.ComboChart, X = 24, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        costEffort.Widgets.Add(combo);
+        pendingCharts.Add(new PendingChart(combo, () =>
+            ComboChartConfigJson("Cost vs build hours by engine",
+                string.Join(",",
+                    ChartBindingJson(dataset.Id, engineRef, valueRefs: [costRef], renderAs: "bar", yAxisId: "primary", label: "Avg cost", color: "#2f6fed"),
+                    ChartBindingJson(dataset.Id, engineRef, valueRefs: [hoursRef], renderAs: "line", yAxisId: "hours", label: "Avg hours", color: "#f97316")),
+                AxesJson(("primary", "Cost (£)", "left"), ("hours", "Build hours", "right")),
+                xAxisLabel: "", aggregate: "average", stacked: false, smooth: true, showPoints: true, areaFill: false)));
+
+        // ---- Tab 4: the distribution charts ----
+        var quality = new Tab { RefId = Guid.NewGuid(), Name = "Quality", Order = 3 };
+        revision.Tabs.Add(quality);
+        quality.Widgets.Add(TitleWidget("Quality & capability", 0, 0, 48, 2));
+
+        // Box plot: clearance spread per engine, against the spec band, with mean, sample size, and Cp/Cpk.
+        var box = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.BoxPlot, X = 0, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        quality.Widgets.Add(box);
+        pendingCharts.Add(new PendingChart(box, () =>
+            BoxPlotConfigJson("Bearing clearance by engine", dataset, engineRef, clearanceRef, null, "tukey", "Clearance (mm)",
+                showMean: true, showSampleSize: true, showCapability: true,
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId))));
+
+        // Histogram: the pooled clearance distribution with the spec drawn across the binned axis.
+        var histogram = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 24, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
+        quality.Widgets.Add(histogram);
+        pendingCharts.Add(new PendingChart(histogram, () =>
+            HistogramConfigJson("Bearing clearance distribution", dataset, clearanceRef, null, "Clearance (mm)", "Number of builds",
+                binMode: "count", binCount: 24, normalize: "count",
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// The dataset behind the feature tour: one row per engine build, tagged with its engine type and
+    /// assembly line, carrying performance (power, torque), a machined clearance, cost and effort, a
+    /// rework count and a pass flag. Larger engines make more power and cost more; Line 2 runs slower
+    /// and reworks more; clearance is a believable spread whose tails cross the spec. A handful of
+    /// R&D-bench builds are included for the report-level filter to exclude. Deterministic RNG seed.
+    /// </summary>
+    private static Dataset BuildEngineBuildLog(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Engine Build Log",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":4471,\"phaseIds\":[1,2,3,4]}",
+        };
+
+        var buildId = Column(dataset, "Build ID", DatasetColumnType.String, 0);
+        var engine = Column(dataset, "Engine Type", DatasetColumnType.String, 1);
+        var line = Column(dataset, "Assembly Line", DatasetColumnType.String, 2);
+        var inspector = Column(dataset, "Inspector", DatasetColumnType.String, 3);
+        var buildDate = Column(dataset, "Build Date", DatasetColumnType.DateTime, 4, "{\"dateFormat\":\"d MMM yyyy\"}");
+        var power = Column(dataset, "Peak Power", DatasetColumnType.Double, 5, "{\"decimals\":1,\"suffix\":\" kW\"}");
+        var torque = Column(dataset, "Peak Torque", DatasetColumnType.Double, 6, "{\"decimals\":1,\"suffix\":\" Nm\"}");
+        var clearance = Column(dataset, "Main Bearing Clearance", DatasetColumnType.Double, 7, Mm(4));
+        var cost = Column(dataset, "Build Cost", DatasetColumnType.Double, 8, Gbp);
+        var hours = Column(dataset, "Build Hours", DatasetColumnType.Double, 9, "{\"decimals\":1,\"suffix\":\" h\"}");
+        var rework = Column(dataset, "Rework Count", DatasetColumnType.Int, 10);
+        var passed = Column(dataset, "Passed", DatasetColumnType.Bool, 11, "{\"trueLabel\":\"Pass\",\"falseLabel\":\"Fail\"}");
+
+        // (engine, power kW, torque Nm, cost £, hours, clearance mean mm, clearance sd mm)
+        var engines = new[]
+        {
+            ("I4 2.0L", 150.0, 280.0, 3600.0, 18.0, 0.045, 0.006),
+            ("I6 3.0L", 230.0, 440.0, 5200.0, 24.0, 0.046, 0.007),
+            ("V8 5.0L", 330.0, 610.0, 8400.0, 33.0, 0.048, 0.008),
+            ("V12 6.5L", 480.0, 810.0, 12000.0, 40.0, 0.044, 0.005),
+        };
+        var lines = new[] { "Line 1", "Line 2" };
+        var inspectors = new[] { "A. Whitfield", "R. Okafor", "M. Lindqvist", "S. Bhandari" };
+
+        var rng = new Random(20260913);
+        var start = new DateTime(2026, 1, 6);
+        var build = 1;
+        var day = 0;
+        const int perGroup = 6;
+
+        double NextNormal()
+        {
+            var u1 = 1.0 - rng.NextDouble();
+            var u2 = 1.0 - rng.NextDouble();
+            return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
+        }
+
+        void Emit(string engineName, string lineName, double basePower, double baseTorque, double baseCost,
+            double baseHours, double clearMean, double clearSd)
+        {
+            var slow = lineName == "Line 2";
+            var bench = lineName == "R&D Bench";
+            var powerValue = basePower * (0.96 + rng.NextDouble() * 0.08);
+            // Torque tracks power at roughly a fixed ratio, with a little independent scatter.
+            var torqueValue = powerValue * (baseTorque / basePower) * (0.97 + rng.NextDouble() * 0.06);
+            var clearValue = Math.Clamp(clearMean + clearSd * NextNormal(), 0.025, 0.072);
+            var reworkValue = bench ? rng.Next(2, 6) : rng.Next(0, slow ? 5 : 3);
+            var inSpec = clearValue is >= 0.030 and <= 0.060;
+            AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+            {
+                [buildId] = $"EB-{build:0000}",
+                [engine] = engineName,
+                [line] = lineName,
+                [inspector] = inspectors[build % inspectors.Length],
+                [buildDate] = Iso(start.AddDays(day)),
+                [power] = Num(Math.Round(powerValue, 1)),
+                [torque] = Num(Math.Round(torqueValue, 1)),
+                [clearance] = Num(Math.Round(clearValue, 4)),
+                [cost] = Num(Math.Round(baseCost * (0.94 + rng.NextDouble() * 0.12), 0)),
+                [hours] = Num(Math.Round(baseHours * (slow ? 1.08 : 1.0) * (0.92 + rng.NextDouble() * 0.16), 1)),
+                [rework] = reworkValue.ToString(CultureInfo.InvariantCulture),
+                [passed] = (inSpec && reworkValue <= 2).ToString(CultureInfo.InvariantCulture),
+            });
+            build++;
+            day += 2;
+        }
+
+        foreach (var (engineName, basePower, baseTorque, baseCost, baseHours, clearMean, clearSd) in engines)
+        {
+            foreach (var lineName in lines)
+            {
+                for (var i = 0; i < perGroup; i++)
+                {
+                    Emit(engineName, lineName, basePower, baseTorque, baseCost, baseHours, clearMean, clearSd);
+                }
+            }
+        }
+
+        // A few R&D-bench builds the report-level filter excludes — wide, rough prototypes.
+        for (var i = 0; i < 4; i++)
+        {
+            Emit("V8 5.0L", "R&D Bench", 330.0, 610.0, 8400.0, 33.0, 0.050, 0.014);
+        }
+
+        return dataset;
+    }
+
+    /// <summary>A paragraph of body text — a smaller, unweighted static-text widget for a report's intro.</summary>
+    private static Widget ParagraphWidget(string text, int x, int y, int w, int h) => new()
+    {
+        RefId = Guid.NewGuid(),
+        Type = WidgetType.StaticText,
+        X = x,
+        Y = y,
+        W = w,
+        H = h,
+        ConfigJson = $$"""
+            {"type":"staticText","title":"Text","showTitle":false,
+             "content":"{{text}}","fontSize":14,"fontWeight":"normal",
+             "italic":false,"underline":false,"strikethrough":false,"lineHeight":1.4,
+             "color":"#475569","backgroundColor":null,"textAlign":"left","verticalAlign":"top",
+             "wrap":true,"padding":8}
+            """,
+    };
+
+    /// <summary>
+    /// One chart series binding as JSON. A point binding passes <paramref name="yRef"/> (its Y column);
+    /// a bar/combo binding passes <paramref name="valueRefs"/> (its measures), the first mirrored into
+    /// <c>yColumnId</c>. <paramref name="renderAs"/> ("bar"/"line") is only read by the combination chart;
+    /// <paramref name="yAxisId"/> assigns the series to one of the chart's value axes.
+    /// </summary>
+    private static string ChartBindingJson(
+        int datasetId, Guid xRef, Guid? yRef = null, Guid[]? valueRefs = null, Guid? seriesRef = null,
+        string? renderAs = null, string? yAxisId = null, string label = "", string? color = null,
+        string? symbol = null, string? dashStyle = null, string filterJson = "null")
+    {
+        static string Q(string? s) => s is null ? "null" : $"\"{s}\"";
+        static string G(Guid? g) => g is { } v ? $"\"{v}\"" : "null";
+        var values = valueRefs is { Length: > 0 }
+            ? "[" + string.Join(",", valueRefs.Select(r => $"\"{r}\"")) + "]"
+            : "null";
+        var yColumn = valueRefs is { Length: > 0 } ? G(valueRefs[0]) : G(yRef);
+        return $$"""
+            {"id":"{{Guid.NewGuid()}}","datasetId":{{datasetId}},"xColumnId":"{{xRef}}","yColumnId":{{yColumn}},"valueColumnIds":{{values}},"seriesColumnId":{{G(seriesRef)}},"renderAs":{{Q(renderAs)}},"yAxisId":{{Q(yAxisId)}},"label":"{{label}}","color":{{Q(color)}},"symbol":{{Q(symbol)}},"dashStyle":{{Q(dashStyle)}},"filter":{{filterJson}}}
+            """;
+    }
+
+    /// <summary>The chart's value (Y) axes as JSON — one entry each, in order, the first being the primary.</summary>
+    private static string AxesJson(params (string Id, string Label, string Side)[] axes)
+        => "[" + string.Join(",", axes.Select(a => $$"""{"id":"{{a.Id}}","label":"{{a.Label}}","side":"{{a.Side}}"}""")) + "]";
+
+    /// <summary>The point chart's extra tooltip columns as JSON, by their stable column RefIds.</summary>
+    private static string TooltipColumnsJson(params Guid[] refs)
+        => "[" + string.Join(",", refs.Select(r => $$"""{"columnId":"{{r}}"}""")) + "]";
+
+    /// <summary>
+    /// A scatter or line chart's config JSON. Bindings and axes are pre-built (so callers can overlay
+    /// several datasets or add axes); line-only options are emitted only for a line chart.
+    /// </summary>
+    private static string PointChartConfigJson(
+        string type, string title, string bindingsJson, string yAxesJson, string xAxisLabel,
+        string tooltipColumnsJson = "[]", string bandsJson = "[]", bool colorByValue = false,
+        bool zoom = true, bool showLegend = true, bool smooth = false, bool showPoints = true, bool areaFill = false)
+    {
+        static string B(bool value) => value ? "true" : "false";
+        var lineOpts = type == "lineChart"
+            ? $",\"smooth\":{B(smooth)},\"showPoints\":{B(showPoints)},\"areaFill\":{B(areaFill)}"
+            : "";
+        return $$"""
+            {"type":"{{type}}","title":"{{title}}","showTitle":true,
+             "bindings":[{{bindingsJson}}],
+             "yAxes":{{yAxesJson}},
+             "xAxisLabel":"{{xAxisLabel}}","yAxisLabel":"",
+             "zoom":{{B(zoom)}},"zoomY":false,"showLegend":{{B(showLegend)}},"pointSize":9,
+             "showGridLines":true,"showValueLabels":false,"colorByValue":{{B(colorByValue)}},
+             "toleranceBands":{{bandsJson}},"tooltipColumns":{{tooltipColumnsJson}}{{lineOpts}}}
+            """;
+    }
+
+    /// <summary>
+    /// A combination chart's config JSON. Bindings (each carrying its own <c>renderAs</c> and value axis)
+    /// and the value axes are pre-built by the caller; the shared aggregate reduces every series' category.
+    /// </summary>
+    private static string ComboChartConfigJson(
+        string title, string bindingsJson, string yAxesJson, string xAxisLabel, string aggregate,
+        bool stacked, bool smooth, bool showPoints, bool areaFill, string bandsJson = "[]")
+    {
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"comboChart","title":"{{title}}","showTitle":true,
+             "aggregate":"{{aggregate}}","stacked":{{B(stacked)}},"smooth":{{B(smooth)}},"showPoints":{{B(showPoints)}},"areaFill":{{B(areaFill)}},
+             "bindings":[{{bindingsJson}}],
+             "yAxes":{{yAxesJson}},
+             "xAxisLabel":"{{xAxisLabel}}","yAxisLabel":"",
+             "zoom":false,"showLegend":true,"pointSize":9,
+             "showGridLines":true,"showValueLabels":false,
+             "toleranceBands":{{bandsJson}},"tooltipColumns":[]}
+            """;
+    }
+
+    /// <summary>One filter condition as JSON — a column tested by an operator against zero or more values.</summary>
+    private static string ConditionJson(Guid columnRef, string op, params string[] values)
+    {
+        var vals = string.Join(",", values.Select(v => $"\"{v}\""));
+        return $$"""{"kind":"condition","columnId":"{{columnRef}}","operator":"{{op}}","values":[{{vals}}]}""";
+    }
+
+    /// <summary>A filter group as JSON — conditions joined by "and"/"or".</summary>
+    private static string FilterGroupJson(string join, params string[] conditions)
+        => $$"""{"kind":"group","join":"{{join}}","children":[{{string.Join(",", conditions)}}]}""";
+
+    /// <summary>The revision's report-level filters as JSON — one filter group per dataset.</summary>
+    private static string ReportFiltersJson(params (int DatasetId, string FilterGroup)[] filters)
+        => "[" + string.Join(",", filters.Select(f => $$"""{"datasetId":{{f.DatasetId}},"filter":{{f.FilterGroup}}}""")) + "]";
 
     private static Report PublishedReport(
         int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
@@ -1286,7 +1727,7 @@ public static class DbSeeder
     /// The data-table config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; columns are still referenced by their stable RefIds.
     /// </summary>
-    private static string TableConfigJson(string title, Dataset dataset, string[] columnNames)
+    private static string TableConfigJson(string title, Dataset dataset, string[] columnNames, string filterJson = "null")
     {
         var columnIds = columnNames
             .Select(name => dataset.Columns.First(c => c.Name == name).RefId)
@@ -1297,6 +1738,7 @@ public static class DbSeeder
              "showTitle":true,"showColumnHeaders":true,"resizableColumns":true,
              "stripedRows":true,"showGridlines":false,"rowHover":true,"density":"compact",
              "paginator":false,"rowsPerPage":10,"emptyMessage":"No rows to display.",
+             "filter":{{filterJson}},
              "columns":[{{string.Join(",", columnIds)}}],"sortColumnId":null,"sortDirection":"asc"}
             """;
     }

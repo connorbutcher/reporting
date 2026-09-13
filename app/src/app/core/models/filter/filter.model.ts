@@ -79,3 +79,9 @@ export interface DatasetQueryResult {
   totalRowCount: number;
   matchedRowCount: number;
 }
+
+/** The counts alone, for the filter panel's live "matches N of M" readout. */
+export interface DatasetCountResult {
+  totalRowCount: number;
+  matchedRowCount: number;
+}

@@ -13,7 +13,7 @@ import {
   DatasetSourceConfig,
   DatasetSummary,
 } from '../models/dataset';
-import { DatasetQueryResult, FilterGroup } from '../models/filter';
+import { DatasetCountResult, DatasetQueryResult, FilterGroup } from '../models/filter';
 import {
   BarChartQueryRequest,
   BarChartQueryResult,
@@ -68,6 +68,15 @@ export class DatasetApiService {
    */
   query(id: number, filter: FilterGroup | null): Observable<DatasetQueryResult> {
     return this.http.post<DatasetQueryResult>(`/api/datasets/${id}/query`, { filter });
+  }
+
+  /**
+   * How many rows match a filter, out of the dataset's total — the counts only, without
+   * the rows. Counted in SQL, so the filter panel's live "matches N of M" readout can run
+   * on each edit without pulling whole datasets.
+   */
+  countMatches(id: number, filter: FilterGroup | null): Observable<DatasetCountResult> {
+    return this.http.post<DatasetCountResult>(`/api/datasets/${id}/count`, { filter });
   }
 
   /**

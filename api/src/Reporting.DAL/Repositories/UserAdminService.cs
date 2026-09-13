@@ -31,7 +31,7 @@ public partial class UserAdminService(
             })
             .ToListAsync();
 
-        var resolver = await ManageUsersResolverAsync();
+        var canManage = await ManageUsersUserIdsAsync();
         return users
             .Select(u => new AdminUserDto
             {
@@ -39,7 +39,7 @@ public partial class UserAdminService(
                 DisplayName = u.DisplayName,
                 Email = u.Email,
                 IsGlobalAdmin = u.IsGlobalAdmin,
-                CanManageUsers = u.IsGlobalAdmin || resolver.CanManage(u.Id, u.GroupIds),
+                CanManageUsers = u.IsGlobalAdmin || canManage.Contains(u.Id),
                 GroupCount = u.GroupIds.Count
             })
             .ToList();
@@ -65,15 +65,14 @@ public partial class UserAdminService(
             .FirstOrDefaultAsync();
         if (user is null) return null;
 
-        var resolver = await ManageUsersResolverAsync();
+        var canManage = await ManageUsersUserIdsAsync();
         return new AdminUserDetailDto
         {
             Id = user.RefId,
             DisplayName = user.DisplayName,
             Email = user.Email,
             IsGlobalAdmin = user.IsGlobalAdmin,
-            CanManageUsers = user.IsGlobalAdmin || resolver.CanManage(user.Id, user.GroupIds),
-            CanManageUsersDirect = resolver.HasDirect(user.Id),
+            CanManageUsers = user.IsGlobalAdmin || canManage.Contains(user.Id),
             Groups = user.Groups.OrderBy(g => g.Name).ToList(),
             CreatedAt = user.CreatedAt
         };
@@ -121,10 +120,9 @@ public partial class UserAdminService(
         if (!user.IsGlobalAdmin)
         {
             var actor = await currentUserAccessor.GetAsync();
-            var resolver = await ManageUsersResolverAsync();
             // Don't let an admin strip their own manage-users access out from under themselves —
             // a global admin can always restore it, but a plain user-admin would lock themselves out.
-            if (user.Id == actor.Id && !actor.IsGlobalAdmin && !dto.CanManageUsers && resolver.HasDirect(user.Id))
+            if (user.Id == actor.Id && !actor.IsGlobalAdmin && !dto.CanManageUsers && await HasDirectManageUsersAsync(user.Id))
                 throw new DataValidationException("You can't remove your own manage-users permission.");
 
             await SetManageUsersAsync(user.Id, dto.CanManageUsers);
@@ -154,12 +152,11 @@ public partial class UserAdminService(
             db.UserGroupMembers.Add(new UserGroupMember { UserId = userId, UserGroupId = groupId });
     }
 
-    /// <summary>Adds or removes the user's direct ManageUsers grant to match <paramref name="canManage"/>.</summary>
+    /// <summary>Adds or removes the user's ManageUsers grant to match <paramref name="canManage"/>.</summary>
     private async Task SetManageUsersAsync(int userId, bool canManage)
     {
         var existing = await db.AppPermissionGrants.FirstOrDefaultAsync(g =>
-            g.Permission == AppPermission.ManageUsers
-            && g.SubjectType == GrantSubjectType.User && g.UserId == userId);
+            g.Permission == AppPermission.ManageUsers && g.UserId == userId);
 
         if (canManage && existing is null)
         {
@@ -167,7 +164,6 @@ public partial class UserAdminService(
             db.AppPermissionGrants.Add(new AppPermissionGrant
             {
                 Permission = AppPermission.ManageUsers,
-                SubjectType = GrantSubjectType.User,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = actor.Id
@@ -179,26 +175,17 @@ public partial class UserAdminService(
         }
     }
 
-    /// <summary>Loads every ManageUsers grant once so a list can resolve each user's effective flag in memory.</summary>
-    private async Task<ManageUsersResolver> ManageUsersResolverAsync()
-    {
-        var grants = await db.AppPermissionGrants
+    /// <summary>The ids of every user holding a ManageUsers grant, so a list resolves each user's flag in memory.</summary>
+    private async Task<HashSet<int>> ManageUsersUserIdsAsync() =>
+        (await db.AppPermissionGrants
             .Where(g => g.Permission == AppPermission.ManageUsers)
-            .Select(g => new { g.SubjectType, g.UserId, g.UserGroupId })
-            .ToListAsync();
+            .Select(g => g.UserId)
+            .ToListAsync())
+        .ToHashSet();
 
-        return new ManageUsersResolver(
-            grants.Where(g => g.SubjectType == GrantSubjectType.User && g.UserId != null).Select(g => g.UserId!.Value).ToHashSet(),
-            grants.Where(g => g.SubjectType == GrantSubjectType.Group && g.UserGroupId != null).Select(g => g.UserGroupId!.Value).ToHashSet());
-    }
-
-    private sealed class ManageUsersResolver(HashSet<int> userIds, HashSet<int> groupIds)
-    {
-        public bool HasDirect(int userId) => userIds.Contains(userId);
-
-        public bool CanManage(int userId, IEnumerable<int> memberGroupIds) =>
-            userIds.Contains(userId) || memberGroupIds.Any(groupIds.Contains);
-    }
+    /// <summary>Whether the given user holds a ManageUsers grant.</summary>
+    private Task<bool> HasDirectManageUsersAsync(int userId) =>
+        db.AppPermissionGrants.AnyAsync(g => g.Permission == AppPermission.ManageUsers && g.UserId == userId);
 
     private static bool IsValidEmail(string email) => email.Length > 0 && EmailPattern().IsMatch(email);
 

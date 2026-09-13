@@ -99,29 +99,17 @@ namespace Reporting.Database.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("SubjectType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int?>("UserGroupId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserGroupId");
-
                     b.HasIndex("UserId");
 
-                    b.HasIndex("Permission", "SubjectType", "UserId", "UserGroupId")
+                    b.HasIndex("Permission", "UserId")
                         .IsUnique();
 
-                    b.ToTable("AppPermissionGrants", t =>
-                        {
-                            t.HasCheckConstraint("CK_AppPermissionGrant_Subject", "([SubjectType] = 'User' AND [UserId] IS NOT NULL AND [UserGroupId] IS NULL) OR ([SubjectType] = 'Group' AND [UserGroupId] IS NOT NULL AND [UserId] IS NULL)");
-                        });
+                    b.ToTable("AppPermissionGrants");
                 });
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>
@@ -723,15 +711,11 @@ namespace Reporting.Database.Migrations
 
             modelBuilder.Entity("Reporting.Database.AppPermissionGrant", b =>
                 {
-                    b.HasOne("Reporting.Database.UserGroup", null)
-                        .WithMany()
-                        .HasForeignKey("UserGroupId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("Reporting.Database.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Reporting.Database.Dataset", b =>

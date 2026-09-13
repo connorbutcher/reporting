@@ -2,6 +2,7 @@ import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   ChartSeriesBinding,
+  ChartSeriesRenderAs,
   ChartSymbol,
   ChartToleranceBand,
   LineDashStyle,
@@ -41,6 +42,8 @@ export class ChartBindingModel extends EditorNode {
   });
   /** Splits this binding into a coloured series per distinct value; null plots one. */
   public readonly seriesColumnId = signal<string | null>(null);
+  /** On a combination chart, whether this series draws as bars or a line; ignored by other kinds. */
+  public readonly renderAs = signal<ChartSeriesRenderAs>('bar');
   /** Which value axis to plot against, by id; null falls back to the primary axis. */
   public readonly yAxisId = signal<string | null>(null);
   /** Null uses the palette. */
@@ -74,6 +77,7 @@ export class ChartBindingModel extends EditorNode {
     // from yColumnId on read (barValueColumnIds), so a point/box binding's yColumnId is never shadowed.
     this.valueColumnIds.set(binding.valueColumnIds?.filter((id): id is string => !!id) ?? []);
     this.seriesColumnId.set(binding.seriesColumnId);
+    this.renderAs.set(binding.renderAs ?? 'bar');
     this.yAxisId.set(binding.yAxisId);
     this.color.set(binding.color ?? null);
     this.symbol.set(binding.symbol ?? null);
@@ -143,6 +147,8 @@ export class ChartBindingModel extends EditorNode {
       // Only bar charts populate this; empty stays null so point/box configs are unchanged.
       valueColumnIds: values.length ? [...values] : null,
       seriesColumnId: this.seriesColumnId(),
+      // Only combo charts vary this; 'bar' (the default) stays null so other configs are unchanged.
+      renderAs: this.renderAs() === 'bar' ? null : this.renderAs(),
       yAxisId: this.yAxisId(),
       color: this.color(),
       symbol: this.symbol(),

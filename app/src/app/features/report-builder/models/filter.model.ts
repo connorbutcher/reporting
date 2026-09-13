@@ -151,6 +151,32 @@ export class FilterConditionModel extends EditorNode {
     return this.values().filter((v) => v.trim().length > 0).length >= needed;
   });
 
+  /**
+   * A concise, row-level statement of why this condition isn't narrowing the data, for an
+   * inline cue in the builder — null when it's fine (or disabled, since a disabled condition
+   * never runs). Mirrors the three checks {@link ownIssues} reports to the Issues panel, in
+   * the same order, so the inline cue and the panel never disagree; the panel keeps the
+   * longer, navigable phrasing while this stays short enough for the narrow row.
+   */
+  readonly problem = computed<{ severity: 'error' | 'warning'; message: string } | null>(() => {
+    if (!this.enabled()) return null;
+
+    if (this.context.schema() && !this.schemaColumn()) {
+      return { severity: 'error', message: 'This column no longer exists.' };
+    }
+
+    if (TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant()) {
+      return { severity: 'warning', message: 'No tolerance banding here, so nothing matches.' };
+    }
+
+    if (!this.isComplete()) {
+      const needed = this.descriptor()?.operandCount ?? 0;
+      return { severity: 'error', message: needed > 1 ? 'Enter both values.' : 'Enter a value.' };
+    }
+
+    return null;
+  });
+
   readonly label = computed(() => {
     const column = this.schemaColumn()?.name ?? 'Unknown column';
     const operator = this.descriptor()?.label ?? this.operator();
@@ -354,8 +380,9 @@ export class FilterGroupModel extends EditorNode {
 }
 
 /**
- * A report-level filter for one dataset. It applies to every data-table widget
- * bound to that dataset, on top of whatever filter the widget sets itself.
+ * A report-level filter for one dataset. It applies to every widget bound to that
+ * dataset — tables, pivots, and each chart binding — on top of whatever filter the
+ * widget sets itself (the two are AND-ed; see `combineFilters`).
  */
 export class ReportFilterModel extends EditorNode {
   readonly datasetId: number;

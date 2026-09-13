@@ -6,6 +6,7 @@ import { ChartTypePanelDirective, ChartTypePanels } from '../../chart-type-panel
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelBarChartAppearanceComponent } from '../panel-bar-chart-appearance/panel-bar-chart-appearance.component';
 import { PanelBoxPlotAppearanceComponent } from '../panel-box-plot-appearance/panel-box-plot-appearance.component';
+import { PanelComboChartAppearanceComponent } from '../panel-combo-chart-appearance/panel-combo-chart-appearance.component';
 import { PanelHistogramAppearanceComponent } from '../panel-histogram-appearance/panel-histogram-appearance.component';
 import { PanelPointChartAppearanceComponent } from '../panel-point-chart-appearance/panel-point-chart-appearance.component';
 
@@ -26,6 +27,7 @@ export class PanelChartAppearanceComponent {
     scatterChart: PanelPointChartAppearanceComponent,
     lineChart: PanelPointChartAppearanceComponent,
     barChart: PanelBarChartAppearanceComponent,
+    comboChart: PanelComboChartAppearanceComponent,
     boxPlot: PanelBoxPlotAppearanceComponent,
     histogram: PanelHistogramAppearanceComponent,
   };

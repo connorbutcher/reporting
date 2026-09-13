@@ -8,7 +8,13 @@ import {
   DEFAULT_GRID_ROWS,
   TabModel,
 } from './tab.model';
-import { ChartWidgetModel, DataTableWidgetModel, ModelSources, WidgetModel } from './widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  ModelSources,
+  PivotTableWidgetModel,
+  WidgetModel,
+} from './widget.model';
 import { ValidationIssue } from './validation-issue';
 
 // Re-exported so the store and settings panel keep importing the grid defaults
@@ -179,15 +185,28 @@ export class ReportModel extends EditorNode {
 
   // --- report-level filters -------------------------------------------------
 
-  /** Every dataset some table/chart across any tab is bound to, in first-use order. */
+  /**
+   * Every dataset a filterable widget is bound to, across every tab, in first-use order —
+   * so the report-filters panel offers one for each. Covers tables, pivots, and *every*
+   * chart binding (not just a chart's primary dataset), matching what the widgets actually
+   * apply: {@link WidgetHostComponent} layers a dataset's report filter under each binding's
+   * own, so an overlaid dataset can be filtered report-wide too.
+   */
   readonly usedDatasetIds = computed(() => {
     const ids: number[] = [];
+    const add = (id: number | null) => {
+      if (id && !ids.includes(id)) ids.push(id);
+    };
     for (const tab of this.tabs()) {
       for (const widget of tab.widgets()) {
-        if (!(widget instanceof DataTableWidgetModel) && !(widget instanceof ChartWidgetModel))
-          continue;
-        const id = widget.datasetId();
-        if (id && !ids.includes(id)) ids.push(id);
+        if (widget instanceof ChartWidgetModel) {
+          for (const binding of widget.bindings()) add(binding.datasetId());
+        } else if (
+          widget instanceof DataTableWidgetModel ||
+          widget instanceof PivotTableWidgetModel
+        ) {
+          add(widget.datasetId());
+        }
       }
     }
     return ids;

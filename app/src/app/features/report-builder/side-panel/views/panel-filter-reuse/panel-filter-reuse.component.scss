@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.panel-filter-reuse {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  // Sits above the filter builder; keep it from crowding the conditions below.
+  margin-bottom: 4px;
+}

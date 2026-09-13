@@ -1,6 +1,11 @@
 import { Component, inject, input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { BarChartWidgetModel, ChartBindingModel, ChartWidgetModel } from '../../../models/widget.model';
+import {
+  BarChartWidgetModel,
+  ChartBindingModel,
+  ChartWidgetModel,
+  ComboChartWidgetModel,
+} from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
@@ -44,8 +49,8 @@ export class PanelChartSeriesListComponent {
     const nameOf = (id: string | null) => columns.find((c) => c.id === id)?.name;
     const x = nameOf(binding.xColumnId());
 
-    // A bar series groups by a category and can reduce several measures; a point series plots X→Y.
-    if (this.chart() instanceof BarChartWidgetModel) {
+    // A bar or combo series groups by a category and can reduce several measures; a point series plots X→Y.
+    if (this.chart() instanceof BarChartWidgetModel || this.chart() instanceof ComboChartWidgetModel) {
       if (!x) return 'Choose a category';
       const values = binding
         .barValueColumnIds()

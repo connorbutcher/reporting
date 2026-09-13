@@ -38,6 +38,9 @@ export type ChartSymbol = 'circle' | 'rect' | 'triangle' | 'diamond' | 'none';
 /** How a line series' stroke is dashed. */
 export type LineDashStyle = 'solid' | 'dashed' | 'dotted';
 
+/** How a combination chart draws one series' aggregated values: as bars, or as a line over the categories. */
+export type ChartSeriesRenderAs = 'bar' | 'line';
+
 /** Tick-label orientation for an axis; unset keeps the chart's default (e.g. a bar's auto-tilt). */
 export type AxisLabelRotation = 'horizontal' | 'vertical';
 
@@ -128,6 +131,11 @@ export interface ChartSeriesBinding {
   valueColumnIds?: string[] | null;
   /** Splits this binding into a separate coloured series per distinct value. Null plots one. */
   seriesColumnId: string | null;
+  /**
+   * On a combination chart, whether this series is drawn as bars or as a line over the categories;
+   * null/absent means bars. Ignored by every other chart kind, which draws all series the one way.
+   */
+  renderAs?: ChartSeriesRenderAs | null;
   /**
    * Which value axis this binding plots against, by {@link ChartValueAxis.id}.
    * Null — or an id no longer among the chart's axes — falls back to the primary
@@ -242,6 +250,28 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
 }
 
 /**
+ * A combination chart: the bar chart's category + aggregate data model, but each series (binding)
+ * is drawn either as bars or as a line over the shared categories — the classic bars-and-lines
+ * combo. Series can be assigned to separate value axes (see {@link ChartWidgetConfigBase.yAxes}),
+ * so bars on one scale and a line on another read cleanly. Reuses the bar query end to end; only
+ * the rendering differs, per {@link ChartSeriesBinding.renderAs}.
+ */
+export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
+  type: 'comboChart';
+
+  /** How each category's rows are reduced to one value per series — shared by bars and lines. */
+  aggregate: Aggregate;
+  /** Stacks each binding's bar series into one column; line series are never stacked. */
+  stacked: boolean;
+  /** Draws line series with curved rather than straight segments. */
+  smooth: boolean;
+  /** Whether point markers are drawn along line series. */
+  showPoints: boolean;
+  /** Shades the area under line series. */
+  areaFill: boolean;
+}
+
+/**
  * A box-and-whisker chart. Like a bar chart it groups rows by its binding's category column
  * (`xColumnId`), but instead of one aggregate it summarises each group's values in the measure
  * column (`yColumnId`) into a five-number summary (min, Q1, median, Q3, max) drawn as a box.
@@ -298,6 +328,7 @@ export type ChartWidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
   | BarChartWidgetConfig
+  | ComboChartWidgetConfig
   | BoxPlotWidgetConfig
   | HistogramWidgetConfig;
 
@@ -338,6 +369,16 @@ export const DEFAULT_BAR_CHART_CONFIG: Omit<BarChartWidgetConfig, 'type'> = {
   horizontal: false,
 };
 
+export const DEFAULT_COMBO_CHART_CONFIG: Omit<ComboChartWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Combination chart',
+  aggregate: 'sum',
+  stacked: false,
+  smooth: false,
+  showPoints: true,
+  areaFill: false,
+};
+
 export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
   ...DEFAULT_CHART_CONFIG_BASE,
   title: 'Box plot',
@@ -371,6 +412,7 @@ export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
   yColumnId: null,
   valueColumnIds: null,
   seriesColumnId: null,
+  renderAs: null,
   yAxisId: null,
   label: '',
   color: null,

@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import {
   DEFAULT_BAR_CHART_CONFIG,
+  DEFAULT_COMBO_CHART_CONFIG,
   DEFAULT_BOX_PLOT_CONFIG,
   DEFAULT_HISTOGRAM_CONFIG,
   DEFAULT_PIVOT_CONFIG,
@@ -111,6 +112,12 @@ export class TabModel extends EditorNode {
           ...base,
           type: 'barChart',
           config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
+        };
+      case 'comboChart':
+        return {
+          ...base,
+          type: 'comboChart',
+          config: { type: 'comboChart', ...DEFAULT_COMBO_CHART_CONFIG },
         };
       case 'boxPlot':
         return {

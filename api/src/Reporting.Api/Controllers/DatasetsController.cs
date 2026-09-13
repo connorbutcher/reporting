@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
 using Reporting.Api.Authorization;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 
@@ -91,15 +90,20 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetQueryResultDto>> Query(int id, DatasetQueryDto dto)
     {
-        try
-        {
-            var result = await datasets.QueryAsync(id, dto.Filter);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await datasets.QueryAsync(id, dto.Filter);
+        return result is null ? NotFound() : result;
+    }
+
+    /// <summary>
+    /// How many rows match a filter, out of the dataset's total — the counts only,
+    /// without the rows, for the filter panel's live "matches N of M" readout.
+    /// </summary>
+    [HttpPost("{id:int}/count")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<DatasetCountResultDto>> Count(int id, DatasetQueryDto dto)
+    {
+        var result = await datasets.CountAsync(id, dto.Filter);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -110,15 +114,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<TableQueryResultDto>> TableQuery(int id, TableQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForTableAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForTableAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -129,15 +126,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<ChartQueryResultDto>> ChartQuery(int id, ChartQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForChartAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForChartAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -148,15 +138,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BarChartQueryResultDto>> BarChartQuery(int id, BarChartQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForBarChartAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForBarChartAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -167,15 +150,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BoxPlotQueryResultDto>> BoxPlotQuery(int id, BoxPlotQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForBoxPlotAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForBoxPlotAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -186,15 +162,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<PivotQueryResultDto>> PivotQuery(int id, PivotQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForPivotAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForPivotAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -205,15 +174,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<HistogramQueryResultDto>> HistogramQuery(int id, HistogramQueryDto dto)
     {
-        try
-        {
-            var result = await widgetQueries.QueryForHistogramAsync(id, dto);
-            return result is null ? NotFound() : result;
-        }
-        catch (FilterException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await widgetQueries.QueryForHistogramAsync(id, dto);
+        return result is null ? NotFound() : result;
     }
 
     /// <summary>
@@ -243,15 +205,8 @@ public class DatasetsController(
         Guid columnId,
         [FromBody] DatasetColumnConfig configuration)
     {
-        try
-        {
-            var column = await datasets.UpdateColumnConfigurationAsync(id, columnId, configuration);
-            return column is null ? NotFound() : column;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var column = await datasets.UpdateColumnConfigurationAsync(id, columnId, configuration);
+        return column is null ? NotFound() : column;
     }
 
     [HttpPut("{id:int}")]
@@ -287,15 +242,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSchemaDto>> SetSource(int id, SetDatasetSourceDto dto)
     {
-        try
-        {
-            var schema = await datasets.SetSourceAsync(id, dto.SourceId);
-            return schema is null ? NotFound() : schema;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var schema = await datasets.SetSourceAsync(id, dto.SourceId);
+        return schema is null ? NotFound() : schema;
     }
 
     /// <summary>Replaces a dataset's source configuration. The body's source must match the dataset's.</summary>
@@ -303,15 +251,8 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSchemaDto>> UpdateSourceConfig(int id, DatasetSourceConfig config)
     {
-        try
-        {
-            var schema = await datasets.UpdateSourceConfigAsync(id, config);
-            return schema is null ? NotFound() : schema;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var schema = await datasets.UpdateSourceConfigAsync(id, config);
+        return schema is null ? NotFound() : schema;
     }
 
     // --- columns --------------------------------------------------------------

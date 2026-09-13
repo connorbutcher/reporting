@@ -94,6 +94,30 @@ public class DatasetRepository(ReportingDbContext db)
     }
 
     /// <summary>
+    /// How many rows match a filter, and how many there are in total — counted in SQL
+    /// without materialising any rows, so the filter panel's live "matches N of M"
+    /// readout can run on each edit without pulling whole datasets. Throws
+    /// <see cref="FilterException"/> for a filter that doesn't match the dataset's
+    /// schema; null means the dataset itself wasn't found.
+    /// </summary>
+    public async Task<DatasetCountResultDto?> CountAsync(int id, FilterGroupDto? filter)
+    {
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var predicate = FilterTranslator.Build(filter, dataset.Columns.ToDictionary(c => c.RefId));
+
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var matching = predicate is null ? all : all.Where(predicate);
+
+        return new DatasetCountResultDto
+        {
+            TotalRowCount = await all.CountAsync(),
+            MatchedRowCount = await matching.CountAsync()
+        };
+    }
+
+    /// <summary>
     /// The distinct non-empty values a column actually holds, for the filter panel's value
     /// dropdowns — so filtering a column like "shift" offers its real day/night values rather
     /// than free text. Ordered and capped (a high-cardinality column isn't a dropdown); an

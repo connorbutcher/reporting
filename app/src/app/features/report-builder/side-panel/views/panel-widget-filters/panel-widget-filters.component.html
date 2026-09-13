@@ -2,6 +2,11 @@
   @if (!target.datasetId()) {
     <p class="panel-empty">Pick a dataset for this widget before adding filters.</p>
   } @else {
+    <app-panel-filter-reuse
+      [target]="target.filter"
+      [datasetId]="target.datasetId()"
+      [canPromote]="true"
+    />
     <app-filter-builder
       [group]="target.filter"
       hint="Narrows the rows this widget shows. Report filters apply on top of these."

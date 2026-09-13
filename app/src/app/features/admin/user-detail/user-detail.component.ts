@@ -149,8 +149,8 @@ export class UserDetailComponent {
         );
         this.isGlobalAdmin.set(detail.isGlobalAdmin);
         const self = this.currentUser.user()?.id === detail.id;
-        this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsersDirect);
-        this.canManageUsers.set(detail.canManageUsersDirect);
+        this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsers);
+        this.canManageUsers.set(detail.canManageUsers);
         this.groupIds.set(detail.groups.map((g) => g.id));
         this.createdAt.set(detail.createdAt);
         this.form.displayName().value.set(detail.displayName);

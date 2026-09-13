@@ -78,14 +78,15 @@
             (onChange)="canManageUsers.set($event.checked)"
           />
           <span class="admin-check-text">
-            <span class="admin-check-label">Can manage users &amp; groups</span>
+            <span class="admin-check-label">Can manage users</span>
             <span class="admin-hint">
               @if (isGlobalAdmin()) {
                 Global admins can always manage the directory.
               } @else if (lockManageUsers()) {
                 You can't remove your own manage-users permission.
               } @else {
-                Grants access to this admin area.
+                Grants access to the Users section of the admin area. Managing groups is separate —
+                driven by being a group's manager, not by this.
               }
             </span>
           </span>

@@ -173,6 +173,12 @@ public class ChartSeriesBinding
     public Guid? SeriesColumnId { get; set; }
 
     /// <summary>
+    /// On a combination chart, whether this series draws as bars or a line ("bar"/"line"); null/absent
+    /// means bars. Ignored by every other chart kind. Client-side render concern; persisted only.
+    /// </summary>
+    public string? RenderAs { get; set; }
+
+    /// <summary>
     /// Which value axis this binding plots against, by <see cref="ChartValueAxis.Id"/>.
     /// Null — or an id no longer among the chart's axes — falls back to the primary axis.
     /// </summary>
@@ -229,6 +235,18 @@ public abstract class ChartWidgetConfig : WidgetConfig
     /// <summary>Adds mouse-wheel/drag zoom plus a slider to point charts. On for new charts.</summary>
     public bool Zoom { get; set; } = true;
 
+    /// <summary>
+    /// Client-side render toggles, persisted only. Nullable so a config saved before one existed
+    /// round-trips as absent and the client applies its own default (rather than the server forcing
+    /// a concrete false onto an older chart).
+    /// </summary>
+    public bool? ZoomY { get; set; }
+    public bool? ShowGridLines { get; set; }
+    public bool? ShowValueLabels { get; set; }
+
+    /// <summary>Colours point-chart marks by their Y value on a continuous scale (an echarts visualMap).</summary>
+    public bool? ColorByValue { get; set; }
+
     public bool ShowLegend { get; set; } = true;
     public int PointSize { get; set; } = 8;
 
@@ -272,6 +290,30 @@ public class BarChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>Draws bars horizontally (categories down the Y axis) rather than as vertical columns.</summary>
     public bool Horizontal { get; set; }
+}
+
+/// <summary>
+/// A combination chart: the bar chart's category + aggregate data model, but each series (binding)
+/// draws either as bars or as a line over the shared categories, per <see cref="ChartSeriesBinding.RenderAs"/>.
+/// Series can sit on separate value axes (dual axis). Reuses the bar query end to end; only the client
+/// rendering differs.
+/// </summary>
+public class ComboChartWidgetConfig : ChartWidgetConfig
+{
+    /// <summary>How each category's rows are reduced to one value per series — shared by bars and lines.</summary>
+    public Aggregate Aggregate { get; set; } = Aggregate.Sum;
+
+    /// <summary>Stacks each binding's bar series into one column; line series are never stacked.</summary>
+    public bool Stacked { get; set; }
+
+    /// <summary>Draws line series with curved rather than straight segments.</summary>
+    public bool Smooth { get; set; }
+
+    /// <summary>Whether point markers are drawn along line series.</summary>
+    public bool ShowPoints { get; set; } = true;
+
+    /// <summary>Shades the area under line series.</summary>
+    public bool AreaFill { get; set; }
 }
 
 /// <summary>

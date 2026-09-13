@@ -43,15 +43,8 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
         var createAuth = await authorizer.AuthorizeCreateInAsync(dto.ParentFolderId);
         if (!createAuth.Allowed) return this.ToActionResult(createAuth, AccessLevel.Editor);
 
-        try
-        {
-            var folder = await folders.CreateAsync(dto.Name.Trim(), dto.ParentFolderId);
-            return CreatedAtAction(nameof(GetAll), folder);
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var folder = await folders.CreateAsync(dto.Name.Trim(), dto.ParentFolderId);
+        return CreatedAtAction(nameof(GetAll), folder);
     }
 
     [HttpPut("{id:int}")]
@@ -68,30 +61,14 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
             if (!moveAuth.Allowed) return this.ToActionResult(moveAuth, AccessLevel.Editor);
         }
 
-        try
-        {
-            var folder = await folders.UpdateAsync(id, dto.Name.Trim(), dto.ParentFolderId);
-            return folder is null ? NotFound() : folder;
-        }
-        catch (DataValidationException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var folder = await folders.UpdateAsync(id, dto.Name.Trim(), dto.ParentFolderId);
+        return folder is null ? NotFound() : folder;
     }
 
     [HttpDelete("{id:int}")]
     [AuthorizeFolder(AccessLevel.Manager)]
-    public async Task<IActionResult> Delete(int id)
-    {
-        try
-        {
-            return await folders.DeleteAsync(id) ? NoContent() : NotFound();
-        }
-        catch (DataConflictException ex)
-        {
-            return Conflict(ex.Message);
-        }
-    }
+    public async Task<IActionResult> Delete(int id) =>
+        await folders.DeleteAsync(id) ? NoContent() : NotFound();
 
     /// <summary>Keeps only the folders the caller can see (≥ Viewer).</summary>
     private async Task<List<FolderDto>> WhereVisibleAsync(IEnumerable<FolderDto> folders)

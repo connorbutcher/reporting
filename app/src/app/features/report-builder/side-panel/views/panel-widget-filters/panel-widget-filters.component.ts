@@ -3,10 +3,11 @@ import { ChartWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
+import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
 
 @Component({
   selector: 'app-panel-widget-filters',
-  imports: [FilterBuilderComponent],
+  imports: [FilterBuilderComponent, PanelFilterReuseComponent],
   templateUrl: './panel-widget-filters.component.html',
 })
 export class PanelWidgetFiltersComponent {

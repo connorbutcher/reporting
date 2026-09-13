@@ -65,6 +65,7 @@ using (var scope = app.Services.CreateScope())
     DbSeeder.SeedStackedBarShowcase(db);
     DbSeeder.SeedHistogramShowcase(db);
     DbSeeder.SeedPivotShowcase(db);
+    DbSeeder.SeedFeatureShowcase(db);
     DbSeeder.SeedIdentity(db);
 }
 
@@ -78,8 +79,9 @@ app.UseHttpsRedirection();
 
 app.UseCors();
 
-// Maps AccessDeniedException (thrown by the permission guards in the repositories) to 403.
-app.UseMiddleware<AccessDeniedMiddleware>();
+// Maps every domain exception (thrown by the repositories/services or propagated from an action)
+// to the HTTP status it stands for, so controller actions carry only their happy path.
+app.UseMiddleware<DomainExceptionMiddleware>();
 
 app.UseAuthorization();
 

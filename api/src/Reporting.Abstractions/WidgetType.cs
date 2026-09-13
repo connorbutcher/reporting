@@ -7,6 +7,7 @@ public enum WidgetType
     ScatterChart,
     LineChart,
     BarChart,
+    ComboChart,
     BoxPlot,
     Histogram,
     PivotTable

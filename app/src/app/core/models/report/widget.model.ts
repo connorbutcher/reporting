@@ -1,6 +1,7 @@
 import {
   BarChartWidgetConfig,
   BoxPlotWidgetConfig,
+  ComboChartWidgetConfig,
   HistogramWidgetConfig,
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
@@ -16,6 +17,7 @@ export type WidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
   | BarChartWidgetConfig
+  | ComboChartWidgetConfig
   | BoxPlotWidgetConfig
   | HistogramWidgetConfig
   | PivotTableWidgetConfig;
@@ -50,6 +52,11 @@ export interface BarChartWidget extends WidgetBase {
   config: BarChartWidgetConfig;
 }
 
+export interface ComboChartWidget extends WidgetBase {
+  type: 'comboChart';
+  config: ComboChartWidgetConfig;
+}
+
 export interface BoxPlotWidget extends WidgetBase {
   type: 'boxPlot';
   config: BoxPlotWidgetConfig;
@@ -70,6 +77,7 @@ export type ChartWidget =
   | ScatterChartWidget
   | LineChartWidget
   | BarChartWidget
+  | ComboChartWidget
   | BoxPlotWidget
   | HistogramWidget;
 
@@ -79,6 +87,7 @@ export type Widget =
   | ScatterChartWidget
   | LineChartWidget
   | BarChartWidget
+  | ComboChartWidget
   | BoxPlotWidget
   | HistogramWidget
   | PivotTableWidget;

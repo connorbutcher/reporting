@@ -8,9 +8,9 @@ namespace Reporting.DAL.Permissions;
 /// <summary>
 /// Resolves and enforces the current user's application-wide permissions (see
 /// <see cref="AppPermission"/>), which sit alongside the folder/report ACL rather than on any
-/// securable. Mirrors <see cref="PermissionService"/>: only the grants that can match this user —
-/// their own and their groups' — are loaded, once per request, and global admins short-circuit to
-/// "holds everything" before anything is loaded. Scoped.
+/// securable. App permissions are granted only to a user directly (never a group), so just this
+/// user's own grants are loaded, once per request; global admins short-circuit to "holds
+/// everything" before anything is loaded. Scoped.
 /// </summary>
 public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor currentUserAccessor)
 {
@@ -37,10 +37,8 @@ public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor cu
         // A global admin holds every app permission, so there's nothing to load.
         if (user.IsGlobalAdmin) return cached = new HashSet<AppPermission>(Enum.GetValues<AppPermission>());
 
-        var groupIds = user.GroupIds.ToList();
         var permissions = await db.AppPermissionGrants
-            .Where(g => (g.SubjectType == GrantSubjectType.User && g.UserId == user.Id)
-                || (g.SubjectType == GrantSubjectType.Group && g.UserGroupId != null && groupIds.Contains(g.UserGroupId.Value)))
+            .Where(g => g.UserId == user.Id)
             .Select(g => g.Permission)
             .ToListAsync();
 

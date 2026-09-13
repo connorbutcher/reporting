@@ -8,15 +8,39 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { DecimalPipe } from '@angular/common';
+import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { MultiSelectModule } from 'primeng/multiselect';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import {
+  Observable,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { FilterOperator } from '../../../../core/models/filter';
+import { DatasetCountResult, FilterGroup, FilterOperator } from '../../../../core/models/filter';
 import { FilterConditionModel, FilterGroupModel } from '../../models/filter.model';
+
+/** What the query-key stream carries: null when there's nothing countable yet. */
+interface CountKey {
+  datasetId: number;
+  filter: FilterGroup | null;
+}
+
+/** The live match count's current state — idle before it can run, loading while it does. */
+type MatchState =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'ready'; result: DatasetCountResult }
+  | { state: 'error' };
 
 /** The string operators whose operand is one of the column's values — offered as a value picker. */
 const VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
@@ -34,7 +58,14 @@ const VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator
  */
 @Component({
   selector: 'app-filter-builder',
-  imports: [FormsModule, ButtonModule, MultiSelectModule, SelectModule, ToggleSwitchModule],
+  imports: [
+    DecimalPipe,
+    FormsModule,
+    ButtonModule,
+    MultiSelectModule,
+    SelectModule,
+    ToggleSwitchModule,
+  ],
   templateUrl: './filter-builder.component.html',
   styleUrl: './filter-builder.component.scss',
 })
@@ -47,6 +78,48 @@ export class FilterBuilderComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   /**
+   * The dataset and the filter (only its enabled, complete conditions — what would
+   * actually run) to count against, or null before the schema/catalogue are in. Reading
+   * `toQueryDto()` here tracks every condition, operator and value, so the count re-runs
+   * as the filter is edited.
+   */
+  private readonly countKey = computed<CountKey | null>(() => {
+    const group = this.group();
+    if (!group.ready()) return null;
+    const datasetId = group.datasetId();
+    if (datasetId === null) return null;
+    return { datasetId, filter: group.toQueryDto() };
+  });
+
+  /**
+   * The live "matches N of M rows" readout. Debounced so a burst of edits makes one
+   * request, deduped so an idempotent edit makes none, and counted server-side (no rows
+   * pulled). A failed count falls back to `error` rather than throwing at the template.
+   */
+  protected readonly match = toSignal(
+    toObservable(this.countKey).pipe(
+      debounceTime(300),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+      switchMap((key): Observable<MatchState> =>
+        key === null
+          ? of<MatchState>({ state: 'idle' })
+          : this.api.countMatches(key.datasetId, key.filter).pipe(
+              map((result): MatchState => ({ state: 'ready', result })),
+              startWith<MatchState>({ state: 'loading' }),
+              catchError(() => of<MatchState>({ state: 'error' })),
+            ),
+      ),
+    ),
+    { initialValue: { state: 'idle' } as MatchState },
+  );
+
+  /**
+   * The most recent counts, held across a re-check so the readout keeps its numbers
+   * (dimmed) while the next count is in flight rather than blanking on every keystroke.
+   */
+  protected readonly matchNumbers = signal<DatasetCountResult | null>(null);
+
+  /**
    * A column's distinct values, fetched once and cached by column id. Populated lazily by the
    * effect below as conditions come to need a value picker, so a filter with no value-list
    * condition fetches nothing.
@@ -54,6 +127,14 @@ export class FilterBuilderComponent {
   private readonly valueLists = new Map<string, WritableSignal<string[]>>();
 
   constructor() {
+    // Keep the last known counts so the readout holds its numbers (dimmed) through the
+    // next re-check instead of blanking; cleared once the panel goes idle (no dataset).
+    effect(() => {
+      const match = this.match();
+      if (match.state === 'ready') this.matchNumbers.set(match.result);
+      else if (match.state === 'idle') this.matchNumbers.set(null);
+    });
+
     // Load the distinct values for every column a condition currently wants to pick from. Reading
     // the conditions (and each one's column and operator) inside the effect re-runs it whenever a
     // row switches to a value-list operator or column, fetching that column's values on demand.

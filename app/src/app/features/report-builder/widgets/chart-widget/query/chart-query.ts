@@ -51,9 +51,11 @@ export class ChartQuery {
   > | null {
     const bindings = readChartBindings(config);
 
-    if (config.type === 'barChart') {
-      // Fan out one aggregate query per bound binding, each on its own dataset, and align their
-      // categories client-side — the bar counterpart of the point charts' per-binding overlay.
+    if (config.type === 'barChart' || config.type === 'comboChart') {
+      // A combo chart shares the bar chart's aggregate-per-category data model — bars and lines
+      // both plot one value per category — so it queries through the very same endpoint and merge;
+      // only the client-side rendering differs. Fan out one aggregate query per bound binding, each
+      // on its own dataset, and align their categories client-side.
       const needsValue = config.aggregate !== 'count';
       const parts = bindings
         .map((binding): Observable<BarChartPart | null> | null => {

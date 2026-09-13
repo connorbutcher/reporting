@@ -15,7 +15,7 @@
       />
     </label>
 
-    @if (isBar()) {
+    @if (isBarLike()) {
       <label class="panel-field">
         <span class="panel-field-label">Category</span>
         <p-select
@@ -83,6 +83,24 @@
   </app-panel-group>
 
   <app-panel-group label="Appearance" icon="◐">
+    @if (isCombo()) {
+      <label class="panel-field">
+        <span class="panel-field-label">Draw as</span>
+        <p-select
+          styleClass="filter-value-select"
+          size="small"
+          appendTo="body"
+          [options]="renderAsOptions"
+          [ngModel]="binding.renderAs()"
+          optionLabel="label"
+          optionValue="value"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.renderAs.set($event.value)"
+        />
+      </label>
+    }
+
     <label class="panel-field">
       <span class="panel-field-label">Colour by (optional)</span>
       <p-select
@@ -117,22 +135,24 @@
       }
     </div>
 
-    @if (!isBar()) {
+    @if (showMarker(binding) || isLineSeries(binding)) {
       <div class="panel-grid-fields">
-        <label class="panel-field">
-          <span class="panel-field-label">Marker</span>
-          <p-select
-            [options]="symbolOptions()"
-            [ngModel]="binding.symbol()"
-            optionLabel="label"
-            optionValue="value"
-            appendTo="body"
-            [disabled]="!binding.datasetId()"
-            fluid
-            (onChange)="binding.symbol.set($event.value ?? null)"
-          />
-        </label>
-        @if (isLine()) {
+        @if (showMarker(binding)) {
+          <label class="panel-field">
+            <span class="panel-field-label">Marker</span>
+            <p-select
+              [options]="symbolOptions()"
+              [ngModel]="binding.symbol()"
+              optionLabel="label"
+              optionValue="value"
+              appendTo="body"
+              [disabled]="!binding.datasetId()"
+              fluid
+              (onChange)="binding.symbol.set($event.value ?? null)"
+            />
+          </label>
+        }
+        @if (isLineSeries(binding)) {
           <label class="panel-field">
             <span class="panel-field-label">Line style</span>
             <p-select

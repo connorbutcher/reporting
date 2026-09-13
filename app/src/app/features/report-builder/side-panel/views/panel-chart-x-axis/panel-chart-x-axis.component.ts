@@ -9,6 +9,7 @@ import {
   BarChartWidgetModel,
   BoxPlotWidgetModel,
   ChartWidgetModel,
+  ComboChartWidgetModel,
 } from '../../../models/widget.model';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -39,12 +40,16 @@ export class PanelChartXAxisComponent {
   ];
 
   /**
-   * Bar and box plots have a categorical X axis, so their bounds, log scale, and the "fit
-   * to data" toggle don't apply. A histogram's X axis is numeric, so those still do.
+   * Bar, combo, and box charts have a categorical X axis, so their bounds, log scale, and the
+   * "fit to data" toggle don't apply. A histogram's X axis is numeric, so those still do.
    */
   public readonly categorical = computed(() => {
     const chart = this.chart();
-    return chart instanceof BarChartWidgetModel || chart instanceof BoxPlotWidgetModel;
+    return (
+      chart instanceof BarChartWidgetModel ||
+      chart instanceof ComboChartWidgetModel ||
+      chart instanceof BoxPlotWidgetModel
+    );
   });
 
   /** Bounds and log scale are only meaningful when the X axis is a numeric column. */

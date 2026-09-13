@@ -7,7 +7,8 @@ namespace Reporting.Abstractions;
 /// </summary>
 public enum AppPermission
 {
-    /// <summary>Access to the admin area: view/create/edit users and view/create/edit/delete groups.</summary>
+    /// <summary>Access to the Users section of the admin area: view/create/edit users. Group
+    /// management is separate — driven by whether the user manages any group, not by this.</summary>
     ManageUsers
 }
 

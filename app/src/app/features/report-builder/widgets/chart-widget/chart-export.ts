@@ -23,7 +23,9 @@ export class ChartExport {
     name: string,
   ): void {
     let csv: string;
-    if (config.type === 'barChart') {
+    if (config.type === 'barChart' || config.type === 'comboChart') {
+      // A combo chart's data is the bar result (one value per category per series), so its CSV is
+      // the same category × series grid regardless of which series draw as bars or lines.
       csv = ChartExport.barCsv(data as BarChartQueryResult);
     } else if (config.type === 'boxPlot') {
       csv = ChartExport.boxCsv(data as BoxPlotQueryResult);

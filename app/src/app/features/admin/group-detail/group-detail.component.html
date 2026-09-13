@@ -45,23 +45,6 @@
           }
         </div>
 
-        @if (isFullAdmin()) {
-          <hr class="admin-divider" />
-          <span class="admin-section-label">Access</span>
-          <label class="admin-check">
-            <p-checkbox
-              [binary]="true"
-              inputId="group-manage"
-              [ngModel]="canManageUsers()"
-              (onChange)="canManageUsers.set($event.checked)"
-            />
-            <span class="admin-check-text">
-              <span class="admin-check-label">Can manage users &amp; groups</span>
-              <span class="admin-hint">Every member of this group gets full access to the admin area.</span>
-            </span>
-          </label>
-        }
-
         <hr class="admin-divider" />
         <div class="admin-field">
           <label class="admin-label">

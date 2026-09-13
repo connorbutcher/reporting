@@ -1,14 +1,16 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
+import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
 
 /**
- * Report-level filters, scoped per dataset. Each one applies to every table on
- * the report bound to that dataset, on top of the table's own filter.
+ * Report-level filters, scoped per dataset. Each one applies to every widget on
+ * the report bound to that dataset — table, pivot, or chart binding — on top of
+ * the widget's own filter.
  */
 @Component({
   selector: 'app-panel-report-filters',
-  imports: [FilterBuilderComponent],
+  imports: [FilterBuilderComponent, PanelFilterReuseComponent],
   templateUrl: './panel-report-filters.component.html',
   styleUrl: './panel-report-filters.component.scss',
 })
