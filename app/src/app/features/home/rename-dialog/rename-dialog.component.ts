@@ -15,25 +15,25 @@ export interface RenameDialogData {
   styleUrl: './rename-dialog.component.scss',
 })
 export class RenameDialogComponent implements AfterViewInit {
+  public readonly data = inject<RenameDialogData>(DIALOG_DATA);
+  public readonly name = signal(this.data.currentName);
+
   private readonly dialogRef = inject(DialogRef<string | undefined>);
-  protected readonly data = inject<RenameDialogData>(DIALOG_DATA);
   private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
 
-  protected readonly name = signal(this.data.currentName);
-
-  ngAfterViewInit(): void {
+  public ngAfterViewInit(): void {
     const input = this.nameInput().nativeElement;
     input.focus();
     input.select();
   }
 
-  protected save(): void {
+  public save(): void {
     const name = this.name().trim();
     if (!name) return;
     this.dialogRef.close(name);
   }
 
-  protected cancel(): void {
+  public cancel(): void {
     this.dialogRef.close();
   }
 }

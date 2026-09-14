@@ -17,14 +17,15 @@ export interface ConfirmDialogData {
   styleUrl: './confirm-dialog.component.scss',
 })
 export class ConfirmDialogComponent {
-  private readonly dialogRef = inject(DialogRef<boolean>);
-  protected readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
+  public readonly data = inject<ConfirmDialogData>(DIALOG_DATA);
 
-  protected confirm(): void {
+  private readonly dialogRef = inject(DialogRef<boolean>);
+
+  public confirm(): void {
     this.dialogRef.close(true);
   }
 
-  protected cancel(): void {
+  public cancel(): void {
     this.dialogRef.close(false);
   }
 }

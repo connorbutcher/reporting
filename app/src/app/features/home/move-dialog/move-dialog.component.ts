@@ -3,6 +3,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeModule, TreeNodeSelectEvent } from 'primeng/tree';
 import { Folder } from '../../../core/models/folder.model';
+import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
 import { groupByParent } from '../group-by-parent.util';
 
 const ROOT_KEY = '__root__';
@@ -28,19 +29,11 @@ export interface MoveDialogData {
   styleUrl: './move-dialog.component.scss',
 })
 export class MoveDialogComponent {
-  private readonly dialogRef = inject(DialogRef<number | null | undefined>);
-  protected readonly data = inject<MoveDialogData>(DIALOG_DATA);
+  public readonly data = inject<MoveDialogData>(DIALOG_DATA);
 
-  protected readonly selectedFolderId = signal<number | null>(this.data.currentFolderId);
+  public readonly selectedFolderId = signal<number | null>(this.data.currentFolderId);
 
-  private readonly foldersByParent = computed(() => groupByParent(this.data.folders, (f) => f.parentFolderId));
-
-  private readonly excludedIds = computed(() => {
-    if (this.data.excludeSubtreeOf === undefined) return new Set<number>();
-    return this.collectSubtreeIds(this.data.excludeSubtreeOf);
-  });
-
-  protected readonly treeNodes = computed<TreeNode[]>(() => [
+  public readonly treeNodes = computed<TreeNode[]>(() => [
     {
       key: ROOT_KEY,
       label: 'Home',
@@ -50,16 +43,41 @@ export class MoveDialogComponent {
     },
   ]);
 
-  protected readonly selectionKeys = computed<Record<string, boolean>>(() => ({
+  public readonly selectionKeys = computed<Record<string, boolean>>(() => ({
     [String(this.selectedFolderId() ?? ROOT_KEY)]: true,
   }));
 
-  protected readonly isUnchanged = computed(
+  public readonly isUnchanged = computed(
     () => this.selectedFolderId() === this.data.currentFolderId,
   );
 
+  private readonly dialogRef = inject(DialogRef<number | null | undefined>);
+
+  private readonly foldersByParent = computed(() =>
+    groupByParent(this.data.folders, (f) => f.parentFolderId),
+  );
+
+  private readonly excludedIds = computed(() => {
+    if (this.data.excludeSubtreeOf === undefined) return new Set<number>();
+    return this.collectSubtreeIds(this.data.excludeSubtreeOf);
+  });
+
+  public onNodeSelect(event: TreeNodeSelectEvent): void {
+    const key = event.node.key;
+    if (key && this.excludedIds().has(Number(key))) return;
+    this.selectedFolderId.set(key === ROOT_KEY || !key ? null : Number(key));
+  }
+
+  public move(): void {
+    this.dialogRef.close(this.selectedFolderId());
+  }
+
+  public cancel(): void {
+    this.dialogRef.close();
+  }
+
   private childNodes(parentId: number | null): TreeNode[] {
-    return (this.foldersByParent().get(parentId) ?? []).map((folder) => {
+    return buildFolderTreeNodes(parentId, this.foldersByParent(), (folder, children) => {
       const disabled = this.excludedIds().has(folder.id);
       return {
         key: String(folder.id),
@@ -68,7 +86,7 @@ export class MoveDialogComponent {
         expanded: true,
         selectable: !disabled,
         styleClass: disabled ? 'move-dialog-node--disabled' : undefined,
-        children: this.childNodes(folder.id),
+        children,
       };
     });
   }
@@ -85,19 +103,5 @@ export class MoveDialogComponent {
       }
     }
     return ids;
-  }
-
-  protected onNodeSelect(event: TreeNodeSelectEvent): void {
-    const key = event.node.key;
-    if (key && this.excludedIds().has(Number(key))) return;
-    this.selectedFolderId.set(key === ROOT_KEY || !key ? null : Number(key));
-  }
-
-  protected move(): void {
-    this.dialogRef.close(this.selectedFolderId());
-  }
-
-  protected cancel(): void {
-    this.dialogRef.close();
   }
 }

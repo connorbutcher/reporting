@@ -1,11 +1,11 @@
-@if (store.searching()) {
+@if (searching()) {
   <div class="home-table-skeleton">
     @for (i of [1, 2, 3]; track i) {
       <p-skeleton height="2rem" />
     }
   </div>
 } @else if (results().length === 0) {
-  <p class="home-empty">No reports match "{{ store.searchQuery() }}".</p>
+  <p class="home-empty">No reports match "{{ searchQuery() }}".</p>
 } @else {
   <p-table [value]="results()" sortMode="single" dataKey="id" size="small" class="home-table-wrapper">
     <ng-template #header>
@@ -24,8 +24,8 @@
       <tr
         class="home-row"
         tabindex="0"
-        (click)="store.openSearchResult(result)"
-        (keydown.enter)="store.openSearchResult(result)"
+        (click)="openSearchResult(result)"
+        (keydown.enter)="openSearchResult(result)"
       >
         <td>
           <span class="home-row-name">

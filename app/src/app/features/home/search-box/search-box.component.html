@@ -6,17 +6,17 @@
     pInputText
     size="small"
     class="home-search-input"
-    [ngModel]="store.searchQuery()"
-    (ngModelChange)="store.onSearchInput($event)"
+    [ngModel]="searchQuery()"
+    (ngModelChange)="onSearchInput($event)"
     placeholder="Search by name or R-number…"
     aria-label="Search reports"
   />
-  @if (store.searchQuery()) {
+  @if (searchQuery()) {
     <button
       type="button"
       class="home-search-clear"
       aria-label="Clear search"
-      (click)="store.clearSearch()"
+      (click)="clearSearch()"
     >
       <i class="pi pi-times" aria-hidden="true"></i>
     </button>

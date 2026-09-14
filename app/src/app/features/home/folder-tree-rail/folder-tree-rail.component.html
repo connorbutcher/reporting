@@ -1,30 +1,30 @@
-<aside class="home-nav app-card" [class.home-nav--collapsed]="store.railCollapsed()">
+<aside class="home-nav app-card" [class.home-nav--collapsed]="railCollapsed()">
   <header class="home-nav-header">
     <h1 class="home-heading">Reports</h1>
     <button
       type="button"
       class="home-nav-toggle"
-      (click)="store.toggleRail()"
-      [attr.aria-label]="store.railCollapsed() ? 'Expand navigation' : 'Collapse navigation'"
+      (click)="toggleRail()"
+      [attr.aria-label]="railCollapsed() ? 'Expand navigation' : 'Collapse navigation'"
     >
       <i
         class="pi"
-        [class.pi-angle-left]="!store.railCollapsed()"
-        [class.pi-angle-right]="store.railCollapsed()"
+        [class.pi-angle-left]="!railCollapsed()"
+        [class.pi-angle-right]="railCollapsed()"
         aria-hidden="true"
       ></i>
     </button>
   </header>
 
-  @if (!store.railCollapsed()) {
+  @if (!railCollapsed()) {
     <!-- Quick access: account-wide, so it stays put no matter which folder is open. -->
-    @if (store.favorites().length > 0) {
+    @if (favorites().length > 0) {
       <section class="nav-section nav-section--quick">
         <span class="nav-label"><i class="pi pi-star-fill" aria-hidden="true"></i> Favourites</span>
         <ul class="nav-list">
-          @for (report of store.favorites(); track report.id) {
+          @for (report of favorites(); track report.id) {
             <li class="nav-item">
-              <button type="button" class="nav-item-open" (click)="store.openReport(report)">
+              <button type="button" class="nav-item-open" (click)="openReport(report)">
                 <i class="pi pi-file nav-item-icon" aria-hidden="true"></i>
                 <span class="nav-item-name">{{ report.name }}</span>
               </button>
@@ -32,7 +32,7 @@
                 type="button"
                 class="nav-item-star nav-item-star--on"
                 aria-label="Remove from favourites"
-                (click)="store.toggleFavorite(report)"
+                (click)="toggleFavorite(report)"
               >
                 <i class="pi pi-star-fill" aria-hidden="true"></i>
               </button>
@@ -42,13 +42,13 @@
       </section>
     }
 
-    @if (store.recent().length > 0) {
+    @if (recent().length > 0) {
       <section class="nav-section nav-section--quick">
         <span class="nav-label"><i class="pi pi-history" aria-hidden="true"></i> Recent</span>
         <ul class="nav-list">
-          @for (report of store.recent(); track report.id) {
+          @for (report of recent(); track report.id) {
             <li class="nav-item">
-              <button type="button" class="nav-item-open" (click)="store.openReport(report)">
+              <button type="button" class="nav-item-open" (click)="openReport(report)">
                 <i class="pi pi-file nav-item-icon" aria-hidden="true"></i>
                 <span class="nav-item-name">{{ report.name }}</span>
               </button>
@@ -57,7 +57,7 @@
                 class="nav-item-star"
                 [class.nav-item-star--on]="report.isFavorite"
                 [attr.aria-label]="report.isFavorite ? 'Remove from favourites' : 'Add to favourites'"
-                (click)="store.toggleFavorite(report)"
+                (click)="toggleFavorite(report)"
               >
                 <i class="pi" [class.pi-star-fill]="report.isFavorite" [class.pi-star]="!report.isFavorite" aria-hidden="true"></i>
               </button>
@@ -69,7 +69,7 @@
 
     <section class="nav-section nav-section--folders">
       <span class="nav-label"><i class="pi pi-folder" aria-hidden="true"></i> Folders</span>
-      @if (store.treeLoading()) {
+      @if (treeLoading()) {
         <div class="home-tree-skeleton">
           @for (i of [1, 2, 3, 4]; track i) {
             <p-skeleton height="1.5rem" />
@@ -78,11 +78,11 @@
       } @else {
         <p-tree
           class="home-tree-widget"
-          [value]="store.tree.nodes()"
+          [value]="treeNodes()"
           selectionMode="single"
-          [selectionKeys]="store.treeSelectionKeys()"
-          (onNodeSelect)="store.onNodeSelect($event)"
-          (onNodeExpand)="store.tree.onNodeExpand($event)"
+          [selectionKeys]="treeSelectionKeys()"
+          (onNodeSelect)="onNodeSelect($event)"
+          (onNodeExpand)="onNodeExpand($event)"
         />
       }
     </section>

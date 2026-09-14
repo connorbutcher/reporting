@@ -34,18 +34,18 @@ export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: num
  */
 @Injectable()
 export class HomeItemActionsService {
-  private readonly dialog = inject(Dialog);
-  private readonly folderApi = inject(FolderApiService);
-  private readonly reportApi = inject(ReportApiService);
-
   /**
    * True only while {@link move} or {@link create} are prefetching the data their dialog needs
    * to build its folder tree — the two flows with a gap between the trigger and the dialog
    * appearing. Rename/remove/permissions open their dialog immediately, so they never set this.
    */
-  readonly busy = signal(false);
+  public readonly busy = signal(false);
 
-  rename(row: ContentRow): Observable<void> {
+  private readonly dialog = inject(Dialog);
+  private readonly folderApi = inject(FolderApiService);
+  private readonly reportApi = inject(ReportApiService);
+
+  public rename(row: ContentRow): Observable<void> {
     return defer(
       () =>
         this.dialog.open<string | undefined>(RenameDialogComponent, {
@@ -63,7 +63,7 @@ export class HomeItemActionsService {
   }
 
   /** Emits the chosen destination folder (null = root) on a successful move. */
-  move(row: ContentRow): Observable<number | null> {
+  public move(row: ContentRow): Observable<number | null> {
     const currentFolderId = row.kind === 'folder' ? row.folder.parentFolderId : row.report.folderId;
     this.busy.set(true);
     return this.folderApi.list().pipe(
@@ -92,7 +92,7 @@ export class HomeItemActionsService {
   }
 
   /** Emits on a confirmed, successful delete; errors propagate so the page can explain a 409. */
-  remove(row: ContentRow): Observable<void> {
+  public remove(row: ContentRow): Observable<void> {
     return defer(
       () =>
         this.dialog.open<boolean>(ConfirmDialogComponent, {
@@ -116,7 +116,7 @@ export class HomeItemActionsService {
   }
 
   /** Opens the sharing dialog for a folder or report; emits true if any grant or inheritance change was saved. */
-  permissions(row: ContentRow): Observable<boolean> {
+  public permissions(row: ContentRow): Observable<boolean> {
     return defer(
       () =>
         this.dialog.open<boolean>(PermissionsDialogComponent, {
@@ -126,7 +126,7 @@ export class HomeItemActionsService {
   }
 
   /** Opens the create dialog under the given folder; emits what was created. */
-  create(folderId: number | null): Observable<CreateOutcome> {
+  public create(folderId: number | null): Observable<CreateOutcome> {
     this.busy.set(true);
     return forkJoin({ folders: this.folderApi.list(), reports: this.reportApi.listAll() }).pipe(
       tap({ next: () => this.busy.set(false), error: () => this.busy.set(false) }),

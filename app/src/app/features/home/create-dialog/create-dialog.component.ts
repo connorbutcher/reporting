@@ -16,6 +16,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { Folder } from '../../../core/models/folder.model';
 import { ReportSummary } from '../../../core/models/report';
+import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
 import { groupByParent } from '../group-by-parent.util';
 
 export type CreateKind = 'folder' | 'report';
@@ -42,35 +43,52 @@ export interface CreateDialogResult {
   styleUrl: './create-dialog.component.scss',
 })
 export class CreateDialogComponent implements AfterViewInit {
-  private readonly dialogRef = inject(DialogRef<CreateDialogResult | undefined>);
-  protected readonly data = inject<CreateDialogData>(DIALOG_DATA);
-  private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
+  public readonly data = inject<CreateDialogData>(DIALOG_DATA);
 
-  protected readonly kind = signal<CreateKind>('report');
-  protected readonly selectedSource = signal<TreeNode | null>(null);
-
-  private readonly model = signal({ name: '' });
+  public readonly kind = signal<CreateKind>('report');
+  public readonly selectedSource = signal<TreeNode | null>(null);
 
   // The name is required and must be unique within the destination folder for the
   // selected kind (folders are checked against sibling folders, reports against
   // sibling reports). The duplicate check runs as a live validator, so a clashing
   // name disables Create and shows a message as it's typed — before the dialog closes.
-  protected readonly form = form(this.model, (path) => {
+  public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A name is required.' });
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
       if (!name) return null;
       const taken = this.siblingNames().some((existing) => existing === name);
       return taken
-        ? { kind: 'duplicate', message: `A ${this.kind()} called "${value().trim()}" already exists here.` }
+        ? {
+            kind: 'duplicate',
+            message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
+          }
         : null;
     });
   });
 
   /** The duplicate-name message, shown as it's typed (never the plain "required"). */
-  protected readonly nameError = computed(
-    () => this.form.name().errors().find((e) => e.kind === 'duplicate')?.message ?? null,
+  public readonly nameError = computed(
+    () =>
+      this.form
+        .name()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ?? null,
   );
+
+  public readonly treeNodes = computed<TreeNode[]>(() => [
+    {
+      key: '__root__',
+      label: 'Home',
+      icon: 'pi pi-home',
+      selectable: false,
+      expanded: true,
+      children: this.childNodes(null),
+    },
+  ]);
+
+  private readonly dialogRef = inject(DialogRef<CreateDialogResult | undefined>);
+  private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
 
   /** Lower-cased sibling names of the selected kind in the destination folder. */
   private readonly siblingNames = computed(() =>
@@ -83,47 +101,23 @@ export class CreateDialogComponent implements AfterViewInit {
           .map((r) => r.name.trim().toLowerCase()),
   );
 
-  private readonly foldersByParent = computed(() => groupByParent(this.data.folders, (f) => f.parentFolderId));
-  private readonly reportsByParent = computed(() => groupByParent(this.data.reports, (r) => r.folderId));
+  private readonly foldersByParent = computed(() =>
+    groupByParent(this.data.folders, (f) => f.parentFolderId),
+  );
+  private readonly reportsByParent = computed(() =>
+    groupByParent(this.data.reports, (r) => r.folderId),
+  );
 
-  protected readonly treeNodes = computed<TreeNode[]>(() => [
-    {
-      key: '__root__',
-      label: 'Home',
-      icon: 'pi pi-home',
-      selectable: false,
-      expanded: true,
-      children: this.childNodes(null),
-    },
-  ]);
-
-  ngAfterViewInit(): void {
+  public ngAfterViewInit(): void {
     this.nameInput().nativeElement.focus();
   }
 
-  private childNodes(parentId: number | null): TreeNode[] {
-    const folderNodes = (this.foldersByParent().get(parentId) ?? []).map((folder) => ({
-      key: `folder:${folder.id}`,
-      label: folder.name,
-      icon: 'pi pi-folder',
-      selectable: false,
-      children: this.childNodes(folder.id),
-    }));
-    const reportNodes = (this.reportsByParent().get(parentId) ?? []).map((report) => ({
-      key: String(report.id),
-      label: report.name,
-      icon: 'pi pi-file',
-      leaf: true,
-    }));
-    return [...folderNodes, ...reportNodes];
-  }
-
-  protected selectKind(kind: CreateKind): void {
+  public selectKind(kind: CreateKind): void {
     this.kind.set(kind);
     if (kind === 'folder') this.selectedSource.set(null);
   }
 
-  protected create(): void {
+  public create(): void {
     const name = this.form.name().value().trim();
     if (!this.form().valid() || !name) return;
     const sourceKey = this.selectedSource()?.key;
@@ -132,7 +126,28 @@ export class CreateDialogComponent implements AfterViewInit {
     this.dialogRef.close({ kind: this.kind(), name, sourceReportId });
   }
 
-  protected cancel(): void {
+  public cancel(): void {
     this.dialogRef.close();
+  }
+
+  private childNodes(parentId: number | null): TreeNode[] {
+    const folderNodes = buildFolderTreeNodes(
+      parentId,
+      this.foldersByParent(),
+      (folder, children) => ({
+        key: `folder:${folder.id}`,
+        label: folder.name,
+        icon: 'pi pi-folder',
+        selectable: false,
+        children,
+      }),
+    );
+    const reportNodes = (this.reportsByParent().get(parentId) ?? []).map((report) => ({
+      key: String(report.id),
+      label: report.name,
+      icon: 'pi pi-file',
+      leaf: true,
+    }));
+    return [...folderNodes, ...reportNodes];
   }
 }

@@ -4,18 +4,18 @@
     <button type="button" class="perm-dialog-close" (click)="close()" aria-label="Close">✕</button>
   </header>
 
-  @if (loading()) {
+  @if (store.loading()) {
     <div class="perm-dialog-body">
       <p class="perm-dialog-muted">Loading…</p>
     </div>
-  } @else if (error() && !permissions()) {
+  } @else if (store.error() && !store.permissions()) {
     <div class="perm-dialog-body">
-      <p class="perm-dialog-error">{{ error() }}</p>
+      <p class="perm-dialog-error">{{ store.error() }}</p>
     </div>
-  } @else if (permissions(); as perms) {
+  } @else if (store.permissions(); as perms) {
     <div class="perm-dialog-body">
-      @if (error()) {
-        <p class="perm-dialog-error">{{ error() }}</p>
+      @if (store.error()) {
+        <p class="perm-dialog-error">{{ store.error() }}</p>
       }
 
       <label class="perm-dialog-inherit">
@@ -23,8 +23,8 @@
           [binary]="true"
           inputId="perm-inherit"
           [ngModel]="perms.inheritsPermissions"
-          [disabled]="saving()"
-          (onChange)="toggleInherit($event.checked)"
+          [disabled]="store.saving()"
+          (onChange)="store.toggleInherit($event.checked)"
         />
         <span class="perm-dialog-inherit-text">
           <span class="perm-dialog-inherit-label">Inherit access from parent</span>
@@ -41,7 +41,7 @@
       <div class="perm-dialog-add">
         <p-select
           class="perm-dialog-add-subject"
-          [options]="subjectOptions()"
+          [options]="store.subjectOptions()"
           [ngModel]="newSubject()"
           (ngModelChange)="newSubject.set($event)"
           optionLabel="label"
@@ -49,7 +49,7 @@
           placeholder="Add a person or group"
           appendTo="body"
           [filter]="true"
-          [disabled]="saving()"
+          [disabled]="store.saving()"
           fluid
         />
         <p-select
@@ -59,12 +59,12 @@
           optionLabel="label"
           optionValue="value"
           appendTo="body"
-          [disabled]="saving()"
+          [disabled]="store.saving()"
         />
         <button
           type="button"
           class="perm-dialog-btn perm-dialog-btn--primary"
-          [disabled]="!newSubject() || saving()"
+          [disabled]="!newSubject() || store.saving()"
           (click)="addGrant()"
         >
           Add
@@ -90,13 +90,13 @@
                 optionLabel="label"
                 optionValue="value"
                 appendTo="body"
-                [disabled]="saving()"
+                [disabled]="store.saving()"
               />
               <button
                 type="button"
                 class="perm-dialog-icon"
-                [disabled]="saving()"
-                (click)="remove(grant)"
+                [disabled]="store.saving()"
+                (click)="store.remove(grant)"
                 [attr.aria-label]="'Remove ' + grant.subjectName"
               >
                 ✕

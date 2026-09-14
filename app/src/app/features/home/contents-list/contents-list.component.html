@@ -1,11 +1,11 @@
 <div class="contents">
-  @if (store.folderRows().length > 0) {
+  @if (folderRows().length > 0) {
     <div class="contents-group">
       <span class="contents-label">Folders</span>
       <ul class="contents-list">
-        @for (row of store.folderRows(); track row.id) {
+        @for (row of folderRows(); track row.id) {
           <li class="crow crow--folder" (contextmenu)="onContextMenu($event, row)">
-            <button type="button" class="crow-main" (click)="store.openRow(row)">
+            <button type="button" class="crow-main" (click)="openRow(row)">
               <span class="crow-icon crow-icon--folder"><i class="pi pi-folder" aria-hidden="true"></i></span>
               <span class="crow-name">{{ row.name }}</span>
             </button>
@@ -18,11 +18,11 @@
     </div>
   }
 
-  @if (store.reportRows().length > 0) {
+  @if (reportRows().length > 0) {
     <div class="contents-group">
       <span class="contents-label">Reports</span>
       <ul class="contents-list">
-        @for (row of store.reportRows(); track row.id) {
+        @for (row of reportRows(); track row.id) {
           <li class="crow crow--report" (contextmenu)="onContextMenu($event, row)">
             <button
               type="button"
@@ -35,7 +35,7 @@
               <i class="pi" [class.pi-star-fill]="row.isFavorite" [class.pi-star]="!row.isFavorite" aria-hidden="true"></i>
             </button>
 
-            <button type="button" class="crow-main" (click)="store.openReport(row.report)">
+            <button type="button" class="crow-main" (click)="openReport(row.report)">
               <span class="crow-icon crow-icon--report"><i class="pi pi-file" aria-hidden="true"></i></span>
               <span class="crow-text">
                 <span class="crow-name">{{ row.name }}</span>

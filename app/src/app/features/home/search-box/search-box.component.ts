@@ -11,5 +11,17 @@ import { HomeStore } from '../home.store';
   styleUrl: './search-box.component.scss',
 })
 export class SearchBoxComponent {
-  protected readonly store = inject(HomeStore);
+  private readonly store = inject(HomeStore);
+
+  public onSearchInput(value: string): void {
+    this.store.onSearchInput(value);
+  }
+
+  public clearSearch(): void {
+    this.store.clearSearch();
+  }
+
+  public get searchQuery() {
+    return this.store.searchQuery;
+  }
 }

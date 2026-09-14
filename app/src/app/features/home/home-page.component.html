@@ -3,47 +3,47 @@
 
   <section class="home-contents app-card">
     <div class="home-toolbar">
-      @if (store.searchResults()) {
-        <button type="button" class="home-search-back" (click)="store.clearSearch()">
+      @if (searchResults()) {
+        <button type="button" class="home-search-back" (click)="clearSearch()">
           <i class="pi pi-arrow-left" aria-hidden="true"></i>
           Back to browsing
         </button>
       } @else {
-        <p-breadcrumb class="home-breadcrumb" [model]="store.breadcrumbItems()" [home]="store.homeItem" />
+        <p-breadcrumb class="home-breadcrumb" [model]="breadcrumbItems()" [home]="homeItem" />
       }
 
       <app-search-box />
 
-      @if (store.actionsBusy()) {
+      @if (actionsBusy()) {
         <!-- Covers Move too, not just Create: both prefetch the whole folder tree before their
              dialog can open, and Move's trigger (a context-menu item) has nowhere of its own to
              show a pending state. -->
         <i class="pi pi-spin pi-spinner home-action-pending" aria-label="Preparing…"></i>
       }
 
-      @if (!store.searchResults()) {
+      @if (!searchResults()) {
         <p-button
           icon="pi pi-plus"
           label="Create"
           size="small"
-          [loading]="store.actionsBusy()"
-          (onClick)="store.openCreateDialog()"
+          [loading]="actionsBusy()"
+          (onClick)="openCreateDialog()"
         />
       }
     </div>
 
-    @if (store.searchResults()) {
+    @if (searchResults()) {
       <app-search-results />
     } @else {
-      @if (store.contentsLoading()) {
+      @if (contentsLoading()) {
         <div class="home-table-skeleton">
           @for (i of [1, 2, 3, 4, 5]; track i) {
             <p-skeleton height="2rem" />
           }
         </div>
-      } @else if (store.contentsError()) {
+      } @else if (contentsError()) {
         <p class="home-error">This folder couldn't be loaded — it may not exist, or you may not have access to it.</p>
-      } @else if (!store.hasContent()) {
+      } @else if (!hasContent()) {
         <p class="home-empty">This folder is empty.</p>
       } @else {
         <app-contents-list (rowAction)="onRowAction($event)" />
@@ -52,4 +52,4 @@
   </section>
 </div>
 
-<p-contextmenu #cm [model]="store.contextMenuItems()" />
+<p-contextmenu #cm [model]="contextMenuItems()" />

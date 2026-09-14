@@ -21,8 +21,14 @@
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #fff;
   font-size: 0.9rem;
+}
+
+.app-header-mark-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .app-header-name {
