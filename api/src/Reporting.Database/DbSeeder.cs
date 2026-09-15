@@ -302,6 +302,49 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the cross-reference showcase report ("Engine Build Cross-Reference") if it isn't already
+    /// present. Idempotent and independent of the other seeds (same pattern as <see cref="SeedBoxPlotShowcase"/>).
+    /// Three engine-build-related datasets — builds, dyno test runs, and concessions — all keyed on Job
+    /// Number, each shown in its own table plus an overlay chart pulling a series from two of them. A
+    /// report-level filter narrows all three datasets to the same subset of builds at once, so one
+    /// restriction (only the V8/V12 builds) drops matching rows from every table and the chart together.
+    /// </summary>
+    public static void SeedCrossReferenceShowcase(ReportingDbContext db)
+    {
+        const string name = "Engine Build Cross-Reference";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+        var pendingFilters = new List<Action>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildCrossReferenceReport(pending, pendingTables, pendingCharts, pendingFilters, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        // Report-level filters live on the revision and reference each dataset's now-assigned int id.
+        foreach (var apply in pendingFilters)
+        {
+            apply();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds a title + data-table widget bound to a fresh dataset built for this revision. The table's
     /// config is deferred (see <see cref="PendingTable"/>) because it references the dataset's not-yet-known id.
     /// </summary>
@@ -1504,6 +1547,145 @@ public static class DbSeeder
         for (var i = 0; i < 4; i++)
         {
             Emit("V8 5.0L", "R&D Bench", 330.0, 610.0, 8400.0, 33.0, 0.050, 0.014);
+        }
+
+        return dataset;
+    }
+
+    /// <summary>
+    /// The cross-reference report: three engine-build-related datasets — builds, dyno test runs, and
+    /// concessions — all keyed on Job Number, laid out as three tables plus a two-dataset overlay chart.
+    /// A single report-level filter (expressed once per dataset, since only <see cref="BuildEngineBuilds"/>
+    /// carries an "Engine Type" column) restricts every widget to the same subset of builds.
+    /// </summary>
+    private static Report BuildCrossReferenceReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
+        List<Action> pendingFilters, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Engine Build Cross-Reference",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+
+        var builds = BuildEngineBuilds(pending);
+        revision.Datasets.Add(builds);
+        var testRuns = BuildTestRuns(pending);
+        revision.Datasets.Add(testRuns);
+        var concessions = BuildEngineConcessions(pending);
+        revision.Datasets.Add(concessions);
+
+        Guid BuildsRef(string n) => builds.Columns.First(c => c.Name == n).RefId;
+        Guid RunsRef(string n) => testRuns.Columns.First(c => c.Name == n).RefId;
+        Guid ConcRef(string n) => concessions.Columns.First(c => c.Name == n).RefId;
+
+        // The V8 5.0L and V12 6.5L builds — the same restriction expressed once per dataset, by
+        // whichever column that dataset carries: Engine Builds has "Engine Type" directly, while the
+        // other two only share "Job Number" with it, so the equivalent job numbers stand in there.
+        var v8V12JobNumbers = new[]
+        {
+            "JOB-2026-0141", "JOB-2026-0142", "JOB-2026-0148", "JOB-2026-0173", "JOB-2026-0180",
+        };
+        pendingFilters.Add(() => revision.FiltersJson = ReportFiltersJson(
+            (builds.Id, FilterGroupJson("and", ConditionJson(BuildsRef("Engine Type"), "in", "V8 5.0L", "V12 6.5L"))),
+            (testRuns.Id, FilterGroupJson("and", ConditionJson(RunsRef("Job Number"), "in", v8V12JobNumbers))),
+            (concessions.Id, FilterGroupJson("and", ConditionJson(ConcRef("Job Number"), "in", v8V12JobNumbers)))));
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Cross-reference", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        tab.Widgets.Add(TitleWidget("Engine Build Cross-Reference", 0, 0, 48, 2));
+        tab.Widgets.Add(ParagraphWidget(
+            "Three datasets keyed on Job Number — builds, dyno test runs, and concessions — each shown in its own table below. One report-level filter narrows all three to the V8 5.0L and V12 6.5L builds at once, dropping the I6 3.0L rows from every table and from the chart's two overlaid series alike.",
+            0, 2, 48, 3));
+
+        var buildColumns = new[]
+        {
+            "Job Number", "Serial Number", "Engine Type", "Inspector", "Build Date", "Main Bearing Clearance", "Rework Count",
+        };
+        var buildsTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 5, W = 48, H = 9, ConfigJson = "{}" };
+        tab.Widgets.Add(buildsTable);
+        pendingTables.Add(new PendingTable(buildsTable, builds, "Engine builds", buildColumns));
+
+        var runColumns = new[] { "Job Number", "Serial Number", "Test Cell", "Run Date", "Peak Power", "Peak Torque", "Passed" };
+        var runsTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 14, W = 24, H = 9, ConfigJson = "{}" };
+        tab.Widgets.Add(runsTable);
+        pendingTables.Add(new PendingTable(runsTable, testRuns, "Dyno test runs", runColumns));
+
+        var concColumns = new[] { "Job Number", "Serial Number", "Concession Date", "Category", "Raised By", "Cost Impact", "Status" };
+        var concTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 24, Y = 14, W = 24, H = 9, ConfigJson = "{}" };
+        tab.Widgets.Add(concTable);
+        pendingTables.Add(new PendingTable(concTable, concessions, "Concessions", concColumns));
+
+        // The overlay chart: bearing clearance from the builds dataset and peak power from the
+        // test-run dataset, each on its own date column and value axis — one chart pulling series
+        // from two different datasets, both narrowed by the same report-level filter above.
+        var overlay = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.LineChart, X = 0, Y = 23, W = 48, H = 12, ConfigJson = "{}" };
+        tab.Widgets.Add(overlay);
+        pendingCharts.Add(new PendingChart(overlay, () =>
+            PointChartConfigJson("lineChart", "Clearance vs peak power over time",
+                string.Join(",",
+                    ChartBindingJson(builds.Id, BuildsRef("Build Date"), yRef: BuildsRef("Main Bearing Clearance"),
+                        yAxisId: "primary", label: "Bearing clearance", color: "#2f6fed"),
+                    ChartBindingJson(testRuns.Id, RunsRef("Run Date"), yRef: RunsRef("Peak Power"),
+                        yAxisId: "power", label: "Peak power", color: "#f97316")),
+                AxesJson(("primary", "Clearance (mm)", "left"), ("power", "Peak power (kW)", "right")),
+                xAxisLabel: "Date", smooth: true, showPoints: true)));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A per-concession dataset built for the cross-reference report: one row per rework concession
+    /// raised against a build, keyed by the same Job Number as <see cref="BuildEngineBuilds"/> and
+    /// <see cref="BuildTestRuns"/> so the three read as one build campaign viewed three ways. Only the
+    /// builds that actually needed rework get a row here.
+    /// </summary>
+    private static Dataset BuildEngineConcessions(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Engine Concessions",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":4471,\"phaseIds\":[10]}",
+        };
+
+        var job = Column(dataset, "Job Number", DatasetColumnType.String, 0);
+        var serial = Column(dataset, "Serial Number", DatasetColumnType.String, 1);
+        var raisedDate = Column(dataset, "Concession Date", DatasetColumnType.DateTime, 2, "{\"dateFormat\":\"d MMM yyyy\"}");
+        var category = Column(dataset, "Category", DatasetColumnType.String, 3);
+        var raisedBy = Column(dataset, "Raised By", DatasetColumnType.String, 4);
+        var cost = Column(dataset, "Cost Impact", DatasetColumnType.Double, 5, Gbp);
+        var status = Column(dataset, "Status", DatasetColumnType.Bool, 6, "{\"trueLabel\":\"Closed\",\"falseLabel\":\"Open\"}");
+
+        var rows = new[]
+        {
+            ("JOB-2026-0142", "ENG-SN-88202", new DateTime(2026, 1, 25), "Main bearing rework", "A. Whitfield", 380.0, true),
+            ("JOB-2026-0148", "ENG-SN-88213", new DateTime(2026, 2, 6), "Piston clearance rework", "R. Okafor", 610.0, false),
+            ("JOB-2026-0168", "ENG-SN-88240", new DateTime(2026, 3, 24), "Big end rework", "M. Lindqvist", 540.0, true),
+            ("JOB-2026-0173", "ENG-SN-88252", new DateTime(2026, 4, 6), "Deck height rework", "S. Bhandari", 720.0, false),
+            ("JOB-2026-0180", "ENG-SN-88263", new DateTime(2026, 4, 27), "Main bearing rework", "S. Bhandari", 690.0, true),
+        };
+
+        foreach (var r in rows)
+        {
+            AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+            {
+                [job] = r.Item1,
+                [serial] = r.Item2,
+                [raisedDate] = Iso(r.Item3),
+                [category] = r.Item4,
+                [raisedBy] = r.Item5,
+                [cost] = Num(r.Item6),
+                [status] = r.Item7.ToString(CultureInfo.InvariantCulture),
+            });
         }
 
         return dataset;

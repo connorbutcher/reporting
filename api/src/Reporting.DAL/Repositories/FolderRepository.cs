@@ -67,6 +67,22 @@ public class FolderRepository(ReportingDbContext db)
         await db.Folders.Where(f => f.Id == id).Select(f => f.ParentFolderId).FirstOrDefaultAsync();
 
     /// <summary>
+    /// Whether <paramref name="name"/> is free among <paramref name="parentId"/>'s direct child folders
+    /// (root siblings when null), ignoring <paramref name="excludeId"/> (the folder being renamed, if
+    /// any). Checked against every child folder regardless of what the caller can see — a subfolder's
+    /// own ACL can hide it from someone who still has Editor on the parent, so listing only the visible
+    /// children (as the tree/picker UI does) isn't a reliable way to judge uniqueness. The caller
+    /// authorizes the action first (Editor on the container to create, Manager on the folder itself to
+    /// rename it), and this only answers yes/no, so it can't be used to enumerate hidden sibling names.
+    /// </summary>
+    public async Task<bool> NameAvailableAsync(string? name, int? parentId, int? excludeId = null)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        if (trimmed.Length == 0) return true;
+        return !await db.Folders.AnyAsync(f => f.ParentFolderId == parentId && f.Name == trimmed && f.Id != excludeId);
+    }
+
+    /// <summary>
     /// Creates a subfolder. The caller authorizes the create (Editor on the container) first; this
     /// throws <see cref="DataValidationException"/> only if the parent folder doesn't exist.
     /// </summary>

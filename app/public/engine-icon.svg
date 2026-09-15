@@ -1,23 +1,25 @@
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="#23272C" stroke-width="16" stroke-linejoin="round" stroke-linecap="round">
+  <g transform="translate(-117.459 -181.647) scale(1.458824)">
+    <g stroke="#23272C" stroke-width="16" stroke-linejoin="round" stroke-linecap="round">
 
-    <!-- chart baseline -->
-    <line x1="94" y1="440" x2="418" y2="440" fill="none"/>
+      <!-- chart baseline -->
+      <line x1="94" y1="440" x2="418" y2="440" fill="none"/>
 
-    <!-- piston 1 (shortest) -->
-    <path d="M116 320 Q116 300 136 300 L172 300 Q192 300 192 320 L192 452 L116 452 Z" fill="#CFD3D8"/>
-    <path d="M116 320 Q116 300 136 300 L172 300 Q192 300 192 320 L192 344 L116 344 Z" fill="#E23B4E"/>
-    <circle cx="154" cy="392" r="11" fill="#2E3236"/>
+      <!-- piston 1 (shortest) -->
+      <path d="M116 320 Q116 300 136 300 L172 300 Q192 300 192 320 L192 452 L116 452 Z" fill="#CFD3D8"/>
+      <path d="M116 320 Q116 300 136 300 L172 300 Q192 300 192 320 L192 344 L116 344 Z" fill="#E23B4E"/>
+      <circle cx="154" cy="392" r="11" fill="#2E3236"/>
 
-    <!-- piston 2 -->
-    <path d="M218 248 Q218 228 238 228 L274 228 Q294 228 294 248 L294 452 L218 452 Z" fill="#CFD3D8"/>
-    <path d="M218 248 Q218 228 238 228 L274 228 Q294 228 294 248 L294 272 L218 272 Z" fill="#E23B4E"/>
-    <circle cx="256" cy="392" r="11" fill="#2E3236"/>
+      <!-- piston 2 -->
+      <path d="M218 248 Q218 228 238 228 L274 228 Q294 228 294 248 L294 452 L218 452 Z" fill="#CFD3D8"/>
+      <path d="M218 248 Q218 228 238 228 L274 228 Q294 228 294 248 L294 272 L218 272 Z" fill="#E23B4E"/>
+      <circle cx="256" cy="392" r="11" fill="#2E3236"/>
 
-    <!-- piston 3 (tallest) -->
-    <path d="M320 168 Q320 148 340 148 L376 148 Q396 148 396 168 L396 452 L320 452 Z" fill="#CFD3D8"/>
-    <path d="M320 168 Q320 148 340 148 L376 148 Q396 148 396 168 L396 192 L320 192 Z" fill="#E23B4E"/>
-    <circle cx="358" cy="392" r="11" fill="#2E3236"/>
+      <!-- piston 3 (tallest) -->
+      <path d="M320 168 Q320 148 340 148 L376 148 Q396 148 396 168 L396 452 L320 452 Z" fill="#CFD3D8"/>
+      <path d="M320 168 Q320 148 340 148 L376 148 Q396 148 396 168 L396 192 L320 192 Z" fill="#E23B4E"/>
+      <circle cx="358" cy="392" r="11" fill="#2E3236"/>
 
+    </g>
   </g>
 </svg>

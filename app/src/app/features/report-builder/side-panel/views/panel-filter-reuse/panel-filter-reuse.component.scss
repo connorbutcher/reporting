@@ -2,10 +2,38 @@
   display: block;
 }
 
+// These are occasional, secondary actions, not something reached for on every
+// visit — full-width buttons stacked above the filter builder gave them the
+// same visual weight as the conditions below, which made the whole panel read
+// as more cluttered than it was. Sized to their own content and right-aligned,
+// they now read as light utility links instead.
 .panel-filter-reuse {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  // Sits above the filter builder; keep it from crowding the conditions below.
-  margin-bottom: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  margin-bottom: 6px;
+}
+
+.reuse-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: #64748b;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  .pi {
+    font-size: 0.7rem;
+  }
+
+  &:hover {
+    color: var(--app-navy);
+    text-decoration: underline;
+  }
 }

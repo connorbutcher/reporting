@@ -8,19 +8,21 @@
   </p>
 
   @if (datasetIds().length > 1) {
-    <nav class="panel-menu">
+    <nav class="dataset-picker" aria-label="Dataset to filter">
       @for (id of datasetIds(); track id) {
         <button
           type="button"
-          class="panel-menu-item"
+          class="dataset-chip"
           [class.active]="id === activeDatasetId()"
+          [attr.aria-current]="id === activeDatasetId() ? 'true' : null"
+          [attr.aria-label]="datasetName(id) + ', ' + conditionCount(id)"
           (click)="select(id)"
         >
           <i class="pi pi-database" aria-hidden="true"></i>
-          <span class="panel-menu-text">
-            <span class="panel-menu-label">{{ datasetName(id) }}</span>
-            <span class="panel-menu-hint">{{ conditionCount(id) }}</span>
-          </span>
+          <span class="dataset-chip-label">{{ datasetName(id) }}</span>
+          @if (conditionCountNumber(id); as count) {
+            <span class="dataset-chip-count">{{ count }}</span>
+          }
         </button>
       }
     </nav>

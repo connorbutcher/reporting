@@ -55,6 +55,12 @@
   @if (group().count() === 0) {
     <p class="panel-empty">No conditions — every row is shown.</p>
   } @else {
+    <p class="filter-rows-label">
+      {{ group().count() }} condition{{ group().count() > 1 ? 's' : '' }}
+      @if (group().enabledCount() !== group().count()) {
+        · {{ group().enabledCount() }} active
+      }
+    </p>
     <ul class="filter-rows">
       @for (condition of group().children(); track condition) {
         <li
@@ -64,6 +70,7 @@
           [class.filter-row--warning]="condition.problem()?.severity === 'warning'"
         >
           <div class="head">
+            <span class="filter-row-index" aria-hidden="true">{{ $index + 1 }}</span>
             <p-toggleswitch
               styleClass="filter-toggle"
               [ngModel]="condition.enabled()"

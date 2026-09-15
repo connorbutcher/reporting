@@ -52,8 +52,14 @@ export class PanelReportFiltersComponent {
     return this.session.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
   }
 
+  /** How many conditions this dataset's filter has, for the chip's badge. */
+  protected conditionCountNumber(datasetId: number): number {
+    return this.session.model()?.reportFilter(datasetId)?.group.count() ?? 0;
+  }
+
+  /** The same count, worded out for the chip's accessible name. */
   protected conditionCount(datasetId: number): string {
-    const count = this.session.model()?.reportFilter(datasetId)?.group.count() ?? 0;
-    return count === 0 ? 'No conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+    const count = this.conditionCountNumber(datasetId);
+    return count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
   }
 }

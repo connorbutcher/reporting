@@ -1,6 +1,5 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { MenuItem } from 'primeng/api';
-import { ButtonModule } from 'primeng/button';
 import { MenuModule } from 'primeng/menu';
 import { FilterGroupModel } from '../../../models/filter.model';
 import { ReusableFilter, reusableFiltersFor } from '../../../models/filter-reuse';
@@ -15,7 +14,7 @@ import { ReportSession } from '../../../state/report-session';
  */
 @Component({
   selector: 'app-panel-filter-reuse',
-  imports: [ButtonModule, MenuModule],
+  imports: [MenuModule],
   templateUrl: './panel-filter-reuse.component.html',
   styleUrl: './panel-filter-reuse.component.scss',
 })

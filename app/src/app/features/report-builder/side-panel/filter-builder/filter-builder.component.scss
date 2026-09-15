@@ -37,6 +37,18 @@
   }
 }
 
+// Sits above the row list once there's more than one condition, so a long list
+// still reads as "one filter" — its total, and how many of those are actually
+// switched on — rather than an unlabelled stack of cards.
+.filter-rows-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .filter-rows {
   list-style: none;
   margin: 0;
@@ -64,6 +76,17 @@
       flex: 1;
       min-width: 0;
     }
+  }
+
+  // A stable ordinal so a condition can be tracked ("the third one") while
+  // scrolling a long list — purely a visual anchor, not part of the aria tree.
+  .filter-row-index {
+    flex: none;
+    width: 14px;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    color: #94a3b8;
+    text-align: right;
   }
 
   // A switched-off condition is kept but doesn't narrow the data. Mute the parts

@@ -26,6 +26,9 @@
 }
 
 .rename-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   padding: 14px 20px;
 }
 
@@ -42,6 +45,18 @@
     outline: 2px solid var(--p-primary-400, #527ac0);
     outline-offset: -1px;
   }
+}
+
+.rename-dialog-error {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #b42318;
+}
+
+.rename-dialog-hint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #64748b;
 }
 
 .rename-dialog-footer {

@@ -1,11 +1,82 @@
-.panel-menu {
+// One scrollable row of small chips rather than a tall list of full-width cards
+// (or a wrapped block of them, which turns ragged once the labels vary in
+// length), so the picker stays a single tidy line no matter how many datasets
+// the report draws from — the same horizontal-scroll treatment as the canvas's
+// own tab strip. The conditions for the selected dataset stay in view below it
+// instead of scrolling further down the panel for every extra dataset.
+.dataset-picker {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
   margin-bottom: 4px;
+  padding-bottom: 2px;
 }
 
-.panel-menu-item.active {
-  background: var(--p-primary-50, #eef3fa);
-  border-color: var(--p-primary-200, #adc3e5);
+.dataset-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  color: #334155;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+
+  &:hover {
+    background: var(--p-primary-50, #eef3fa);
+    border-color: var(--p-primary-200, #adc3e5);
+  }
+
+  &.active {
+    background: var(--p-primary-50, #eef3fa);
+    border-color: var(--p-primary-400, #527ac0);
+    color: var(--app-navy);
+    font-weight: 600;
+  }
+
+  .pi {
+    color: #94a3b8;
+    font-size: 0.72rem;
+  }
+
+  &.active .pi {
+    color: var(--app-navy);
+  }
+}
+
+.dataset-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 160px;
+}
+
+// Only shown once a dataset has at least one condition, so an empty filter
+// reads as a plain, unweighted chip rather than implying a "0" is meaningful.
+.dataset-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #94a3b8;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dataset-chip.active .dataset-chip-count {
+  background: var(--app-navy);
 }

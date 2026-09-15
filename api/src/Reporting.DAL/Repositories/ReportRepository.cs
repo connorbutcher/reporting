@@ -92,6 +92,22 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
         db.Reports.Include(r => r.Revisions).FirstOrDefaultAsync(r => r.Id == id);
 
     /// <summary>
+    /// Whether <paramref name="name"/> is free among the reports directly inside <paramref name="folderId"/>
+    /// (root siblings when null), ignoring <paramref name="excludeId"/> (the report being renamed, if
+    /// any). Checked against every report there regardless of what the caller can see — a report's own
+    /// ACL can hide it from someone who still has Editor on the folder, so listing only the visible
+    /// reports (as the tree/picker UI does) isn't a reliable way to judge uniqueness. The caller
+    /// authorizes the action first (Editor on the folder to create, Manager on the report itself to
+    /// rename it), and this only answers yes/no, so it can't be used to enumerate hidden report names.
+    /// </summary>
+    public async Task<bool> NameAvailableAsync(string? name, int? folderId, int? excludeId = null)
+    {
+        var trimmed = (name ?? string.Empty).Trim();
+        if (trimmed.Length == 0) return true;
+        return !await db.Reports.AnyAsync(r => r.FolderId == folderId && r.Name == trimmed && r.Id != excludeId);
+    }
+
+    /// <summary>
     /// Creates a report (optionally duplicating <paramref name="sourceReportId"/>'s latest content) and
     /// returns the new entity. The caller authorizes the create and the source's visibility first;
     /// this throws <see cref="DataValidationException"/> only if the folder or source report doesn't exist.

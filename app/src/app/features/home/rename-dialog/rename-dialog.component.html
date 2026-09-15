@@ -7,11 +7,17 @@
     <input
       #nameInput
       class="rename-dialog-input"
-      [ngModel]="name()"
-      (ngModelChange)="name.set($event)"
+      [value]="form.name().value()"
+      (input)="form.name().value.set($any($event.target).value)"
+      (blur)="form.name().markAsTouched()"
       (keyup.enter)="save()"
       aria-label="Name"
     />
+    @if (nameError(); as message) {
+      <p class="rename-dialog-error">{{ message }}</p>
+    } @else if (form.name().pending()) {
+      <p class="rename-dialog-hint">Checking name…</p>
+    }
   </div>
 
   <footer class="rename-dialog-footer">
@@ -25,7 +31,7 @@
     <button
       type="button"
       class="rename-dialog-button rename-dialog-button--primary"
-      [disabled]="!name().trim()"
+      [disabled]="!form().valid()"
       (click)="save()"
     >
       Save

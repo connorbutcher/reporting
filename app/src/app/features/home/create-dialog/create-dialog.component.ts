@@ -8,12 +8,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { form, required, validate } from '@angular/forms/signals';
+import { form, required, validate, validateHttp } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { Folder } from '../../../core/models/folder.model';
 import { ReportSummary } from '../../../core/models/report';
 import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
@@ -54,6 +55,9 @@ export class CreateDialogComponent implements AfterViewInit {
   // name disables Create and shows a message as it's typed — before the dialog closes.
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A name is required.' });
+    // Fast, offline check against the siblings this dialog was handed — catches the common case
+    // instantly. Those lists are ACL-filtered to what the caller can see though (see the folder/report
+    // repositories' NameAvailableAsync), so a sibling with a stricter ACL of its own can hide from it.
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
       if (!name) return null;
@@ -64,6 +68,34 @@ export class CreateDialogComponent implements AfterViewInit {
             message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
           }
         : null;
+    });
+    // Authoritative check against every sibling on the server (only once the checks above pass), so a
+    // name that collides with one the caller can't see still can't be reused.
+    validateHttp<string, { available: boolean }>(path.name, {
+      when: ({ value }) => value().trim().length > 0,
+      request: ({ value }) => ({
+        url: this.kind() === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
+        params: {
+          name: value().trim(),
+          ...(this.data.folderId == null
+            ? {}
+            : this.kind() === 'folder'
+              ? { parentFolderId: this.data.folderId }
+              : { folderId: this.data.folderId }),
+        } as Record<string, string | number>,
+        context: skipHttpErrorNotification(),
+      }),
+      debounce: 400,
+      onSuccess: (result, { value }) =>
+        result.available
+          ? []
+          : [
+              {
+                kind: 'duplicate',
+                message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
+              },
+            ],
+      onError: () => [],
     });
   });
 

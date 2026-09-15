@@ -34,6 +34,26 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
         return path is null ? NotFound() : path;
     }
 
+    /// <summary>
+    /// Whether a candidate folder name is free among its siblings. With no <paramref name="excludeId"/>
+    /// this is a create check (Editor on <paramref name="parentFolderId"/>, matching <see cref="Create"/>);
+    /// with one, it's a rename check on that folder (Manager on it, matching <see cref="Update"/>).
+    /// </summary>
+    [HttpGet("name-available")]
+    public async Task<ActionResult<FolderNameAvailableDto>> NameAvailable(
+        [FromQuery] string name, [FromQuery] int? parentFolderId, [FromQuery] int? excludeId)
+    {
+        var auth = excludeId is { } id
+            ? await authorizer.AuthorizeFolderAsync(id, AccessLevel.Manager)
+            : await authorizer.AuthorizeCreateInAsync(parentFolderId);
+        if (!auth.Allowed) return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+
+        return new FolderNameAvailableDto
+        {
+            Available = await folders.NameAvailableAsync(name, parentFolderId, excludeId)
+        };
+    }
+
     [HttpPost]
     public async Task<ActionResult<FolderDto>> Create(SaveFolderDto dto)
     {

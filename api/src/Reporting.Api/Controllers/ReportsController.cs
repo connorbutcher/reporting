@@ -55,6 +55,26 @@ public class ReportsController(
         return report.ToSummaryDto(auth.Level, favorites.Contains(report.Id));
     }
 
+    /// <summary>
+    /// Whether a candidate report name is free among its siblings. With no <paramref name="excludeId"/>
+    /// this is a create check (Editor on <paramref name="folderId"/>, matching <see cref="Create"/>);
+    /// with one, it's a rename check on that report (Manager on it, matching <see cref="Update"/>).
+    /// </summary>
+    [HttpGet("name-available")]
+    public async Task<ActionResult<ReportNameAvailableDto>> NameAvailable(
+        [FromQuery] string name, [FromQuery] int? folderId, [FromQuery] int? excludeId)
+    {
+        var auth = excludeId is { } id
+            ? await authorizer.AuthorizeReportAsync(id, AccessLevel.Manager)
+            : await authorizer.AuthorizeCreateInAsync(folderId);
+        if (!auth.Allowed) return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+
+        return new ReportNameAvailableDto
+        {
+            Available = await reports.NameAvailableAsync(name, folderId, excludeId)
+        };
+    }
+
     [HttpPost]
     public async Task<ActionResult<ReportSummaryDto>> Create(CreateReportDto dto)
     {

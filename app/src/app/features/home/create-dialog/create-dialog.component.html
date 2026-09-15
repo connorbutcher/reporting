@@ -44,6 +44,8 @@
       />
       @if (nameError(); as message) {
         <p class="create-dialog-error">{{ message }}</p>
+      } @else if (form.name().pending()) {
+        <p class="create-dialog-hint">Checking name…</p>
       }
     </div>
 

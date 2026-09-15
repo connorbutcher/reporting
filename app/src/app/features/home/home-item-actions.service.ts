@@ -46,10 +46,11 @@ export class HomeItemActionsService {
   private readonly reportApi = inject(ReportApiService);
 
   public rename(row: ContentRow): Observable<void> {
+    const folderId = row.kind === 'folder' ? row.folder.parentFolderId : row.report.folderId;
     return defer(
       () =>
         this.dialog.open<string | undefined>(RenameDialogComponent, {
-          data: { kind: row.kind, currentName: row.name } satisfies RenameDialogData,
+          data: { kind: row.kind, id: row.id, currentName: row.name, folderId } satisfies RenameDialogData,
         }).closed,
     ).pipe(
       filter((newName): newName is string => !!newName),

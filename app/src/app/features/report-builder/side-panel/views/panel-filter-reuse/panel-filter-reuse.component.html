@@ -1,29 +1,23 @@
 @if (reusable().length > 0 || canPromoteNow()) {
   <div class="panel-filter-reuse">
     @if (reusable().length > 0) {
-      <p-button
-        label="Copy from…"
-        icon="pi pi-copy"
-        severity="secondary"
-        text
-        size="small"
-        fluid
-        ariaLabel="Copy conditions from another filter on this dataset"
-        (onClick)="menu.toggle($event)"
-      />
+      <button
+        type="button"
+        class="reuse-link"
+        aria-label="Copy conditions from another filter on this dataset"
+        (click)="menu.toggle($event)"
+      >
+        <i class="pi pi-copy" aria-hidden="true"></i>
+        Copy from…
+      </button>
       <p-menu #menu [model]="copyMenu()" [popup]="true" appendTo="body" />
     }
 
     @if (canPromoteNow()) {
-      <p-button
-        label="Promote to report filter"
-        icon="pi pi-arrow-up"
-        severity="secondary"
-        text
-        size="small"
-        fluid
-        (onClick)="promote()"
-      />
+      <button type="button" class="reuse-link" (click)="promote()">
+        <i class="pi pi-arrow-up" aria-hidden="true"></i>
+        Promote to report filter
+      </button>
     }
   </div>
 }
