@@ -54,6 +54,11 @@ export interface AdminGroupDetail extends AdminGroup {
   managers: UserRef[];
 }
 
+/** Whether a candidate group name is free to use, for live validation as the admin types. */
+export interface GroupNameAvailable {
+  available: boolean;
+}
+
 /** Create or update a group. */
 export interface SaveGroup {
   name: string;

@@ -23,6 +23,11 @@ public class AdminGroupsController(UserGroupAdminService groups) : ControllerBas
         return group is null ? NotFound() : group;
     }
 
+    [HttpGet("name-available")]
+    public async Task<ActionResult<GroupNameAvailableDto>> NameAvailable(
+        [FromQuery] string name, [FromQuery] Guid? excludeId) =>
+        new GroupNameAvailableDto { Available = await groups.NameAvailableAsync(name, excludeId) };
+
     [HttpPost]
     public async Task<ActionResult<AdminGroupDetailDto>> Create(SaveGroupDto dto)
     {

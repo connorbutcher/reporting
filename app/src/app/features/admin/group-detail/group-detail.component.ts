@@ -2,13 +2,14 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Dialog } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
-import { form, required, validate } from '@angular/forms/signals';
+import { form, required, validate, validateHttp } from '@angular/forms/signals';
 import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
-import { SaveGroup, UserRef } from '../../../core/models/admin';
+import { GroupNameAvailable, SaveGroup, UserRef } from '../../../core/models/admin';
+import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   ConfirmDialogComponent,
@@ -61,12 +62,31 @@ export class GroupDetailComponent {
 
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A group name is required.' });
+    // Fast, offline check against the groups this admin can already see — catches the common case
+    // instantly. A delegated manager doesn't see every group though, so it can't be the whole story.
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
       if (!name) return null;
       return this.existingNames().includes(name)
         ? { kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }
         : null;
+    });
+    // Authoritative check against every group on the server (only once the checks above pass), so a
+    // manager who can't see the whole groups list still can't collide with a name they don't know about.
+    validateHttp<string, GroupNameAvailable>(path.name, {
+      when: ({ value }) => value().trim().length > 0,
+      request: ({ value }) => ({
+        url: '/api/admin/user-groups/name-available',
+        params: { name: value().trim(), ...(this.refId ? { excludeId: this.refId } : {}) } as Record<
+          string,
+          string
+        >,
+        context: skipHttpErrorNotification(),
+      }),
+      debounce: 400,
+      onSuccess: (result, { value }) =>
+        result.available ? [] : [{ kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }],
+      onError: () => [],
     });
   });
 

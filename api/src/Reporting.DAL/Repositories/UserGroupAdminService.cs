@@ -72,6 +72,24 @@ public class UserGroupAdminService(
         };
     }
 
+    /// <summary>
+    /// Whether <paramref name="name"/> is free to use for a group, ignoring <paramref name="excludeId"/> (the
+    /// group being edited, if any). Checked against every group regardless of the caller's manage scope — a
+    /// delegated manager doesn't see every group's name, so the client can't reliably judge uniqueness on its
+    /// own — but still requires the caller to have some group-management access to call it at all.
+    /// </summary>
+    public async Task<bool> NameAvailableAsync(string? name, Guid? excludeId)
+    {
+        var (full, scope) = await ScopeAsync();
+        if (!full && scope.Count == 0)
+            throw new AccessDeniedException("You don't have access to group administration.");
+
+        var trimmed = (name ?? string.Empty).Trim();
+        if (trimmed.Length == 0) return true;
+
+        return !await db.UserGroups.AnyAsync(g => g.Name == trimmed && (excludeId == null || g.RefId != excludeId));
+    }
+
     public async Task<AdminGroupDetailDto> CreateAsync(SaveGroupDto dto)
     {
         // Creating groups is reserved for a full admin (a global admin). Delegated managers only ever
