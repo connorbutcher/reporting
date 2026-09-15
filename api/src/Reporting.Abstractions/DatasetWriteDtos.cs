@@ -24,6 +24,26 @@ public class SaveDatasetColumnDto
     public DatasetColumnType Type { get; set; } = DatasetColumnType.String;
 }
 
+/// <summary>Creates or edits a formula column: its declared result type and its expression text —
+/// everything else about it (which columns it depends on) is derived from the expression.</summary>
+public class SaveFormulaColumnDto
+{
+    public string Name { get; set; } = string.Empty;
+    public DatasetColumnType ResultType { get; set; } = DatasetColumnType.Double;
+    public string Expression { get; set; } = string.Empty;
+}
+
+/// <summary>A formula to evaluate against a sample of existing rows without saving it — the builder's
+/// live preview.</summary>
+public class PreviewFormulaDto
+{
+    public DatasetColumnType ResultType { get; set; } = DatasetColumnType.Double;
+    public string Expression { get; set; } = string.Empty;
+
+    /// <summary>Set while editing an existing formula column, so it isn't flagged as referencing itself.</summary>
+    public Guid? EditingColumnId { get; set; }
+}
+
 public class SaveDatasetRowDto
 {
     /// <summary>Keyed by column id; unknown columns are ignored.</summary>

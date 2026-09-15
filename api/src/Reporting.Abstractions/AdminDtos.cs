@@ -68,6 +68,12 @@ public class AdminGroupDetailDto : AdminGroupDto
     public List<UserRefDto> Managers { get; set; } = new();
 }
 
+/// <summary>Whether a candidate group name is free to use, for live validation as the admin types.</summary>
+public class GroupNameAvailableDto
+{
+    public bool Available { get; set; }
+}
+
 /// <summary>Create or update a group.</summary>
 public class SaveGroupDto
 {

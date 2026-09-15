@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Formulas;
 
 namespace Reporting.DAL.Repositories;
 
@@ -11,8 +12,11 @@ public sealed record DatasetOwner(int ReportId, int? FolderId, bool InheritsPerm
 /// <summary>The draft revision of a report plus the report's permission context, for scoping dataset list/create.</summary>
 public sealed record ReportDraftContext(int RevisionId, int? FolderId, bool InheritsPermissions);
 
-/// <summary>Dataset metadata and column schema CRUD, plus the generic filtered row query.</summary>
-public class DatasetRepository(ReportingDbContext db)
+/// <summary>Dataset metadata and column schema CRUD, plus the generic filtered row query. Formula
+/// column CRUD lives in <see cref="DatasetFormulaRepository"/>; this still calls into it (and into
+/// <see cref="FormulaColumnRename"/>) wherever a plain column's rename/retype/delete needs to keep
+/// the dataset's formulas in step.</summary>
+public class DatasetRepository(ReportingDbContext db, DatasetFormulaRepository formulas)
 {
     // --- authorization context (resolved by the controller against the owning report) --------
 
@@ -222,6 +226,12 @@ public class DatasetRepository(ReportingDbContext db)
                 Type = column.Type,
                 Order = column.Order,
                 ConfigurationJson = column.ConfigurationJson,
+                // Formulas reference columns by name, and names are carried over unchanged above,
+                // so the expression text needs no rewriting to stay valid in the copy.
+                IsComputed = column.IsComputed,
+                FormulaExpression = column.FormulaExpression,
+                FormulaHasError = column.FormulaHasError,
+                FormulaError = column.FormulaError,
             };
             copy.Columns.Add(columnCopy);
             columnByOldId[column.Id] = columnCopy;
@@ -348,9 +358,14 @@ public class DatasetRepository(ReportingDbContext db)
 
     public async Task<DatasetColumnDto?> UpdateColumnAsync(int id, Guid columnId, string name, DatasetColumnType type)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null) return null;
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var column = dataset?.Columns.FirstOrDefault(c => c.RefId == columnId);
+        if (dataset is null || column is null) return null;
 
+        if (column.IsComputed)
+            throw new DataValidationException("This is a formula column — edit its formula instead of its type.");
+
+        var oldName = column.Name;
         var typeChanged = column.Type != type;
         column.Name = name;
         column.Type = type;
@@ -364,13 +379,27 @@ public class DatasetRepository(ReportingDbContext db)
         }
 
         await db.SaveChangesAsync();
+
+        // A rename or retype can invalidate a formula elsewhere in the dataset that referenced this
+        // column — keep those in step rather than let them silently break.
+        if (dataset.Columns.Any(c => c.IsComputed))
+            await formulas.ReconcileAfterColumnChangedAsync(dataset, oldName, column.Name);
+
         return column.ToDto();
     }
 
     public async Task<bool> DeleteColumnAsync(int id, Guid columnId)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null) return false;
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var column = dataset?.Columns.FirstOrDefault(c => c.RefId == columnId);
+        if (dataset is null || column is null) return false;
+
+        var dependents = FormulaColumnRename.DependentColumnNames(column, dataset.Columns);
+        if (dependents.Count > 0)
+        {
+            throw new DataConflictException(
+                $"Can't delete '{column.Name}' — these formula columns depend on it: {string.Join(", ", dependents)}.");
+        }
 
         db.DatasetColumns.Remove(column);
 

@@ -56,7 +56,12 @@
       <ng-template #header>
         <tr>
           @for (column of columns(); track column.id) {
-            <th>{{ column.name }}</th>
+            <th>
+              {{ column.name }}
+              @if (column.isComputed) {
+                <i class="pi pi-calculator fx-header-icon" aria-hidden="true" title="Formula column"></i>
+              }
+            </th>
           }
           <th class="actions"><span class="sr-only">Actions</span></th>
         </tr>
@@ -71,6 +76,7 @@
                   class="cell"
                   [value]="row.values[column.id] ?? 'False'"
                   [attr.aria-label]="column.name"
+                  [disabled]="column.isComputed"
                   (change)="setCell(row, column.id, $any($event.target).value)"
                 >
                   <option value="True">Yes</option>
@@ -79,9 +85,12 @@
               } @else {
                 <input
                   class="cell"
+                  [class.cell--computed]="column.isComputed"
                   [type]="inputType(column.type)"
                   [value]="cellValue(row, column)"
                   [attr.aria-label]="column.name"
+                  [attr.title]="column.isComputed ? 'Computed by the ' + column.name + ' formula' : null"
+                  [disabled]="column.isComputed"
                   (change)="setCell(row, column.id, $any($event.target).value)"
                 />
               }

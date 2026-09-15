@@ -12,6 +12,8 @@ import {
   DatasetSource,
   DatasetSourceConfig,
   DatasetSummary,
+  FormulaPreviewResult,
+  SaveFormulaColumn,
 } from '../models/dataset';
 import { DatasetCountResult, DatasetQueryResult, FilterGroup } from '../models/filter';
 import {
@@ -200,6 +202,34 @@ export class DatasetApiService {
 
   reorderColumns(datasetId: number, columnIds: string[]): Observable<DatasetSchema> {
     return this.http.put<DatasetSchema>(`/api/datasets/${datasetId}/columns/order`, { columnIds });
+  }
+
+  /** Adds a computed column: the server validates the formula, then computes and stores every row's value. */
+  addFormulaColumn(datasetId: number, column: SaveFormulaColumn): Observable<DatasetColumn> {
+    return this.http.post<DatasetColumn>(`/api/datasets/${datasetId}/columns/formula`, column);
+  }
+
+  /** Edits an existing formula column's name, result type and/or expression; every row is recomputed. */
+  updateFormula(datasetId: number, columnId: string, column: SaveFormulaColumn): Observable<DatasetColumn> {
+    return this.http.put<DatasetColumn>(`/api/datasets/${datasetId}/columns/${columnId}/formula`, column);
+  }
+
+  /**
+   * Evaluates a not-yet-saved formula against a sample of the dataset's existing rows, for the
+   * builder's live preview — nothing is persisted. `editingColumnId` excludes that column from
+   * "references itself" validation while editing an existing formula.
+   */
+  previewFormula(
+    datasetId: number,
+    resultType: DatasetColumnType,
+    expression: string,
+    editingColumnId?: string,
+  ): Observable<FormulaPreviewResult> {
+    return this.http.post<FormulaPreviewResult>(`/api/datasets/${datasetId}/formula/preview`, {
+      resultType,
+      expression,
+      editingColumnId,
+    });
   }
 
   addRow(datasetId: number, values: Record<string, string>): Observable<DatasetRow> {

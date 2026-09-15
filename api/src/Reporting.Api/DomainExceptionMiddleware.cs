@@ -1,4 +1,5 @@
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Formulas;
 using Reporting.DAL.Repositories;
 
 namespace Reporting.Api;
@@ -29,7 +30,8 @@ public sealed class DomainExceptionMiddleware(RequestDelegate next)
 
     private static int? StatusFor(Exception exception) => exception switch
     {
-        DataValidationException or FilterException => StatusCodes.Status400BadRequest,
+        DataValidationException or FilterException or FormulaParseException or FormulaValidationException
+            => StatusCodes.Status400BadRequest,
         DataConflictException => StatusCodes.Status409Conflict,
         DataNotFoundException => StatusCodes.Status404NotFound,
         AccessDeniedException => StatusCodes.Status403Forbidden,

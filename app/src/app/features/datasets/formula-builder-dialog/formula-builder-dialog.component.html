@@ -1,0 +1,95 @@
+<div class="formula-dialog">
+  <header class="formula-dialog-header">
+    <h2 class="formula-dialog-title">
+      {{ data.editingColumn ? 'Edit formula · ' + data.editingColumn.name : 'Add formula column' }}
+    </h2>
+    <button type="button" class="formula-dialog-close" (click)="close()" aria-label="Close">✕</button>
+  </header>
+
+  <div class="formula-dialog-body">
+    @if (store.unrepresentable(); as message) {
+      <p class="formula-dialog-warning">
+        {{ message }} You can rebuild it here — saving replaces the stored formula with whatever
+        you build below.
+      </p>
+    }
+
+    <div class="formula-dialog-fields">
+      <label class="field">
+        <span class="field-label">Name</span>
+        <input
+          pInputText
+          [ngModel]="store.name()"
+          (ngModelChange)="store.name.set($event)"
+          placeholder="Column name"
+        />
+      </label>
+      <label class="field field--type">
+        <span class="field-label">Result type</span>
+        <p-select
+          [options]="store.resultTypes"
+          [ngModel]="store.resultType()"
+          (ngModelChange)="store.resultType.set($event)"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+        />
+      </label>
+    </div>
+    @if (store.nameError(); as message) {
+      <p class="formula-dialog-error">{{ message }}</p>
+    }
+
+    <div class="formula-dialog-builder">
+      <app-formula-palette [columns]="data.pickableColumns" />
+      <app-formula-canvas [blocks]="store.blocks()" />
+    </div>
+
+    <section class="formula-dialog-preview">
+      <h3 class="section-title">Preview</h3>
+      @let preview = store.preview();
+      @switch (preview.state) {
+        @case ('empty') {
+          <p class="formula-dialog-muted">Build a formula above to see it evaluated against real rows.</p>
+        }
+        @case ('loading') {
+          <p class="formula-dialog-muted">Evaluating…</p>
+        }
+        @case ('error') {
+          <p class="formula-dialog-error">{{ preview.message }}</p>
+        }
+        @case ('ready') {
+          <ul class="preview-list">
+            @for (row of preview.result.rows; track row.rowId) {
+              <li class="preview-row">
+                @if (row.error) {
+                  <span class="preview-error" [attr.title]="row.error">Error</span>
+                } @else {
+                  <span class="preview-value">{{ row.value ?? '—' }}</span>
+                }
+              </li>
+            } @empty {
+              <li class="formula-dialog-muted">This dataset has no rows to preview against yet.</li>
+            }
+          </ul>
+        }
+      }
+    </section>
+
+    @if (store.saveError(); as message) {
+      <p class="formula-dialog-error">{{ message }}</p>
+    }
+  </div>
+
+  <footer class="formula-dialog-footer">
+    <button type="button" class="formula-dialog-btn" (click)="close()">Cancel</button>
+    <button
+      type="button"
+      class="formula-dialog-btn formula-dialog-btn--primary"
+      [disabled]="!store.name().trim() || !!store.nameError() || store.blocks().length === 0 || store.saving()"
+      (click)="store.save()"
+    >
+      {{ store.saving() ? 'Saving…' : data.editingColumn ? 'Save changes' : 'Add column' }}
+    </button>
+  </footer>
+</div>

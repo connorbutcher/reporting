@@ -203,6 +203,18 @@ namespace Reporting.Database.Migrations
                     b.Property<int>("DatasetId")
                         .HasColumnType("int");
 
+                    b.Property<string>("FormulaError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormulaExpression")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("FormulaHasError")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsComputed")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

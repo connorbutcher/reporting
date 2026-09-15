@@ -1,0 +1,109 @@
+<div
+  class="canvas"
+  [class.canvas--active]="isDropTarget()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  @if (blocks().length === 0 && !isDropTarget()) {
+    <span class="placeholder">{{ placeholder() }}</span>
+  }
+
+  @for (block of blocks(); track block.id; let i = $index) {
+    @if (isDropTarget() && dropIndex() === i) {
+      <span class="drop-indicator"></span>
+    }
+    <div
+      class="chip"
+      [class]="'chip--' + block.kind"
+      [class.chip--dragging]="isDragging(block)"
+      draggable="true"
+      (dragstart)="startDrag($event, block)"
+      (dragend)="onDragEnd()"
+    >
+      @switch (block.kind) {
+        @case ('column') {
+          <i class="pi pi-table" aria-hidden="true"></i>
+          <span>{{ block.columnName }}</span>
+        }
+        @case ('number') {
+          <p-inputnumber
+            [ngModel]="block.value"
+            (ngModelChange)="setNumber(block.id, $event)"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="6"
+            [attr.draggable]="false"
+            size="small"
+          />
+        }
+        @case ('text') {
+          <input
+            pInputText
+            class="text-input"
+            [ngModel]="block.value"
+            (ngModelChange)="setText(block.id, $event)"
+            [attr.draggable]="false"
+            placeholder="text"
+          />
+        }
+        @case ('bool') {
+          <p-select
+            [options]="boolOptions"
+            [ngModel]="block.value"
+            (ngModelChange)="setBool(block.id, $event)"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            [attr.draggable]="false"
+          />
+        }
+        @case ('operator') {
+          <span class="operator-text">{{ block.op }}</span>
+        }
+        @case ('function') {
+          <span class="fn-name">{{ block.name }}</span>
+          <span class="fn-paren">(</span>
+          @for (slot of block.args; track $index; let last = $last, i = $index) {
+            <app-formula-canvas
+              [blocks]="slot"
+              [path]="slotPath(block.id, i)"
+              placeholder="value"
+            />
+            @if (canRemoveSlot(block)) {
+              <button
+                type="button"
+                class="slot-remove"
+                [attr.aria-label]="'Remove argument ' + (i + 1)"
+                (click)="removeSlot(block.id, i)"
+              >
+                <i class="pi pi-times" aria-hidden="true"></i>
+              </button>
+            }
+            @if (!last) {
+              <span class="fn-comma">,</span>
+            }
+          }
+          @if (canAddSlot(block)) {
+            <button type="button" class="slot-add" aria-label="Add argument" (click)="addSlot(block.id)">
+              <i class="pi pi-plus" aria-hidden="true"></i>
+            </button>
+          }
+          <span class="fn-paren">)</span>
+        }
+      }
+
+      <button
+        type="button"
+        class="chip-remove"
+        aria-label="Remove"
+        (click)="remove(block.id)"
+      >
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+
+  @if (isDropTarget() && dropIndex() === blocks().length) {
+    <span class="drop-indicator"></span>
+  }
+</div>

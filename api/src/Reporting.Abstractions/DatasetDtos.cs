@@ -29,6 +29,43 @@ public class DatasetColumnDto
     /// (polymorphic on a "kind" discriminator). Always populated on read.
     /// </summary>
     public DatasetColumnConfig? Configuration { get; set; }
+
+    /// <summary>Whether this column is server-computed — its cells aren't directly editable, and
+    /// the editor grid should render them read-only.</summary>
+    public bool IsComputed { get; set; }
+
+    /// <summary>The formula's source text. Set only when <see cref="IsComputed"/>.</summary>
+    public string? FormulaExpression { get; set; }
+
+    /// <summary>True if the formula itself is broken (bad syntax, an unresolved column, a
+    /// dependency cycle) — distinct from one row failing to evaluate, which just leaves that row's
+    /// cell blank.</summary>
+    public bool FormulaHasError { get; set; }
+
+    public string? FormulaError { get; set; }
+}
+
+/// <summary>One sampled row's result in a formula preview — either a value or an error, never both.</summary>
+public class FormulaPreviewRowDto
+{
+    public Guid RowId { get; set; }
+
+    /// <summary>Formatted the same way a real cell value is; null if this row errored.</summary>
+    public string? Value { get; set; }
+
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// The result of evaluating a not-yet-saved formula against a sample of a dataset's rows. When
+/// <see cref="Error"/> is set the formula doesn't even validate (bad syntax, an unknown column) and
+/// <see cref="Rows"/> is empty; otherwise <see cref="Rows"/> holds one entry per sampled row, each
+/// either a value or its own per-row error.
+/// </summary>
+public class FormulaPreviewResultDto
+{
+    public string? Error { get; set; }
+    public List<FormulaPreviewRowDto> Rows { get; set; } = new();
 }
 
 public class DatasetSchemaDto

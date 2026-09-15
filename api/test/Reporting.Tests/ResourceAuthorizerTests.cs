@@ -53,7 +53,7 @@ public class ResourceAuthorizerTests : IDisposable
     {
         var accessor = new FakeAccessor(_db, userId);
         var permissions = new PermissionService(_db, accessor);
-        return new ResourceAuthorizer(_db, permissions, new DatasetRepository(_db));
+        return new ResourceAuthorizer(_db, permissions, new DatasetRepository(_db, new DatasetFormulaRepository(_db)));
     }
 
     private async Task<User> SeedUserAsync(bool admin = false)

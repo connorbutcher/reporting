@@ -10,7 +10,9 @@ import { DatasetSchemaState } from './dataset-schema-state';
 /**
  * The selected dataset's column mutations — add, rename, retype, delete and
  * reorder — each persisting immediately and updating the editor's local
- * {@link DatasetSchemaState.columns} optimistically, rolling back on failure.
+ * {@link DatasetSchemaState.columns} optimistically, rolling back on failure. Formula column
+ * saves are the one exception: the builder dialog persists those itself (see
+ * {@link applyFormulaColumnSaved}).
  */
 @Injectable()
 export class DatasetColumnCommands {
@@ -90,7 +92,32 @@ export class DatasetColumnCommands {
         // The server strips the value too, so mirror that on the loaded rows.
         this.rows.stripColumn(column.id);
       },
-      error: (err) => this.notify.apiError(err, `Couldn't delete "${column.name}". Please try again.`),
+      error: (err: { status?: number; error?: unknown }) => {
+        // A 409 names the formula(s) that depend on this column — worth showing verbatim
+        // rather than a generic message, since it's the specific reason the delete failed.
+        this.notify.apiError(
+          err,
+          err?.status === 409 && typeof err.error === 'string'
+            ? err.error
+            : `Couldn't delete "${column.name}". Please try again.`,
+        );
+      },
+    });
+  }
+
+  // --- formula columns --------------------------------------------------------
+
+  /**
+   * Merges a formula column the builder dialog already saved (it talks to
+   * {@link DatasetApiService} directly, not through this service — see
+   * {@link FormulaBuilderStore}, since a CDK dialog doesn't inherit the opener's page-scoped
+   * providers) into the editor's local column list. No API call here; just keeps the optimistic
+   * list in step with what the dialog persisted.
+   */
+  applyFormulaColumnSaved(column: DatasetColumn): void {
+    this.schema.columns.update((columns) => {
+      const exists = columns.some((c) => c.id === column.id);
+      return exists ? columns.map((c) => (c.id === column.id ? column : c)) : [...columns, column];
     });
   }
 

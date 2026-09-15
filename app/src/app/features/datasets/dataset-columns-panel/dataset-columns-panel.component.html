@@ -15,27 +15,44 @@
   <ul class="list">
     @for (column of columns(); track column.id; let i = $index) {
       <li class="row">
-        <i
-          class="type-icon"
-          [class]="typeIcon(column.type)"
-          [attr.title]="column.type"
-          aria-hidden="true"
-        ></i>
-        <input
-          pInputText
-          [ngModel]="column.name"
-          (blur)="onRenameBlur(column, $event)"
-          [attr.aria-label]="'Name of column ' + column.name"
-        />
-        <p-select
-          [options]="columnTypes"
-          [ngModel]="column.type"
-          optionLabel="label"
-          optionValue="value"
-          appendTo="body"
-          [ariaLabel]="'Type of column ' + column.name"
-          (onChange)="retype(column, $event.value)"
-        />
+        @if (column.isComputed) {
+          <span
+            class="type-icon fx-icon"
+            [class.fx-icon--error]="column.formulaHasError"
+            [attr.title]="column.formulaHasError ? 'Formula error: ' + column.formulaError : 'Formula column'"
+            aria-hidden="true"
+          >fx</span>
+          <span class="fx-name" [attr.title]="column.formulaExpression">{{ column.name }}</span>
+          <p-button
+            label="Edit formula"
+            severity="secondary"
+            text
+            size="small"
+            (onClick)="editFormula(column)"
+          />
+        } @else {
+          <i
+            class="type-icon"
+            [class]="typeIcon(column.type)"
+            [attr.title]="column.type"
+            aria-hidden="true"
+          ></i>
+          <input
+            pInputText
+            [ngModel]="column.name"
+            (blur)="onRenameBlur(column, $event)"
+            [attr.aria-label]="'Name of column ' + column.name"
+          />
+          <p-select
+            [options]="columnTypes"
+            [ngModel]="column.type"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            [ariaLabel]="'Type of column ' + column.name"
+            (onChange)="retype(column, $event.value)"
+          />
+        }
         <p-button
           icon="pi pi-chevron-up"
           severity="secondary"
@@ -93,6 +110,15 @@
     (onClick)="add()"
   />
 </div>
+
+<p-button
+  label="Add formula column"
+  icon="pi pi-calculator"
+  severity="secondary"
+  text
+  size="small"
+  (onClick)="addFormula()"
+/>
 
 @if (addNameError() ?? renameError(); as message) {
   <p class="error">{{ message }}</p>

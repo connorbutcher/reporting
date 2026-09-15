@@ -230,7 +230,11 @@ public static class Mapping
         Name = column.Name,
         Type = column.Type,
         Order = column.Order,
-        Configuration = column.GetConfig()
+        Configuration = column.GetConfig(),
+        IsComputed = column.IsComputed,
+        FormulaExpression = column.FormulaExpression,
+        FormulaHasError = column.FormulaHasError,
+        FormulaError = column.FormulaError
     };
 
     /// <summary>

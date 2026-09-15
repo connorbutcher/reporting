@@ -17,6 +17,7 @@ namespace Reporting.Api.Controllers;
 [Route("api/[controller]")]
 public class DatasetsController(
     DatasetRepository datasets,
+    DatasetFormulaRepository formulas,
     DatasetRowRepository rows,
     WidgetQueryRepository widgetQueries) : ControllerBase
 {
@@ -291,6 +292,45 @@ public class DatasetsController(
     {
         var schema = await datasets.ReorderColumnsAsync(id, dto.ColumnIds);
         return schema is null ? NotFound() : schema;
+    }
+
+    // --- formula columns --------------------------------------------------------
+
+    [HttpPost("{id:int}/columns/formula")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<ActionResult<DatasetColumnDto>> AddFormulaColumn(int id, SaveFormulaColumnDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Expression)) return BadRequest("A formula can't be blank.");
+
+        var column = await formulas.AddFormulaColumnAsync(id, dto.Name.Trim(), dto.ResultType, dto.Expression);
+        return column is null ? NotFound() : column;
+    }
+
+    [HttpPut("{id:int}/columns/{columnId:guid}/formula")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<ActionResult<DatasetColumnDto>> UpdateFormula(int id, Guid columnId, SaveFormulaColumnDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Expression)) return BadRequest("A formula can't be blank.");
+
+        var column = await formulas.UpdateFormulaAsync(id, columnId, dto.Name.Trim(), dto.ResultType, dto.Expression);
+        return column is null ? NotFound() : column;
+    }
+
+    /// <summary>
+    /// Evaluates a not-yet-saved formula against a sample of the dataset's existing rows, for the
+    /// formula builder's live preview. Nothing is persisted; Viewer access is enough since this
+    /// only reads.
+    /// </summary>
+    [HttpPost("{id:int}/formula/preview")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<FormulaPreviewResultDto>> PreviewFormula(int id, PreviewFormulaDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Expression)) return BadRequest("A formula can't be blank.");
+
+        var preview = await formulas.PreviewFormulaAsync(id, dto.ResultType, dto.Expression, dto.EditingColumnId);
+        return preview is null ? NotFound() : preview;
     }
 
     // --- rows -----------------------------------------------------------------

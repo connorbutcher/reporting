@@ -11,6 +11,8 @@ import {
   ConfirmDialogComponent,
   ConfirmDialogData,
 } from '../../home/confirm-dialog/confirm-dialog.component';
+import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula-builder-dialog.component';
+import { FormulaBuilderDialogData } from '../formula-builder-dialog/formula-builder.store';
 import { DatasetsStore } from '../datasets.store';
 
 const COLUMN_TYPES: { label: string; value: DatasetColumnType }[] = [
@@ -125,5 +127,31 @@ export class DatasetColumnsPanelComponent {
 
   protected move(index: number, offset: number): void {
     this.store.moveColumn(index, offset);
+  }
+
+  /** Opens the formula builder to add a new computed column. */
+  protected addFormula(): void {
+    this.openFormulaBuilder();
+  }
+
+  /** Opens the formula builder pre-loaded with an existing formula column's expression. */
+  protected editFormula(column: DatasetColumn): void {
+    this.openFormulaBuilder(column);
+  }
+
+  private openFormulaBuilder(editingColumn?: DatasetColumn): void {
+    const datasetId = this.store.selectedId();
+    if (datasetId === null) return;
+
+    // A formula can't reference its own column, so it's left out of what the builder offers to pick from.
+    const pickableColumns = this.columns().filter((c) => c.id !== editingColumn?.id);
+
+    this.dialog
+      .open<DatasetColumn | undefined>(FormulaBuilderDialogComponent, {
+        data: { datasetId, pickableColumns, editingColumn } satisfies FormulaBuilderDialogData,
+      })
+      .closed.subscribe((column) => {
+        if (column) this.store.applyFormulaColumnSaved(column);
+      });
   }
 }

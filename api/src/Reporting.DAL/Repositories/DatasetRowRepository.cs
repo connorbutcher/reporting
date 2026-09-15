@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
+using Reporting.DAL.Formulas;
 
 namespace Reporting.DAL.Repositories;
 
@@ -52,6 +53,7 @@ public class DatasetRowRepository(ReportingDbContext db)
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
         ApplyValues(dataset, row, values);
+        RecomputeFormulas(dataset, row);
 
         db.DatasetRows.Add(row);
         await db.SaveChangesAsync();
@@ -69,6 +71,7 @@ public class DatasetRowRepository(ReportingDbContext db)
         if (row is null) return null;
 
         ApplyValues(dataset, row, values);
+        RecomputeFormulas(dataset, row);
         await db.SaveChangesAsync();
         return row.ToDto(ColumnRefMap(dataset));
     }
@@ -87,13 +90,14 @@ public class DatasetRowRepository(ReportingDbContext db)
         dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
 
     /// <summary>
-    /// Rewrites a row's cells from the submitted values, parsing each against its
-    /// column's type. Values for columns the dataset doesn't have are ignored, so
-    /// stale keys never accumulate. Values are keyed by column RefId.
+    /// Rewrites a row's cells from the submitted values, parsing each against its column's type.
+    /// Values for columns the dataset doesn't have, or for a formula column, are ignored — a formula
+    /// column's cells are never client-writable, only <see cref="RecomputeFormulas"/> touches them.
+    /// Values are keyed by column RefId.
     /// </summary>
     private void ApplyValues(Dataset dataset, DatasetRow row, Dictionary<Guid, string> values)
     {
-        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+        var columnsByRef = dataset.Columns.Where(c => !c.IsComputed).ToDictionary(c => c.RefId);
 
         foreach (var (columnRef, raw) in values)
         {
@@ -111,16 +115,28 @@ public class DatasetRowRepository(ReportingDbContext db)
             }
         }
 
-        // A value the client omitted means the cell was cleared.
+        // A value the client omitted means the cell was cleared — but only for the columns the
+        // client could have submitted a value for; a formula column's cell is left for
+        // RecomputeFormulas to own entirely.
+        var manualColumnIds = columnsByRef.Values.Select(c => c.Id).ToHashSet();
         var submittedPks = values.Keys
             .Where(columnsByRef.ContainsKey)
             .Select(k => columnsByRef[k].Id)
             .ToHashSet();
-        var dropped = row.Cells.Where(c => !submittedPks.Contains(c.ColumnId)).ToList();
+        var dropped = row.Cells.Where(c => manualColumnIds.Contains(c.ColumnId) && !submittedPks.Contains(c.ColumnId)).ToList();
         foreach (var cell in dropped)
         {
             row.Cells.Remove(cell);
             db.DatasetCells.Remove(cell);
         }
+    }
+
+    /// <summary>Recomputes this row's formula cells from the values <see cref="ApplyValues"/> just
+    /// wrote — every add/update goes through this, so a computed column is always current with the
+    /// row's other values, not just from a full dataset-level recompute.</summary>
+    private static void RecomputeFormulas(Dataset dataset, DatasetRow row)
+    {
+        var ordered = FormulaRecompute.PrepareOrderedFormulas(dataset.Columns);
+        if (ordered.Count > 0) FormulaRecompute.Row(row, ordered, dataset.Columns);
     }
 }

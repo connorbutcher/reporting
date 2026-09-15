@@ -1,0 +1,85 @@
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 220px;
+  flex: 0 0 auto;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--app-card-border);
+  background: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  color: #1f2937;
+  cursor: grab;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &--column {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: #3730a3;
+
+    .pi {
+      font-size: 0.7rem;
+    }
+  }
+
+  &--operator {
+    font-weight: 600;
+    min-width: 30px;
+    justify-content: center;
+  }
+
+  &--function {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #047857;
+    font-weight: 700;
+  }
+
+  &--value {
+    color: #475569;
+  }
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.76rem;
+  color: #94a3b8;
+}

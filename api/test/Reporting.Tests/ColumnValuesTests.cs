@@ -40,7 +40,7 @@ public class ColumnValuesTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private DatasetRepository Repo() => new(_db);
+    private DatasetRepository Repo() => new(_db, new DatasetFormulaRepository(_db));
 
     /// <summary>Seeds a "shift" column with the given per-row values and returns its RefId.</summary>
     private async Task<(int DatasetId, Guid ColumnRef)> SeedShiftAsync(params string?[] values)

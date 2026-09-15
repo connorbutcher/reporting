@@ -1,0 +1,118 @@
+<div class="palette">
+  <section class="section">
+    <h3 class="section-title">Columns</h3>
+    <div class="chips">
+      @for (column of columns(); track column.id) {
+        <div
+          class="chip chip--column"
+          draggable="true"
+          (dragstart)="startDrag($event, columnItem(column))"
+          (dragend)="onDragEnd()"
+          (click)="addColumn(column)"
+        >
+          <i class="pi pi-table" aria-hidden="true"></i>
+          {{ column.name }}
+        </div>
+      }
+      @empty {
+        <p class="empty">No other columns yet.</p>
+      }
+    </div>
+  </section>
+
+  <section class="section">
+    <h3 class="section-title">Values</h3>
+    <div class="chips">
+      <div
+        class="chip chip--value"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'number' })"
+        (dragend)="onDragEnd()"
+        (click)="addNumber()"
+      >
+        123
+      </div>
+      <div
+        class="chip chip--value"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'text' })"
+        (dragend)="onDragEnd()"
+        (click)="addText()"
+      >
+        "text"
+      </div>
+      <div
+        class="chip chip--value"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'bool' })"
+        (dragend)="onDragEnd()"
+        (click)="addBool()"
+      >
+        TRUE/FALSE
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h3 class="section-title">Operators</h3>
+    <div class="chips">
+      @for (button of arithmeticOperators; track button.op) {
+        <div
+          class="chip chip--operator"
+          draggable="true"
+          (dragstart)="startDrag($event, operatorItem(button))"
+          (dragend)="onDragEnd()"
+          (click)="addOperator(button.op)"
+        >
+          {{ button.label }}
+        </div>
+      }
+    </div>
+    <div class="chips">
+      @for (button of comparisonOperators; track button.op) {
+        <div
+          class="chip chip--operator"
+          draggable="true"
+          (dragstart)="startDrag($event, operatorItem(button))"
+          (dragend)="onDragEnd()"
+          (click)="addOperator(button.op)"
+        >
+          {{ button.label }}
+        </div>
+      }
+    </div>
+    <div class="chips">
+      @for (button of logicalOperators; track button.op) {
+        <div
+          class="chip chip--operator"
+          draggable="true"
+          (dragstart)="startDrag($event, operatorItem(button))"
+          (dragend)="onDragEnd()"
+          (click)="addOperator(button.op)"
+        >
+          {{ button.label }}
+        </div>
+      }
+    </div>
+  </section>
+
+  @for (group of functionsByCategory; track group.category) {
+    <section class="section">
+      <h3 class="section-title">{{ group.category }}</h3>
+      <div class="chips">
+        @for (spec of group.functions; track spec.name) {
+          <div
+            class="chip chip--function"
+            draggable="true"
+            (dragstart)="startDrag($event, functionItem(spec))"
+            (dragend)="onDragEnd()"
+            (click)="addFunction(spec)"
+            [attr.title]="spec.name + '(' + spec.argHint + ')'"
+          >
+            {{ spec.name }}
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>

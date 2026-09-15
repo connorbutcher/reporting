@@ -36,6 +36,7 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddScoped<DatasetRepository>();
+builder.Services.AddScoped<DatasetFormulaRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();

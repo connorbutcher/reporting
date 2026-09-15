@@ -139,6 +139,11 @@ export class DatasetsStore {
     this.columnCommands.deleteColumn(column);
   }
 
+  /** Merges a formula column the builder dialog already saved into the local column list. */
+  applyFormulaColumnSaved(column: DatasetColumn): void {
+    this.columnCommands.applyFormulaColumnSaved(column);
+  }
+
   moveColumn(index: number, offset: number): void {
     this.columnCommands.moveColumn(index, offset);
   }

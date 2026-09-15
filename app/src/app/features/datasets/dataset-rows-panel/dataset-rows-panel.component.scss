@@ -93,6 +93,20 @@
     outline: 2px solid var(--p-primary-400, #527ac0);
     outline-offset: -2px;
   }
+
+  // Server-computed; editing here is disabled since a typed value would just be
+  // discarded on the next save (the formula owns this cell).
+  &--computed {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+  }
+}
+
+.fx-header-icon {
+  margin-left: 4px;
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
 .actions {

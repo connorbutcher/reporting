@@ -60,6 +60,15 @@ export interface DatasetColumn {
   order: number;
   /** The API always returns a typed config matching {@link type}. */
   configuration: DatasetColumnConfiguration;
+
+  /** Server-computed from {@link formulaExpression} — its cells aren't directly editable. */
+  isComputed: boolean;
+  /** The formula's source text. Set only when {@link isComputed}. */
+  formulaExpression?: string;
+  /** True if the formula itself is broken (bad syntax, an unresolved column, a dependency
+   * cycle) — distinct from one row failing to evaluate, which just leaves that row's cell blank. */
+  formulaHasError: boolean;
+  formulaError?: string;
 }
 
 export interface DatasetSchema {
