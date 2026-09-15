@@ -59,6 +59,12 @@ public class AdminGroupDto
     public int MemberCount { get; set; }
 }
 
+/// <summary>Whether a candidate group name is free to use, for live validation as the admin types.</summary>
+public class GroupNameAvailableDto
+{
+    public bool Available { get; set; }
+}
+
 /// <summary>A group with its members and managers, for the detail card.</summary>
 public class AdminGroupDetailDto : AdminGroupDto
 {
