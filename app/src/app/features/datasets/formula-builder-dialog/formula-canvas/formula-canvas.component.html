@@ -1,4 +1,5 @@
 <div
+  #canvasEl
   class="canvas"
   [class.canvas--active]="isDropTarget()"
   (dragover)="onDragOver($event)"
@@ -67,7 +68,7 @@
             <app-formula-canvas
               [blocks]="slot"
               [path]="slotPath(block.id, i)"
-              placeholder="value"
+              [placeholder]="argLabel(block, i)"
             />
             @if (canRemoveSlot(block)) {
               <button

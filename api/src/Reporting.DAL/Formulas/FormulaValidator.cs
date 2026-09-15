@@ -66,6 +66,18 @@ public static class FormulaValidator
                 foreach (var arg in call.Arguments) CheckCalls(arg);
                 break;
 
+            case FunctionCall call when string.Equals(call.Name, "COALESCE", StringComparison.OrdinalIgnoreCase):
+                if (call.Arguments.Count < 2)
+                    throw new FormulaValidationException("'COALESCE' takes 2 or more arguments.");
+                foreach (var arg in call.Arguments) CheckCalls(arg);
+                break;
+
+            case FunctionCall call when string.Equals(call.Name, "ISBLANK", StringComparison.OrdinalIgnoreCase):
+                if (call.Arguments.Count != 1)
+                    throw new FormulaValidationException("'ISBLANK' takes 1 argument.");
+                foreach (var arg in call.Arguments) CheckCalls(arg);
+                break;
+
             case FunctionCall call:
                 if (!FormulaFunctions.All.TryGetValue(call.Name, out var def))
                     throw new FormulaValidationException($"Unknown function '{call.Name}'.");

@@ -135,6 +135,108 @@ public class FormulaEvaluatorTests
         Assert.Equal(14.0, Eval("DATEDIFF(\"months\", [Start], [End])", values));
     }
 
+    [Theory]
+    [InlineData("CEILING(1.2)", 2.0)]
+    [InlineData("FLOOR(1.8)", 1.0)]
+    [InlineData("MOD(7, 3)", 1.0)]
+    [InlineData("SQRT(9)", 3.0)]
+    public void Math_functions(string expression, double expected)
+    {
+        Assert.Equal(expected, Eval(expression));
+    }
+
+    [Fact]
+    public void Mod_by_zero_throws()
+    {
+        Assert.Throws<FormulaEvaluationException>(() => Eval("MOD(1, 0)"));
+    }
+
+    [Fact]
+    public void Sqrt_of_negative_throws()
+    {
+        Assert.Throws<FormulaEvaluationException>(() => Eval("SQRT(-1)"));
+    }
+
+    [Theory]
+    [InlineData("LEN(\"hello\")", 5.0)]
+    public void Len_counts_characters(string expression, double expected)
+    {
+        Assert.Equal(expected, Eval(expression));
+    }
+
+    [Theory]
+    [InlineData("LEFT(\"hello\", 3)", "hel")]
+    [InlineData("LEFT(\"hi\", 10)", "hi")]
+    [InlineData("RIGHT(\"hello\", 3)", "llo")]
+    [InlineData("RIGHT(\"hi\", 10)", "hi")]
+    [InlineData("REPLACE(\"a-b-c\", \"-\", \"_\")", "a_b_c")]
+    public void Text_slicing_functions(string expression, string expected)
+    {
+        Assert.Equal(expected, Eval(expression));
+    }
+
+    [Theory]
+    [InlineData("CONTAINS(\"Hello World\", \"world\")", true)]
+    [InlineData("CONTAINS(\"Hello World\", \"xyz\")", false)]
+    public void Contains_is_case_insensitive(string expression, bool expected)
+    {
+        Assert.Equal(expected, Eval(expression));
+    }
+
+    [Fact]
+    public void Day_and_weekday_read_from_a_date()
+    {
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["D"] = new DateTime(2026, 9, 15), // a Tuesday
+        };
+
+        Assert.Equal(15.0, Eval("DAY([D])", values));
+        Assert.Equal(3.0, Eval("WEEKDAY([D])", values)); // 1=Sunday .. 7=Saturday
+    }
+
+    [Fact]
+    public void Dateadd_supports_days_months_years_and_negative_amounts()
+    {
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["D"] = new DateTime(2026, 1, 31),
+        };
+
+        Assert.Equal(new DateTime(2026, 2, 10), Eval("DATEADD(\"days\", 10, [D])", values));
+        Assert.Equal(new DateTime(2025, 1, 31), Eval("DATEADD(\"years\", -1, [D])", values));
+    }
+
+    [Fact]
+    public void Coalesce_returns_the_first_non_null_argument()
+    {
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["A"] = null,
+            ["B"] = 5.0,
+        };
+
+        Assert.Equal(5.0, Eval("COALESCE([A], [B], 99)", values));
+    }
+
+    [Fact]
+    public void Coalesce_is_null_when_every_argument_is_null()
+    {
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["A"] = null };
+
+        Assert.Null(Eval("COALESCE([A], [A])", values));
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData(5.0, false)]
+    public void Isblank_reflects_whether_the_argument_is_null(object? value, bool expected)
+    {
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["A"] = value };
+
+        Assert.Equal(expected, Eval("ISBLANK([A])", values));
+    }
+
     [Fact]
     public void Unknown_function_throws()
     {

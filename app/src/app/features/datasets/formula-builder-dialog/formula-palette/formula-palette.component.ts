@@ -1,4 +1,6 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { InputTextModule } from 'primeng/inputtext';
 import { DatasetColumn } from '../../../../core/models/dataset';
 import { FormulaOperator } from '../formula-block.model';
 import { FormulaBuilderStore } from '../formula-builder.store';
@@ -40,10 +42,16 @@ const LOGICAL_OPERATORS: OperatorButton[] = [
  * `formula-canvas.component.ts` for why) onto a {@link FormulaCanvasComponent} and clickable
  * (appends to the top-level canvas) — drag is the primary interaction, click is a
  * keyboard/touch-friendly fallback for the same action.
+ *
+ * A single search box filters both columns and functions at once (by name, and for functions
+ * also by their one-line description) — with ~25 whitelisted functions across four categories,
+ * scanning the whole palette to find e.g. "the one that trims text" doesn't scale, so search is
+ * the fast path and the grouped-by-category browse view is the fallback. Operators and value
+ * placeholders aren't searchable — there are few enough of those to always show them.
  */
 @Component({
   selector: 'app-formula-palette',
-  imports: [],
+  imports: [FormsModule, InputTextModule],
   templateUrl: './formula-palette.component.html',
   styleUrl: './formula-palette.component.scss',
 })
@@ -52,10 +60,32 @@ export class FormulaPaletteComponent {
   public readonly arithmeticOperators = ARITHMETIC_OPERATORS;
   public readonly comparisonOperators = COMPARISON_OPERATORS;
   public readonly logicalOperators = LOGICAL_OPERATORS;
-  public readonly functionsByCategory = FORMULA_FUNCTION_CATEGORIES.map((category) => ({
-    category,
-    functions: FORMULA_FUNCTIONS.filter((f) => f.category === category),
-  }));
+
+  public readonly search = signal('');
+
+  public readonly filteredColumns = computed(() => {
+    const term = this.search().trim().toLowerCase();
+    if (!term) return this.columns();
+    return this.columns().filter((c) => c.name.toLowerCase().includes(term));
+  });
+
+  public readonly functionsByCategory = computed(() => {
+    const term = this.search().trim().toLowerCase();
+    return FORMULA_FUNCTION_CATEGORIES.map((category) => ({
+      category,
+      functions: FORMULA_FUNCTIONS.filter(
+        (f) =>
+          f.category === category &&
+          (!term || f.name.toLowerCase().includes(term) || f.description.toLowerCase().includes(term)),
+      ),
+    })).filter((group) => group.functions.length > 0);
+  });
+
+  /** Whether the search term matched nothing at all, so the template can show one empty state
+   * instead of an oddly bare set of sections. */
+  public readonly noMatches = computed(
+    () => !!this.search().trim() && this.filteredColumns().length === 0 && this.functionsByCategory().length === 0,
+  );
 
   private readonly store = inject(FormulaBuilderStore);
 

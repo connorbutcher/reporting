@@ -42,8 +42,17 @@
 
     <div class="formula-dialog-builder">
       <app-formula-palette [columns]="data.pickableColumns" />
-      <app-formula-canvas [blocks]="store.blocks()" />
+      <div class="canvas-pane">
+        <app-formula-canvas class="canvas-host--top" [blocks]="store.blocks()" />
+      </div>
     </div>
+
+    @if (store.blocks().length > 0) {
+      <p class="formula-dialog-expression">
+        <span class="formula-dialog-expression-label">Formula</span>
+        <code>{{ store.expression() }}</code>
+      </p>
+    }
 
     <section class="formula-dialog-preview">
       <h3 class="section-title">Preview</h3>

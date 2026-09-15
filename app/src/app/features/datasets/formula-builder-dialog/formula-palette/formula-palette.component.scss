@@ -1,11 +1,63 @@
+// The host is a bare custom element with no size of its own — it needs to be a flex column itself
+// so `.palette` below can be told `flex: 1 1 auto` and actually fill whatever height
+// `formula-builder-dialog.component.scss`'s `align-items: stretch` gives this component. Without
+// this, `.palette`'s `overflow-y: auto` never activates (an auto-height box never overflows), and
+// the whole list just spills out past the host's box into whatever renders after it.
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .palette {
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 220px;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.palette-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+
+  .pi-search {
+    position: absolute;
+    left: 8px;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    pointer-events: none;
+  }
+
+  input {
+    width: 100%;
+    padding-left: 26px;
+    padding-right: 22px;
+    font-size: 0.78rem;
+  }
+}
+
+.palette-search-clear {
+  position: absolute;
+  right: 4px;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 3px;
+  line-height: 1;
+  border-radius: 4px;
+  font-size: 0.7rem;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
 }
 
 .section {

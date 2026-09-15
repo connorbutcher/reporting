@@ -1,7 +1,29 @@
+// Block by default (a bare custom element is inline, which fights `.canvas`'s block/flex box
+// below); the *outermost* instance additionally becomes a flex column that fills whatever height
+// `formula-builder-dialog.component.scss`'s `.canvas-pane` gives it — see the `canvas-host--top`
+// class applied only on that one `<app-formula-canvas>` tag in the dialog's own template. A nested
+// slot instance never gets that class, so it keeps its normal shrink-to-fit size inside the
+// enclosing function chip's row, unaffected by any of this.
+:host {
+  display: block;
+}
+
+:host(.canvas-host--top) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
 .canvas {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  // Without this, a container tall enough to scroll (the outermost canvas, once it fills
+  // `.canvas-pane`) would default to `stretch` and space out a short formula's one or two chip
+  // rows across all that height instead of clumping them at the top.
+  align-content: flex-start;
   gap: 6px;
   min-height: 40px;
   padding: 8px;
@@ -16,6 +38,13 @@
     border-color: var(--app-navy, #1e3a5f);
     border-style: solid;
     background: #eef4fb;
+  }
+
+  // Only the outermost canvas fills+scrolls; see the `:host(.canvas-host--top)` rule above.
+  :host(.canvas-host--top) & {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
   }
 }
 

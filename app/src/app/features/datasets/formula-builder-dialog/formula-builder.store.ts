@@ -169,9 +169,13 @@ export class FormulaBuilderStore {
     { initialValue: { state: 'empty' } as PreviewState },
   );
 
+  /** The plain-text formula the current block tree serializes to — exactly what saving sends the
+   * server, and what re-typing the same formula by hand would produce. Shown as a live readout in
+   * the dialog so a person can sanity-check (or copy) the formula without saving first. */
+  public readonly expression = computed(() => serializeFormula(this.blocks()));
+
   private readonly api = inject(DatasetApiService);
   private readonly dialogRef = inject(DialogRef<DatasetColumn | undefined>);
-  private readonly expression = computed(() => serializeFormula(this.blocks()));
 
   constructor() {
     const editing = this.data.editingColumn;

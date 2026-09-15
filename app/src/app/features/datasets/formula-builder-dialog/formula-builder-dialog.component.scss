@@ -1,7 +1,12 @@
+// Sized generously and consistently (not shrink-wrapped to whatever's built so far) — this is an
+// authoring tool people spend real time in, and a dialog that only grows to fit its content is
+// what caused the original bug: the palette/canvas/preview all piled up until the whole dialog
+// (not just the panels that should scroll) needed to scroll to see anything below the fold.
 :host {
   display: block;
-  width: 720px;
-  max-width: calc(100vw - 32px);
+  width: min(960px, calc(100vw - 32px));
+  height: min(88vh, 800px);
+  max-height: calc(100vh - 32px);
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
@@ -11,7 +16,8 @@
 .formula-dialog {
   display: flex;
   flex-direction: column;
-  max-height: min(86vh, 720px);
+  height: 100%;
+  min-height: 0;
 }
 
 .formula-dialog-header {
@@ -51,10 +57,16 @@
 
 .formula-dialog-body {
   padding: 14px 20px;
+  // A fallback only — in the normal case every child below is sized so nothing here needs to
+  // scroll; `.formula-dialog-builder` is the one row that grows to fill the leftover space, and
+  // the palette/canvas inside it are what actually scroll (see below). This only kicks in on a
+  // viewport too short even for the header/fields/footer chrome.
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .formula-dialog-muted {
@@ -107,10 +119,22 @@
   color: #94a3b8;
 }
 
+// The main working area: fills whatever's left after the header/fields/expression/preview/footer
+// take their fixed share, and stretches the palette and canvas to that full height so each scrolls
+// *itself* (`align-items: stretch`, not the old `flex-start`, which let them size to content and
+// push the whole dialog taller instead).
 .formula-dialog-builder {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.canvas-pane {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
 }
 
 .section-title {
@@ -122,7 +146,36 @@
   color: #94a3b8;
 }
 
+.formula-dialog-expression {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--app-card-border);
+  overflow-x: auto;
+
+  code {
+    font-family: ui-monospace, monospace;
+    font-size: 0.82rem;
+    color: #1f2937;
+    white-space: pre;
+  }
+}
+
+.formula-dialog-expression-label {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
 .formula-dialog-preview {
+  flex: 0 0 auto;
   border-top: 1px solid #f1f5f9;
   padding-top: 10px;
 }
@@ -134,6 +187,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  // Capped and independently scrollable so a formula previewed against many rows can't grow the
+  // preview section (and with it the whole dialog) without bound.
+  max-height: 130px;
+  overflow-y: auto;
 }
 
 .preview-row {

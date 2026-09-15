@@ -1,8 +1,29 @@
 <div class="palette">
+  <div class="palette-search">
+    <i class="pi pi-search" aria-hidden="true"></i>
+    <input
+      pInputText
+      type="text"
+      [ngModel]="search()"
+      (ngModelChange)="search.set($event)"
+      placeholder="Search columns and functions…"
+      aria-label="Search columns and functions"
+    />
+    @if (search()) {
+      <button type="button" class="palette-search-clear" aria-label="Clear search" (click)="search.set('')">
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    }
+  </div>
+
+  @if (noMatches()) {
+    <p class="empty">No columns or functions match "{{ search() }}".</p>
+  }
+
   <section class="section">
     <h3 class="section-title">Columns</h3>
     <div class="chips">
-      @for (column of columns(); track column.id) {
+      @for (column of filteredColumns(); track column.id) {
         <div
           class="chip chip--column"
           draggable="true"
@@ -15,7 +36,9 @@
         </div>
       }
       @empty {
-        <p class="empty">No other columns yet.</p>
+        @if (!search()) {
+          <p class="empty">No other columns yet.</p>
+        }
       }
     </div>
   </section>
@@ -96,7 +119,7 @@
     </div>
   </section>
 
-  @for (group of functionsByCategory; track group.category) {
+  @for (group of functionsByCategory(); track group.category) {
     <section class="section">
       <h3 class="section-title">{{ group.category }}</h3>
       <div class="chips">
@@ -107,7 +130,7 @@
             (dragstart)="startDrag($event, functionItem(spec))"
             (dragend)="onDragEnd()"
             (click)="addFunction(spec)"
-            [attr.title]="spec.name + '(' + spec.argHint + ')'"
+            [attr.title]="spec.name + '(' + spec.argHint + ') — ' + spec.description"
           >
             {{ spec.name }}
           </div>

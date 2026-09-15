@@ -9,7 +9,9 @@ namespace Reporting.DAL.Formulas;
 /// arithmetic, comparisons and ordinary function calls (any null argument makes the whole call
 /// null) — a formula referencing an empty cell reads as empty, not a misleading zero. AND/OR/NOT and
 /// IF use SQL-style three-valued logic instead, so <c>[A] AND FALSE</c> is still <c>FALSE</c> even
-/// when <c>[A]</c> is blank. A shape mismatch (arithmetic on text, an unknown function/column) throws
+/// when <c>[A]</c> is blank; COALESCE and ISBLANK are null-aware for the same reason — they exist
+/// specifically to look at a null without it collapsing the whole call to null first. A shape
+/// mismatch (arithmetic on text, an unknown function/column) throws
 /// <see cref="FormulaEvaluationException"/> — always caught by the caller and turned into a null
 /// result for that one row, never allowed to fail a whole recompute.
 /// </summary>
@@ -120,6 +122,10 @@ public static class FormulaEvaluator
     {
         if (string.Equals(node.Name, "IF", StringComparison.OrdinalIgnoreCase))
             return EvaluateIf(node, values);
+        if (string.Equals(node.Name, "COALESCE", StringComparison.OrdinalIgnoreCase))
+            return EvaluateCoalesce(node, values);
+        if (string.Equals(node.Name, "ISBLANK", StringComparison.OrdinalIgnoreCase))
+            return EvaluateIsBlank(node, values);
 
         if (!FormulaFunctions.All.TryGetValue(node.Name, out var def))
             throw new FormulaEvaluationException($"Unknown function '{node.Name}'.");
@@ -139,6 +145,30 @@ public static class FormulaEvaluator
         var condition = Evaluate(node.Arguments[0], values);
         if (condition is null) return null;
         return FormulaValues.ToBool(condition) ? Evaluate(node.Arguments[1], values) : Evaluate(node.Arguments[2], values);
+    }
+
+    /// <summary>The first non-null argument, evaluated left to right and stopping as soon as one is
+    /// found — later arguments (e.g. a fallback column reference) are never evaluated once a value
+    /// is found, same short-circuiting spirit as AND/OR.</summary>
+    private static object? EvaluateCoalesce(FunctionCall node, IReadOnlyDictionary<string, object?> values)
+    {
+        if (node.Arguments.Count < 2)
+            throw new FormulaEvaluationException("'COALESCE' takes 2 or more arguments.");
+
+        foreach (var arg in node.Arguments)
+        {
+            var value = Evaluate(arg, values);
+            if (value is not null) return value;
+        }
+        return null;
+    }
+
+    private static object? EvaluateIsBlank(FunctionCall node, IReadOnlyDictionary<string, object?> values)
+    {
+        if (node.Arguments.Count != 1)
+            throw new FormulaEvaluationException("'ISBLANK' takes 1 argument.");
+
+        return Evaluate(node.Arguments[0], values) is null;
     }
 
     private static string ArityText(IFormulaFunction def) =>

@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input } from '@angular/core';
+import { Component, ElementRef, inject, input, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -6,7 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { FormulaBlock } from '../formula-block.model';
 import { CanvasPath, FormulaBuilderStore } from '../formula-builder.store';
-import { FORMULA_FUNCTIONS } from '../formula-function-catalogue';
+import { findFormulaFunction, formulaArgLabel } from '../formula-function-catalogue';
 
 let nextInstanceId = 0;
 
@@ -49,6 +49,10 @@ export class FormulaCanvasComponent {
 
   private readonly store = inject(FormulaBuilderStore);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
+  /** The `.canvas` div itself — NOT the same node as `elementRef.nativeElement`, which is this
+   * component's host (`<app-formula-canvas>`) and has exactly one direct child (this div); the
+   * chip elements `computeInsertionIndex` needs are that div's children, one level further down. */
+  private readonly canvasEl = viewChild.required<ElementRef<HTMLElement>>('canvasEl');
   /** Stable for this instance's lifetime — identifies it in the store's shared drag-over state
    * without relying on `path()`, which the parent re-creates as a new object every render. */
   private readonly instanceId = `formula-canvas-${++nextInstanceId}`;
@@ -137,14 +141,22 @@ export class FormulaCanvasComponent {
 
   /** Whether this function can take another argument (per its catalogue arity), for the "+" button. */
   public canAddSlot(block: Extract<FormulaBlock, { kind: 'function' }>): boolean {
-    const spec = FORMULA_FUNCTIONS.find((f) => f.name === block.name);
+    const spec = findFormulaFunction(block.name);
     return spec === undefined || spec.maxArgs === null || block.args.length < spec.maxArgs;
   }
 
   /** Whether a slot can be removed without dropping below this function's minimum arity. */
   public canRemoveSlot(block: Extract<FormulaBlock, { kind: 'function' }>): boolean {
-    const spec = FORMULA_FUNCTIONS.find((f) => f.name === block.name);
+    const spec = findFormulaFunction(block.name);
     return block.args.length > (spec?.minArgs ?? 1);
+  }
+
+  /** The placeholder label for one of a function block's argument slots, e.g. "condition" for
+   * IF's first slot — falls back to a generic "value" for a function the catalogue doesn't know
+   * (a formula edited outside the builder shouldn't crash rendering). */
+  public argLabel(block: Extract<FormulaBlock, { kind: 'function' }>, slotIndex: number): string {
+    const spec = findFormulaFunction(block.name);
+    return spec ? formulaArgLabel(spec, slotIndex) : 'value';
   }
 
   /** Which gap between this canvas's direct chip children the pointer is closest to, for both the
@@ -152,7 +164,7 @@ export class FormulaCanvasComponent {
    * against each chip's own row, then its horizontal midpoint) rather than a general layout
    * solver — plenty for a short, mostly-single-row wrapping list of chips. */
   private computeInsertionIndex(clientX: number, clientY: number): number {
-    const chips = Array.from(this.elementRef.nativeElement.children).filter(
+    const chips = Array.from(this.canvasEl().nativeElement.children).filter(
       (el): el is HTMLElement => el instanceof HTMLElement && el.classList.contains('chip'),
     );
     for (let i = 0; i < chips.length; i++) {

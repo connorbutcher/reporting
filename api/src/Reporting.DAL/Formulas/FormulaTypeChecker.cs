@@ -19,6 +19,9 @@ public static class FormulaTypeChecker
         BinaryOperation { Operator: "=" or "<>" or "<" or "<=" or ">" or ">=" or "AND" or "OR" } => FormulaStaticKind.Bool,
         FunctionCall call when string.Equals(call.Name, "IF", StringComparison.OrdinalIgnoreCase) && call.Arguments.Count == 3 =>
             InferIfKind(call, columnKindsByName),
+        FunctionCall call when string.Equals(call.Name, "COALESCE", StringComparison.OrdinalIgnoreCase) =>
+            InferCoalesceKind(call, columnKindsByName),
+        FunctionCall call when string.Equals(call.Name, "ISBLANK", StringComparison.OrdinalIgnoreCase) => FormulaStaticKind.Bool,
         FunctionCall call when FormulaFunctions.All.TryGetValue(call.Name, out var def) => def.ReturnKind,
         _ => FormulaStaticKind.Unknown,
     };
@@ -31,5 +34,19 @@ public static class FormulaTypeChecker
         var thenKind = InferKind(call.Arguments[1], columnKindsByName);
         var elseKind = InferKind(call.Arguments[2], columnKindsByName);
         return thenKind == elseKind ? thenKind : FormulaStaticKind.Unknown;
+    }
+
+    /// <summary>COALESCE's result is whichever kind every argument agrees on, same reasoning as IF.</summary>
+    private static FormulaStaticKind InferCoalesceKind(FunctionCall call, IReadOnlyDictionary<string, FormulaStaticKind> columnKindsByName)
+    {
+        FormulaStaticKind? kind = null;
+        foreach (var arg in call.Arguments)
+        {
+            var argKind = InferKind(arg, columnKindsByName);
+            if (argKind == FormulaStaticKind.Unknown) return FormulaStaticKind.Unknown;
+            if (kind is null) kind = argKind;
+            else if (kind != argKind) return FormulaStaticKind.Unknown;
+        }
+        return kind ?? FormulaStaticKind.Unknown;
     }
 }
