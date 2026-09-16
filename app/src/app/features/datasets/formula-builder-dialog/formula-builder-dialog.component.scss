@@ -148,18 +148,26 @@
 
 .formula-dialog-expression {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   margin: 0;
   padding: 8px 10px;
   border-radius: 8px;
   background: #f8fafc;
   border: 1px solid var(--app-card-border);
-  overflow-x: auto;
 
-  code {
+  pre {
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    // Long formulas get an indented multi-line layout (see `formatFormulaPretty`) rather than one
+    // horizontally-scrolling line — capped and independently scrollable so a very deep formula
+    // can't grow the dialog itself without bound.
+    max-height: 140px;
+    overflow: auto;
     font-family: ui-monospace, monospace;
     font-size: 0.82rem;
+    line-height: 1.5;
     color: #1f2937;
     white-space: pre;
   }

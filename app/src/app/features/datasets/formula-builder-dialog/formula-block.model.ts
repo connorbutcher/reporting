@@ -57,6 +57,27 @@ export function serializeFormula(blocks: readonly FormulaBlock[]): string {
   return blocks.map(serializeBlock).join(' ');
 }
 
+/** A readable, indented rendering of the same text {@link serializeFormula} produces — for display
+ * only, never sent to the server or reparsed. A flat run of columns/literals/operators still reads
+ * as one line, but a function call's arguments each get their own indented line, so a formula with
+ * several (or long) argument slots reads as a small tree instead of one run-on line the canvas's
+ * own wrapping wouldn't otherwise hint at. */
+export function formatFormulaPretty(blocks: readonly FormulaBlock[], indent = 0): string {
+  return blocks.map((block) => formatBlockPretty(block, indent)).join(' ');
+}
+
+function formatBlockPretty(block: FormulaBlock, indent: number): string {
+  if (block.kind !== 'function') return serializeBlock(block);
+  if (block.args.every((arg) => arg.length === 0)) return `${block.name}()`;
+
+  const innerIndent = '  '.repeat(indent + 1);
+  const closeIndent = '  '.repeat(indent);
+  const args = block.args
+    .map((arg) => innerIndent + formatFormulaPretty(arg, indent + 1))
+    .join(',\n');
+  return `${block.name}(\n${args}\n${closeIndent})`;
+}
+
 function serializeBlock(block: FormulaBlock): string {
   switch (block.kind) {
     case 'column':

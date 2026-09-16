@@ -4,6 +4,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DatasetColumn } from '../../../../core/models/dataset';
 import { FormulaOperator } from '../formula-block.model';
 import { FormulaBuilderStore } from '../formula-builder.store';
+import { setDragImageForPaletteItem } from '../formula-drag-preview';
 import {
   FORMULA_FUNCTIONS,
   FORMULA_FUNCTION_CATEGORIES,
@@ -103,7 +104,10 @@ export class FormulaPaletteComponent {
 
   public startDrag(event: DragEvent, item: PaletteItem): void {
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+    // Commit the drag state before touching the DOM for the custom preview below — that way the
+    // drag itself is fully armed even if the (purely cosmetic) preview throws in some browser.
     this.store.startDragFromPalette(item);
+    setDragImageForPaletteItem(event, item);
   }
 
   public onDragEnd(): void {

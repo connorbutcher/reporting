@@ -6,6 +6,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { FormulaBlock } from '../formula-block.model';
 import { CanvasPath, FormulaBuilderStore } from '../formula-builder.store';
+import { setDragImageForBlock } from '../formula-drag-preview';
 import { findFormulaFunction, formulaArgLabel } from '../formula-function-catalogue';
 
 let nextInstanceId = 0;
@@ -61,6 +62,21 @@ export class FormulaCanvasComponent {
     return this.store.dragOverInstanceId() === this.instanceId;
   }
 
+  /** This canvas is the one currently under the pointer, but what's being dragged can't actually
+   * land here (a function over an argument slot) — shown as a distinct "won't fit" state rather
+   * than the ordinary insertion preview, so the drop's rejection isn't a silent surprise. */
+  public isDropInvalid(): boolean {
+    return this.isDropTarget() && this.store.dragOverInvalid();
+  }
+
+  /** A drag is in progress and this canvas *could* accept it — used to give every valid drop zone
+   * a gentle highlight for the duration of the drag, not just the one currently under the pointer,
+   * so it's obvious at a glance where a block can be dropped before you get there. */
+  public isDragReady(): boolean {
+    const dragging = this.store.dragging();
+    return dragging !== null && !this.store.wouldRejectDrop(this.path());
+  }
+
   public dropIndex(): number {
     return this.store.dragOverIndex();
   }
@@ -69,10 +85,12 @@ export class FormulaCanvasComponent {
     if (!this.store.dragging()) return;
     event.preventDefault();
     event.stopPropagation();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const invalid = this.store.wouldRejectDrop(this.path());
+    if (event.dataTransfer) event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
     this.store.setDragOver(
       this.instanceId,
       this.computeInsertionIndex(event.clientX, event.clientY),
+      invalid,
     );
   }
 
@@ -96,7 +114,10 @@ export class FormulaCanvasComponent {
   public startDrag(event: DragEvent, block: FormulaBlock): void {
     event.stopPropagation();
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    // Commit the drag state before touching the DOM for the custom preview below — that way the
+    // drag itself is fully armed even if the (purely cosmetic) preview throws in some browser.
     this.store.startDragBlock(block, this.path());
+    setDragImageForBlock(event, block);
   }
 
   public onDragEnd(): void {
@@ -157,6 +178,18 @@ export class FormulaCanvasComponent {
   public argLabel(block: Extract<FormulaBlock, { kind: 'function' }>, slotIndex: number): string {
     const spec = findFormulaFunction(block.name);
     return spec ? formulaArgLabel(spec, slotIndex) : 'value';
+  }
+
+  /** Whether a function block is folded down to `NAME(…)` — a large formula with several
+   * multi-argument functions reads better when the ones you're not currently working on can be
+   * tucked away instead of always showing every argument row. Purely a display toggle, kept in the
+   * store (keyed by block id) so it's stable regardless of which canvas instance re-renders it. */
+  public isFunctionCollapsed(id: string): boolean {
+    return this.store.isFunctionCollapsed(id);
+  }
+
+  public toggleFunctionCollapsed(id: string): void {
+    this.store.toggleFunctionCollapsed(id);
   }
 
   /** Which gap between this canvas's direct chip children the pointer is closest to, for both the

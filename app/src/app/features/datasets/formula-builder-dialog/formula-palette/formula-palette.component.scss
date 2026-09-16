@@ -84,18 +84,20 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 6px 10px;
   border-radius: 6px;
   border: 1px solid var(--app-card-border);
   background: #fff;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   color: #1f2937;
   cursor: grab;
+  transition: box-shadow 120ms ease;
 
   &:hover {
     background: #f8fafc;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
   }
 
   &:active {

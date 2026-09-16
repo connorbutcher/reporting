@@ -48,10 +48,10 @@
     </div>
 
     @if (store.blocks().length > 0) {
-      <p class="formula-dialog-expression">
+      <div class="formula-dialog-expression">
         <span class="formula-dialog-expression-label">Formula</span>
-        <code>{{ store.expression() }}</code>
-      </p>
+        <pre>{{ store.prettyExpression() }}</pre>
+      </div>
     }
 
     <section class="formula-dialog-preview">

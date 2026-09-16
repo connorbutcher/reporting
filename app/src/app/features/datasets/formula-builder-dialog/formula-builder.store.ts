@@ -23,6 +23,7 @@ import {
   FormulaOperator,
   columnBlock,
   deserializeFormula,
+  formatFormulaPretty,
   functionBlock,
   numberBlock,
   operatorBlock,
@@ -113,6 +114,16 @@ export class FormulaBuilderStore {
   public readonly dragging = signal<DragPayload | null>(null);
   public readonly dragOverInstanceId = signal<string | null>(null);
   public readonly dragOverIndex = signal(0);
+  /** Whether the canvas currently claiming the drag (`dragOverInstanceId`) would actually reject
+   * this drop — a function can't be dropped into another function's argument slot. Tracked
+   * alongside the position so the hovered canvas can show a distinct "won't fit here" state
+   * instead of the ordinary insertion preview, rather than silently no-op'ing on drop. */
+  public readonly dragOverInvalid = signal(false);
+
+  /** Function blocks currently folded to `NAME(…)` in the canvas — a pure display toggle (never
+   * serialized, never affects the formula itself), keyed by block id so it survives whichever
+   * canvas instance happens to render that block. */
+  public readonly collapsedFunctionIds = signal<ReadonlySet<string>>(new Set());
 
   public readonly nameError = computed(() => {
     const trimmed = this.name().trim();
@@ -170,9 +181,15 @@ export class FormulaBuilderStore {
   );
 
   /** The plain-text formula the current block tree serializes to — exactly what saving sends the
-   * server, and what re-typing the same formula by hand would produce. Shown as a live readout in
-   * the dialog so a person can sanity-check (or copy) the formula without saving first. */
+   * server, and what re-typing the same formula by hand would produce. This exact (single-line)
+   * form is what gets sent to the server; {@link prettyExpression} is a display-only reformatting
+   * of the same text. */
   public readonly expression = computed(() => serializeFormula(this.blocks()));
+
+  /** The same formula as {@link expression}, indented so each function call's arguments read as a
+   * small tree instead of one long run-on line — display-only, shown as the dialog's live readout;
+   * never sent to the server or reparsed (saving always uses {@link expression}). */
+  public readonly prettyExpression = computed(() => formatFormulaPretty(this.blocks()));
 
   private readonly api = inject(DatasetApiService);
   private readonly dialogRef = inject(DialogRef<DatasetColumn | undefined>);
@@ -234,6 +251,19 @@ export class FormulaBuilderStore {
     );
   }
 
+  public isFunctionCollapsed(id: string): boolean {
+    return this.collapsedFunctionIds().has(id);
+  }
+
+  public toggleFunctionCollapsed(id: string): void {
+    this.collapsedFunctionIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   public removeFunctionSlot(functionBlockId: string, slotIndex: number): void {
     this.blocks.set(
       mapBlock(this.blocks(), functionBlockId, (block) =>
@@ -257,9 +287,10 @@ export class FormulaBuilderStore {
   /** Claims the drag as being over `instanceId`'s canvas, at `index` within it. A canvas only
    * calls this after `stopPropagation()`, so calling it again for a nested canvas naturally
    * overwrites (and the outer canvas's own handler never runs to fight back). */
-  public setDragOver(instanceId: string, index: number): void {
+  public setDragOver(instanceId: string, index: number, invalid: boolean): void {
     this.dragOverInstanceId.set(instanceId);
     this.dragOverIndex.set(index);
+    this.dragOverInvalid.set(invalid);
   }
 
   /** Releases `instanceId`'s claim — a no-op if some other (e.g. nested) canvas already took over,
@@ -268,24 +299,27 @@ export class FormulaBuilderStore {
     if (this.dragOverInstanceId() === instanceId) this.dragOverInstanceId.set(null);
   }
 
+  /** Whether dropping what's currently being dragged into the canvas at `path` would be rejected —
+   * a function (whether from the palette or an existing block) can't go into an argument slot;
+   * slots stay a flat sequence of columns/literals/operators, never another function call; see
+   * `formula-block.model.ts`. Used both to style the hovered canvas while dragging and to decide
+   * whether a drop actually does anything. */
+  public wouldRejectDrop(path: CanvasPath): boolean {
+    const payload = this.dragging();
+    return payload !== null && path !== null && this.isFunctionPayload(payload);
+  }
+
   /**
    * Completes a drop into the canvas at `path`, at `index` within it: inserts a palette-sourced
-   * block, or relocates/reorders an existing one. Rejects dropping a function (whether from the
-   * palette or an existing block) into an argument slot — slots stay a flat sequence of
-   * columns/literals/operators, never another function call; see `formula-block.model.ts`.
+   * block, or relocates/reorders an existing one. Rejects dropping a function into an argument
+   * slot per {@link wouldRejectDrop}.
    */
   public completeDrop(path: CanvasPath, index: number): void {
     const payload = this.dragging();
-    if (payload) {
-      const isFunction =
-        payload.kind === 'palette'
-          ? payload.item.kind === 'function'
-          : payload.block.kind === 'function';
-      if (!(path !== null && isFunction)) {
-        if (payload.kind === 'palette')
-          this.insertBlock(path, index, createBlockFromPaletteItem(payload.item));
-        else this.moveBlock(payload.block, payload.from, path, index);
-      }
+    if (payload && !this.wouldRejectDrop(path)) {
+      if (payload.kind === 'palette')
+        this.insertBlock(path, index, createBlockFromPaletteItem(payload.item));
+      else this.moveBlock(payload.block, payload.from, path, index);
     }
     this.endDrag();
   }
@@ -293,6 +327,7 @@ export class FormulaBuilderStore {
   public endDrag(): void {
     this.dragging.set(null);
     this.dragOverInstanceId.set(null);
+    this.dragOverInvalid.set(false);
   }
 
   public save(): void {
@@ -323,6 +358,10 @@ export class FormulaBuilderStore {
 
   public cancel(): void {
     this.dialogRef.close(undefined);
+  }
+
+  private isFunctionPayload(payload: DragPayload): boolean {
+    return payload.kind === 'palette' ? payload.item.kind === 'function' : payload.block.kind === 'function';
   }
 
   /** The block array at `path` right now — the top level, or one function's argument slot. */
