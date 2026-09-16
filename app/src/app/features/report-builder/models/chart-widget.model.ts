@@ -271,7 +271,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     const name = this.label();
     const bindings = this.bindings();
     const multi = bindings.length > 1;
-    const issues: ValidationIssue[] = [];
+    const issues: ValidationIssue[] = [...this.sharedChartIssues()];
 
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (dataset ${i + 1})` : name;
@@ -295,6 +295,61 @@ export abstract class ChartWidgetModel extends WidgetModel {
         });
       }
     });
+
+    return issues;
+  }
+
+  /**
+   * Dangling-reference checks shared by every chart kind's `ownIssues()` — a tooltip column or
+   * tolerance-band column that pointed at a real dataset column when it was picked, but that
+   * column has since been removed. Chart-wide (tooltip columns and tolerance bands are plain
+   * data on the widget, not their own {@link EditorNode}s), so unlike the per-binding check in
+   * {@link ChartBindingModel}, every concrete subclass must call this itself alongside its own
+   * checks — none of them delegate to this base class's `ownIssues()`.
+   */
+  public sharedChartIssues(): ValidationIssue[] {
+    const issues: ValidationIssue[] = [];
+
+    const schema = this.schema();
+    if (schema) {
+      const columnIds = new Set(schema.columns.map((c) => c.id));
+      if (this.tooltipColumns().some((c) => !columnIds.has(c.columnId))) {
+        issues.push({
+          id: `${this.id}:tooltipMissingColumn`,
+          severity: 'error',
+          title: `${this.label()} shows a tooltip column that no longer exists`,
+          detail: 'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
+          widgetId: this.id,
+          view: { kind: 'widget', widgetId: this.id },
+        });
+      }
+    }
+
+    // A tolerance band points at its own "limits" dataset — separate from whatever the chart
+    // itself plots — so it's checked against that dataset's schema, not the chart's.
+    for (const band of this.toleranceBands()) {
+      const bandSchema = band.sourceDatasetId ? (this.sources.schemas()[band.sourceDatasetId] ?? null) : null;
+      if (!bandSchema) continue;
+
+      const columnIds = new Set(bandSchema.columns.map((c) => c.id));
+      const pointers = [
+        band.minColumnId,
+        band.maxColumnId,
+        band.concessionLowerColumnId,
+        band.concessionUpperColumnId,
+      ].filter((id): id is string => !!id);
+
+      if (pointers.some((id) => !columnIds.has(id))) {
+        issues.push({
+          id: `${this.id}:tolerance:${band.id}:missingColumn`,
+          severity: 'error',
+          title: `${this.label()}'s tolerance band points at a removed column`,
+          detail: `"${bandSchema.name}" no longer has one of the columns this band uses. Re-point it or remove the band.`,
+          widgetId: this.id,
+          view: { kind: 'chartToleranceBand', widgetId: this.id, bandId: band.id },
+        });
+      }
+    }
 
     return issues;
   }

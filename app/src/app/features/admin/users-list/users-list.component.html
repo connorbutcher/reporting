@@ -2,7 +2,7 @@
   <header class="admin-card-head">
     <div>
       <h2 class="admin-card-title">Users</h2>
-      <p class="admin-card-subtitle">{{ users().length }} {{ users().length === 1 ? 'person' : 'people' }}</p>
+      <p class="admin-card-subtitle">{{ countLabel() }}</p>
     </div>
     <span class="admin-card-spacer"></span>
     <p-button label="New user" icon="pi pi-user-plus" size="small" (onClick)="create()" />
@@ -18,7 +18,26 @@
     } @else if (failed()) {
       <p class="admin-empty">Couldn't load users. Refresh to try again.</p>
     } @else {
-      <p-table class="admin-table-wrapper" [value]="users()" sortMode="single" dataKey="id" size="small">
+      <p-table
+        #dt
+        class="admin-table-wrapper"
+        [value]="users()"
+        sortMode="single"
+        dataKey="id"
+        size="small"
+        [globalFilterFields]="['displayName', 'email']"
+        (onFilter)="onFilter($event)"
+      >
+        <ng-template #caption>
+          <input
+            pInputText
+            class="admin-table-search"
+            type="text"
+            (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+            placeholder="Search by name or email…"
+            aria-label="Search users"
+          />
+        </ng-template>
         <ng-template #header>
           <tr>
             <th pSortableColumn="displayName">Name <p-sort-icon field="displayName" /></th>

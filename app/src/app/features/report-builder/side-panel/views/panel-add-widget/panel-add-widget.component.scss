@@ -16,3 +16,11 @@
   color: #64748b;
   padding: 0 2px;
 }
+
+// Sized to sit comfortably next to the `.pi` font icons the other groups still use, so a chart
+// row's custom glyph (see the template) doesn't look out of scale next to a Data/Text row's icon.
+.panel-menu-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}

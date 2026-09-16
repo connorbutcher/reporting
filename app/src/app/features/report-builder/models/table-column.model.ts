@@ -7,6 +7,7 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
+import { SchemaSource } from './widget-model-base';
 
 /** One column placed on a table, owning how that column is presented. */
 export class TableColumnModel extends EditorNode {
@@ -27,10 +28,18 @@ export class TableColumnModel extends EditorNode {
   /** The label actually rendered in the table header. */
   readonly label: Signal<string>;
 
+  /**
+   * The tolerance's own "limits" dataset schema, once loaded — separate from {@link schema},
+   * which is this column's dataset (the one the tolerance's own column, above, belongs to).
+   * Null while the banding is off, pending, or points at nothing yet.
+   */
+  private readonly toleranceSchema: Signal<DatasetSchema | null>;
+
   constructor(
     private readonly widgetId: string,
     dto: DataTableColumnSetting,
     private readonly schema: Signal<DatasetSchema | null>,
+    schemas: SchemaSource,
   ) {
     super();
     this.columnId = dto.columnId;
@@ -46,6 +55,10 @@ export class TableColumnModel extends EditorNode {
     this.label = computed(
       () => this.header().trim() || this.schemaColumn()?.name || 'Unknown column',
     );
+    this.toleranceSchema = computed(() => {
+      const sourceId = this.tolerance()?.sourceDatasetId;
+      return sourceId ? (schemas()[sourceId] ?? null) : null;
+    });
   }
 
   setWidth(width: number | null): void {
@@ -79,17 +92,46 @@ export class TableColumnModel extends EditorNode {
   protected override ownIssues(): ValidationIssue[] {
     // Only meaningful once the schema is known; a pending fetch must not look
     // like a column that has been deleted from the dataset.
-    if (!this.schema() || this.schemaColumn()) return [];
+    if (this.schema() && !this.schemaColumn()) {
+      return [
+        {
+          id: `${this.widgetId}:column:${this.columnId}:missing`,
+          severity: 'error',
+          title: `A column is no longer in "${this.schema()!.name}"`,
+          detail: 'The dataset column was removed. Take it off the table to fix the report.',
+          widgetId: this.widgetId,
+          view: { kind: 'widgetColumns', widgetId: this.widgetId },
+        },
+      ];
+    }
 
-    return [
-      {
-        id: `${this.widgetId}:column:${this.columnId}:missing`,
-        severity: 'error',
-        title: `A column is no longer in "${this.schema()!.name}"`,
-        detail: 'The dataset column was removed. Take it off the table to fix the report.',
-        widgetId: this.widgetId,
-        view: { kind: 'widgetColumns', widgetId: this.widgetId },
-      },
-    ];
+    // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
+    // so they're checked against that dataset's schema rather than this column's own.
+    const tolerance = this.tolerance();
+    const toleranceSchema = this.toleranceSchema();
+    if (tolerance && toleranceSchema) {
+      const columnIds = new Set(toleranceSchema.columns.map((c) => c.id));
+      const pointers = [
+        tolerance.minColumnId,
+        tolerance.maxColumnId,
+        tolerance.concessionLowerColumnId,
+        tolerance.concessionUpperColumnId,
+      ].filter((id): id is string => !!id);
+
+      if (pointers.some((id) => !columnIds.has(id))) {
+        return [
+          {
+            id: `${this.widgetId}:column:${this.columnId}:toleranceMissing`,
+            severity: 'error',
+            title: `"${this.label()}"'s tolerance points at a removed column`,
+            detail: `"${toleranceSchema.name}" no longer has one of the columns this tolerance uses. Re-point it or remove the banding.`,
+            widgetId: this.widgetId,
+            view: { kind: 'columnTolerance', widgetId: this.widgetId, columnId: this.columnId },
+          },
+        ];
+      }
+    }
+
+    return [];
   }
 }

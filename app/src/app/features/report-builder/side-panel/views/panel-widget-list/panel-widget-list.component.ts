@@ -24,17 +24,17 @@ export class PanelWidgetListComponent {
   protected readonly widgets = this.session.widgets;
   protected readonly selectedWidgetId = this.selection.selectedWidgetId;
 
-  /** Listbox needs plain fields, so each model is flattened into an option. */
+  /** Listbox needs plain fields, so each model is flattened into an option. Shows the widget's
+   * *type* (e.g. "Scatter chart") as the secondary line rather than its grid position/size —
+   * raw column/row numbers told a report author nothing they could act on and just duplicated
+   * what's already visible by looking at the canvas. */
   protected readonly options = computed(() =>
     this.session.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
       icon: widgetTypeDescriptor(widget.type).icon,
+      typeLabel: widgetTypeDescriptor(widget.type).label,
       label: widget.label(),
-      x: widget.x(),
-      y: widget.y(),
-      w: widget.w(),
-      h: widget.h(),
     })),
   );
 

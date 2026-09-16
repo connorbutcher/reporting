@@ -8,7 +8,7 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter.model';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { ModelSources, SchemaSource, WidgetModel } from './widget-model-base';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';
 import { ValidationIssue } from './validation-issue';
@@ -32,9 +32,14 @@ export class DataTableWidgetModel extends WidgetModel {
   /** Dataset columns not yet placed on the table. */
   readonly availableColumns: Signal<DatasetSchema['columns']>;
 
+  /** Kept so a column added later (see `addColumns`) can build with the same tolerance-schema
+   * look-up its siblings got at construction time. */
+  private readonly schemas: SchemaSource;
+
   constructor(widget: DataTableWidget, sources: ModelSources) {
     super(widget);
     const config = widget.config;
+    this.schemas = sources.schemas;
 
     this.datasetId.set(config.datasetId);
     this.sortColumnId.set(config.sortColumnId);
@@ -46,7 +51,9 @@ export class DataTableWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
 
-    this.columns.set(config.columns.map((c) => new TableColumnModel(this.id, c, this.schema)));
+    this.columns.set(
+      config.columns.map((c) => new TableColumnModel(this.id, c, this.schema, sources.schemas)),
+    );
 
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
@@ -93,7 +100,7 @@ export class DataTableWidgetModel extends WidgetModel {
     const existing = new Set(this.columns().map((c) => c.columnId));
     const added = columnIds
       .filter((id) => !existing.has(id))
-      .map((id) => new TableColumnModel(this.id, { columnId: id }, this.schema));
+      .map((id) => new TableColumnModel(this.id, { columnId: id }, this.schema, this.schemas));
 
     if (added.length === 0) return;
     this.columns.update((columns) => [...columns, ...added]);
@@ -203,14 +210,29 @@ export class DataTableWidgetModel extends WidgetModel {
 
     const sortColumnId = this.sortColumnId();
     if (sortColumnId && !this.columns().some((c) => c.columnId === sortColumnId)) {
-      issues.push({
-        id: `${this.id}:sortColumn`,
-        severity: 'warning',
-        title: `${name} sorts by a column it doesn't show`,
-        detail: 'Add that column back, or sort by one that is displayed.',
-        widgetId: this.id,
-        view: { kind: 'widgetColumns', widgetId: this.id },
-      });
+      // Distinguish "sorts by a column that's valid but just not shown" (fine to leave, or fix
+      // by re-adding it) from "sorts by a column the dataset no longer has at all" (a real
+      // break — the sort can never work again until it's repointed).
+      const schema = this.schema();
+      if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
+        issues.push({
+          id: `${this.id}:sortColumnMissing`,
+          severity: 'error',
+          title: `${name} sorts by a column that no longer exists`,
+          detail: 'That dataset column was removed. Pick a different sort column.',
+          widgetId: this.id,
+          view: { kind: 'widgetColumns', widgetId: this.id },
+        });
+      } else {
+        issues.push({
+          id: `${this.id}:sortColumn`,
+          severity: 'warning',
+          title: `${name} sorts by a column it doesn't show`,
+          detail: 'Add that column back, or sort by one that is displayed.',
+          widgetId: this.id,
+          view: { kind: 'widgetColumns', widgetId: this.id },
+        });
+      }
     }
 
     return issues;

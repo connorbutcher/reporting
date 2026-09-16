@@ -73,9 +73,11 @@ export class HistogramWidgetModel extends ChartWidgetModel {
   // are required. A worded message matches the box/bar checks' one-prompt-at-a-time style.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
+    const shared = this.sharedChartIssues();
 
     if (!this.datasetId()) {
       return [
+        ...shared,
         {
           id: `${this.id}:noDataset`,
           severity: 'warning',
@@ -89,6 +91,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
 
     if (!this.xColumnId()) {
       return [
+        ...shared,
         {
           id: `${this.id}:noValue`,
           severity: 'warning',
@@ -100,6 +103,6 @@ export class HistogramWidgetModel extends ChartWidgetModel {
       ];
     }
 
-    return [];
+    return shared;
   }
 }

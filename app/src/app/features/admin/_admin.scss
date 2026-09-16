@@ -144,6 +144,14 @@
   overflow: auto;
 }
 
+// The `p-table` `#caption` template's search box — PrimeNG renders the caption as its own bar
+// above the column headers, so this only needs its own bottom margin, not a full field wrapper.
+.admin-table-search {
+  width: 100%;
+  max-width: 320px;
+  font-size: 0.85rem;
+}
+
 .admin-row {
   cursor: pointer;
 

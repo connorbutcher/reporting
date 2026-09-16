@@ -210,6 +210,36 @@ export class PivotTableWidgetModel extends WidgetModel {
       });
     }
 
+    // A dimension or measure column that was validly picked, but whose dataset has since had
+    // that column removed — the same "still exists?" check TableColumnModel/FilterConditionModel
+    // do for their own column references.
+    const schema = this.schema();
+    if (schema) {
+      const columnIds = new Set(schema.columns.map((c) => c.id));
+
+      if (this.rowFields().some((id) => !columnIds.has(id))) {
+        issues.push({
+          id: `${this.id}:missingRowField`,
+          severity: 'error',
+          title: `${name} groups by a column that no longer exists`,
+          detail: 'A dimension column was removed from the dataset. Remove it or replace it with another.',
+          widgetId: this.id,
+          view,
+        });
+      }
+
+      if (this.measures().some((m) => m.columnId && !columnIds.has(m.columnId))) {
+        issues.push({
+          id: `${this.id}:missingMeasureColumn`,
+          severity: 'error',
+          title: `${name} has a measure whose column no longer exists`,
+          detail: "A measure's value column was removed from the dataset. Pick a new one.",
+          widgetId: this.id,
+          view,
+        });
+      }
+    }
+
     return issues;
   }
 }

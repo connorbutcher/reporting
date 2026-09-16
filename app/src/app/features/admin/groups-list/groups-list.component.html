@@ -2,7 +2,7 @@
   <header class="admin-card-head">
     <div>
       <h2 class="admin-card-title">Groups</h2>
-      <p class="admin-card-subtitle">{{ groups().length }} {{ groups().length === 1 ? 'group' : 'groups' }}</p>
+      <p class="admin-card-subtitle">{{ countLabel() }}</p>
     </div>
     <span class="admin-card-spacer"></span>
     @if (canCreate()) {
@@ -20,7 +20,26 @@
     } @else if (failed()) {
       <p class="admin-empty">Couldn't load groups. Refresh to try again.</p>
     } @else {
-      <p-table class="admin-table-wrapper" [value]="groups()" sortMode="single" dataKey="id" size="small">
+      <p-table
+        #dt
+        class="admin-table-wrapper"
+        [value]="groups()"
+        sortMode="single"
+        dataKey="id"
+        size="small"
+        [globalFilterFields]="['name']"
+        (onFilter)="onFilter($event)"
+      >
+        <ng-template #caption>
+          <input
+            pInputText
+            class="admin-table-search"
+            type="text"
+            (input)="dt.filterGlobal($any($event.target).value, 'contains')"
+            placeholder="Search by name…"
+            aria-label="Search groups"
+          />
+        </ng-template>
         <ng-template #header>
           <tr>
             <th pSortableColumn="name">Name <p-sort-icon field="name" /></th>

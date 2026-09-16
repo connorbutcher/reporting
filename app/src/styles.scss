@@ -74,7 +74,8 @@ body {
     border-color: var(--p-primary-200, #adc3e5);
   }
 
-  > .pi:first-child {
+  > .pi:first-child,
+  > .panel-menu-icon:first-child {
     color: var(--app-navy);
   }
 

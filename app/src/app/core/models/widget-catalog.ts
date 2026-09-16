@@ -45,7 +45,7 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     type: 'pivotTable',
     label: 'Pivot table',
     hint: 'Group rows and summarise columns',
-    icon: 'pi pi-table',
+    icon: 'pi pi-objects-column',
     group: 'data',
   },
   {

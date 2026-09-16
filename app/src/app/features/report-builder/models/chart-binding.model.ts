@@ -62,6 +62,9 @@ export class ChartBindingModel extends EditorNode {
   /** Columns an axis can plot: numeric (value), text (category), or date (time). */
   public readonly axisColumns: Signal<DatasetColumn[]>;
 
+  /** For issue titles/navigation only — this binding's own state never depends on its parent. */
+  private readonly widgetId: string;
+
   constructor(
     binding: ChartSeriesBinding,
     sources: ModelSources,
@@ -70,6 +73,7 @@ export class ChartBindingModel extends EditorNode {
   ) {
     super();
     this.id = binding.id;
+    this.widgetId = widgetId;
     this.datasetId.set(binding.datasetId);
     this.xColumnId.set(binding.xColumnId);
     this.yColumnId.set(binding.yColumnId);
@@ -162,10 +166,37 @@ export class ChartBindingModel extends EditorNode {
     return [this.filter];
   }
 
-  // Axis/dataset problems stay on the widget, read through the primary binding, so issue
-  // ids and text are unchanged from the single-dataset era.
+  // "No dataset yet" / "no axis picked yet" stay on the widget (read through the primary
+  // binding there), so that wording is unchanged from the single-dataset era. This only
+  // catches the other kind of problem: a column that *was* validly picked, but whose dataset
+  // has since had that column removed — the same "still exists?" check TableColumnModel and
+  // FilterConditionModel already do, applied to a chart series's own column fields.
   public override ownIssues(): ValidationIssue[] {
-    return [];
+    const schema = this.schema();
+    // A pending schema fetch (or no dataset picked yet) must not look like a deleted column.
+    if (!schema) return [];
+
+    const columnIds = new Set(schema.columns.map((c) => c.id));
+    const missing = (columnId: string | null) => !!columnId && !columnIds.has(columnId);
+
+    const brokenFields: string[] = [];
+    if (missing(this.xColumnId())) brokenFields.push('X axis');
+    if (missing(this.yColumnId())) brokenFields.push('Y axis');
+    if (missing(this.seriesColumnId())) brokenFields.push('split-by');
+    if (this.valueColumnIds().some((id) => missing(id))) brokenFields.push('value');
+
+    if (brokenFields.length === 0) return [];
+
+    return [
+      {
+        id: `${this.id}:missingColumn`,
+        severity: 'error',
+        title: 'A chart series points at a column that no longer exists',
+        detail: `Its ${brokenFields.join(', ')} column was removed from "${schema.name}". Pick a new one or remove the series.`,
+        widgetId: this.widgetId,
+        view: { kind: 'chartSeries', widgetId: this.widgetId, bindingId: this.id },
+      },
+    ];
   }
 
   public override snapshotValue(): unknown {

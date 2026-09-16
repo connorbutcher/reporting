@@ -74,9 +74,11 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   // messages differ from the shared "X and Y" check point charts use.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
+    const shared = this.sharedChartIssues();
 
     if (!this.datasetId()) {
       return [
+        ...shared,
         {
           id: `${this.id}:noDataset`,
           severity: 'warning',
@@ -90,6 +92,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
 
     if (!this.xColumnId()) {
       return [
+        ...shared,
         {
           id: `${this.id}:noCategory`,
           severity: 'warning',
@@ -103,6 +106,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
 
     if (!this.yColumnId()) {
       return [
+        ...shared,
         {
           id: `${this.id}:noValue`,
           severity: 'warning',
@@ -114,6 +118,6 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
       ];
     }
 
-    return [];
+    return shared;
   }
 }

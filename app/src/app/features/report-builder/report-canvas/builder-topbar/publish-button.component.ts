@@ -11,8 +11,14 @@ import { ReportSession } from '../../state/report-session';
  * A checked-out draft is itself the pending version, so it can be published as
  * soon as it's loaded, valid, and fully saved — no edit in this session is
  * required. Publishing snapshots the server-side draft, so it's held back while a
- * save is still in flight or has failed, and while the report has validation
- * errors. The button's enabled state and tooltip carry that status on their own.
+ * save is still in flight or has failed, while the report has validation errors,
+ * and while it has warnings (an unconfigured/blank widget, most commonly) — see
+ * {@link ReportSession.warnings}. Warnings deliberately stay non-blocking for
+ * *autosave* (see `report-autosave.ts` / `validation-issue.ts`: a freshly-added,
+ * still-blank widget must remain saveable, or it could never be persisted while
+ * being set up) but a report shouldn't actually ship with a blank widget in it,
+ * so publish is the stricter gate. The button's enabled state and tooltip carry
+ * that status on their own.
  */
 @Component({
   selector: 'app-publish-button',
@@ -70,19 +76,25 @@ export class PublishButtonComponent {
     () => !this.session.dirty() && !this.autosave.saving() && !this.autosave.saveFailed(),
   );
 
+  /** No unconfigured/blank widgets, dangling references, or other loose ends — see the class doc. */
+  private readonly noIssues = computed(
+    () => this.session.isValid() && this.session.warnings().length === 0,
+  );
+
   /**
-   * A loaded draft can be published as soon as it's valid and fully saved — no
-   * edit in this session is required, since the checked-out draft is already the
-   * pending version. Publishing snapshots the server-side draft, so it's held
+   * A loaded draft can be published as soon as it's issue-free and fully saved —
+   * no edit in this session is required, since the checked-out draft is already
+   * the pending version. Publishing snapshots the server-side draft, so it's held
    * back while a save is still in flight or has failed.
    */
   protected readonly canPublish = computed(
-    () => this.draftLoaded() && this.session.isValid() && this.allSaved(),
+    () => this.draftLoaded() && this.noIssues() && this.allSaved(),
   );
 
   protected readonly title = computed(() => {
     if (!this.draftLoaded()) return 'Loading the draft…';
     if (!this.session.isValid()) return 'Fix errors before publishing';
+    if (!this.noIssues()) return 'Finish every widget before publishing — see the issues panel';
     if (this.autosave.saveFailed()) return "Your last change hasn't saved yet — publishing is blocked until it does";
     if (!this.allSaved()) return 'Waiting for your changes to finish saving…';
     return 'Publish this draft as a new version';

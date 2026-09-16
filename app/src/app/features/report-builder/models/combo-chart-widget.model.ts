@@ -83,7 +83,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     const bindings = this.bindings();
     const multi = bindings.length > 1;
     const view = { kind: 'widget', widgetId: this.id } as const;
-    const issues: ValidationIssue[] = [];
+    const issues: ValidationIssue[] = [...this.sharedChartIssues()];
 
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (series ${i + 1})` : name;
