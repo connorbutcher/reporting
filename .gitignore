@@ -1,6 +1,7 @@
 # .NET
 api/**/bin/
 api/**/obj/
+api/**/bin_typecheck/
 api/**/.vs/
 api/src/Reporting.Api/reporting.db
 api/src/Reporting.Api/reporting.db-shm
