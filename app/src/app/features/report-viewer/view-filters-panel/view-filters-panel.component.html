@@ -7,7 +7,7 @@
     <h3 class="heading">Page filters</h3>
     @for (entry of pageEntries(); track entry.key) {
       <div class="entry">
-        <button type="button" class="row" (click)="toggle(entry)">
+        <button type="button" class="row" (click)="togglePage(entry)">
           <i class="pi pi-database" aria-hidden="true"></i>
           <span class="text">
             <span class="label">{{ entry.label() }}</span>
@@ -18,9 +18,13 @@
               }
             </span>
           </span>
-          <i class="pi" [class.pi-angle-down]="isOpen(entry)" [class.pi-angle-right]="!isOpen(entry)"></i>
+          <i
+            class="pi"
+            [class.pi-angle-down]="isPageOpen(entry)"
+            [class.pi-angle-right]="!isPageOpen(entry)"
+          ></i>
         </button>
-        @if (isOpen(entry)) {
+        @if (isPageOpen(entry)) {
           <div class="builder">
             <app-filter-builder [group]="entry.group" />
           </div>
@@ -31,27 +35,36 @@
 
   <section class="section">
     <h3 class="heading">Widget filters</h3>
-    @for (entry of widgetEntries(); track entry.key) {
-      <div class="entry">
-        <button type="button" class="row" (click)="toggle(entry)">
-          <i [class]="entry.icon" aria-hidden="true"></i>
-          <span class="text">
-            <span class="label">{{ entry.label() }}</span>
-            <span class="summary">
-              {{ summary(entry) }}
-              @if (isChanged(entry)) {
-                <span class="changed">· changed</span>
-              }
+    @for (group of widgetGroups(); track group.tabName) {
+      @if (widgetGroups().length > 1) {
+        <h4 class="tab-heading">{{ group.tabName || 'Untitled tab' }}</h4>
+      }
+      @for (entry of group.entries; track entry.key) {
+        <div class="entry">
+          <button type="button" class="row" (click)="toggleWidget(entry)">
+            <i [class]="entry.icon" aria-hidden="true"></i>
+            <span class="text">
+              <span class="label">{{ entry.label() }}</span>
+              <span class="summary">
+                {{ summary(entry) }}
+                @if (isChanged(entry)) {
+                  <span class="changed">· changed</span>
+                }
+              </span>
             </span>
-          </span>
-          <i class="pi" [class.pi-angle-down]="isOpen(entry)" [class.pi-angle-right]="!isOpen(entry)"></i>
-        </button>
-        @if (isOpen(entry)) {
-          <div class="builder">
-            <app-filter-builder [group]="entry.group" />
-          </div>
-        }
-      </div>
+            <i
+              class="pi"
+              [class.pi-angle-down]="isWidgetOpen(entry)"
+              [class.pi-angle-right]="!isWidgetOpen(entry)"
+            ></i>
+          </button>
+          @if (isWidgetOpen(entry)) {
+            <div class="builder">
+              <app-filter-builder [group]="entry.group" [additionalFilter]="additionalFilterFor(entry)" />
+            </div>
+          }
+        </div>
+      }
     }
   </section>
 

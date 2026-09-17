@@ -9,6 +9,7 @@
     />
     <app-filter-builder
       [group]="target.filter"
+      [additionalFilter]="reportFilter()"
       hint="Narrows the rows this widget shows. Report filters apply on top of these."
     />
   }

@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { MenuModule } from 'primeng/menu';
-import { FilterGroupModel } from '../../../models/filter.model';
+import { FilterGroupModel } from '../../../models/filter';
 import { ReusableFilter, reusableFiltersFor } from '../../../models/filter-reuse';
 import { ReportSession } from '../../../state/report-session';
 

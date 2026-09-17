@@ -2,13 +2,15 @@ import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../core/models/dataset';
 import { FilterGroup, OperatorCatalogue, filterKey } from '../../core/models/filter';
 import {
+  ChartWidget,
+  DataTableWidget,
   ReportRevisionContent,
   WidgetType,
   bandedChartColumns,
   readChartBindings,
 } from '../../core/models/report';
 import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
-import { FilterGroupModel } from '../report-builder/models/filter.model';
+import { FilterGroupModel } from '../report-builder/models/filter';
 
 /** The session-filter map key for one chart binding — a widget id plus its binding id. */
 export function chartBindingKey(widgetId: string, bindingId: string): string {
@@ -28,6 +30,13 @@ export interface ViewFilterEntry {
   readonly type?: WidgetType;
   /** PrimeIcons class for the widget kind. Undefined for a page filter. */
   readonly icon?: string;
+  /** The tab this widget lives on, for grouping the panel's widget-filter list. Undefined for a page filter. */
+  readonly tabName?: string;
+}
+
+/** Whether a reader has moved this filter away from what the author published. */
+export function entryChanged(entry: ViewFilterEntry): boolean {
+  return filterKey(entry.group.toDto()) !== filterKey(entry.published);
 }
 
 /**
@@ -39,19 +48,26 @@ export interface ViewFilterEntry {
  * immutable, and reloading restores the author's definition.
  */
 export class ReportViewFilters {
-  readonly pageEntries: readonly ViewFilterEntry[];
-  readonly widgetEntries: readonly ViewFilterEntry[];
+  public readonly pageEntries: readonly ViewFilterEntry[];
+  public readonly widgetEntries: readonly ViewFilterEntry[];
 
   /**
-   * Each entry's resolved filter, memoized per key. A `Record` rebuilt from
-   * every entry on any single edit would hand *every* widget a fresh object
-   * reference whenever *any* filter changed, and each widget treats a new
-   * filter reference as "reload me" — so one edit would reload the whole
-   * report. Keying a per-entry `computed()` instead means editing one filter
-   * only invalidates that filter's own signal.
+   * Each entry's resolved filter, memoized per key. Rebuilding one `Record` from every
+   * entry on any edit would hand *every* widget a fresh object reference whenever *any*
+   * filter changed, and a widget treats a new reference as "reload me" — so one edit
+   * would reload the whole report. A per-entry `computed()` instead means editing one
+   * filter only invalidates that filter's own signal.
    */
-  readonly pageFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
-  readonly widgetFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
+  public readonly pageFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
+  public readonly widgetFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
+
+  /** True once the reader's view differs from what the author published. */
+  public readonly changed = computed(() => this.allEntries.some((e) => entryChanged(e)));
+
+  /** How many conditions are switched on across the whole report — the badge count. */
+  public readonly conditionCount = computed(() =>
+    this.allEntries.reduce((n, e) => n + e.group.enabledCount(), 0),
+  );
 
   constructor(
     content: ReportRevisionContent,
@@ -65,9 +81,8 @@ export class ReportViewFilters {
     const datasetIds = new Set<number>();
     const widgetEntries: ViewFilterEntry[] = [];
 
-    // Columns banded anywhere on a dataset, so a page filter offers the tolerance
-    // operators on the same columns a widget filter would. Accumulated as the widget
-    // loop below discovers each widget's banded columns.
+    // Columns banded anywhere on a dataset, so a page filter offers the same tolerance
+    // operators a widget filter would. Accumulated as each widget below is visited.
     const tolerantByDataset = new Map<number, Set<string>>();
     const addTolerant = (datasetId: number, ids: readonly string[]) => {
       const set = tolerantByDataset.get(datasetId) ?? new Set<string>();
@@ -75,58 +90,20 @@ export class ReportViewFilters {
       tolerantByDataset.set(datasetId, set);
     };
 
-    // Filters are report-wide, so every tab's widgets contribute their entries.
-    for (const widget of content.tabs.flatMap((t) => t.widgets)) {
-      if (widget.type === 'dataTable') {
-        const datasetId = widget.config.datasetId;
-        if (!datasetId) continue;
-        datasetIds.add(datasetId);
-        const schema = schemaFor(datasetId);
-        const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
-        // A table only offers the columns it shows — filtering it by a column that
-        // isn't on it would silently drop rows for a reason the reader can't see.
-        const placed = new Set(widget.config.columns.map((c) => c.columnId));
-        const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
-        const banded = widget.config.columns.filter((c) => c.tolerance).map((c) => c.columnId);
-        addTolerant(datasetId, banded);
-        widgetEntries.push({
-          key: widget.id,
-          label: computed(() => title),
-          datasetId,
-          published: widget.config.filter,
-          group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, {
-            columns,
-            tolerantColumns: signal(new Set(banded)),
-          }),
-          type: widget.type,
-          icon: widgetTypeDescriptor(widget.type).icon,
-        });
-      } else if (isChartWidget(widget)) {
-        // A chart overlays one or more datasets; each bound binding filters its own
-        // rows, so each gets its own entry. A chart has no fixed column set, so its
-        // filter offers the whole dataset.
-        const bound = readChartBindings(widget.config).filter((b) => b.datasetId);
-        const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
-        const multi = bound.length > 1;
-        for (const binding of bound) {
-          const datasetId = binding.datasetId!;
-          datasetIds.add(datasetId);
-          const schema = schemaFor(datasetId);
-          const banded = bandedChartColumns(widget.config.toleranceBands ?? [], binding);
-          addTolerant(datasetId, banded);
-          widgetEntries.push({
-            key: chartBindingKey(widget.id, binding.id),
-            label: computed(() =>
-              multi ? `${title} · ${binding.label.trim() || schema()?.name || 'Dataset'}` : title,
-            ),
-            datasetId,
-            published: binding.filter,
-            group: buildGroup(binding.filter, schema, catalogue, `view:${widget.id}:${binding.id}`, {
-              tolerantColumns: signal(new Set(banded)),
-            }),
-            type: widget.type,
-            icon: widgetTypeDescriptor(widget.type).icon,
-          });
+    // Filters are report-wide, so every tab's widgets contribute their entries — tagged with
+    // their tab's name so the panel can group the widget list by tab.
+    const orderedTabs = [...content.tabs].sort((a, b) => a.order - b.order);
+    for (const tab of orderedTabs) {
+      for (const widget of tab.widgets) {
+        if (widget.type === 'dataTable') {
+          const entry = buildTableEntry(widget, tab.name, schemaFor, catalogue, addTolerant);
+          if (!entry) continue;
+          datasetIds.add(entry.datasetId);
+          widgetEntries.push(entry);
+        } else if (isChartWidget(widget)) {
+          const entries = buildChartEntries(widget, tab.name, schemaFor, catalogue, addTolerant);
+          for (const entry of entries) datasetIds.add(entry.datasetId);
+          widgetEntries.push(...entries);
         }
       }
     }
@@ -157,22 +134,90 @@ export class ReportViewFilters {
     );
   }
 
+  /** Puts every filter back to what the published report defines. */
+  public reset(): void {
+    for (const entry of this.allEntries) entry.group.replaceWith(entry.published);
+  }
+
+  /** The page-level filter already layered on top of a widget entry, for its live count. */
+  public pageFilterFor(entry: ViewFilterEntry): FilterGroup | null {
+    return this.pageFilters.get(String(entry.datasetId))?.() ?? null;
+  }
+
   private get allEntries(): ViewFilterEntry[] {
     return [...this.pageEntries, ...this.widgetEntries];
   }
+}
 
-  /** True once the reader's view differs from what the author published. */
-  readonly changed = computed(() => this.allEntries.some((e) => entryChanged(e)));
+type SchemaFor = (datasetId: number) => Signal<DatasetSchema | null>;
+type AddTolerant = (datasetId: number, columnIds: readonly string[]) => void;
 
-  /** How many conditions are switched on across the whole report — the badge count. */
-  readonly conditionCount = computed(() =>
-    this.allEntries.reduce((n, e) => n + e.group.enabledCount(), 0),
-  );
+/** A table only offers the columns it shows, and filters by those alone. */
+function buildTableEntry(
+  widget: DataTableWidget,
+  tabName: string,
+  schemaFor: SchemaFor,
+  catalogue: Signal<OperatorCatalogue | null>,
+  addTolerant: AddTolerant,
+): ViewFilterEntry | null {
+  const datasetId = widget.config.datasetId;
+  if (!datasetId) return null;
 
-  /** Puts every filter back to what the published report defines. */
-  reset(): void {
-    for (const entry of this.allEntries) entry.group.replaceWith(entry.published);
-  }
+  const schema = schemaFor(datasetId);
+  const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
+  const placed = new Set(widget.config.columns.map((c) => c.columnId));
+  const columns = computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id)));
+  const banded = widget.config.columns.filter((c) => c.tolerance).map((c) => c.columnId);
+  addTolerant(datasetId, banded);
+
+  return {
+    key: widget.id,
+    label: computed(() => title),
+    datasetId,
+    published: widget.config.filter,
+    group: buildGroup(widget.config.filter, schema, catalogue, `view:${widget.id}`, {
+      columns,
+      tolerantColumns: signal(new Set(banded)),
+    }),
+    type: widget.type,
+    icon: widgetTypeDescriptor(widget.type).icon,
+    tabName,
+  };
+}
+
+/** A chart overlays one or more datasets; each bound binding filters its own rows and gets its own entry. */
+function buildChartEntries(
+  widget: ChartWidget,
+  tabName: string,
+  schemaFor: SchemaFor,
+  catalogue: Signal<OperatorCatalogue | null>,
+  addTolerant: AddTolerant,
+): ViewFilterEntry[] {
+  const bound = readChartBindings(widget.config).filter((b) => b.datasetId);
+  const title = widget.config.title?.trim() || widgetTypeDescriptor(widget.type).label;
+  const multi = bound.length > 1;
+
+  return bound.map((binding) => {
+    const datasetId = binding.datasetId!;
+    const schema = schemaFor(datasetId);
+    const banded = bandedChartColumns(widget.config.toleranceBands ?? [], binding);
+    addTolerant(datasetId, banded);
+
+    return {
+      key: chartBindingKey(widget.id, binding.id),
+      label: computed(() =>
+        multi ? `${title} · ${binding.label.trim() || schema()?.name || 'Dataset'}` : title,
+      ),
+      datasetId,
+      published: binding.filter,
+      group: buildGroup(binding.filter, schema, catalogue, `view:${widget.id}:${binding.id}`, {
+        tolerantColumns: signal(new Set(banded)),
+      }),
+      type: widget.type,
+      icon: widgetTypeDescriptor(widget.type).icon,
+      tabName,
+    };
+  });
 }
 
 function buildGroup(
@@ -198,9 +243,4 @@ function buildGroup(
 
 function clone(filter: FilterGroup | null): FilterGroup | null {
   return filter ? (JSON.parse(JSON.stringify(filter)) as FilterGroup) : null;
-}
-
-/** Whether a reader has moved this filter away from what the author published. */
-export function entryChanged(entry: ViewFilterEntry): boolean {
-  return filterKey(entry.group.toDto()) !== filterKey(entry.published);
 }

@@ -6,6 +6,7 @@ import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog'
 import { ReportSession } from '../../../state/report-session';
 import { WidgetSelection } from '../../../state/widget-selection';
 import { PanelNavigation } from '../../../state/panel-navigation';
+import { widgetFilterCount } from '../../../models/widget-filter-summary';
 import { PanelView } from '../../panel-view';
 
 @Component({
@@ -35,6 +36,7 @@ export class PanelWidgetListComponent {
       icon: widgetTypeDescriptor(widget.type).icon,
       typeLabel: widgetTypeDescriptor(widget.type).label,
       label: widget.label(),
+      filterCount: widgetFilterCount(widget),
     })),
   );
 

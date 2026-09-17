@@ -37,6 +37,12 @@
   }
 }
 
+// Clarifies that the count isn't just this group in isolation — muted so it
+// reads as a footnote, not competing with the number itself.
+.filter-match-note {
+  color: #94a3b8;
+}
+
 // Sits above the row list once there's more than one condition, so a long list
 // still reads as "one filter" — its total, and how many of those are actually
 // switched on — rather than an unlabelled stack of cards.

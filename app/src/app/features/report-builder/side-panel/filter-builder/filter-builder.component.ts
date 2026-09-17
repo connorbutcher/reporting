@@ -26,8 +26,13 @@ import {
   switchMap,
 } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetCountResult, FilterGroup, FilterOperator } from '../../../../core/models/filter';
-import { FilterConditionModel, FilterGroupModel } from '../../models/filter.model';
+import {
+  DatasetCountResult,
+  FilterGroup,
+  FilterOperator,
+  combineFilters,
+} from '../../../../core/models/filter';
+import { FilterConditionModel, FilterGroupModel } from '../../models/filter';
 
 /** What the query-key stream carries: null when there's nothing countable yet. */
 interface CountKey {
@@ -70,34 +75,37 @@ const VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator
   styleUrl: './filter-builder.component.scss',
 })
 export class FilterBuilderComponent {
-  readonly group = input.required<FilterGroupModel>();
+  public readonly group = input.required<FilterGroupModel>();
   /** Shown above the rows; explains what this particular filter scopes. */
-  readonly hint = input<string>('');
-
-  private readonly api = inject(DatasetApiService);
-  private readonly destroyRef = inject(DestroyRef);
-
+  public readonly hint = input<string>('');
   /**
-   * The dataset and the filter (only its enabled, complete conditions — what would
-   * actually run) to count against, or null before the schema/catalogue are in. Reading
-   * `toQueryDto()` here tracks every condition, operator and value, so the count re-runs
-   * as the filter is edited.
+   * Whatever else already narrows this dataset outside the group being edited — the
+   * report-level filter, for a widget's own filter, or a session-adjusted page filter in
+   * the viewer. Folded into the live count so it reflects what actually renders rather
+   * than just this group in isolation. Null (the default) for a filter with nothing above
+   * it, such as the report-level filter itself.
    */
-  private readonly countKey = computed<CountKey | null>(() => {
-    const group = this.group();
-    if (!group.ready()) return null;
-    const datasetId = group.datasetId();
-    if (datasetId === null) return null;
-    return { datasetId, filter: group.toQueryDto() };
-  });
+  public readonly additionalFilter = input<FilterGroup | null>(null);
 
   /**
    * The live "matches N of M rows" readout. Debounced so a burst of edits makes one
    * request, deduped so an idempotent edit makes none, and counted server-side (no rows
    * pulled). A failed count falls back to `error` rather than throwing at the template.
+   *
+   * The count key is inlined here (rather than a separate field) so it stays a plain
+   * closure over `this.group` — reading `toQueryDto()` tracks every condition, operator
+   * and value, so the count re-runs as the filter is edited.
    */
-  protected readonly match = toSignal(
-    toObservable(this.countKey).pipe(
+  public readonly match = toSignal(
+    toObservable(
+      computed<CountKey | null>(() => {
+        const group = this.group();
+        if (!group.ready()) return null;
+        const datasetId = group.datasetId();
+        if (datasetId === null) return null;
+        return { datasetId, filter: combineFilters(this.additionalFilter(), group.toQueryDto()) };
+      }),
+    ).pipe(
       debounceTime(300),
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
       switchMap((key): Observable<MatchState> =>
@@ -117,7 +125,21 @@ export class FilterBuilderComponent {
    * The most recent counts, held across a re-check so the readout keeps its numbers
    * (dimmed) while the next count is in flight rather than blanking on every keystroke.
    */
-  protected readonly matchNumbers = signal<DatasetCountResult | null>(null);
+  public readonly matchNumbers = signal<DatasetCountResult | null>(null);
+
+  public readonly joinOptions = [
+    { label: 'Match all', value: 'and' as const },
+    { label: 'Match any', value: 'or' as const },
+  ];
+
+  public readonly columnOptions = computed(() =>
+    this.group()
+      .columns()
+      .map((c) => ({ label: c.name, value: c.id })),
+  );
+
+  private readonly api = inject(DatasetApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * A column's distinct values, fetched once and cached by column id. Populated lazily by the
@@ -158,19 +180,8 @@ export class FilterBuilderComponent {
     });
   }
 
-  protected readonly joinOptions = [
-    { label: 'Match all', value: 'and' as const },
-    { label: 'Match any', value: 'or' as const },
-  ];
-
-  protected readonly columnOptions = computed(() =>
-    this.group()
-      .columns()
-      .map((c) => ({ label: c.name, value: c.id })),
-  );
-
   /** True when the operand should be picked from the column's values rather than typed. */
-  protected usesValueList(condition: FilterConditionModel): boolean {
+  public usesValueList(condition: FilterConditionModel): boolean {
     return (
       condition.schemaColumn()?.type === 'string' &&
       VALUE_LIST_OPERATORS.has(condition.operator())
@@ -178,25 +189,25 @@ export class FilterBuilderComponent {
   }
 
   /** "is any of" takes several values at once, so it renders a multi-select rather than a select. */
-  protected isMultiValue(condition: FilterConditionModel): boolean {
+  public isMultiValue(condition: FilterConditionModel): boolean {
     return condition.operator() === 'in';
   }
 
   /** The distinct values offered for a condition's column, empty until they've loaded. */
-  protected valueOptions(condition: FilterConditionModel): string[] {
+  public valueOptions(condition: FilterConditionModel): string[] {
     return this.valueLists.get(condition.columnId())?.() ?? [];
   }
 
-  protected addCondition(): void {
+  public addCondition(): void {
     this.group().addCondition();
   }
 
-  protected remove(index: number): void {
+  public remove(index: number): void {
     this.group().removeAt(index);
   }
 
   /** The native input type that best matches an operand's kind. */
-  protected inputType(condition: FilterConditionModel): string {
+  public inputType(condition: FilterConditionModel): string {
     switch (condition.descriptor()?.operandKind) {
       case 'number':
         return 'number';
@@ -207,14 +218,14 @@ export class FilterBuilderComponent {
     }
   }
 
-  protected placeholder(condition: FilterConditionModel, index: number): string {
+  public placeholder(condition: FilterConditionModel, index: number): string {
     if (condition.descriptor()?.operandKind === 'list') return 'value, value, …';
     if (condition.descriptor()?.operandCount === 2) return index === 0 ? 'from' : 'to';
     return 'value';
   }
 
   /** Dates round-trip as ISO strings but a date input wants yyyy-MM-dd. */
-  protected operandValue(condition: FilterConditionModel, index: number): string {
+  public operandValue(condition: FilterConditionModel, index: number): string {
     const raw = condition.values()[index] ?? '';
     if (condition.descriptor()?.operandKind !== 'date' || !raw) return raw;
 

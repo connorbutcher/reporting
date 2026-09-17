@@ -23,12 +23,15 @@ export class FilterApiService {
       shareReplay({ bufferSize: 1, refCount: false }),
     );
 
-  operators(): Observable<OperatorCatalogue> {
-    return this.catalogue$;
+  /** Operators valid for one column type, or an empty list before the catalogue arrives. */
+  public static operatorsFor(
+    catalogue: OperatorCatalogue | null,
+    type: DatasetColumnType | undefined,
+  ) {
+    return type && catalogue ? (catalogue[type] ?? []) : [];
   }
 
-  /** Operators valid for one column type, or an empty list before the catalogue arrives. */
-  static operatorsFor(catalogue: OperatorCatalogue | null, type: DatasetColumnType | undefined) {
-    return type && catalogue ? (catalogue[type] ?? []) : [];
+  public operators(): Observable<OperatorCatalogue> {
+    return this.catalogue$;
   }
 }

@@ -7,7 +7,7 @@ import {
   SortDirection,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
-import { FilterGroupModel } from './filter.model';
+import { FilterGroupModel } from './filter';
 import { ModelSources, SchemaSource, WidgetModel } from './widget-model-base';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';

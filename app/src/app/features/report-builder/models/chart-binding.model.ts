@@ -9,7 +9,7 @@ import {
   bandedChartColumns,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
-import { FilterGroupModel } from './filter.model';
+import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './widget-model-base';
 

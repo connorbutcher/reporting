@@ -8,7 +8,7 @@ import {
   PivotTableWidgetConfig,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
-import { FilterGroupModel } from './filter.model';
+import { FilterGroupModel } from './filter';
 import { ModelSources, WidgetModel } from './widget-model-base';
 import { ValidationIssue } from './validation-issue';
 

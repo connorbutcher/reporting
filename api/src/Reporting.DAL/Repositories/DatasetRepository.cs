@@ -75,10 +75,8 @@ public class DatasetRepository(ReportingDbContext db)
 
         // The client references columns by their RefId, so the translator is keyed that way and
         // resolves each to the column's int id for the cell comparison.
-        var predicate = FilterTranslator.Build(filter, dataset.Columns.ToDictionary(c => c.RefId));
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, filter, dataset.Columns.ToDictionary(c => c.RefId));
 
         var rows = await matching.Include(r => r.Cells).ToListAsync();
         var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
@@ -105,10 +103,8 @@ public class DatasetRepository(ReportingDbContext db)
         var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
-        var predicate = FilterTranslator.Build(filter, dataset.Columns.ToDictionary(c => c.RefId));
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, filter, dataset.Columns.ToDictionary(c => c.RefId));
 
         return new DatasetCountResultDto
         {

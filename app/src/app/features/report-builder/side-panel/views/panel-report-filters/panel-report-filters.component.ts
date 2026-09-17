@@ -15,23 +15,23 @@ import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-re
   styleUrl: './panel-report-filters.component.scss',
 })
 export class PanelReportFiltersComponent {
-  static readonly title = 'Report filters';
+  public static readonly title = 'Report filters';
 
-  private readonly session = inject(ReportSession);
-
-  protected readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
+  public readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
 
   /** Which dataset's filter is on screen; defaults to the first one in use. */
-  private readonly selectedDatasetId = signal<number | null>(null);
-  protected readonly activeDatasetId = computed(
+  public readonly activeDatasetId = computed(
     () => this.selectedDatasetId() ?? this.datasetIds()[0] ?? null,
   );
 
-  protected readonly activeFilter = computed(() => {
+  public readonly activeFilter = computed(() => {
     const datasetId = this.activeDatasetId();
     const model = this.session.model();
     return datasetId && model ? model.reportFilter(datasetId) : null;
   });
+
+  private readonly session = inject(ReportSession);
+  private readonly selectedDatasetId = signal<number | null>(null);
 
   constructor() {
     // Creating the filter is a write, so it happens here rather than inside the
@@ -44,21 +44,21 @@ export class PanelReportFiltersComponent {
     });
   }
 
-  protected select(datasetId: number): void {
+  public select(datasetId: number): void {
     this.selectedDatasetId.set(datasetId);
   }
 
-  protected datasetName(datasetId: number): string {
+  public datasetName(datasetId: number): string {
     return this.session.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
   }
 
   /** How many conditions this dataset's filter has, for the chip's badge. */
-  protected conditionCountNumber(datasetId: number): number {
+  public conditionCountNumber(datasetId: number): number {
     return this.session.model()?.reportFilter(datasetId)?.group.count() ?? 0;
   }
 
   /** The same count, worded out for the chip's accessible name. */
-  protected conditionCount(datasetId: number): string {
+  public conditionCount(datasetId: number): string {
     const count = this.conditionCountNumber(datasetId);
     return count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
   }

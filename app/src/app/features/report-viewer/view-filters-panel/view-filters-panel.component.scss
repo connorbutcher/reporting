@@ -25,6 +25,23 @@
     color: #475569;
   }
 
+  // Sub-groups the widget list by tab once a report has more than one — quieter
+  // than .heading since it's a second-level grouping, not a new section.
+  .tab-heading {
+    margin: 6px 0 0;
+    padding-top: 6px;
+    border-top: 1px solid var(--app-card-border);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #94a3b8;
+
+    &:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+  }
+
   .entry {
     display: flex;
     flex-direction: column;

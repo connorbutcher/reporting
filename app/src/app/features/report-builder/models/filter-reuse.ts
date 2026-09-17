@@ -1,4 +1,4 @@
-import { FilterGroupModel } from './filter.model';
+import { FilterGroupModel } from './filter';
 import { ReportModel } from './report.model';
 import {
   ChartWidgetModel,

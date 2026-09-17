@@ -11,18 +11,14 @@ import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-re
   templateUrl: './panel-widget-filters.component.html',
 })
 export class PanelWidgetFiltersComponent {
-  static readonly title = 'Filters';
-
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
-  private readonly widget = this.session.selectedFilterableWidget;
+  public static readonly title = 'Filters';
 
   /**
    * The filter this screen edits: a specific chart binding's when the view names
    * one (an overlaid dataset), otherwise the widget's own — a table's, or a
    * single-binding chart's first series.
    */
-  protected readonly target = computed(() => {
+  public readonly target = computed(() => {
     const widget = this.widget();
     if (!widget) return null;
 
@@ -33,4 +29,15 @@ export class PanelWidgetFiltersComponent {
     }
     return { datasetId: widget.datasetId, filter: widget.filter };
   });
+
+  /** The report-level filter already layered on top of this widget's own, for the live count. */
+  public readonly reportFilter = computed(() => {
+    const datasetId = this.target()?.datasetId() ?? null;
+    const model = this.session.model();
+    return datasetId && model ? (model.reportFilter(datasetId)?.group.toQueryDto() ?? null) : null;
+  });
+
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly widget = this.session.selectedFilterableWidget;
 }

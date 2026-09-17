@@ -98,7 +98,6 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 c.Tolerance.ConcessionUpperColumnId))
             .ToList();
         var bounds = await tolerance.ResolveAsync(pointers);
-
         var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds);
 
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
@@ -454,10 +453,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // a tolerance filter operator reuses the band on the filtered column's axis.
         var bounds = await ResolveBandsAsync(dto.ToleranceBands);
         var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.XColumnId, dto.YColumnId);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn);
 
         // Resolve the axis columns; a missing column yields a sentinel id that matches no cell,
         // so the chart is simply empty (as before). An axis value is a string for a text column,
@@ -581,10 +578,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var bounds = await ResolveBandsAsync(dto.ToleranceBands);
         var toleranceByColumn = ToleranceByAxisColumn(
             dto.ToleranceBands, bounds, dto.CategoryColumnId, valueColumnIds.FirstOrDefault());
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn);
 
         // A missing category (nothing bound yet) yields an empty chart, the same graceful
         // no-op scatter/line give when their axes aren't set.
@@ -757,10 +752,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // rows by the measure column before they're summarised into boxes.
         var bounds = await ResolveBandsAsync(dto.ToleranceBands);
         var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn);
 
         // A missing category or measure (nothing bound yet) yields an empty chart, the same
         // graceful no-op the other chart kinds give when their axes aren't set.
@@ -910,10 +903,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // band to narrow rows by the value column before they're binned.
         var bounds = await ResolveBandsAsync(dto.ToleranceBands);
         var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.ValueColumnId, null);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, toleranceByColumn);
-
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = predicate is null ? all : all.Where(predicate);
+        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn);
 
         // Nothing bound yet yields an empty chart, the same graceful no-op the other charts give.
         var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);

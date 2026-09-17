@@ -23,6 +23,9 @@
           match</span
         >
       }
+      @if (additionalFilter()) {
+        <span class="filter-match-note">(incl. the report filter)</span>
+      }
     </p>
   } @else if (match().state === 'loading') {
     <p class="filter-match is-pending" aria-live="polite">

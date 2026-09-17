@@ -2,7 +2,7 @@ import { Signal, computed, signal } from '@angular/core';
 import { ReportRevisionContent, Tab, bandedChartColumns } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
-import { ReportFilterModel } from './filter.model';
+import { ReportFilterModel } from './filter';
 import {
   DEFAULT_GRID_COLUMNS,
   DEFAULT_GRID_ROWS,

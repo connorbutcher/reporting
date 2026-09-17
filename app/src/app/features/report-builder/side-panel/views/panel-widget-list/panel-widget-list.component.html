@@ -19,6 +19,15 @@
           <span class="panel-widget-name">{{ widget.label }}</span>
           <span class="panel-widget-meta">{{ widget.typeLabel }}</span>
         </span>
+        @if (widget.filterCount; as count) {
+          <span
+            class="panel-widget-filter-count"
+            [attr.aria-label]="count + ' active filter condition' + (count > 1 ? 's' : '')"
+          >
+            <i class="pi pi-filter" aria-hidden="true"></i>
+            {{ count }}
+          </span>
+        }
       </span>
     </ng-template>
   </p-listbox>

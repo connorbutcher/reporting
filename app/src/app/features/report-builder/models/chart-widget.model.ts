@@ -13,7 +13,7 @@ import {
 } from '../../../core/models/report';
 import { ChartBindingModel } from './chart-binding.model';
 import { EditorNode } from './editor-node';
-import { FilterGroupModel } from './filter.model';
+import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources, WidgetModel } from './widget-model-base';
 
