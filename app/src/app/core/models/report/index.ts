@@ -4,6 +4,7 @@ export * from './text-config.model';
 export * from './chart-config.model';
 export * from './chart-config.util';
 export * from './pivot-config.model';
+export * from './kpi-config.model';
 export * from './widget.model';
 export * from './report-content.model';
 export * from './report-open.util';

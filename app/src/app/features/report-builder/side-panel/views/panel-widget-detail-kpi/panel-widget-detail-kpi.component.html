@@ -1,0 +1,262 @@
+<app-panel-group label="Data source" icon="⛁">
+  <label class="panel-field">
+    <span class="panel-field-label">Dataset</span>
+    <p-select
+      [options]="datasets()"
+      [ngModel]="kpi().datasetId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Select a dataset"
+      appendTo="body"
+      [showClear]="true"
+      fluid
+      (onChange)="kpi().setDataset($event.value ?? null)"
+    />
+  </label>
+</app-panel-group>
+
+<app-panel-group label="Measures" icon="∑">
+  <p class="panel-hint">Each measure is a named aggregate the formula below can refer to.</p>
+  @for (measure of kpi().measures(); track measure.measureId) {
+    <div class="panel-pivot-measure">
+      <div class="head">
+        <input
+          pInputText
+          [ngModel]="measure.alias()"
+          (ngModelChange)="measure.alias.set($event)"
+          placeholder="Name"
+        />
+        <p-select
+          [options]="aggregates"
+          [ngModel]="measure.aggregate()"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="kpi().setMeasureAggregate(measure, $event.value)"
+        />
+        <button
+          type="button"
+          class="icon remove"
+          aria-label="Remove measure"
+          (click)="kpi().removeMeasure(measure.measureId)"
+        >
+          <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+      </div>
+      @if (measure.aggregate() !== 'count') {
+        <label class="panel-field">
+          <span class="panel-field-label">Column</span>
+          <p-select
+            [options]="kpi().numericColumns()"
+            [ngModel]="measure.columnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Column to summarise"
+            appendTo="body"
+            [showClear]="true"
+            [disabled]="!kpi().datasetId()"
+            fluid
+            (onChange)="measure.columnId.set($event.value ?? null)"
+          />
+        </label>
+      }
+      <button
+        type="button"
+        class="panel-menu-item"
+        (click)="navigate({ kind: 'widgetFilters', widgetId: kpi().id, bindingId: measureFilterBindingId(measure) })"
+      >
+        <i class="pi pi-filter" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">Measure filter</span>
+          <span class="panel-menu-hint">
+            {{
+              measure.filter.count() === 0
+                ? 'No extra narrowing'
+                : measure.filter.count() + ' condition' + (measure.filter.count() > 1 ? 's' : '')
+            }}
+          </span>
+        </span>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+      </button>
+    </div>
+  }
+  <p-button
+    label="Add measure"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    [disabled]="!kpi().datasetId()"
+    (onClick)="kpi().addMeasure()"
+  />
+</app-panel-group>
+
+<app-panel-group label="Formula" icon="ƒ">
+  <p class="panel-hint">Combines the measures above into the value the tile shows.</p>
+  <input
+    pInputText
+    [ngModel]="kpi().formula()"
+    (ngModelChange)="kpi().formula.set($event)"
+    placeholder="[Measure1]"
+  />
+  <div class="panel-chip-row">
+    @for (measure of kpi().measures(); track measure.measureId) {
+      <button type="button" class="panel-chip" (click)="insertAlias(measure)">
+        {{ measure.alias() || 'unnamed' }}
+      </button>
+    }
+    @for (op of ['+', '-', '*', '/', '(', ')']; track op) {
+      <button type="button" class="panel-chip operator" (click)="insertOperator(op)">{{ op }}</button>
+    }
+  </div>
+</app-panel-group>
+
+<app-panel-group label="Comparison" icon="⇄" [open]="false">
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="kpi-comparison"
+      [ngModel]="kpi().comparisonEnabled()"
+      (onChange)="kpi().comparisonEnabled.set($event.checked)"
+    />
+    <label for="kpi-comparison">Show a trend against a second filter</label>
+  </div>
+
+  @if (kpi().comparisonEnabled()) {
+    <label class="panel-field">
+      <span class="panel-field-label">A higher value means</span>
+      <p-select
+        [options]="directions"
+        [ngModel]="kpi().comparisonDirection()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="kpi().comparisonDirection.set($event.value)"
+      />
+    </label>
+
+    <button
+      type="button"
+      class="panel-menu-item"
+      (click)="navigate({ kind: 'widgetFilters', widgetId: kpi().id, bindingId: comparisonBindingId() })"
+    >
+      <i class="pi pi-filter" aria-hidden="true"></i>
+      <span class="panel-menu-text">
+        <span class="panel-menu-label">Comparison filter</span>
+        <span class="panel-menu-hint">
+          {{
+            kpi().comparisonFilter.count() === 0
+              ? 'No conditions yet'
+              : kpi().comparisonFilter.count() + ' condition' + (kpi().comparisonFilter.count() > 1 ? 's' : '')
+          }}
+        </span>
+      </span>
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+    </button>
+  }
+</app-panel-group>
+
+<app-panel-group label="Threshold" icon="◎" [open]="false">
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="kpi-threshold"
+      [ngModel]="kpi().thresholdEnabled()"
+      (onChange)="kpi().thresholdEnabled.set($event.checked)"
+    />
+    <label for="kpi-threshold">Color the tile against a target range</label>
+  </div>
+
+  @if (kpi().thresholdEnabled()) {
+    <div class="panel-grid-fields">
+      <label class="panel-field">
+        <span class="panel-field-label">Lower bound</span>
+        <p-inputnumber
+          [ngModel]="kpi().lowerBound()"
+          (ngModelChange)="kpi().lowerBound.set($event)"
+          fluid
+        />
+      </label>
+      <label class="panel-field">
+        <span class="panel-field-label">Upper bound</span>
+        <p-inputnumber
+          [ngModel]="kpi().upperBound()"
+          (ngModelChange)="kpi().upperBound.set($event)"
+          fluid
+        />
+      </label>
+    </div>
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="kpi-invert"
+        [ngModel]="kpi().invertColors()"
+        (onChange)="kpi().invertColors.set($event.checked)"
+      />
+      <label for="kpi-invert">Outside the range is good (instead of inside)</label>
+    </div>
+  }
+</app-panel-group>
+
+<app-panel-group label="Number format" icon="#" [open]="false">
+  <div class="panel-grid-fields">
+    <label class="panel-field">
+      <span class="panel-field-label">Decimals</span>
+      <p-inputnumber
+        [ngModel]="kpi().numberFormat()?.decimals ?? null"
+        (ngModelChange)="updateNumberFormat({ decimals: $event ?? undefined })"
+        [min]="0"
+        fluid
+      />
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">Prefix</span>
+      <input
+        pInputText
+        [ngModel]="kpi().numberFormat()?.prefix ?? ''"
+        (ngModelChange)="updateNumberFormat({ prefix: $event })"
+      />
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">Suffix</span>
+      <input
+        pInputText
+        [ngModel]="kpi().numberFormat()?.suffix ?? ''"
+        (ngModelChange)="updateNumberFormat({ suffix: $event })"
+      />
+    </label>
+  </div>
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="kpi-grouping"
+      [ngModel]="kpi().numberFormat()?.useGrouping ?? true"
+      (onChange)="updateNumberFormat({ useGrouping: $event.checked })"
+    />
+    <label for="kpi-grouping">Thousands separators</label>
+  </div>
+</app-panel-group>
+
+<button
+  type="button"
+  class="panel-menu-item"
+  [disabled]="!kpi().datasetId()"
+  (click)="navigate({ kind: 'widgetFilters', widgetId: kpi().id })"
+>
+  <i class="pi pi-filter" aria-hidden="true"></i>
+  <span class="panel-menu-text">
+    <span class="panel-menu-label">Filters</span>
+    <span class="panel-menu-hint">
+      {{
+        !kpi().datasetId()
+          ? 'Pick a dataset first'
+          : kpi().filter.count() === 0
+            ? 'Aggregating every row'
+            : kpi().filter.count() + ' condition' + (kpi().filter.count() > 1 ? 's' : '')
+      }}
+    </span>
+  </span>
+  <i class="pi pi-angle-right" aria-hidden="true"></i>
+</button>

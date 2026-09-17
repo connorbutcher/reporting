@@ -25,6 +25,8 @@ import {
   ChartQueryResult,
   HistogramQueryRequest,
   HistogramQueryResult,
+  KpiQueryRequest,
+  KpiQueryResult,
   PivotQueryRequest,
   PivotQueryResult,
   TableQueryRequest,
@@ -127,6 +129,14 @@ export class DatasetApiService {
    */
   queryPivot(id: number, request: PivotQueryRequest): Observable<PivotQueryResult> {
     return this.http.post<PivotQueryResult>(`/api/datasets/${id}/pivot-query`, request);
+  }
+
+  /**
+   * A single headline number: one or more named measures reduced over a filtered dataset and
+   * combined by a formula, optionally compared against a second filter.
+   */
+  queryKpi(id: number, request: KpiQueryRequest): Observable<KpiQueryResult> {
+    return this.http.post<KpiQueryResult>(`/api/datasets/${id}/kpi-query`, request);
   }
 
   /**

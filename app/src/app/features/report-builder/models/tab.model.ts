@@ -4,6 +4,7 @@ import {
   DEFAULT_COMBO_CHART_CONFIG,
   DEFAULT_BOX_PLOT_CONFIG,
   DEFAULT_HISTOGRAM_CONFIG,
+  DEFAULT_KPI_CONFIG,
   DEFAULT_PIVOT_CONFIG,
   DEFAULT_LINE_CHART_CONFIG,
   DEFAULT_SCATTER_CHART_CONFIG,
@@ -133,6 +134,8 @@ export class TabModel extends EditorNode {
         };
       case 'staticText':
         return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
+      case 'kpi':
+        return { ...base, type: 'kpi', config: { type: 'kpi', ...DEFAULT_KPI_CONFIG } };
     }
   }
 

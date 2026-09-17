@@ -10,5 +10,6 @@ public enum WidgetType
     ComboChart,
     BoxPlot,
     Histogram,
-    PivotTable
+    PivotTable,
+    Kpi
 }

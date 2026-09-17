@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Formulas;
+using Reporting.DAL.Formulas.Ast;
 
 namespace Reporting.DAL.Widgets;
 
@@ -46,6 +48,13 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// <summary>Ceiling on the number of grouped rows a pivot returns, so a high-cardinality dimension
     /// can't fan out into an unbounded table. The grand total still reduces every scanned row.</summary>
     private const int MaxPivotRows = 2_000;
+
+    /// <summary>
+    /// Ceiling on rows scanned per measure for one KPI query. A KPI reduces to a single scalar, but
+    /// every matching row must still be pulled to be reduced (and, for a per-measure filter, narrowed
+    /// further) in memory, so a runaway dataset is capped here just like a pivot's grand total.
+    /// </summary>
+    private const int MaxKpiScanRows = 200_000;
 
     /// <summary>
     /// Narrows to rows that carry a plottable value for the axis column — a string for a text
@@ -350,6 +359,184 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         Aggregate.Max => $"Max of {column?.Name}",
         _ => column?.Name ?? "Value",
     };
+
+    /// <summary>
+    /// A single headline number: one or more named measures reduced over a filtered dataset and
+    /// combined by a formula, optionally reduced a second time against a comparison filter to give a
+    /// trend/delta.
+    /// </summary>
+    public async Task<KpiQueryResultDto?> QueryForKpiAsync(int id, KpiQueryDto dto)
+    {
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var result = new KpiQueryResultDto();
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+
+        var basePredicate = FilterTranslator.Build(dto.Filter, columnsByRef);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        result.TotalRowCount = await all.CountAsync();
+        result.MatchedRowCount = basePredicate is null ? result.TotalRowCount : await all.Where(basePredicate).CountAsync();
+
+        var (value, truncated, error) = await ComputeKpiAsync(dataset, columnsByRef, dto.Filter, dto.Measures, dto.Formula);
+        result.Truncated = truncated;
+        result.Error = error;
+        if (error is null && value is { } v)
+        {
+            result.Value = v;
+            result.FormattedValue = CellFormatter.Number(v, dto.NumberFormat);
+        }
+
+        if (error is null && dto.ComparisonFilter is not null)
+        {
+            var (compValue, compTruncated, compError) =
+                await ComputeKpiAsync(dataset, columnsByRef, dto.ComparisonFilter, dto.Measures, dto.Formula);
+            result.Truncated |= compTruncated;
+            if (compError is not null)
+            {
+                result.Error = compError;
+            }
+            else if (compValue is { } cv)
+            {
+                result.ComparisonValue = cv;
+                result.FormattedComparisonValue = CellFormatter.Number(cv, dto.NumberFormat);
+                if (result.Value is { } curVal)
+                {
+                    result.Delta = curVal - cv;
+                    result.DeltaPercent = cv != 0 ? (curVal - cv) / Math.Abs(cv) * 100 : null;
+                }
+            }
+        }
+
+        result.Status = result.Error is null ? ResolveKpiStatus(result.Value, dto.Threshold) : KpiStatus.Neutral;
+        return result;
+    }
+
+    /// <summary>
+    /// Reduces every measure to a scalar over the rows matching <paramref name="filter"/> (each
+    /// further narrowed by its own filter), then evaluates <paramref name="formula"/> against the
+    /// named results. Errors — a bad formula, an unknown alias, a runtime mismatch like divide by
+    /// zero — are returned rather than thrown, so the caller can surface them without failing the
+    /// whole request.
+    /// </summary>
+    private async Task<(double? Value, bool Truncated, string? Error)> ComputeKpiAsync(
+        Dataset dataset,
+        Dictionary<Guid, DatasetColumn> columnsByRef,
+        FilterGroupDto? filter,
+        List<KpiMeasureDto> measureDtos,
+        string formula)
+    {
+        if (measureDtos.Count == 0) return (null, false, null);
+
+        FormulaNode formulaNode;
+        var expression = string.IsNullOrWhiteSpace(formula) ? $"[{measureDtos[0].Alias}]" : formula;
+        try
+        {
+            formulaNode = FormulaParser.Parse(expression);
+        }
+        catch (FormulaParseException ex)
+        {
+            return (null, false, ex.Message);
+        }
+
+        var aliases = new HashSet<string>(measureDtos.Select(m => m.Alias), StringComparer.OrdinalIgnoreCase);
+        var unknownAlias = FormulaParser.ReferencedColumnNames(formulaNode).FirstOrDefault(a => !aliases.Contains(a));
+        if (unknownAlias is not null)
+            return (null, false, $"The formula references '{unknownAlias}', which isn't one of this widget's measures.");
+
+        // Every column a measure's own filter reads, so those cells are loaded alongside the
+        // aggregate columns — the query's active filter is already applied at the database level.
+        var neededIds = new HashSet<int>();
+        foreach (var m in measureDtos) CollectFilterColumnIds(m.Filter, columnsByRef, neededIds);
+
+        var measureColumns = measureDtos
+            .Select(m => m.Aggregate == Aggregate.Count ? null : columnsByRef.GetValueOrDefault(m.ColumnId ?? Guid.Empty))
+            .ToList();
+        foreach (var c in measureColumns) if (c is not null) neededIds.Add(c.Id);
+
+        var basePredicate = FilterTranslator.Build(filter, columnsByRef);
+        var matchingRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        if (basePredicate is not null) matchingRows = matchingRows.Where(basePredicate);
+
+        var matchedCount = await matchingRows.CountAsync();
+        var rows = await matchingRows
+            .OrderBy(r => r.Id)
+            .Take(MaxKpiScanRows)
+            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
+            .AsNoTracking()
+            .ToListAsync();
+        var truncated = matchedCount > MaxKpiScanRows;
+
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < measureDtos.Count; i++)
+        {
+            var measure = measureDtos[i];
+            var measurePredicate = FilterTranslator.Build(measure.Filter, columnsByRef)?.Compile();
+            var matchedRows = measurePredicate is null ? rows : rows.Where(measurePredicate).ToList();
+
+            var acc = new PivotMeasureAcc();
+            var column = measureColumns[i];
+            if (column is not null)
+            {
+                foreach (var row in matchedRows)
+                {
+                    var cellValue = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id)?.NumberValue;
+                    if (cellValue is { } v) acc.Add(v);
+                }
+            }
+
+            values[measure.Alias] = measure.Aggregate switch
+            {
+                Aggregate.Count => (double)matchedRows.Count,
+                Aggregate.Sum => acc.Count > 0 ? acc.Sum : null,
+                Aggregate.Average => acc.Count > 0 ? acc.Sum / acc.Count : null,
+                Aggregate.Min => acc.Count > 0 ? acc.Min : null,
+                Aggregate.Max => acc.Count > 0 ? acc.Max : null,
+                _ => null,
+            };
+        }
+
+        try
+        {
+            return FormulaEvaluator.Evaluate(formulaNode, values) switch
+            {
+                null => (null, truncated, null),
+                double d => (d, truncated, null),
+                bool b => (b ? 1d : 0d, truncated, null),
+                _ => (null, truncated, "The formula must evaluate to a number."),
+            };
+        }
+        catch (FormulaEvaluationException ex)
+        {
+            return (null, truncated, ex.Message);
+        }
+    }
+
+    /// <summary>Every column id a filter tree's conditions reference, so their cells can be loaded.</summary>
+    private static void CollectFilterColumnIds(FilterNodeDto? node, Dictionary<Guid, DatasetColumn> columnsByRef, HashSet<int> ids)
+    {
+        switch (node)
+        {
+            case FilterGroupDto group:
+                foreach (var child in group.Children) CollectFilterColumnIds(child, columnsByRef, ids);
+                break;
+            case FilterConditionDto condition when columnsByRef.TryGetValue(condition.ColumnId, out var column):
+                ids.Add(column.Id);
+                break;
+        }
+    }
+
+    /// <summary>Where a KPI's value falls against its configured threshold, for the tile's coloring.</summary>
+    private static KpiStatus ResolveKpiStatus(double? value, KpiThresholdConfig? threshold)
+    {
+        if (value is not { } v || threshold is null || (threshold.LowerBound is null && threshold.UpperBound is null))
+            return KpiStatus.Neutral;
+
+        var withinBounds = (threshold.LowerBound is null || v >= threshold.LowerBound)
+            && (threshold.UpperBound is null || v <= threshold.UpperBound);
+        var good = threshold.InvertColors ? !withinBounds : withinBounds;
+        return good ? KpiStatus.Good : KpiStatus.Bad;
+    }
 
     /// <summary>Resolves each tolerance band's bounds in one batch, keyed by the band's client id.</summary>
     private async Task<Dictionary<string, ToleranceBounds?>> ResolveBandsAsync(IReadOnlyList<ChartToleranceBand> bands)

@@ -260,6 +260,41 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Adds the KPI showcase report ("Bore Diameter KPIs") if it isn't already present. Idempotent
+    /// and independent of the main demo seed (same pattern as <see cref="SeedBoxPlotShowcase"/>), so
+    /// it tops up an existing database without touching the user's own reports. Demonstrates a single
+    /// measure with its own filter, a multi-measure formula, a comparison/trend, and threshold coloring.
+    /// </summary>
+    public static void SeedKpiShowcase(ReportingDbContext db)
+    {
+        const string name = "Bore Diameter KPIs";
+        if (db.Reports.Any(r => r.Name == name)) return;
+
+        var pending = new List<PendingCell>();
+        var pendingTables = new List<PendingTable>();
+        var pendingCharts = new List<PendingChart>();
+
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        db.Reports.Add(BuildBoreKpiDashboardReport(pending, pendingTables, pendingCharts, nextNumber));
+
+        db.SaveChanges();
+
+        foreach (var (row, column, raw) in pending)
+        {
+            row.Cells.Add(CellValues.Create(column.Id, raw, column.Type));
+        }
+        foreach (var table in pendingTables)
+        {
+            table.Widget.ConfigJson = TableConfigJson(table.Title, table.Dataset, table.ColumnNames);
+        }
+        foreach (var (widget, buildJson) in pendingCharts)
+        {
+            widget.ConfigJson = buildJson();
+        }
+        db.SaveChanges();
+    }
+
+    /// <summary>
     /// Adds the grand feature-tour report ("Engine Build — Feature Tour") if it isn't already present.
     /// Idempotent and independent of the other seeds (same pattern as <see cref="SeedBoxPlotShowcase"/>).
     /// One engine-build dataset shown through every widget and option the builder offers — a data table,
@@ -1128,6 +1163,133 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// Builds the "Bore Diameter KPIs" report: one dataset of bore measurements split across two
+    /// shifts, shown through three KPI tiles — a single filtered count, a multi-measure percentage
+    /// formula, and a Day-vs-Night trend with threshold coloring — plus the raw rows beneath.
+    /// </summary>
+    private static Report BuildBoreKpiDashboardReport(
+        List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts, int number)
+    {
+        var now = DateTime.UtcNow;
+        var report = new Report
+        {
+            RefId = Guid.NewGuid(),
+            Number = number,
+            Name = "Bore Diameter KPIs",
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        var revision = new ReportRevision { RefId = Guid.NewGuid(), Kind = RevisionKind.Draft, CreatedAt = now };
+        var dataset = BuildBoreMeasurements(pending);
+        revision.Datasets.Add(dataset);
+
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "KPIs", Order = 0 };
+        revision.Tabs.Add(tab);
+
+        Guid Ref(string columnName) => dataset.Columns.First(c => c.Name == columnName).RefId;
+        var shiftRef = Ref("Shift");
+        var boreRef = Ref("Bore Diameter");
+
+        const double upperSpecLimit = 101.650;
+        var overLimitFilter = ConditionFilterJson(boreRef, "greaterThan", Num(upperSpecLimit));
+        var dayFilter = ConditionFilterJson(shiftRef, "equals", "Day");
+        var nightFilter = ConditionFilterJson(shiftRef, "equals", "Night");
+        var mmFormat = """{"decimals":3,"suffix":" mm"}""";
+        var percentFormat = """{"decimals":1,"suffix":"%"}""";
+
+        tab.Widgets.Add(TitleWidget("Bore Diameter KPIs", 0, 0, 48, 2));
+
+        // Simplest case: one measure and its own filter, no formula needed at all.
+        var overLimit = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 0, Y = 2, W = 12, H = 8, ConfigJson = "{}" };
+        tab.Widgets.Add(overLimit);
+        pendingCharts.Add(new PendingChart(overLimit, () => KpiConfigJson(
+            "Bores over spec (Day)", dataset,
+            [("OverLimit", null, "count", overLimitFilter)],
+            formula: "",
+            filterJson: dayFilter)));
+
+        // Two named measures combined by a formula — the count over the limit as a share of the total.
+        var percentOverLimit = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 12, Y = 2, W = 18, H = 8, ConfigJson = "{}" };
+        tab.Widgets.Add(percentOverLimit);
+        pendingCharts.Add(new PendingChart(percentOverLimit, () => KpiConfigJson(
+            "% over spec — Day vs Night", dataset,
+            [("OverLimit", null, "count", overLimitFilter), ("Total", null, "count", null)],
+            formula: "[OverLimit] / [Total] * 100",
+            filterJson: dayFilter,
+            comparisonFilterJson: nightFilter,
+            comparisonDirection: "lowerIsBetter",
+            threshold: (null, 10.0, false),
+            numberFormatJson: percentFormat)));
+
+        // A plain aggregate (no filter condition) compared Day vs Night, to show a trend needs no
+        // formula either — just a comparison filter alongside the widget's own.
+        var avgBore = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 30, Y = 2, W = 18, H = 8, ConfigJson = "{}" };
+        tab.Widgets.Add(avgBore);
+        pendingCharts.Add(new PendingChart(avgBore, () => KpiConfigJson(
+            "Average bore diameter — Day vs Night", dataset,
+            [("Average", boreRef, "average", null)],
+            formula: "",
+            filterJson: dayFilter,
+            comparisonFilterJson: nightFilter,
+            comparisonDirection: "neutral",
+            numberFormatJson: mmFormat)));
+
+        var tableColumns = new[] { "Build ID", "Shift", "Bore Diameter" };
+        var table = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 10, W = 48, H = 12, ConfigJson = "{}" };
+        tab.Widgets.Add(table);
+        pendingTables.Add(new PendingTable(table, dataset, "Bore measurements", tableColumns));
+
+        report.Revisions.Add(revision);
+        return report;
+    }
+
+    /// <summary>
+    /// A per-build dataset of bore diameter measurements split across two shifts — Night runs a touch
+    /// hotter and more variable than Day, so more of its bores land over the (seeded) spec limit,
+    /// giving the KPI showcase's Day-vs-Night trend a real gap to show. Deterministic — a fixed RNG
+    /// seed keeps the data (and so every KPI's value) stable across reseeds.
+    /// </summary>
+    private static Dataset BuildBoreMeasurements(List<PendingCell> pending)
+    {
+        var dataset = new Dataset
+        {
+            Name = "Bore Measurements",
+            DatasetSourceId = DatasetSourceIds.Assembly,
+            SourceConfigJson = "{\"source\":\"assembly\",\"typeId\":4471,\"phaseIds\":[2]}",
+        };
+
+        var buildId = Column(dataset, "Build ID", DatasetColumnType.String, 0);
+        var shift = Column(dataset, "Shift", DatasetColumnType.String, 1);
+        var bore = Column(dataset, "Bore Diameter", DatasetColumnType.Double, 2, Mm(3));
+
+        // Fixed seed → identical data every rebuild.
+        var rng = new Random(20260916);
+        var build = 1;
+        const int perShift = 20;
+
+        void SeedShift(string shiftName, double mean, double spread)
+        {
+            for (var i = 0; i < perShift; i++)
+            {
+                var value = mean + (rng.NextDouble() * 2 - 1) * spread;
+                AddRow(dataset, pending, new Dictionary<DatasetColumn, string>
+                {
+                    [buildId] = $"BM-{build:0000}",
+                    [shift] = shiftName,
+                    [bore] = Num(Math.Round(value, 3)),
+                });
+                build++;
+            }
+        }
+
+        SeedShift("Day", mean: 101.600, spread: 0.045);
+        SeedShift("Night", mean: 101.615, spread: 0.065);
+
+        return dataset;
+    }
+
+    /// <summary>
     /// A pivot-table widget's config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; the row-dimension and measure columns by their stable RefIds. Each
     /// measure carries an explicit header; a null measure column is a row count.
@@ -1148,6 +1310,56 @@ public static class DbSeeder
              "rowFields":[{{rows}}],
              "measures":[{{measuresJson}}],
              "showGrandTotal":true,"filter":null}
+            """;
+    }
+
+    /// <summary>
+    /// A KPI widget's config JSON, built once the dataset has a primary key. Each measure is an
+    /// (alias, column, aggregate, own-filter-JSON) tuple; a null own-filter measures the whole matched
+    /// set. <paramref name="filterJson"/>/<paramref name="comparisonFilterJson"/> and
+    /// <paramref name="numberFormatJson"/> are raw JSON (or null), so callers reuse the small filter/
+    /// format helpers below rather than this method knowing their shape.
+    /// </summary>
+    private static string KpiConfigJson(
+        string title, Dataset dataset,
+        (string Alias, Guid? Column, string Aggregate, string? FilterJson)[] measures,
+        string formula,
+        string? filterJson = null,
+        string? comparisonFilterJson = null,
+        string comparisonDirection = "neutral",
+        (double? Lower, double? Upper, bool Invert)? threshold = null,
+        string? numberFormatJson = null)
+    {
+        var measuresJson = string.Join(",", measures.Select(m =>
+        {
+            var column = m.Column is { } c ? $"\"{c}\"" : "null";
+            return $$"""
+                {"id":"{{Guid.NewGuid()}}","alias":"{{m.Alias}}","columnId":{{column}},"aggregate":"{{m.Aggregate}}","filter":{{m.FilterJson ?? "null"}}}
+                """;
+        }));
+        string Bound(double? v) => v is { } n ? n.ToString(CultureInfo.InvariantCulture) : "null";
+        var thresholdJson = threshold is { } t
+            ? $$"""{"lowerBound":{{Bound(t.Lower)}},"upperBound":{{Bound(t.Upper)}},"invertColors":{{(t.Invert ? "true" : "false")}}}"""
+            : "null";
+        return $$"""
+            {"type":"kpi","title":"{{title}}","showTitle":true,
+             "datasetId":{{dataset.Id}},
+             "filter":{{filterJson ?? "null"}},
+             "measures":[{{measuresJson}}],
+             "formula":"{{formula}}",
+             "comparisonFilter":{{comparisonFilterJson ?? "null"}},
+             "comparisonDirection":"{{comparisonDirection}}",
+             "threshold":{{thresholdJson}},
+             "numberFormat":{{numberFormatJson ?? "null"}}}
+            """;
+    }
+
+    /// <summary>A single-condition filter group's JSON, for a KPI's widget/measure/comparison filter.</summary>
+    private static string ConditionFilterJson(Guid columnRef, string op, params string[] values)
+    {
+        var valuesJson = string.Join(",", values.Select(v => $"\"{v}\""));
+        return $$"""
+            {"kind":"group","join":"and","children":[{"kind":"condition","columnId":"{{columnRef}}","operator":"{{op}}","values":[{{valuesJson}}]}]}
             """;
     }
 

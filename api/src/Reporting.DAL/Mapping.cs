@@ -166,6 +166,9 @@ public static class Mapping
             case PivotTableWidgetConfig pivot:
                 pivot.DatasetId = Remap(pivot.DatasetId);
                 break;
+            case KpiWidgetConfig kpi:
+                kpi.DatasetId = Remap(kpi.DatasetId);
+                break;
         }
 
         return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);

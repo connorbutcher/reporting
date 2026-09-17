@@ -66,6 +66,7 @@ using (var scope = app.Services.CreateScope())
     DbSeeder.SeedStackedBarShowcase(db);
     DbSeeder.SeedHistogramShowcase(db);
     DbSeeder.SeedPivotShowcase(db);
+    DbSeeder.SeedKpiShowcase(db);
     DbSeeder.SeedFeatureShowcase(db);
     DbSeeder.SeedIdentity(db);
 }

@@ -14,6 +14,7 @@ import { ValidationIssue } from '../models/validation-issue';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
+  KpiWidgetModel,
   ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
@@ -187,12 +188,13 @@ export class ReportSession {
 
   /** The selected widget, when it's a kind that carries its own filter. */
   readonly selectedFilterableWidget = computed<
-    DataTableWidgetModel | PivotTableWidgetModel | ChartWidgetModel | null
+    DataTableWidgetModel | PivotTableWidgetModel | ChartWidgetModel | KpiWidgetModel | null
   >(() => {
     const widget = this.selectedWidget();
     return widget instanceof DataTableWidgetModel ||
       widget instanceof PivotTableWidgetModel ||
-      widget instanceof ChartWidgetModel
+      widget instanceof ChartWidgetModel ||
+      widget instanceof KpiWidgetModel
       ? widget
       : null;
   });

@@ -7,7 +7,8 @@ export type WidgetType =
   | 'comboChart'
   | 'boxPlot'
   | 'histogram'
-  | 'pivotTable';
+  | 'pivotTable'
+  | 'kpi';
 
 /** Fields every widget config carries, regardless of type. */
 export interface WidgetConfigBase {

@@ -49,6 +49,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'data',
   },
   {
+    type: 'kpi',
+    label: 'KPI',
+    hint: 'A headline number, with a target and a trend',
+    icon: 'pi pi-gauge',
+    group: 'data',
+  },
+  {
     type: 'scatterChart',
     label: 'Scatter chart',
     hint: 'Plot two columns as points',

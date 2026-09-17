@@ -1,0 +1,120 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+
+  .status .retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border: 1px solid var(--app-card-border);
+    border-radius: 6px;
+    background: #fff;
+    color: #475569;
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--p-primary-50, #eef3fa);
+      color: var(--app-navy);
+    }
+  }
+
+  .status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    padding: 12px;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-align: center;
+
+    &.error {
+      flex-direction: column;
+      color: #e5484d;
+    }
+  }
+
+  .tile {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 0;
+    padding: 12px;
+
+    .value {
+      font-family: var(--app-font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--app-navy, #152a55);
+      line-height: 1.1;
+    }
+
+    // Threshold status recolors only the value, so the trend keeps its own
+    // independent (up/down) coloring below it.
+    &.good .value {
+      color: #16794f;
+    }
+    &.bad .value {
+      color: #e5484d;
+    }
+
+    .trend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #64748b;
+
+      .pi {
+        font-size: 0.75rem;
+      }
+
+      &.good {
+        color: #16794f;
+      }
+      &.bad {
+        color: #e5484d;
+      }
+
+      .comparison {
+        color: #94a3b8;
+      }
+    }
+  }
+
+  .count {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 4px 10px;
+    border-top: 1px solid var(--app-card-border);
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.7rem;
+
+    .pi {
+      font-size: 0.65rem;
+    }
+
+    &.truncated {
+      color: #92400e;
+      background: #fffbeb;
+    }
+  }
+}

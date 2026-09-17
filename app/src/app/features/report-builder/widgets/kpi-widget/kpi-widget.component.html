@@ -1,0 +1,44 @@
+@if (!config().datasetId) {
+  <div class="status">
+    <i class="pi pi-database" aria-hidden="true"></i>
+    Choose a dataset for this KPI in the side panel.
+  </div>
+} @else if (error()) {
+  <div class="status error">
+    <span>Failed to load dataset.</span>
+    <button type="button" class="retry" (click)="retry()">
+      <i class="pi pi-refresh" aria-hidden="true"></i>
+      Retry
+    </button>
+  </div>
+} @else if (!configured() && !loading()) {
+  <div class="status">
+    <i class="pi pi-calculator" aria-hidden="true"></i>
+    Add a measure to summarise in the side panel.
+  </div>
+} @else if (errorMessage(); as message) {
+  <div class="status error">
+    <span>{{ message }}</span>
+  </div>
+} @else {
+  <div class="tile" [class.good]="status() === 'good'" [class.bad]="status() === 'bad'">
+    <div class="value">{{ value() ?? '—' }}</div>
+
+    @if (trend(); as t) {
+      <div class="trend" [class.good]="t.good === true" [class.bad]="t.good === false">
+        @if (t.deltaPercent !== null) {
+          <i class="pi" [class.pi-arrow-up]="t.delta >= 0" [class.pi-arrow-down]="t.delta < 0" aria-hidden="true"></i>
+          <span>{{ t.deltaPercent | number: '1.0-1' }}%</span>
+        }
+        <span class="comparison">vs {{ t.formattedComparison }}</span>
+      </div>
+    }
+  </div>
+
+  @if (isTruncated()) {
+    <p class="count truncated">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      Based on a partial scan of a very large dataset
+    </p>
+  }
+}

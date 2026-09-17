@@ -168,6 +168,18 @@ public class DatasetsController(
     }
 
     /// <summary>
+    /// A single headline number: one or more named measures reduced over a filtered dataset and
+    /// combined by a formula, optionally compared against a second filter.
+    /// </summary>
+    [HttpPost("{id:int}/kpi-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<KpiQueryResultDto>> KpiQuery(int id, KpiQueryDto dto)
+    {
+        var result = await widgetQueries.QueryForKpiAsync(id, dto);
+        return result is null ? NotFound() : result;
+    }
+
+    /// <summary>
     /// Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
     /// equal ranges with each bin's frequency returned as a bar height.
     /// </summary>

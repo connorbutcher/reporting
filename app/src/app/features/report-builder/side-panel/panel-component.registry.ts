@@ -15,7 +15,10 @@ import { PanelRootComponent } from './views/panel-root/panel-root.component';
 import { PanelTableAppearanceComponent } from './views/panel-table-appearance/panel-table-appearance.component';
 import { PanelTextStyleComponent } from './views/panel-text-style/panel-text-style.component';
 import { PanelWidgetDetailComponent } from './views/panel-widget-detail/panel-widget-detail.component';
-import { PanelWidgetFiltersComponent } from './views/panel-widget-filters/panel-widget-filters.component';
+import {
+  PanelWidgetFiltersComponent,
+  isKpiFilterBindingId,
+} from './views/panel-widget-filters/panel-widget-filters.component';
 import { PanelWidgetListComponent } from './views/panel-widget-list/panel-widget-list.component';
 
 /**
@@ -78,9 +81,10 @@ export const PANEL_VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K
   },
   widgetFilters: {
     component: PanelWidgetFiltersComponent,
-    // A chart binding's filters sit under that series' screen; a table's under the widget.
+    // A chart binding's filters sit under that series' screen; a KPI's measure/comparison filters
+    // and a table's own sit directly under the widget.
     parent: (view) =>
-      view.bindingId
+      view.bindingId && !isKpiFilterBindingId(view.bindingId)
         ? { kind: 'chartSeries', widgetId: view.widgetId, bindingId: view.bindingId }
         : { kind: 'widget', widgetId: view.widgetId },
   },
