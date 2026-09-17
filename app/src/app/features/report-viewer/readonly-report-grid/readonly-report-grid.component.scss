@@ -18,6 +18,15 @@
   padding: 18px;
 }
 
+@keyframes fragment-pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(21, 42, 85, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(21, 42, 85, 0);
+  }
+}
+
 .readonly-grid {
   display: grid;
   width: 100%;
@@ -38,6 +47,11 @@
     // Reveal the filter affordance while the widget is hovered.
     &:hover .filter {
       opacity: 1;
+    }
+
+    // A direct link to this widget landed here — a brief pulse draws the eye.
+    &.fragment-target {
+      animation: fragment-pulse 1.6s ease-out;
     }
   }
 

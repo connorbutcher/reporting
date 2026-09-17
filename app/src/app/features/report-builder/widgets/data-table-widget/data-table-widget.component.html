@@ -17,6 +17,9 @@
     Add the columns you want from the side panel.
   </div>
 } @else {
+  @if (displayColumns().length > 0) {
+    <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
+  }
   <!-- [loading] shows a built-in overlay rather than us swapping this element
        out of the @if — a lazy p-table re-fires onLazyLoad on every fresh
        mount, which would otherwise turn a loading toggle into a fetch loop. -->

@@ -4,8 +4,11 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { PivotTableWidgetConfig } from '../../../../core/models/report';
 import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query';
+import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
+import { WidgetExportBase } from '../widget-export-base';
 
 /** One rendered column of the pivot: a dimension or a measure, with its display alignment. */
 interface PivotColumn {
@@ -20,19 +23,13 @@ interface PivotDisplayRow {
   isGrandTotal: boolean;
 }
 
-/** A CSV cell, quoted and escaped only when it contains a comma, quote, or newline. */
-function csvCell(value: unknown): string {
-  const text = String(value ?? '');
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
 @Component({
   selector: 'app-pivot-table-widget',
-  imports: [TableModule],
+  imports: [TableModule, WidgetExportActionsComponent],
   templateUrl: './pivot-table-widget.component.html',
   styleUrl: './pivot-table-widget.component.scss',
 })
-export class PivotTableWidgetComponent {
+export class PivotTableWidgetComponent extends WidgetExportBase {
   public readonly config = input.required<PivotTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -145,6 +142,7 @@ export class PivotTableWidgetComponent {
   });
 
   constructor() {
+    super();
     // Switching datasets reloads immediately; the config-driven reload below debounces.
     effect(() => {
       const ready = this.configured();
@@ -192,27 +190,21 @@ export class PivotTableWidgetComponent {
     this.source.reloadNow();
   }
 
-  /** Saves the pivot as a CSV: a header, one line per group, then the grand total. */
-  public downloadCsv(): void {
+  /** The pivot as CSV rows: a header, one line per group, then the grand total. */
+  protected exportCsv(): string | null {
     const data = this.source.result();
-    if (!data) return;
+    if (!data) return null;
 
     const header = [...data.rowFields.map((f) => f.label), ...data.measures.map((m) => m.label)];
-    const lines = [header.map(csvCell).join(',')];
     // Raw numeric measure values (not the £/% display) so the CSV drops straight into a spreadsheet.
-    const rowLine = (r: PivotRow): string =>
-      [...r.dimensions, ...r.values.map((v) => v.value ?? '')].map(csvCell).join(',');
-    for (const row of data.rows) lines.push(rowLine(row));
-    if (data.grandTotal) lines.push(rowLine(data.grandTotal));
+    const rowCells = (r: PivotRow): unknown[] => [...r.dimensions, ...r.values.map((v) => v.value ?? '')];
+    const rows = data.rows.map(rowCells);
+    if (data.grandTotal) rows.push(rowCells(data.grandTotal));
+    return toCsv([header, ...rows]);
+  }
 
-    const name = this.config().title?.trim() || 'pivot';
-    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `${name}.csv`;
-    anchor.click();
-    // Give the click a beat to start before releasing the object URL.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  protected exportName(): string {
+    return this.config().title?.trim() || 'pivot';
   }
 
   /** Source-derived signals, exposed as getters so their backing field stays below the public block. */

@@ -1,3 +1,12 @@
+@keyframes fragment-pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(21, 42, 85, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(21, 42, 85, 0);
+  }
+}
+
 :host {
   display: block;
   min-width: 0;
@@ -46,6 +55,11 @@
       .header {
         cursor: grabbing;
       }
+    }
+
+    // A direct link to this widget landed here — a brief pulse draws the eye.
+    &.fragment-target {
+      animation: fragment-pulse 1.6s ease-out;
     }
   }
 

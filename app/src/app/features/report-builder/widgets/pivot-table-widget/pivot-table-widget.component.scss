@@ -73,37 +73,7 @@
   }
 }
 
-.pivot-actions {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 1;
-  opacity: 0.4;
-  transition: opacity 0.15s ease;
-
-  button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #475569;
-    font-size: 0.8rem;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--p-primary-50, #eef3fa);
-      color: var(--app-navy);
-    }
-  }
-}
-
-:host:hover .pivot-actions,
-.pivot-actions:hover,
-.pivot-actions:focus-within {
+:host:hover app-widget-export-actions {
   opacity: 1;
 }
 

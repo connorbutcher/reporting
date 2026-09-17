@@ -1,0 +1,16 @@
+<button
+  type="button"
+  aria-label="Download screenshot (PNG)"
+  title="Download screenshot (PNG)"
+  (click)="screenshot.emit()"
+>
+  <i class="pi pi-image" aria-hidden="true"></i>
+</button>
+<button
+  type="button"
+  aria-label="Download data (CSV)"
+  title="Download data (CSV)"
+  (click)="exportCsv.emit()"
+>
+  <i class="pi pi-download" aria-hidden="true"></i>
+</button>

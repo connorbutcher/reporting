@@ -13,9 +13,11 @@ import {
   ReportSummary,
   ReportVersionSummary,
   readChartBindings,
+  widgetIdFromFragment,
 } from '../../core/models/report';
 import { isChartWidget } from '../../core/models/widget-catalog';
 import { NotificationService } from '../../core/services/notification.service';
+import { UrlFragmentService } from '../../core/services/url-fragment.service';
 import { ReportViewFilters } from './report-view-filters';
 
 /** Which secondary pane the aside is showing. */
@@ -39,6 +41,7 @@ export class ReportViewerStore {
   private readonly datasetApi = inject(DatasetApiService);
   private readonly filterApi = inject(FilterApiService);
   private readonly notify = inject(NotificationService);
+  private readonly fragments = inject(UrlFragmentService);
 
   /** Schemas and operators the filter panel needs to describe each column. */
   private readonly schemas = signal<Record<string, DatasetSchema>>({});
@@ -143,23 +146,35 @@ export class ReportViewerStore {
     });
 
     // Keep the URL pointing at a real tab: when the `tab` param is missing or names
-    // a tab this version doesn't have, default to the first one (replacing history
-    // so the bare URL isn't a back-button trap). A param that resolves is left be —
-    // tab ids are stable across versions, so it survives switching version too.
+    // a tab this version doesn't have, default to the tab owning the widget a URL
+    // fragment names — so a shared link to a widget lands on the right tab — or
+    // the first one (replacing history so the bare URL isn't a back-button trap).
+    // A param that resolves is left be — tab ids are stable across versions, so it
+    // survives switching version too.
     effect(() => {
       const tabs = this.tabs();
       untracked(() => {
-        if (tabs.length && this.activeTabId() === null) this.goToTab(tabs[0].id, true);
+        if (!tabs.length || this.activeTabId() !== null) return;
+        const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
+        const targetTab = targetWidgetId
+          ? tabs.find((t) => t.widgets.some((w) => w.id === targetWidgetId))
+          : null;
+        this.goToTab(targetTab?.id ?? tabs[0].id, true);
       });
     });
   }
 
-  /** Writes the active tab to the `tab` query param, which the URL drives back into {@link activeTabId}. */
+  /**
+   * Writes the active tab to the `tab` query param, which the URL drives back
+   * into {@link activeTabId}. Preserves any fragment already on the URL — a
+   * switch to the tab a fragment's widget lives on must not then erase it.
+   */
   private goToTab(tabId: string, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tabId },
       queryParamsHandling: 'merge',
+      preserveFragment: true,
       replaceUrl,
     });
   }

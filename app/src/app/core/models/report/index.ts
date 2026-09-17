@@ -7,3 +7,4 @@ export * from './pivot-config.model';
 export * from './widget.model';
 export * from './report-content.model';
 export * from './report-open.util';
+export * from './widget-fragment.util';

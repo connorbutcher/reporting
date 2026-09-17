@@ -12,6 +12,8 @@ import {
   HistogramQueryResult,
 } from '../../../../core/models/widget-query';
 import { WidgetDataSource } from '../widget-data-source';
+import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
+import { WidgetExportBase } from '../widget-export-base';
 import { BoxOption } from './options/box-option';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
@@ -29,11 +31,11 @@ import { ChartQuery } from './query/chart-query';
  */
 @Component({
   selector: 'app-chart-widget',
-  imports: [NgxEchartsDirective, ButtonModule],
+  imports: [NgxEchartsDirective, ButtonModule, WidgetExportActionsComponent],
   templateUrl: './chart-widget.component.html',
   styleUrl: './chart-widget.component.scss',
 })
-export class ChartWidgetComponent {
+export class ChartWidgetComponent extends WidgetExportBase {
   public readonly config = input.required<ChartWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -247,6 +249,7 @@ export class ChartWidgetComponent {
   private chartInstance: { getDataURL(opts?: object): string } | null = null;
 
   constructor() {
+    super();
     // Resolve series colours whenever the plotted series change. Kept in an effect
     // (not the chartOption computed) because the palette carries state across
     // renders — mutating it is a side effect, which belongs here. Runs before the
@@ -300,18 +303,25 @@ export class ChartWidgetComponent {
     this.chartInstance = instance;
   }
 
-  /** Saves the current chart as a PNG. */
-  public downloadPng(): void {
-    if (this.chartInstance) ChartExport.png(this.chartInstance, this.exportName());
+  /**
+   * Grabs the PNG straight from the live echarts canvas rather than the base
+   * class's default DOM rasterization — cheaper, and sharper than re-drawing
+   * the canvas through a screenshot.
+   */
+  public override async downloadScreenshot(): Promise<void> {
+    if (!this.chartInstance) return;
+    const url = this.chartInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    this.downloadUrl(url, `${this.exportName()}.png`);
   }
 
-  /** Saves the plotted data as a CSV — the rows behind the chart, one point per line. */
-  public downloadCsv(): void {
+  /** The rows behind the chart, one point per line, shaped per chart kind. */
+  protected exportCsv(): string | null {
     const data = this.source.result();
-    if (data) ChartExport.csv(this.config(), data, this.source.columns(), this.exportName());
+    if (!data) return null;
+    return ChartExport.csv(this.config(), data, this.source.columns());
   }
 
-  private exportName(): string {
+  protected exportName(): string {
     return this.config().title?.trim() || 'chart';
   }
 }

@@ -39,14 +39,7 @@
         class="canvas"
         (chartInit)="onChartInit($event)"
       ></div>
-      <div class="chart-actions">
-        <button type="button" aria-label="Download image (PNG)" title="Download image (PNG)" (click)="downloadPng()">
-          <i class="pi pi-image" aria-hidden="true"></i>
-        </button>
-        <button type="button" aria-label="Download data (CSV)" title="Download data (CSV)" (click)="downloadCsv()">
-          <i class="pi pi-download" aria-hidden="true"></i>
-        </button>
-      </div>
+      <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
       @if (truncationNote(); as note) {
         <div class="point-cap-note" title="The dataset has more points than the chart plots.">
           {{ note }}

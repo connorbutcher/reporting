@@ -6,50 +6,30 @@ import {
   ChartQueryResult,
   HistogramQueryResult,
 } from '../../../../core/models/widget-query';
+import { csvCell } from '../csv.util';
 import { ChartColumns } from './options/chart-columns';
 import { ChartFormat } from './options/chart-format';
 
-/** Saves a chart as a PNG image or the plotted rows as CSV. */
+/** Builds the CSV text for the rows plotted behind a chart, shaped per chart kind. */
 export class ChartExport {
-  public static png(instance: { getDataURL(opts?: object): string }, name: string): void {
-    const url = instance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
-    ChartExport.download(url, `${name}.png`);
-  }
-
   public static csv(
     config: ChartWidgetConfig,
     data: ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult,
     columns: DatasetColumn[],
-    name: string,
-  ): void {
-    let csv: string;
+  ): string {
     if (config.type === 'barChart' || config.type === 'comboChart') {
       // A combo chart's data is the bar result (one value per category per series), so its CSV is
       // the same category × series grid regardless of which series draw as bars or lines.
-      csv = ChartExport.barCsv(data as BarChartQueryResult);
-    } else if (config.type === 'boxPlot') {
-      csv = ChartExport.boxCsv(data as BoxPlotQueryResult);
-    } else if (config.type === 'histogram') {
-      csv = ChartExport.histogramCsv(data as HistogramQueryResult);
-    } else {
-      // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
-      const primary = readChartBindings(config).find((b) => b.datasetId);
-      const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
-      const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
-      csv = ChartExport.pointCsv(data as ChartQueryResult, x, y);
+      return ChartExport.barCsv(data as BarChartQueryResult);
     }
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    ChartExport.download(url, `${name}.csv`);
-    // Give the click a beat to start before releasing the object URL.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
+    if (config.type === 'boxPlot') return ChartExport.boxCsv(data as BoxPlotQueryResult);
+    if (config.type === 'histogram') return ChartExport.histogramCsv(data as HistogramQueryResult);
 
-  /** Clicks a transient anchor to save `url` under `filename`, then discards it. */
-  private static download(url: string, filename: string): void {
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
+    // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
+    const primary = readChartBindings(config).find((b) => b.datasetId);
+    const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
+    const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
+    return ChartExport.pointCsv(data as ChartQueryResult, x, y);
   }
 
   /** One row per point, with a Series column once there's more than one. */
@@ -64,7 +44,7 @@ export class ChartExport {
       for (const point of series.points) {
         rows.push(
           [
-            ...(multi ? [ChartExport.csvCell(series.label)] : []),
+            ...(multi ? [csvCell(series.label)] : []),
             ChartExport.csvAxisCell(point.x, xColumn),
             ChartExport.csvAxisCell(point.y, yColumn),
           ].join(','),
@@ -76,9 +56,9 @@ export class ChartExport {
 
   /** One row per category, one column per series. */
   private static barCsv(data: BarChartQueryResult): string {
-    const rows = [['Category', ...data.series.map((s) => s.label || 'Value')].map(ChartExport.csvCell).join(',')];
+    const rows = [['Category', ...data.series.map((s) => s.label || 'Value')].map(csvCell).join(',')];
     data.categories.forEach((category, i) => {
-      rows.push([ChartExport.csvCell(category), ...data.series.map((s) => ChartExport.csvCell(s.values[i] ?? ''))].join(','));
+      rows.push([csvCell(category), ...data.series.map((s) => csvCell(s.values[i] ?? ''))].join(','));
     });
     return rows.join('\n');
   }
@@ -87,14 +67,14 @@ export class ChartExport {
   private static boxCsv(data: BoxPlotQueryResult): string {
     const multi = data.series.length > 1;
     const header = [...(multi ? ['Series'] : []), 'Category', 'Min', 'Q1', 'Median', 'Q3', 'Max', 'N'];
-    const rows = [header.map(ChartExport.csvCell).join(',')];
+    const rows = [header.map(csvCell).join(',')];
     for (const series of data.series) {
       series.boxes.forEach((box, i) => {
         if (!box) return;
         rows.push(
           [
-            ...(multi ? [ChartExport.csvCell(series.label)] : []),
-            ChartExport.csvCell(data.categories[i]),
+            ...(multi ? [csvCell(series.label)] : []),
+            csvCell(data.categories[i]),
             box.min,
             box.q1,
             box.median,
@@ -112,31 +92,25 @@ export class ChartExport {
   private static histogramCsv(data: HistogramQueryResult): string {
     const multi = data.series.length > 1;
     const header = ['Bin', 'Lower', 'Upper', ...(multi ? data.series.map((s) => s.label || 'Value') : ['Value'])];
-    const rows = [header.map(ChartExport.csvCell).join(',')];
+    const rows = [header.map(csvCell).join(',')];
     data.bins.forEach((bin, i) => {
       rows.push(
         [
-          ChartExport.csvCell(bin.label),
+          csvCell(bin.label),
           bin.lower,
           bin.upper,
-          ...data.series.map((s) => ChartExport.csvCell(s.values[i] ?? '')),
+          ...data.series.map((s) => csvCell(s.values[i] ?? '')),
         ].join(','),
       );
     });
     return rows.join('\n');
   }
 
-  /** A CSV cell, quoted and escaped only when it contains a comma, quote, or newline. */
-  private static csvCell(value: unknown): string {
-    const text = String(value ?? '');
-    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  }
-
   /** A date column's millis rendered as its date pattern, else the raw value. */
   private static csvAxisCell(value: unknown, column: DatasetColumn | null): string {
     if (column?.type === 'dateTime' && typeof value === 'number') {
-      return ChartExport.csvCell(ChartFormat.date(value, ChartFormat.dateConfig(column)));
+      return csvCell(ChartFormat.date(value, ChartFormat.dateConfig(column)));
     }
-    return ChartExport.csvCell(value);
+    return csvCell(value);
   }
 }

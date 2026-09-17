@@ -5,10 +5,15 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetSummary } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
-import { ReportRevisionContent, WidgetType } from '../../../core/models/report';
+import {
+  ReportRevisionContent,
+  WidgetType,
+  widgetIdFromFragment,
+} from '../../../core/models/report';
 import { FilterApiService } from '../../../core/api/filter-api.service';
 import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
+import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from '../models/report.model';
 import { ValidationIssue } from '../models/validation-issue';
 import {
@@ -37,6 +42,7 @@ export class ReportSession {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly filterApi = inject(FilterApiService);
+  private readonly fragments = inject(UrlFragmentService);
 
   // --- shared session state --------------------------------------------------
 
@@ -80,9 +86,11 @@ export class ReportSession {
       .subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
 
     // Drive the model's active tab from the URL: a valid `tab` param selects that
-    // tab; anything else (missing, or pointing at a removed tab) defaults to the
-    // first one and cleans the URL up (replacing history so the bare URL isn't a
-    // back-button trap). Re-runs when the tabs change (add/remove/undo) too.
+    // tab; anything else (missing, or pointing at a removed tab) falls back to
+    // the tab owning the widget a URL fragment names — so a shared link to a
+    // widget lands on the right tab — or the first one, and cleans the URL up
+    // (replacing history so the bare URL isn't a back-button trap). Re-runs when
+    // the tabs change (add/remove/undo) too.
     effect(() => {
       const model = this.model();
       const param = this.tabParam();
@@ -91,18 +99,28 @@ export class ReportSession {
       untracked(() => {
         if (!tabs.length) return;
         const valid = param && tabs.some((t) => t.id === param) ? param : null;
-        if (valid === null) this.goToTab(tabs[0].id, true);
-        else if (model.activeTabId() !== valid) model.setActiveTab(valid);
+        if (valid === null) {
+          const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
+          const targetTab = targetWidgetId ? model.tabOf(targetWidgetId) : null;
+          this.goToTab(targetTab?.id ?? tabs[0].id, true);
+        } else if (model.activeTabId() !== valid) {
+          model.setActiveTab(valid);
+        }
       });
     });
   }
 
-  /** Writes the active tab to the `tab` query param, which the URL drives back into the model. */
+  /**
+   * Writes the active tab to the `tab` query param, which the URL drives back
+   * into the model. Preserves any fragment already on the URL — a switch to the
+   * tab a fragment's widget lives on must not then erase that same fragment.
+   */
   goToTab(tabId: string, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tabId },
       queryParamsHandling: 'merge',
+      preserveFragment: true,
       replaceUrl,
     });
   }

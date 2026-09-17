@@ -1,4 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { widgetFragment } from '../../../core/models/report';
+import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { ValidationIssue } from '../models/validation-issue';
 import { PanelView } from '../side-panel/panel-view';
 import { ReportSession } from './report-session';
@@ -17,6 +19,7 @@ import { WidgetSelection } from './widget-selection';
 export class PanelNavigation {
   private readonly selection = inject(WidgetSelection);
   private readonly session = inject(ReportSession);
+  private readonly fragments = inject(UrlFragmentService);
 
   private readonly history = signal<PanelView[]>([{ kind: 'root' }]);
   private readonly index = signal(0);
@@ -71,11 +74,17 @@ export class PanelNavigation {
     if (primary) this.navigate({ kind: 'widget', widgetId: primary });
   }
 
-  /** Takes the user to whatever the issue is about. */
+  /**
+   * Takes the user to whatever the issue is about. When it names a widget, this
+   * also points the URL fragment at it — in one navigation with the tab switch,
+   * so the two land together — which is what scrolls the canvas to it and makes
+   * the link shareable.
+   */
   goToIssue(issue: ValidationIssue): void {
     if (issue.widgetId) {
-      this.focusTabFor(issue.widgetId);
       this.selection.set([issue.widgetId]);
+      const tabId = this.session.model()?.tabOf(issue.widgetId)?.id;
+      this.fragments.navigate(widgetFragment(issue.widgetId), tabId ? { tab: tabId } : undefined);
     }
     this.navigate(issue.view);
   }

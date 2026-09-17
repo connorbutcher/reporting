@@ -4,6 +4,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 
   .count {
     display: flex;
@@ -100,6 +101,10 @@
 
 :host(.data-table-widget--no-head) ::ng-deep thead {
   display: none;
+}
+
+:host:hover app-widget-export-actions {
+  opacity: 1;
 }
 
 // Tolerance banding: red is a straight reject, orange sits inside the

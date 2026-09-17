@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FilterGroup, combineFilters } from '../../../core/models/filter';
-import { SortDirection } from '../../../core/models/report';
+import { SortDirection, widgetFragment } from '../../../core/models/report';
+import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { GridPreview } from '../grid.util';
 import {
   ChartWidgetModel,
@@ -18,7 +19,12 @@ import { WidgetResizeDirective } from './widget-resize.directive';
 
 @Component({
   selector: 'app-widget-host',
-  imports: [WidgetOutletDirective, WidgetDragDirective, WidgetResizeDirective],
+  imports: [
+    WidgetOutletDirective,
+    WidgetDragDirective,
+    WidgetResizeDirective,
+    ScrollToFragmentDirective,
+  ],
   templateUrl: './widget-host.component.html',
   styleUrl: './widget-host.component.scss',
   host: {
@@ -58,6 +64,7 @@ export class WidgetHostComponent {
   protected readonly gridRow = computed(
     () => `${this.widget().y() + 1} / span ${this.widget().h()}`,
   );
+  protected readonly fragment = computed(() => widgetFragment(this.widget().id));
   protected readonly title = computed(() => this.widget().label());
   protected readonly showTitle = computed(() => this.widget().showTitle());
 

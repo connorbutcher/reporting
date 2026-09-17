@@ -1,15 +1,22 @@
 import { Component, Signal, computed, input, output } from '@angular/core';
 import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
-import { ReportRevisionContent, Tab, Widget, readChartBindings } from '../../../core/models/report';
+import {
+  ReportRevisionContent,
+  Tab,
+  Widget,
+  readChartBindings,
+  widgetFragment,
+} from '../../../core/models/report';
 import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
+import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
 import { chartBindingKey } from '../report-view-filters';
 
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
   selector: 'app-readonly-report-grid',
-  imports: [WidgetOutletDirective],
+  imports: [WidgetOutletDirective, ScrollToFragmentDirective],
   templateUrl: './readonly-report-grid.component.html',
   styleUrl: './readonly-report-grid.component.scss',
 })
@@ -38,6 +45,11 @@ export class ReadonlyReportGridComponent {
 
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
+
+  /** The fragment a link can name to jump straight to this widget. */
+  protected fragmentFor(widget: Widget): string {
+    return widgetFragment(widget.id);
+  }
 
   /** Only a table, pivot, or chart bound to a dataset has anything to filter. */
   protected canFilter(widget: Widget): boolean {

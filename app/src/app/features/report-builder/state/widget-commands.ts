@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { WidgetType } from '../../../core/models/report';
+import { WidgetType, widgetFragment } from '../../../core/models/report';
+import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { fitsWithoutCollision } from '../grid.util';
 import { WidgetModel } from '../models/widget.model';
 import { PanelNavigation } from './panel-navigation';
@@ -18,12 +19,15 @@ export class WidgetCommands {
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly navigation = inject(PanelNavigation);
+  private readonly fragments = inject(UrlFragmentService);
 
   addWidget(type: WidgetType): void {
     const widget = this.session.addWidget(type);
     if (!widget) return;
     this.selection.select(widget.id);
     this.navigation.navigate({ kind: 'widget', widgetId: widget.id });
+    // Scrolls the canvas to the new widget, same as jumping to a shared link.
+    this.fragments.navigate(widgetFragment(widget.id));
   }
 
   removeWidget(widgetId: string): void {

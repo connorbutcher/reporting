@@ -8,6 +8,7 @@
     @for (widget of tab().widgets; track widget.id) {
       <div
         class="item"
+        [appScrollToFragment]="fragmentFor(widget)"
         [style.grid-column]="widget.x + 1 + ' / span ' + widget.w"
         [style.grid-row]="widget.y + 1 + ' / span ' + widget.h"
       >

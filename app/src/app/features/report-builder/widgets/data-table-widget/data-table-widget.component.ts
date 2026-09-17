@@ -21,8 +21,11 @@ import {
   SortDirection,
 } from '../../../../core/models/report';
 import { TableCell, TableQueryResult } from '../../../../core/models/widget-query';
+import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
+import { WidgetExportBase } from '../widget-export-base';
 
 /** Cap on how many rows a non-paginated table pulls in one request. */
 const MAX_ROWS = 500;
@@ -38,14 +41,14 @@ export interface DisplayColumn {
 
 @Component({
   selector: 'app-data-table-widget',
-  imports: [TableModule],
+  imports: [TableModule, WidgetExportActionsComponent],
   templateUrl: './data-table-widget.component.html',
   styleUrl: './data-table-widget.component.scss',
   host: {
     '[class.data-table-widget--no-head]': '!config().showColumnHeaders',
   },
 })
-export class DataTableWidgetComponent {
+export class DataTableWidgetComponent extends WidgetExportBase {
   readonly config = input.required<DataTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   readonly datasetVersion = input(0);
@@ -183,6 +186,7 @@ export class DataTableWidgetComponent {
   });
 
   constructor() {
+    super();
     // Switching datasets reloads immediately; the filter/column reload below
     // is what gets the typing debounce.
     effect(() => {
@@ -317,6 +321,20 @@ export class DataTableWidgetComponent {
       default:
         return null;
     }
+  }
+
+  /** The visible columns as CSV: header row, then one line per loaded row. */
+  protected exportCsv(): string | null {
+    const cols = this.displayColumns();
+    if (cols.length === 0) return null;
+
+    const header = cols.map((c) => c.header);
+    const body = this.rows().map((row) => cols.map((c) => row.cells[c.column.id]?.displayValue ?? ''));
+    return toCsv([header, ...body]);
+  }
+
+  protected exportName(): string {
+    return this.config().title?.trim() || 'table';
   }
 }
 
