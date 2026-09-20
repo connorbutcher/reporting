@@ -75,8 +75,10 @@ public class DatasetRepository(ReportingDbContext db)
 
         // The client references columns by their RefId, so the translator is keyed that way and
         // resolves each to the column's int id for the cell comparison.
+        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = FilterTranslator.Apply(all, filter, dataset.Columns.ToDictionary(c => c.RefId));
+        var matching = FilterTranslator.Apply(
+            all, filter, dataset.Columns.ToDictionary(c => c.RefId), operatorCatalogue: operatorCatalogue);
 
         var rows = await matching.Include(r => r.Cells).ToListAsync();
         var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
@@ -103,8 +105,10 @@ public class DatasetRepository(ReportingDbContext db)
         var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
 
+        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = FilterTranslator.Apply(all, filter, dataset.Columns.ToDictionary(c => c.RefId));
+        var matching = FilterTranslator.Apply(
+            all, filter, dataset.Columns.ToDictionary(c => c.RefId), operatorCatalogue: operatorCatalogue);
 
         return new DatasetCountResultDto
         {

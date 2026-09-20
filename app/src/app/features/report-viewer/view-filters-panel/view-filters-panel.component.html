@@ -1,7 +1,36 @@
+@if (sharedLink(); as link) {
+  <div class="link-banner" role="status">
+    <p class="message">
+      <i class="pi pi-link" aria-hidden="true"></i>
+      Showing filters from a shared link.
+      @if (link.unmatched > 0) {
+        <span class="unmatched">
+          {{ link.unmatched }} of {{ link.total }} {{ link.total === 1 ? 'filter' : 'filters' }} in it
+          {{ link.unmatched === 1 ? "doesn't" : "don't" }} apply to this version and
+          {{ link.unmatched === 1 ? 'was' : 'were' }} left out.
+        </span>
+      }
+    </p>
+    <div class="banner-actions">
+      <p-button label="Save as mine" size="small" (onClick)="saveLink.emit()" />
+      <p-button
+        label="Back to mine"
+        size="small"
+        severity="secondary"
+        outlined
+        (onClick)="discardLink.emit()"
+      />
+    </div>
+  </div>
+}
+
 @if (pageEntries().length === 0) {
   <p class="empty">This version has no tables to filter.</p>
 } @else {
-  <p class="hint">Changes here apply to your view only — they aren't saved to the report.</p>
+  <p class="hint">
+    Changes here apply to your view only — they aren't saved to the report. They're remembered for
+    next time; use Copy link to share your view.
+  </p>
 
   <section class="section">
     <h3 class="heading">Page filters</h3>
@@ -68,15 +97,26 @@
     }
   </section>
 
-  @if (filters().changed()) {
+  <div class="actions">
     <p-button
-      label="Reset to published"
-      icon="pi pi-undo"
+      label="Copy link"
+      icon="pi pi-link"
       severity="secondary"
       outlined
       size="small"
       fluid
-      (onClick)="filters().reset()"
+      (onClick)="copyLink.emit()"
     />
-  }
+    @if (filters().changed()) {
+      <p-button
+        label="Reset to published"
+        icon="pi pi-undo"
+        severity="secondary"
+        outlined
+        size="small"
+        fluid
+        (onClick)="filters().reset()"
+      />
+    }
+  </div>
 }

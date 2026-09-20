@@ -10,6 +10,41 @@
     color: #64748b;
   }
 
+  // The heads-up that what's on screen came from a link rather than the reader: quiet, but distinct
+  // from the hint below it, and carrying the two ways out.
+  .link-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: #eff6ff;
+
+    .message {
+      margin: 0;
+      font-size: 0.78rem;
+      color: #1e3a8a;
+
+      .pi {
+        margin-right: 4px;
+        font-size: 0.75rem;
+      }
+
+      .unmatched {
+        display: block;
+        margin-top: 4px;
+        color: #92400e;
+      }
+    }
+
+    .banner-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+  }
+
   .section {
     display: flex;
     flex-direction: column;
@@ -104,5 +139,11 @@
 
   .builder {
     padding: 8px 4px 4px;
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 }

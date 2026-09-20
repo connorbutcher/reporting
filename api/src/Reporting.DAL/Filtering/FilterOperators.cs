@@ -1,103 +1,74 @@
+using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.Database;
 
 namespace Reporting.DAL.Filtering;
 
 /// <summary>
-/// Which operators each column type supports, and what operands each one needs.
-/// Served to the client so the filter panel and server-side validation can never
-/// disagree about what is offerable.
+/// Which operators each column type supports, and what operands each one needs. The
+/// authoritative list lives in the FilterOperatorDefinitions table — <see cref="LoadCatalogueAsync"/>
+/// reads it, and the API's FiltersController serves it to the client so the filter panel and
+/// this class's own server-side validation (in <see cref="ConditionTranslator"/>) can never
+/// disagree about what's offerable. A caller with no database in play — a unit test building a
+/// filter predicate directly — gets the same data by falling back to <see cref="FilterOperatorSeedData"/>,
+/// the in-memory list the table itself is seeded from.
 /// </summary>
 public static class FilterOperators
 {
-    private static FilterOperatorDto Op(
-        FilterOperator value,
-        string label,
-        int operandCount = 1,
-        FilterOperandKind kind = FilterOperandKind.Text) =>
-        new() { Value = value, Label = label, OperandCount = operandCount, OperandKind = kind };
+    private static readonly IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> DefaultCatalogue =
+        BuildCatalogue(FilterOperatorSeedData.Rows());
 
-    /// <summary>Presence checks, meaningful for every type.</summary>
-    private static IEnumerable<FilterOperatorDto> Presence() =>
-    [
-        Op(FilterOperator.IsEmpty, "is empty", 0, FilterOperandKind.None),
-        Op(FilterOperator.IsNotEmpty, "is not empty", 0, FilterOperandKind.None)
-    ];
+    // Loaded once per process and reused: this is fixed reference data that only ever changes via
+    // a database edit or migration, never per-request, so there's no reason to re-query it on
+    // every filter translated.
+    private static IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? _loadedCatalogue;
 
-    private static readonly FilterOperatorDto[] StringOperators =
-    [
-        Op(FilterOperator.Equals, "is"),
-        Op(FilterOperator.NotEquals, "is not"),
-        Op(FilterOperator.Contains, "contains"),
-        Op(FilterOperator.NotContains, "does not contain"),
-        Op(FilterOperator.StartsWith, "starts with"),
-        Op(FilterOperator.EndsWith, "ends with"),
-        Op(FilterOperator.In, "is any of", 1, FilterOperandKind.List),
-        .. Presence()
-    ];
-
-    private static readonly FilterOperatorDto[] NumberOperators =
-    [
-        Op(FilterOperator.Equals, "=", 1, FilterOperandKind.Number),
-        Op(FilterOperator.NotEquals, "≠", 1, FilterOperandKind.Number),
-        Op(FilterOperator.GreaterThan, ">", 1, FilterOperandKind.Number),
-        Op(FilterOperator.GreaterThanOrEqual, "≥", 1, FilterOperandKind.Number),
-        Op(FilterOperator.LessThan, "<", 1, FilterOperandKind.Number),
-        Op(FilterOperator.LessThanOrEqual, "≤", 1, FilterOperandKind.Number),
-        Op(FilterOperator.Between, "is between", 2, FilterOperandKind.Number),
-        .. Presence(),
-        .. Tolerance()
-    ];
-
-    /// <summary>
-    /// Tolerance checks, offerable only on a numeric column that has banding configured
-    /// (the client hides them otherwise). They take no operand — the bounds come from the
-    /// banding, resolved against a limits dataset when the query runs.
-    /// </summary>
-    private static IEnumerable<FilterOperatorDto> Tolerance() =>
-    [
-        Op(FilterOperator.InTolerance, "is in tolerance", 0, FilterOperandKind.None),
-        Op(FilterOperator.NeedsConcession, "needs concession", 0, FilterOperandKind.None),
-        Op(FilterOperator.OutOfTolerance, "is out of tolerance", 0, FilterOperandKind.None)
-    ];
-
-    private static readonly FilterOperatorDto[] BoolOperators =
-    [
-        Op(FilterOperator.IsTrue, "is true", 0, FilterOperandKind.None),
-        Op(FilterOperator.IsFalse, "is false", 0, FilterOperandKind.None),
-        .. Presence()
-    ];
-
-    private static readonly FilterOperatorDto[] DateOperators =
-    [
-        Op(FilterOperator.Equals, "is on", 1, FilterOperandKind.Date),
-        Op(FilterOperator.NotEquals, "is not on", 1, FilterOperandKind.Date),
-        Op(FilterOperator.GreaterThan, "is after", 1, FilterOperandKind.Date),
-        Op(FilterOperator.GreaterThanOrEqual, "is on or after", 1, FilterOperandKind.Date),
-        Op(FilterOperator.LessThan, "is before", 1, FilterOperandKind.Date),
-        Op(FilterOperator.LessThanOrEqual, "is on or before", 1, FilterOperandKind.Date),
-        Op(FilterOperator.Between, "is between", 2, FilterOperandKind.Date),
-        Op(FilterOperator.InLastDays, "is in the last (days)", 1, FilterOperandKind.Number),
-        Op(FilterOperator.InNextDays, "is in the next (days)", 1, FilterOperandKind.Number),
-        .. Presence()
-    ];
-
-    public static IReadOnlyList<FilterOperatorDto> For(DatasetColumnType type) => type switch
+    public static async Task<IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>> LoadCatalogueAsync(
+        ReportingDbContext db)
     {
-        DatasetColumnType.Int or DatasetColumnType.Double => NumberOperators,
-        DatasetColumnType.Bool => BoolOperators,
-        DatasetColumnType.DateTime => DateOperators,
-        _ => StringOperators
+        if (_loadedCatalogue is { } cached) return cached;
+
+        var rows = await db.FilterOperatorDefinitions.AsNoTracking().ToListAsync();
+        var catalogue = BuildCatalogue(rows);
+        _loadedCatalogue = catalogue;
+        return catalogue;
+    }
+
+    public static IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> BuildCatalogue(
+        IEnumerable<FilterOperatorDefinition> rows) =>
+        rows
+            .OrderBy(r => r.SortOrder)
+            .GroupBy(r => r.ColumnType)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<FilterOperatorDto>)g.Select(ToDto).ToList());
+
+    private static FilterOperatorDto ToDto(FilterOperatorDefinition d) => new()
+    {
+        Value = d.Operator,
+        Label = d.Label,
+        OperandCount = d.OperandCount,
+        OperandKind = d.OperandKind
     };
 
-    public static FilterOperatorDto? Find(DatasetColumnType type, FilterOperator op) =>
-        For(type).FirstOrDefault(o => o.Value == op);
+    public static IReadOnlyList<FilterOperatorDto> For(
+        DatasetColumnType type,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null) =>
+        (catalogue ?? DefaultCatalogue).TryGetValue(type, out var ops) ? ops : [];
 
-    public static List<FilterOperatorsForTypeDto> Catalogue() =>
+    public static FilterOperatorDto? Find(
+        DatasetColumnType type,
+        FilterOperator op,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null) =>
+        For(type, catalogue).FirstOrDefault(o => o.Value == op);
+
+    public static List<FilterOperatorsForTypeDto> ToCatalogueDto(
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> catalogue) =>
         Enum.GetValues<DatasetColumnType>()
             .Select(type => new FilterOperatorsForTypeDto
             {
                 Type = type,
-                Operators = For(type).ToList()
+                Operators = catalogue.TryGetValue(type, out var ops) ? ops.ToList() : []
             })
             .ToList();
 }

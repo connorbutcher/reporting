@@ -22,11 +22,18 @@ public static class FilterTranslator
     /// widget query (which already resolves banding); omitted where there's no banding context, in
     /// which case a tolerance condition simply narrows nothing.
     /// </param>
+    /// <param name="operatorCatalogue">
+    /// The database-loaded operator catalogue (see <see cref="FilterOperators.LoadCatalogueAsync"/>),
+    /// for validating each condition's operator. Omitted only where there's no database in play (a
+    /// unit test building a predicate directly), in which case validation falls back to the same
+    /// data the table is seeded from.
+    /// </param>
     public static Expression<Func<DatasetRow, bool>>? Build(
         FilterNodeDto? node,
         IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null) =>
-        node is null ? null : Translate(node, columnsById, toleranceByColumn);
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null) =>
+        node is null ? null : Translate(node, columnsById, toleranceByColumn, operatorCatalogue);
 
     /// <summary>
     /// Narrows <paramref name="rows"/> to those matching the filter, or returns them unfiltered
@@ -37,33 +44,36 @@ public static class FilterTranslator
         IQueryable<DatasetRow> rows,
         FilterGroupDto? filter,
         IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null)
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null)
     {
-        var predicate = Build(filter, columnsById, toleranceByColumn);
+        var predicate = Build(filter, columnsById, toleranceByColumn, operatorCatalogue);
         return predicate is null ? rows : rows.Where(predicate);
     }
 
     private static Expression<Func<DatasetRow, bool>>? Translate(
         FilterNodeDto node,
         IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn) => node switch
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue) => node switch
     {
-        FilterGroupDto group => TranslateGroup(group, columnsById, toleranceByColumn),
+        FilterGroupDto group => TranslateGroup(group, columnsById, toleranceByColumn, operatorCatalogue),
         // A disabled condition is retained in the tree but never narrows rows.
         FilterConditionDto { Enabled: false } => null,
         FilterConditionDto c when ToleranceConditionTranslator.IsTolerance(c.Operator) =>
             ToleranceConditionTranslator.Translate(c, columnsById, toleranceByColumn),
-        FilterConditionDto condition => ConditionTranslator.Translate(condition, columnsById),
+        FilterConditionDto condition => ConditionTranslator.Translate(condition, columnsById, operatorCatalogue),
         _ => throw new FilterException("Unknown filter node.")
     };
 
     private static Expression<Func<DatasetRow, bool>>? TranslateGroup(
         FilterGroupDto group,
         IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn)
+        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue)
     {
         var parts = group.Children
-            .Select(child => Translate(child, columnsById, toleranceByColumn))
+            .Select(child => Translate(child, columnsById, toleranceByColumn, operatorCatalogue))
             .Where(p => p is not null)
             .Cast<Expression<Func<DatasetRow, bool>>>()
             .ToList();

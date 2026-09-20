@@ -28,6 +28,9 @@ public class ReportingDbContext : DbContext
     public DbSet<GrantAuditEntry> GrantAuditEntries => Set<GrantAuditEntry>();
     public DbSet<ReportFavorite> ReportFavorites => Set<ReportFavorite>();
     public DbSet<ReportView> ReportViews => Set<ReportView>();
+    public DbSet<ReportViewState> ReportViewStates => Set<ReportViewState>();
+    public DbSet<ReportSharedView> ReportSharedViews => Set<ReportSharedView>();
+    public DbSet<FilterOperatorDefinition> FilterOperatorDefinitions => Set<FilterOperatorDefinition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -298,5 +301,35 @@ public class ReportingDbContext : DbContext
             .HasOne<User>().WithMany().HasForeignKey(v => v.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ReportView>()
             .HasOne<Report>().WithMany().HasForeignKey(v => v.ReportId).OnDelete(DeleteBehavior.Cascade);
+
+        // A user's saved viewing filters: one row per (user, report), cascading from both sides.
+        modelBuilder.Entity<ReportViewState>().HasIndex(s => new { s.UserId, s.ReportId }).IsUnique();
+        modelBuilder.Entity<ReportViewState>()
+            .HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReportViewState>()
+            .HasOne<Report>().WithMany().HasForeignKey(s => s.ReportId).OnDelete(DeleteBehavior.Cascade);
+
+        // Shared filter snapshots, looked up by the short id a link carries and deduplicated per report
+        // by content hash. The creator is only recorded (set null if the user goes), never owning the row.
+        modelBuilder.Entity<ReportSharedView>().Property(v => v.ShortId).HasMaxLength(ReportSharedView.ShortIdLength);
+        modelBuilder.Entity<ReportSharedView>().Property(v => v.FiltersHash).HasMaxLength(64);
+        modelBuilder.Entity<ReportSharedView>().HasIndex(v => v.ShortId).IsUnique();
+        modelBuilder.Entity<ReportSharedView>().HasIndex(v => new { v.ReportId, v.FiltersHash }).IsUnique();
+        modelBuilder.Entity<ReportSharedView>()
+            .HasOne<Report>().WithMany().HasForeignKey(v => v.ReportId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReportSharedView>()
+            .HasOne<User>().WithMany().HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        // --- filter operator catalogue -------------------------------------
+
+        // A fixed reference set, seeded here (from the same data FilterOperators falls back to
+        // in memory) so the filter panel and server-side validation read it from one place.
+        modelBuilder.Entity<FilterOperatorDefinition>().Property(o => o.ColumnType).HasConversion<string>();
+        modelBuilder.Entity<FilterOperatorDefinition>().Property(o => o.Operator).HasConversion<string>();
+        modelBuilder.Entity<FilterOperatorDefinition>().Property(o => o.OperandKind).HasConversion<string>();
+        modelBuilder.Entity<FilterOperatorDefinition>()
+            .HasIndex(o => new { o.ColumnType, o.Operator })
+            .IsUnique();
+        modelBuilder.Entity<FilterOperatorDefinition>().HasData(FilterOperatorSeedData.Rows());
     }
 }

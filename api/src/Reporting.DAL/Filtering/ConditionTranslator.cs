@@ -13,14 +13,15 @@ internal static class ConditionTranslator
 {
     public static Expression<Func<DatasetRow, bool>> Translate(
         FilterConditionDto condition,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById)
+        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null)
     {
         if (!columnsById.TryGetValue(condition.ColumnId, out var column))
         {
             throw new FilterException($"Column {condition.ColumnId} is not part of this dataset.");
         }
 
-        var descriptor = FilterOperators.Find(column.Type, condition.Operator)
+        var descriptor = FilterOperators.Find(column.Type, condition.Operator, operatorCatalogue)
             ?? throw new FilterException(
                 $"Operator '{condition.Operator}' cannot be used on the {column.Type} column '{column.Name}'.");
 

@@ -5,6 +5,7 @@ import { skipHttpErrorNotification } from '../http/http-error-notification.inter
 import {
   ReportRevisionContent,
   ReportSearchResult,
+  ReportSharedView,
   ReportSummary,
   ReportVersionSummary,
 } from '../models/report';
@@ -43,6 +44,29 @@ export class ReportApiService {
   /** Records that the current user just opened a report, for their "recently viewed" list. Fire-and-forget: failures are swallowed, so it opts out of the global error toast. */
   recordView(id: number): Observable<void> {
     return this.http.post<void>(`/api/reports/${id}/view`, {}, { context: skipHttpErrorNotification() });
+  }
+
+  /**
+   * Saves the current user's filters for viewing a report — the viewer's compact encoding of what
+   * they changed from the published ones — replacing any earlier. Reading them back is the viewer's
+   * `httpResource` on the same URL.
+   */
+  saveViewFilters(id: number, filters: string): Observable<void> {
+    return this.http.put<void>(`/api/reports/${id}/view-filters`, { filters });
+  }
+
+  /** Forgets the current user's saved viewing filters for a report, so it opens on the published ones. */
+  clearViewFilters(id: number): Observable<void> {
+    return this.http.delete<void>(`/api/reports/${id}/view-filters`);
+  }
+
+  /**
+   * Shares a set of viewing filters: returns the short id a link carries in place of the filters
+   * (the same id if these filters were shared before). Reading one back is the viewer's
+   * `httpResource` on `/api/reports/{id}/shared-views/{viewId}`.
+   */
+  createSharedView(id: number, filters: string): Observable<ReportSharedView> {
+    return this.http.post<ReportSharedView>(`/api/reports/${id}/shared-views`, { filters });
   }
 
   create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {

@@ -11,6 +11,7 @@ import {
 } from '../../core/models/report';
 import { isChartWidget, widgetTypeDescriptor } from '../../core/models/widget-catalog';
 import { FilterGroupModel } from '../report-builder/models/filter';
+import { ViewFilterOverrides } from './view-filter-overrides';
 
 /** The session-filter map key for one chart binding — a widget id plus its binding id. */
 export function chartBindingKey(widgetId: string, bindingId: string): string {
@@ -40,12 +41,13 @@ export function entryChanged(entry: ViewFilterEntry): boolean {
 }
 
 /**
- * The filters a viewer is applying to a published report *for this session only*.
+ * The filters a viewer is applying to a published report, layered over the author's.
  *
  * Every filter the author defined — page-level and per-widget — is seeded here as
  * an editable copy, so a reader can see the scope they're looking at and narrow
- * it further. Nothing written here reaches the server: the published revision is
- * immutable, and reloading restores the author's definition.
+ * it further. Nothing written here changes the report: the published revision is
+ * immutable. What the reader changed is exposed as {@link snapshot}, for the
+ * viewer to save or share, and comes back through the constructor or {@link apply}.
  */
 export class ReportViewFilters {
   public readonly pageEntries: readonly ViewFilterEntry[];
@@ -73,6 +75,7 @@ export class ReportViewFilters {
     content: ReportRevisionContent,
     schemas: Signal<Record<number, DatasetSchema>>,
     catalogue: Signal<OperatorCatalogue | null>,
+    overrides: ViewFilterOverrides = {},
   ) {
     const schemaFor = (datasetId: number) => computed(() => schemas()[datasetId] ?? null);
 
@@ -132,11 +135,48 @@ export class ReportViewFilters {
     this.widgetFilters = new Map(
       this.widgetEntries.map((e) => [e.key, computed(() => e.group.toQueryDto())]),
     );
+
+    this.apply(overrides);
   }
 
   /** Puts every filter back to what the published report defines. */
   public reset(): void {
     for (const entry of this.allEntries) entry.group.replaceWith(entry.published);
+  }
+
+  /**
+   * What the reader has changed from the published filters, ready to save or share. Only changed
+   * entries appear, so a reader who hasn't touched anything has an empty snapshot. Rows still being
+   * typed (missing an operand) are left out: they narrow nothing, and a half-typed value shouldn't be
+   * saved, shared or count as an edit. Page and widget keys share one namespace: a page key is a
+   * numeric dataset id, a widget key a GUID, so they can't collide.
+   */
+  public snapshot(): ViewFilterOverrides {
+    const overrides: ViewFilterOverrides = {};
+    for (const entry of this.allEntries) {
+      const finished = entry.group.toCompleteDto();
+      if (filterKey(finished) !== filterKey(entry.published)) overrides[entry.key] = finished;
+    }
+    return overrides;
+  }
+
+  /** The keys among <paramref name="overrides"/> that name no filter in this version — ones {@link apply} would ignore. */
+  public unmatched(overrides: ViewFilterOverrides): string[] {
+    const known = new Set(this.allEntries.map((e) => e.key));
+    return Object.keys(overrides).filter((key) => !known.has(key));
+  }
+
+  /**
+   * Sets every filter to the override for its key, or back to the published one when there is
+   * none — so applying `{}` is {@link reset}. Keys naming no entry in this version are ignored.
+   * An entry already showing the target is left alone, so re-applying what's on screen doesn't
+   * rebuild its rows or reload its widget.
+   */
+  public apply(overrides: ViewFilterOverrides): void {
+    for (const entry of this.allEntries) {
+      const target = Object.hasOwn(overrides, entry.key) ? overrides[entry.key] : entry.published;
+      if (filterKey(target) !== filterKey(entry.group.toDto())) entry.group.replaceWith(target);
+    }
   }
 
   /** The page-level filter already layered on top of a widget entry, for its live count. */

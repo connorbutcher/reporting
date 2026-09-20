@@ -1,8 +1,9 @@
-import { Component, computed, input, model, signal } from '@angular/core';
+import { Component, computed, input, model, output, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { FilterGroup } from '../../../core/models/filter';
 import { FilterBuilderComponent } from '../../report-builder/side-panel/filter-builder/filter-builder.component';
 import { ReportViewFilters, ViewFilterEntry, entryChanged } from '../report-view-filters';
+import { SharedLinkState } from '../view-filter-session';
 
 /** One tab's worth of widget-filter entries, for the panel's grouped widget list. */
 interface WidgetFilterGroup {
@@ -12,7 +13,8 @@ interface WidgetFilterGroup {
 
 /**
  * The viewer's filter panel: the page filters the author defined plus each
- * widget's own (table or chart), all adjustable for this session only.
+ * widget's own (table or chart), all adjustable by the reader. The changes live in the page's
+ * link rather than the report, so the panel can hand back a request to copy that link.
  */
 @Component({
   selector: 'app-view-filters-panel',
@@ -23,6 +25,9 @@ interface WidgetFilterGroup {
 export class ViewFiltersPanelComponent {
   public readonly filters = input.required<ReportViewFilters>();
 
+  /** Set while the reader is looking at a shared link's filters they haven't yet made their own. */
+  public readonly sharedLink = input<SharedLinkState | null>(null);
+
   /**
    * Which widget entry is expanded; only one at a time keeps the narrow panel readable.
    * Two-way so clicking a widget's filter button on the grid can open its entry. Kept
@@ -30,6 +35,15 @@ export class ViewFiltersPanelComponent {
    * filter doesn't collapse a page filter the reader already had open.
    */
   public readonly openKey = model<string | null>(null);
+
+  /** Asks the screen to copy a link to this report with the reader's filters applied. */
+  public readonly copyLink = output<void>();
+
+  /** Keep the shared link's filters as the reader's own. */
+  public readonly saveLink = output<void>();
+
+  /** Drop the shared link's filters and go back to the reader's own. */
+  public readonly discardLink = output<void>();
 
   public readonly pageEntries = computed(() => this.filters().pageEntries);
 

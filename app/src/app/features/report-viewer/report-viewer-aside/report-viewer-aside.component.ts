@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { ReportViewerStore } from '../report-viewer.store';
+import { ViewFilterSession } from '../view-filter-session';
 import { VersionHistoryComponent } from '../version-history/version-history.component';
 import { ViewFiltersPanelComponent } from '../view-filters-panel/view-filters-panel.component';
 
@@ -17,13 +18,27 @@ type AsideTab = 'filters' | 'history';
 })
 export class ReportViewerAsideComponent {
   private readonly store = inject(ReportViewerStore);
+  private readonly filters = inject(ViewFilterSession);
 
   protected readonly asideTab = this.store.asideTab;
-  protected readonly viewFilters = this.store.viewFilters;
+  protected readonly viewFilters = this.filters.viewFilters;
+  protected readonly sharedLink = this.filters.sharedLink;
   /** Two-way bound by the filters panel; the same writable signal the store owns. */
   protected readonly openFilterKey = this.store.openFilterKey;
 
   protected showTab(tab: AsideTab): void {
     this.store.showTab(tab);
+  }
+
+  protected copyLink(): void {
+    void this.filters.copyLink();
+  }
+
+  protected saveLinkAsMine(): void {
+    this.filters.saveLinkAsMine();
+  }
+
+  protected discardLink(): void {
+    this.filters.discardLink();
   }
 }

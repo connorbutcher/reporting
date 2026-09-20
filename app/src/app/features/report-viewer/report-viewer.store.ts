@@ -1,32 +1,26 @@
 import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
-import { DatasetApiService } from '../../core/api/dataset-api.service';
-import { FilterApiService } from '../../core/api/filter-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
-import { DatasetSchema } from '../../core/models/dataset';
-import { OperatorCatalogue } from '../../core/models/filter';
 import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
-  readChartBindings,
   widgetIdFromFragment,
 } from '../../core/models/report';
-import { isChartWidget } from '../../core/models/widget-catalog';
 import { NotificationService } from '../../core/services/notification.service';
 import { UrlFragmentService } from '../../core/services/url-fragment.service';
-import { ReportViewFilters } from './report-view-filters';
 
 /** Which secondary pane the aside is showing. */
 export type AsideTab = 'filters' | 'history';
 
 /**
  * Session state for the report viewer screen: which report and version are
- * loaded, the session filters layered over the published ones, which aside
- * pane is showing, and navigating into the editor or another version.
+ * loaded, which aside pane is showing, and navigating into the editor or
+ * another version. The reader's filters are {@link ViewFilterSession}'s, which
+ * builds on this store.
  *
  * Route params drive every fetch — changing report or version refetches
  * automatically. The viewer only ever shows published versions; the draft is
@@ -38,17 +32,9 @@ export class ReportViewerStore {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly reportApi = inject(ReportApiService);
-  private readonly datasetApi = inject(DatasetApiService);
-  private readonly filterApi = inject(FilterApiService);
   private readonly notify = inject(NotificationService);
   private readonly fragments = inject(UrlFragmentService);
 
-  /** Schemas and operators the filter panel needs to describe each column. */
-  private readonly schemas = signal<Record<string, DatasetSchema>>({});
-  private readonly catalogue = signal<OperatorCatalogue | null>(null);
-
-  /** Session-only filters layered over the published ones; rebuilt per version. */
-  readonly viewFilters = signal<ReportViewFilters | null>(null);
   readonly asideTab = signal<AsideTab>('filters');
   /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
   readonly openFilterKey = signal<string | null>(null);
@@ -57,7 +43,7 @@ export class ReportViewerStore {
   private lastRecordedView: number | null = null;
 
   private readonly params = toSignal(this.route.paramMap);
-  private readonly reportId = computed(() => {
+  readonly reportId = computed(() => {
     const raw = this.params()?.get('reportId');
     return raw ? Number(raw) : null;
   });
@@ -122,26 +108,11 @@ export class ReportViewerStore {
   );
 
   constructor() {
-    this.filterApi
-      .operators()
-      .pipe(takeUntilDestroyed())
-      .subscribe((catalogue) => this.catalogue.set(catalogue));
-
-    // A new published version to show means fresh session filters (dropping any the reader had
-    // applied) and a fresh set of schemas to name its columns.
+    // Record the view once a version has loaded; switching version doesn't re-record the same report.
     effect(() => {
-      const content = this.contentResource.hasValue() ? this.contentResource.value() : null;
+      const content = this.content();
       untracked(() => {
-        this.viewFilters.set(
-          content
-            ? new ReportViewFilters(content, this.schemas.asReadonly(), this.catalogue.asReadonly())
-            : null,
-        );
-        this.openFilterKey.set(null);
-        if (content) {
-          this.loadSchemas(content);
-          this.recordView(content.reportId);
-        }
+        if (content) this.recordView(content.reportId);
       });
     });
 
@@ -177,28 +148,6 @@ export class ReportViewerStore {
       preserveFragment: true,
       replaceUrl,
     });
-  }
-
-  /** Fetches a schema per dataset the version uses, so the filter panel can name columns. */
-  private loadSchemas(content: ReportRevisionContent): void {
-    const datasetIds = new Set<number>();
-    for (const widget of content.tabs.flatMap((t) => t.widgets)) {
-      if (widget.type === 'dataTable') {
-        if (widget.config.datasetId) datasetIds.add(widget.config.datasetId);
-      } else if (isChartWidget(widget)) {
-        // A chart can overlay several datasets — one per binding — all needed here.
-        for (const binding of readChartBindings(widget.config)) {
-          if (binding.datasetId) datasetIds.add(binding.datasetId);
-        }
-      }
-    }
-
-    for (const datasetId of datasetIds) {
-      if (this.schemas()[datasetId]) continue;
-      this.datasetApi.getSchema(datasetId).subscribe((schema) => {
-        this.schemas.update((all) => ({ ...all, [datasetId]: schema }));
-      });
-    }
   }
 
   /**
@@ -240,10 +189,13 @@ export class ReportViewerStore {
   }
 
   viewVersion(versionNumber: number): void {
-    this.router.navigate(['/reports', this.reportId(), 'versions', versionNumber]);
+    // Query params ride along: a shared link's filters (and the tab) apply to any version, by stable id.
+    this.router.navigate(['/reports', this.reportId(), 'versions', versionNumber], {
+      queryParamsHandling: 'preserve',
+    });
   }
 
   viewLatest(): void {
-    this.router.navigate(['/reports', this.reportId()]);
+    this.router.navigate(['/reports', this.reportId()], { queryParamsHandling: 'preserve' });
   }
 }

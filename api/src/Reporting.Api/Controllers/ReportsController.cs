@@ -12,7 +12,8 @@ namespace Reporting.Api.Controllers;
 public class ReportsController(
     ReportRepository reports,
     ResourceAuthorizer authorizer,
-    ReportPersonalizationService personalization) : ControllerBase
+    ReportPersonalizationService personalization,
+    ReportSharedViewService sharedViews) : ControllerBase
 {
     /// <summary>Reports directly inside <paramref name="folderId"/> (root if omitted) the caller can see — not the whole tree.</summary>
     [HttpGet]
@@ -181,7 +182,7 @@ public class ReportsController(
     public async Task<IActionResult> DiscardDraft(int id) =>
         await reports.DiscardDraftAsync(id) ? NoContent() : NotFound();
 
-    // --- per-user state (favourite / recently viewed) ---------------------
+    // --- per-user state (favourite / recently viewed / saved view filters) ---
 
     /// <summary>Stars the report for the current user. Idempotent; 404 if they can't see it.</summary>
     [HttpPost("{id:int}/favorite")]
@@ -202,4 +203,41 @@ public class ReportsController(
     [AuthorizeReport(AccessLevel.Viewer)]
     public async Task<IActionResult> RecordView(int id) =>
         await personalization.RecordViewAsync(id) ? NoContent() : NotFound();
+
+    /// <summary>The filters the current user saved for viewing this report; <c>Filters</c> is null when they have none.</summary>
+    [HttpGet("{id:int}/view-filters")]
+    [AuthorizeReport(AccessLevel.Viewer)]
+    public async Task<ActionResult<ReportViewFiltersDto>> GetViewFilters(int id) =>
+        new ReportViewFiltersDto { Filters = await personalization.GetViewFiltersAsync(id) };
+
+    /// <summary>Saves the current user's filters for viewing this report, replacing any earlier ones.</summary>
+    [HttpPut("{id:int}/view-filters")]
+    [AuthorizeReport(AccessLevel.Viewer)]
+    public async Task<IActionResult> SaveViewFilters(int id, SaveReportViewFiltersDto dto)
+    {
+        await personalization.SaveViewFiltersAsync(id, dto.Filters);
+        return NoContent();
+    }
+
+    /// <summary>Forgets the current user's saved filters for this report. Idempotent.</summary>
+    [HttpDelete("{id:int}/view-filters")]
+    public async Task<IActionResult> ClearViewFilters(int id)
+    {
+        await personalization.ClearViewFiltersAsync(id);
+        return NoContent();
+    }
+
+    // --- shared filters (a link carries a short id, not the filters) -------
+
+    /// <summary>Shares a set of viewing filters: returns the short id a link can carry, the same one if these filters were shared before.</summary>
+    [HttpPost("{id:int}/shared-views")]
+    [AuthorizeReport(AccessLevel.Viewer)]
+    public async Task<ActionResult<ReportSharedViewDto>> CreateSharedView(int id, SaveReportViewFiltersDto dto) =>
+        await sharedViews.CreateAsync(id, dto.Filters);
+
+    /// <summary>The filters behind a short id from a shared link; <c>Filters</c> is null when there is no such snapshot on this report.</summary>
+    [HttpGet("{id:int}/shared-views/{viewId}")]
+    [AuthorizeReport(AccessLevel.Viewer)]
+    public async Task<ActionResult<ReportSharedViewDto>> GetSharedView(int id, string viewId) =>
+        await sharedViews.GetAsync(id, viewId);
 }

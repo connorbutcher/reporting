@@ -27,7 +27,14 @@
 
   @if (asideTab() === 'filters') {
     @if (viewFilters(); as filters) {
-      <app-view-filters-panel [filters]="filters" [(openKey)]="openFilterKey" />
+      <app-view-filters-panel
+        [filters]="filters"
+        [sharedLink]="sharedLink()"
+        [(openKey)]="openFilterKey"
+        (copyLink)="copyLink()"
+        (saveLink)="saveLinkAsMine()"
+        (discardLink)="discardLink()"
+      />
     } @else {
       <p class="status">Nothing to filter yet.</p>
     }

@@ -100,6 +100,18 @@ export class FilterGroupModel extends EditorNode {
     return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
   }
 
+  /**
+   * Every finished condition, enabled or not — what a reader's view amounts to, for keeping or
+   * sharing. A disabled condition is state worth keeping (it can be toggled back on); a row still
+   * being typed is not, so it stays out until it has its operands.
+   */
+  public toCompleteDto(): FilterGroup | null {
+    const children = this.children()
+      .filter((c) => c.isComplete())
+      .map((c) => c.toDto());
+    return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
+  }
+
   public override snapshotValue(): unknown {
     return this.toDto();
   }
