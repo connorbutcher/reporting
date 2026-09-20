@@ -3,20 +3,18 @@ import { ReadonlyReportGridComponent } from './readonly-report-grid/readonly-rep
 import { ReportViewerAsideComponent } from './report-viewer-aside/report-viewer-aside.component';
 import { ReportViewerHeaderComponent } from './report-viewer-header/report-viewer-header.component';
 import { ReportViewerStore } from './report-viewer.store';
-import { ViewFilterSession } from './view-filter-session';
+import { SavedViewFilters } from './filters/saved-view-filters';
+import { SharedViewLink } from './filters/shared-view-link';
+import { ViewFilterSchemas } from './filters/view-filter-schemas';
+import { ViewFilterSession } from './filters/view-filter-session';
 
-/**
- * Read-only view of a report: the latest published version by default, or one
- * historical version when a version number is in the route. All state and data
- * live in {@link ReportViewerStore}; this shell only lays out the header, the
- * grid, and the filters/history aside around it.
- */
+/** Read-only view of a report: lays out the header, the grid, and the filters/history aside. */
 @Component({
   selector: 'app-report-viewer',
   imports: [ReadonlyReportGridComponent, ReportViewerHeaderComponent, ReportViewerAsideComponent],
   templateUrl: './report-viewer.component.html',
   styleUrl: './report-viewer.component.scss',
-  providers: [ReportViewerStore, ViewFilterSession],
+  providers: [ReportViewerStore, ViewFilterSchemas, SavedViewFilters, SharedViewLink, ViewFilterSession],
 })
 export class ReportViewerComponent {
   private readonly store = inject(ReportViewerStore);

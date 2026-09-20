@@ -10,8 +10,7 @@ internal static class DateConditionTranslator
     public static Expression<Func<DatasetRow, bool>> Translate(
         int id, DatasetColumn column, FilterOperator op, List<string> values)
     {
-        // Relative operators resolve to a fixed instant here so a constant, not a
-        // clock call, reaches SQL.
+        // Relative operators resolve to a fixed instant, so a constant (not a clock call) reaches SQL.
         if (op is FilterOperator.InLastDays or FilterOperator.InNextDays)
         {
             var days = FilterValueParsing.ParseNumber(values.ElementAtOrDefault(0), column);

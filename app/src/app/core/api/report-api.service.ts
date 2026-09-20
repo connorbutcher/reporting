@@ -46,25 +46,17 @@ export class ReportApiService {
     return this.http.post<void>(`/api/reports/${id}/view`, {}, { context: skipHttpErrorNotification() });
   }
 
-  /**
-   * Saves the current user's filters for viewing a report — the viewer's compact encoding of what
-   * they changed from the published ones — replacing any earlier. Reading them back is the viewer's
-   * `httpResource` on the same URL.
-   */
+  /** Saves the current user's viewing filters (the viewer's encoded string), replacing any earlier. */
   saveViewFilters(id: number, filters: string): Observable<void> {
     return this.http.put<void>(`/api/reports/${id}/view-filters`, { filters });
   }
 
-  /** Forgets the current user's saved viewing filters for a report, so it opens on the published ones. */
+  /** Forgets the current user's saved viewing filters. */
   clearViewFilters(id: number): Observable<void> {
     return this.http.delete<void>(`/api/reports/${id}/view-filters`);
   }
 
-  /**
-   * Shares a set of viewing filters: returns the short id a link carries in place of the filters
-   * (the same id if these filters were shared before). Reading one back is the viewer's
-   * `httpResource` on `/api/reports/{id}/shared-views/{viewId}`.
-   */
+  /** Shares viewing filters, returning the short id a link carries instead of them (the same id for the same filters). */
   createSharedView(id: number, filters: string): Observable<ReportSharedView> {
     return this.http.post<ReportSharedView>(`/api/reports/${id}/shared-views`, { filters });
   }

@@ -5,22 +5,17 @@ using Reporting.Database;
 namespace Reporting.DAL.Filtering;
 
 /// <summary>
-/// Which operators each column type supports, and what operands each one needs. The
-/// authoritative list lives in the FilterOperatorDefinitions table — <see cref="LoadCatalogueAsync"/>
-/// reads it, and the API's FiltersController serves it to the client so the filter panel and
-/// this class's own server-side validation (in <see cref="ConditionTranslator"/>) can never
-/// disagree about what's offerable. A caller with no database in play — a unit test building a
-/// filter predicate directly — gets the same data by falling back to <see cref="FilterOperatorSeedData"/>,
-/// the in-memory list the table itself is seeded from.
+/// Which operators each column type supports, and the operands each needs. The FilterOperatorDefinitions
+/// table is authoritative: <see cref="LoadCatalogueAsync"/> reads it, the client is served it, and
+/// <see cref="ConditionTranslator"/> validates against it, so they can't disagree. With no database (a unit
+/// test) lookups fall back to <see cref="FilterOperatorSeedData"/>, which the table is seeded from.
 /// </summary>
 public static class FilterOperators
 {
     private static readonly IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> DefaultCatalogue =
         BuildCatalogue(FilterOperatorSeedData.Rows());
 
-    // Loaded once per process and reused: this is fixed reference data that only ever changes via
-    // a database edit or migration, never per-request, so there's no reason to re-query it on
-    // every filter translated.
+    // Fixed reference data that only changes via a migration, so it's loaded once per process.
     private static IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? _loadedCatalogue;
 
     public static async Task<IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>> LoadCatalogueAsync(

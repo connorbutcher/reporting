@@ -6,37 +6,27 @@ using Reporting.Database;
 namespace Reporting.DAL.Filtering;
 
 /// <summary>
-/// Translates the three tolerance operators into numeric range predicates, using the bounds
-/// resolved from the column's banding. The band ranges mirror <see cref="ToleranceResolver.Classify"/>:
-/// in-spec is [Min, Max]; the concession band is the amber shoulder each side of it; out of
-/// tolerance is beyond the widest allowed bound.
+/// Translates the tolerance operators into numeric range predicates over the column's resolved bounds,
+/// mirroring <see cref="ToleranceResolver.Classify"/>: in spec is [Min, Max], the concession band
+/// is the amber shoulder each side, and out of tolerance is beyond the widest allowed bound.
 /// </summary>
 internal static class ToleranceConditionTranslator
 {
     public static bool IsTolerance(FilterOperator op) =>
         op is FilterOperator.InTolerance or FilterOperator.NeedsConcession or FilterOperator.OutOfTolerance;
 
-    public static Expression<Func<DatasetRow, bool>>? Translate(
-        FilterConditionDto condition,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn)
+    /// <returns>Null when no banding is resolved for the column: the check can't be evaluated, so it narrows nothing rather than blanking the data.</returns>
+    public static Expression<Func<DatasetRow, bool>>? Translate(FilterConditionDto condition, TranslationContext context)
     {
-        if (!columnsById.TryGetValue(condition.ColumnId, out var column))
-        {
-            throw new FilterException($"Column {condition.ColumnId} is not part of this dataset.");
-        }
-
+        var column = context.Column(condition.ColumnId);
         if (column.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
         {
             throw new FilterException(
                 $"A tolerance filter needs a numeric column, but '{column.Name}' is {column.Type}.");
         }
 
-        // No banding resolved for this column here (none configured on the querying widget, or the
-        // limits row is missing) — the check can't be evaluated, so it narrows nothing rather than
-        // blanking the data.
-        if (toleranceByColumn is null
-            || !toleranceByColumn.TryGetValue(condition.ColumnId, out var bounds)
+        if (context.ToleranceByColumn is null
+            || !context.ToleranceByColumn.TryGetValue(condition.ColumnId, out var bounds)
             || bounds is null)
         {
             return null;
@@ -87,7 +77,7 @@ internal static class ToleranceConditionTranslator
             return r => r.Cells.Any(c => c.ColumnId == id && c.NumberValue > max && c.NumberValue <= hi);
         }
 
-        // No concession band defined, so nothing can be "in concession".
+        // No concession band, so nothing can be in concession.
         return _ => false;
     }
 }

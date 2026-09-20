@@ -5,11 +5,7 @@ import { ValidationIssue } from '../validation-issue';
 import { FilterContext } from './filter-context';
 import { FilterGroupModel } from './filter-group.model';
 
-/**
- * A report-level filter for one dataset. It applies to every widget bound to that
- * dataset — tables, pivots, and each chart binding — on top of whatever filter the
- * widget sets itself (the two are AND-ed; see `combineFilters`).
- */
+/** A report-level filter for one dataset, AND-ed with each widget's own filter on that dataset. */
 export class ReportFilterModel extends EditorNode {
   public readonly datasetId: number;
   public readonly group: FilterGroupModel;

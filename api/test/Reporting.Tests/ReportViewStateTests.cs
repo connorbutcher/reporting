@@ -1,78 +1,13 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Reporting.Abstractions;
-using Reporting.DAL.Identity;
-using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.Tests;
 
-/// <summary>
-/// The per-user saved viewing filters in <see cref="ReportPersonalizationService"/>, against a real
-/// (SQLite) relational provider so the per-(user, report) uniqueness and the cascades run through
-/// actual SQL. The filters string is the front-end's opaque encoding; these tests only cover storing,
-/// isolating, replacing and clearing it, and refusing a value that isn't shaped like the encoding.
-/// </summary>
-public class ReportViewStateTests : IDisposable
+/// <summary>Saved viewing filters: storing, isolating per user and report, replacing, clearing and refusing a malformed value. Runs on SQLite so the unique index and cascades are real.</summary>
+public class ReportViewStateTests : SqliteDbTestBase
 {
-    private readonly SqliteConnection _connection;
-    private readonly ReportingDbContext _db;
-
-    public ReportViewStateTests()
-    {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-        using (var pragma = _connection.CreateCommand())
-        {
-            pragma.CommandText = "PRAGMA foreign_keys = ON";
-            pragma.ExecuteNonQuery();
-        }
-
-        var options = new DbContextOptionsBuilder<ReportingDbContext>().UseSqlite(_connection).Options;
-        _db = new ReportingDbContext(options);
-        _db.Database.EnsureCreated();
-    }
-
-    public void Dispose()
-    {
-        _db.Dispose();
-        _connection.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    private sealed class FakeAccessor(ReportingDbContext db, int userId) : ICurrentUserAccessor
-    {
-        public async Task<ICurrentUser> GetAsync()
-        {
-            var u = await db.Users.Where(x => x.Id == userId).FirstAsync();
-            return new CurrentUser(u.Id, u.RefId, u.DisplayName, u.Email, u.IsGlobalAdmin, []);
-        }
-    }
-
-    private ReportPersonalizationService ServiceFor(int userId)
-    {
-        var accessor = new FakeAccessor(_db, userId);
-        var authorizer = new ResourceAuthorizer(_db, new PermissionService(_db, accessor), new DatasetRepository(_db));
-        return new ReportPersonalizationService(_db, authorizer, accessor);
-    }
-
-    private async Task<User> SeedUserAsync(string email)
-    {
-        var user = new User { RefId = Guid.NewGuid(), Email = email, DisplayName = email, CreatedAt = DateTime.UtcNow };
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-        return user;
-    }
-
-    private async Task<Report> SeedReportAsync(int number)
-    {
-        var now = DateTime.UtcNow;
-        var report = new Report { RefId = Guid.NewGuid(), Number = number, Name = $"Report {number}", CreatedAt = now, UpdatedAt = now };
-        _db.Reports.Add(report);
-        await _db.SaveChangesAsync();
-        return report;
-    }
+    private ReportViewStateService ServiceFor(User user) => new(Db, Acting(user));
 
     [Fact]
     public async Task Nothing_is_saved_until_the_user_saves_something()
@@ -80,7 +15,7 @@ public class ReportViewStateTests : IDisposable
         var user = await SeedUserAsync("a@example.com");
         var report = await SeedReportAsync(1);
 
-        Assert.Null(await ServiceFor(user.Id).GetViewFiltersAsync(report.Id));
+        Assert.Null(await ServiceFor(user).GetAsync(report.Id));
     }
 
     [Fact]
@@ -88,11 +23,11 @@ public class ReportViewStateTests : IDisposable
     {
         var user = await SeedUserAsync("a@example.com");
         var report = await SeedReportAsync(1);
-        var service = ServiceFor(user.Id);
+        var service = ServiceFor(user);
 
-        await service.SaveViewFiltersAsync(report.Id, "eyJ3MSI6bnVsbH0");
+        await service.SaveAsync(report.Id, "eyJ3MSI6bnVsbH0");
 
-        Assert.Equal("eyJ3MSI6bnVsbH0", await service.GetViewFiltersAsync(report.Id));
+        Assert.Equal("eyJ3MSI6bnVsbH0", await service.GetAsync(report.Id));
     }
 
     [Fact]
@@ -100,13 +35,13 @@ public class ReportViewStateTests : IDisposable
     {
         var user = await SeedUserAsync("a@example.com");
         var report = await SeedReportAsync(1);
-        var service = ServiceFor(user.Id);
+        var service = ServiceFor(user);
 
-        await service.SaveViewFiltersAsync(report.Id, "first");
-        await service.SaveViewFiltersAsync(report.Id, "second");
+        await service.SaveAsync(report.Id, "first");
+        await service.SaveAsync(report.Id, "second");
 
-        Assert.Equal("second", await service.GetViewFiltersAsync(report.Id));
-        Assert.Equal(1, await _db.ReportViewStates.CountAsync());
+        Assert.Equal("second", await service.GetAsync(report.Id));
+        Assert.Equal(1, await Db.ReportViewStates.CountAsync());
     }
 
     [Fact]
@@ -117,14 +52,14 @@ public class ReportViewStateTests : IDisposable
         var first = await SeedReportAsync(1);
         var second = await SeedReportAsync(2);
 
-        await ServiceFor(alice.Id).SaveViewFiltersAsync(first.Id, "alice1");
-        await ServiceFor(alice.Id).SaveViewFiltersAsync(second.Id, "alice2");
-        await ServiceFor(bob.Id).SaveViewFiltersAsync(first.Id, "bob1");
+        await ServiceFor(alice).SaveAsync(first.Id, "alice1");
+        await ServiceFor(alice).SaveAsync(second.Id, "alice2");
+        await ServiceFor(bob).SaveAsync(first.Id, "bob1");
 
-        Assert.Equal("alice1", await ServiceFor(alice.Id).GetViewFiltersAsync(first.Id));
-        Assert.Equal("alice2", await ServiceFor(alice.Id).GetViewFiltersAsync(second.Id));
-        Assert.Equal("bob1", await ServiceFor(bob.Id).GetViewFiltersAsync(first.Id));
-        Assert.Null(await ServiceFor(bob.Id).GetViewFiltersAsync(second.Id));
+        Assert.Equal("alice1", await ServiceFor(alice).GetAsync(first.Id));
+        Assert.Equal("alice2", await ServiceFor(alice).GetAsync(second.Id));
+        Assert.Equal("bob1", await ServiceFor(bob).GetAsync(first.Id));
+        Assert.Null(await ServiceFor(bob).GetAsync(second.Id));
     }
 
     [Fact]
@@ -133,14 +68,29 @@ public class ReportViewStateTests : IDisposable
         var alice = await SeedUserAsync("alice@example.com");
         var bob = await SeedUserAsync("bob@example.com");
         var report = await SeedReportAsync(1);
-        await ServiceFor(alice.Id).SaveViewFiltersAsync(report.Id, "alice");
-        await ServiceFor(bob.Id).SaveViewFiltersAsync(report.Id, "bob");
+        await ServiceFor(alice).SaveAsync(report.Id, "alice");
+        await ServiceFor(bob).SaveAsync(report.Id, "bob");
 
-        await ServiceFor(alice.Id).ClearViewFiltersAsync(report.Id);
-        await ServiceFor(alice.Id).ClearViewFiltersAsync(report.Id);
+        await ServiceFor(alice).ClearAsync(report.Id);
+        await ServiceFor(alice).ClearAsync(report.Id);
 
-        Assert.Null(await ServiceFor(alice.Id).GetViewFiltersAsync(report.Id));
-        Assert.Equal("bob", await ServiceFor(bob.Id).GetViewFiltersAsync(report.Id));
+        Assert.Null(await ServiceFor(alice).GetAsync(report.Id));
+        Assert.Equal("bob", await ServiceFor(bob).GetAsync(report.Id));
+    }
+
+    [Fact]
+    public async Task Saving_updates_the_timestamp()
+    {
+        var user = await SeedUserAsync("a@example.com");
+        var report = await SeedReportAsync(1);
+        var service = ServiceFor(user);
+        await service.SaveAsync(report.Id, "first");
+        var before = (await Db.ReportViewStates.AsNoTracking().SingleAsync()).UpdatedAt;
+
+        await Task.Delay(20);
+        await service.SaveAsync(report.Id, "second");
+
+        Assert.True((await Db.ReportViewStates.AsNoTracking().SingleAsync()).UpdatedAt > before);
     }
 
     [Theory]
@@ -154,9 +104,9 @@ public class ReportViewStateTests : IDisposable
         var user = await SeedUserAsync("a@example.com");
         var report = await SeedReportAsync(1);
 
-        await Assert.ThrowsAsync<DataValidationException>(() => ServiceFor(user.Id).SaveViewFiltersAsync(report.Id, filters));
+        await Assert.ThrowsAsync<DataValidationException>(() => ServiceFor(user).SaveAsync(report.Id, filters));
 
-        Assert.Equal(0, await _db.ReportViewStates.CountAsync());
+        Assert.Equal(0, await Db.ReportViewStates.CountAsync());
     }
 
     [Fact]
@@ -164,13 +114,13 @@ public class ReportViewStateTests : IDisposable
     {
         var user = await SeedUserAsync("a@example.com");
         var report = await SeedReportAsync(1);
-        var service = ServiceFor(user.Id);
+        var service = ServiceFor(user);
 
-        await service.SaveViewFiltersAsync(report.Id, new string('a', ReportViewState.MaxFiltersLength));
+        await service.SaveAsync(report.Id, new string('a', ReportViewState.MaxFiltersLength));
         await Assert.ThrowsAsync<DataValidationException>(
-            () => service.SaveViewFiltersAsync(report.Id, new string('a', ReportViewState.MaxFiltersLength + 1)));
+            () => service.SaveAsync(report.Id, new string('a', ReportViewState.MaxFiltersLength + 1)));
 
-        Assert.Equal(ReportViewState.MaxFiltersLength, (await service.GetViewFiltersAsync(report.Id))!.Length);
+        Assert.Equal(ReportViewState.MaxFiltersLength, (await service.GetAsync(report.Id))!.Length);
     }
 
     [Fact]
@@ -180,13 +130,13 @@ public class ReportViewStateTests : IDisposable
         var bob = await SeedUserAsync("bob@example.com");
         var first = await SeedReportAsync(1);
         var second = await SeedReportAsync(2);
-        await ServiceFor(alice.Id).SaveViewFiltersAsync(first.Id, "a1");
-        await ServiceFor(bob.Id).SaveViewFiltersAsync(second.Id, "b2");
+        await ServiceFor(alice).SaveAsync(first.Id, "a1");
+        await ServiceFor(bob).SaveAsync(second.Id, "b2");
 
-        _db.Reports.Remove(first);
-        _db.Users.Remove(bob);
-        await _db.SaveChangesAsync();
+        Db.Reports.Remove(first);
+        Db.Users.Remove(bob);
+        await Db.SaveChangesAsync();
 
-        Assert.Equal(0, await _db.ReportViewStates.CountAsync());
+        Assert.Equal(0, await Db.ReportViewStates.CountAsync());
     }
 }

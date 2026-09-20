@@ -302,15 +302,15 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<ReportView>()
             .HasOne<Report>().WithMany().HasForeignKey(v => v.ReportId).OnDelete(DeleteBehavior.Cascade);
 
-        // A user's saved viewing filters: one row per (user, report), cascading from both sides.
+        // Saved viewing filters: one row per (user, report).
         modelBuilder.Entity<ReportViewState>().HasIndex(s => new { s.UserId, s.ReportId }).IsUnique();
         modelBuilder.Entity<ReportViewState>()
             .HasOne<User>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ReportViewState>()
             .HasOne<Report>().WithMany().HasForeignKey(s => s.ReportId).OnDelete(DeleteBehavior.Cascade);
 
-        // Shared filter snapshots, looked up by the short id a link carries and deduplicated per report
-        // by content hash. The creator is only recorded (set null if the user goes), never owning the row.
+        // Shared filter snapshots: found by short id, deduplicated per report by content hash. The
+        // creator is only recorded, so removing them leaves the link working.
         modelBuilder.Entity<ReportSharedView>().Property(v => v.ShortId).HasMaxLength(ReportSharedView.ShortIdLength);
         modelBuilder.Entity<ReportSharedView>().Property(v => v.FiltersHash).HasMaxLength(64);
         modelBuilder.Entity<ReportSharedView>().HasIndex(v => v.ShortId).IsUnique();

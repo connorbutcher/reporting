@@ -23,8 +23,7 @@ public enum FilterOperator
     EndsWith,
     In,
 
-    // Numeric and date. Dates reuse these with their own labels ("is after", …)
-    // rather than duplicating the enum.
+    // Numeric and date (dates reuse these with their own labels).
     GreaterThan,
     GreaterThanOrEqual,
     LessThan,
@@ -39,8 +38,7 @@ public enum FilterOperator
     InLastDays,
     InNextDays,
 
-    // Numeric, against the column's configured tolerance banding. These take no
-    // operand — the bounds come from the banding, resolved server-side at query time.
+    // Numeric, against the column's tolerance banding: no operand, bounds resolved at query time.
     InTolerance,
     NeedsConcession,
     OutOfTolerance
@@ -57,10 +55,7 @@ public enum FilterOperandKind
     List
 }
 
-/// <summary>
-/// A filter is a tree so nesting is expressible from day one, even while the UI
-/// only offers a single level of grouping.
-/// </summary>
+/// <summary>A tree, so nesting is expressible even though the UI offers one level of grouping.</summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "kind")]
 [JsonDerivedType(typeof(FilterGroupDto), typeDiscriminator: "group")]
 [JsonDerivedType(typeof(FilterConditionDto), typeDiscriminator: "condition")]
@@ -82,18 +77,11 @@ public class FilterConditionDto : FilterNodeDto
     /// <summary>Raw strings parsed against the column's type; 0, 1 or 2 depending on the operator.</summary>
     public List<string> Values { get; set; } = new();
 
-    /// <summary>
-    /// Whether this condition narrows the data. Defaults to true, so a condition stored
-    /// before toggling existed (its JSON omits the field) still applies. A disabled
-    /// condition is retained but skipped when the filter is translated.
-    /// </summary>
+    /// <summary>Defaults to true, so conditions stored before toggling existed still apply. A disabled one is kept but skipped when translated.</summary>
     public bool Enabled { get; set; } = true;
 }
 
-/// <summary>
-/// A report-level filter: applies to every data-table widget bound to
-/// <see cref="DatasetId"/>, combined with that widget's own filter using AND.
-/// </summary>
+/// <summary>Applies to every widget bound to <see cref="DatasetId"/>, AND-ed with the widget's own filter.</summary>
 public class ReportFilterDto
 {
     public int DatasetId { get; set; }

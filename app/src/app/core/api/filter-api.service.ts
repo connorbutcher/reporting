@@ -1,17 +1,13 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable, map, shareReplay } from 'rxjs';
-import { DatasetColumnType } from '../models/dataset';
 import { OperatorCatalogue, OperatorsForType } from '../models/filter';
 
 @Service()
 export class FilterApiService {
   private readonly http = inject(HttpClient);
 
-  /**
-   * Which operators each column type supports. The catalogue is static for the
-   * life of the server, so one request is shared by every filter panel.
-   */
+  /** Static for the life of the server, so one request serves every filter panel. */
   private readonly catalogue$: Observable<OperatorCatalogue> = this.http
     .get<OperatorsForType[]>('/api/filters/operators')
     .pipe(
@@ -23,14 +19,7 @@ export class FilterApiService {
       shareReplay({ bufferSize: 1, refCount: false }),
     );
 
-  /** Operators valid for one column type, or an empty list before the catalogue arrives. */
-  public static operatorsFor(
-    catalogue: OperatorCatalogue | null,
-    type: DatasetColumnType | undefined,
-  ) {
-    return type && catalogue ? (catalogue[type] ?? []) : [];
-  }
-
+  /** Which operators each column type supports. */
   public operators(): Observable<OperatorCatalogue> {
     return this.catalogue$;
   }

@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
@@ -7,27 +5,20 @@ using Reporting.Database;
 namespace Reporting.DAL.Repositories;
 
 /// <summary>
-/// Shared viewing-filter snapshots: turns a set of filters into a short id a link can carry instead of
-/// the filters themselves, and resolves an id back. A snapshot is immutable and per report; sharing the
-/// same filters again returns the same id. Both operations are authorized at the controller by an
-/// <c>[AuthorizeReport(Viewer)]</c> attribute on the report, and a snapshot is only ever read back
-/// through the report it was made for, so an id opens nothing on any other report.
+/// Turns viewing filters into a short id a link carries instead of the filters, and back. Snapshots
+/// are immutable and per report; the same filters always get the same id. Authorized at the
+/// controller, and a snapshot is only read through the report it was made for.
 /// </summary>
 public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor currentUser)
 {
-    // Lowercase only, so the id means the same under a case-insensitive database collation.
-    private const string Alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-
-    // Enough to ride out an id collision or a concurrent share of the same filters, both of which are
-    // far rarer than this. Past it the failure is real, and surfaces.
+    // Covers a concurrent share of the same filters or an id collision, both far rarer than this.
     private const int MaxSaveAttempts = 3;
 
-    /// <summary>The short id for these filters on this report — the existing one if they've been shared before, else a new one.</summary>
     public async Task<ReportSharedViewDto> CreateAsync(int reportId, string filters)
     {
         ViewFiltersFormat.EnsureValid(filters);
 
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(filters)));
+        var hash = SharedViewIds.HashOf(filters);
         var existing = await FindByHashAsync(reportId, hash);
         if (existing is not null) return ToDto(existing);
 
@@ -36,7 +27,7 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
         {
             var view = new ReportSharedView
             {
-                ShortId = NewShortId(),
+                ShortId = SharedViewIds.New(),
                 ReportId = reportId,
                 Filters = filters,
                 FiltersHash = hash,
@@ -51,8 +42,7 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
             }
             catch (DbUpdateException) when (attempt < MaxSaveAttempts)
             {
-                // Either a concurrent request just shared these same filters (then use its row), or the
-                // random id collided (then try another). Forget the failed row before either.
+                // Either a concurrent request shared these filters (use its row) or the id collided (retry).
                 db.Entry(view).State = EntityState.Detached;
                 var raced = await FindByHashAsync(reportId, hash);
                 if (raced is not null) return ToDto(raced);
@@ -60,7 +50,7 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
         }
     }
 
-    /// <summary>The filters behind a short id on this report; <c>Filters</c> is null when there is no such snapshot.</summary>
+    /// <summary><c>Filters</c> is null when this report has no such snapshot.</summary>
     public async Task<ReportSharedViewDto> GetAsync(int reportId, string viewId)
     {
         string? filters = null;
@@ -79,10 +69,4 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
         db.ReportSharedViews.AsNoTracking().FirstOrDefaultAsync(v => v.ReportId == reportId && v.FiltersHash == hash);
 
     private static ReportSharedViewDto ToDto(ReportSharedView view) => new() { Id = view.ShortId, Filters = view.Filters };
-
-    private static string NewShortId() =>
-        string.Create(ReportSharedView.ShortIdLength, 0, static (span, _) =>
-        {
-            for (var i = 0; i < span.Length; i++) span[i] = Alphabet[RandomNumberGenerator.GetInt32(Alphabet.Length)];
-        });
 }

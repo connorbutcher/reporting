@@ -1,0 +1,40 @@
+// Nothing to show while idle, so it must not take a gap in the builder's column.
+:host:empty {
+  display: none;
+}
+
+.filter-match {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #475569;
+
+  strong {
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  // Numbers held from the previous count while the next is in flight.
+  &.is-pending {
+    opacity: 0.55;
+  }
+
+  // The filter matches nothing: the usual "why is my table empty".
+  &.is-empty {
+    color: #b45309;
+
+    strong {
+      color: #b45309;
+    }
+  }
+
+  &.is-error {
+    color: #dc2626;
+  }
+}
+
+.filter-match-note {
+  color: #94a3b8;
+}

@@ -1,36 +1,28 @@
 namespace Reporting.Database;
 
 /// <summary>
-/// An immutable snapshot of a set of viewing filters that someone chose to share, addressed by a short
-/// <see cref="ShortId"/> so a link carries only that id and no filter data. Keyed on the report, not a
-/// version — the filters name widgets and datasets by stable id, so a link keeps working as the report
-/// is republished. A snapshot never changes once created: editing your own filters afterwards makes a
-/// new one, so a link means the same thing to everyone who opens it.
-/// <para>
-/// Snapshots are deduplicated per report by <see cref="FiltersHash"/>, so sharing the same filters
-/// twice gives the same id (and repeated shares don't pile up rows). Deleting the report removes its
-/// snapshots; the creator is only recorded, so removing them leaves the link working.
-/// </para>
+/// An immutable snapshot of shared viewing filters, addressed by a short id so a link carries no filter
+/// data. Keyed on the report, not a version. Deduplicated per report by <see cref="FiltersHash"/>, so
+/// sharing the same filters again gives the same id.
 /// </summary>
 public class ReportSharedView
 {
-    /// <summary>Length of a generated <see cref="ShortId"/>.</summary>
     public const int ShortIdLength = 10;
 
     public int Id { get; set; }
 
-    /// <summary>The id a link carries. Lowercase letters and digits only, so it is safe under a case-insensitive collation.</summary>
+    /// <summary>What a link carries: lowercase letters and digits, so it's safe under a case-insensitive collation.</summary>
     public string ShortId { get; set; } = string.Empty;
 
     public int ReportId { get; set; }
 
-    /// <summary>The filters, in the front-end's compact URL-safe encoding. Opaque to the server, as for <see cref="ReportViewState.Filters"/>.</summary>
+    /// <summary>The front-end's encoding, opaque to the server.</summary>
     public string Filters { get; set; } = string.Empty;
 
-    /// <summary>SHA-256 (hex) of <see cref="Filters"/>: the key that finds an existing snapshot of the same filters.</summary>
+    /// <summary>SHA-256 (hex) of <see cref="Filters"/>.</summary>
     public string FiltersHash { get; set; } = string.Empty;
 
-    /// <summary>Who first shared these filters. Null once that user is gone.</summary>
+    /// <summary>Who first shared these filters; null once that user is gone. The link keeps working.</summary>
     public int? CreatedByUserId { get; set; }
 
     public DateTime CreatedAt { get; set; }

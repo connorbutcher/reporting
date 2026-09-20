@@ -3,11 +3,15 @@ import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
 
-/**
- * Report-level filters, scoped per dataset. Each one applies to every widget on
- * the report bound to that dataset — table, pivot, or chart binding — on top of
- * the widget's own filter.
- */
+interface DatasetChip {
+  readonly id: number;
+  readonly name: string;
+  readonly count: number;
+  /** The chip's accessible name: dataset and conditions. */
+  readonly label: string;
+}
+
+/** Report-level filters, one per dataset, applied to every widget bound to that dataset. */
 @Component({
   selector: 'app-panel-report-filters',
   imports: [FilterBuilderComponent, PanelFilterReuseComponent],
@@ -19,7 +23,7 @@ export class PanelReportFiltersComponent {
 
   public readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
 
-  /** Which dataset's filter is on screen; defaults to the first one in use. */
+  /** The dataset on screen; defaults to the first in use. */
   public readonly activeDatasetId = computed(
     () => this.selectedDatasetId() ?? this.datasetIds()[0] ?? null,
   );
@@ -30,12 +34,22 @@ export class PanelReportFiltersComponent {
     return datasetId && model ? model.reportFilter(datasetId) : null;
   });
 
+  public readonly chips = computed<DatasetChip[]>(() => {
+    const model = this.session.model();
+    const datasets = this.session.datasets();
+    return this.datasetIds().map((id) => {
+      const name = datasets.find((d) => d.id === id)?.name ?? 'Dataset';
+      const count = model?.reportFilter(id)?.group.count() ?? 0;
+      const conditions = count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+      return { id, name, count, label: `${name}, ${conditions}` };
+    });
+  });
+
   private readonly session = inject(ReportSession);
   private readonly selectedDatasetId = signal<number | null>(null);
 
   constructor() {
-    // Creating the filter is a write, so it happens here rather than inside the
-    // computed above — the panel always needs one to bind to.
+    // Creating the filter is a write, so it happens here rather than in a computed.
     effect(() => {
       const datasetId = this.activeDatasetId();
       const model = this.session.model();
@@ -46,20 +60,5 @@ export class PanelReportFiltersComponent {
 
   public select(datasetId: number): void {
     this.selectedDatasetId.set(datasetId);
-  }
-
-  public datasetName(datasetId: number): string {
-    return this.session.datasets().find((d) => d.id === datasetId)?.name ?? 'Dataset';
-  }
-
-  /** How many conditions this dataset's filter has, for the chip's badge. */
-  public conditionCountNumber(datasetId: number): number {
-    return this.session.model()?.reportFilter(datasetId)?.group.count() ?? 0;
-  }
-
-  /** The same count, worded out for the chip's accessible name. */
-  public conditionCount(datasetId: number): string {
-    const count = this.conditionCountNumber(datasetId);
-    return count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
   }
 }

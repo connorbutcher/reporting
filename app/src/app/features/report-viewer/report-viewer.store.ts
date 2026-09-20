@@ -17,15 +17,9 @@ import { UrlFragmentService } from '../../core/services/url-fragment.service';
 export type AsideTab = 'filters' | 'history';
 
 /**
- * Session state for the report viewer screen: which report and version are
- * loaded, which aside pane is showing, and navigating into the editor or
- * another version. The reader's filters are {@link ViewFilterSession}'s, which
- * builds on this store.
- *
- * Route params drive every fetch — changing report or version refetches
- * automatically. The viewer only ever shows published versions; the draft is
- * edited in the builder, and checking out (or restoring an old version into a
- * fresh draft) is the only way there.
+ * The report viewer's state: which report, version and tab are showing, and navigating to another
+ * version or the editor. Route params drive every fetch. Only published versions are shown; a draft
+ * is edited in the builder. The reader's filters are `ViewFilterSession`'s, which builds on this.
  */
 @Injectable()
 export class ReportViewerStore {
@@ -108,7 +102,6 @@ export class ReportViewerStore {
   );
 
   constructor() {
-    // Record the view once a version has loaded; switching version doesn't re-record the same report.
     effect(() => {
       const content = this.content();
       untracked(() => {
@@ -189,7 +182,7 @@ export class ReportViewerStore {
   }
 
   viewVersion(versionNumber: number): void {
-    // Query params ride along: a shared link's filters (and the tab) apply to any version, by stable id.
+    // Query params ride along: a link's filters and the tab apply to any version, by stable id.
     this.router.navigate(['/reports', this.reportId(), 'versions', versionNumber], {
       queryParamsHandling: 'preserve',
     });

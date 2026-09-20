@@ -1,15 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { ReportViewerStore } from '../report-viewer.store';
-import { ViewFilterSession } from '../view-filter-session';
+import { ViewFilterSession } from '../filters/view-filter-session';
 import { VersionHistoryComponent } from '../version-history/version-history.component';
 import { ViewFiltersPanelComponent } from '../view-filters-panel/view-filters-panel.component';
 
 type AsideTab = 'filters' | 'history';
 
-/**
- * The viewer's secondary pane: a two-tab shell over the session filter panel
- * and the version history list.
- */
+/** The viewer's secondary pane: tabs over the filter panel and the version history. */
 @Component({
   selector: 'app-report-viewer-aside',
   imports: [ViewFiltersPanelComponent, VersionHistoryComponent],
@@ -23,7 +20,7 @@ export class ReportViewerAsideComponent {
   protected readonly asideTab = this.store.asideTab;
   protected readonly viewFilters = this.filters.viewFilters;
   protected readonly sharedLink = this.filters.sharedLink;
-  /** Two-way bound by the filters panel; the same writable signal the store owns. */
+  /** Two-way bound by the filters panel. */
   protected readonly openFilterKey = this.store.openFilterKey;
 
   protected showTab(tab: AsideTab): void {

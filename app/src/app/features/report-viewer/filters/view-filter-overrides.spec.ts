@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FilterGroup } from '../../core/models/filter';
+import { FilterGroup } from '../../../core/models/filter';
 import {
   ViewFilterOverrides,
   decodeViewFilterOverrides,

@@ -1,0 +1,94 @@
+<div class="head">
+  <span class="filter-row-index" aria-hidden="true">{{ position() }}</span>
+  <p-toggleswitch
+    styleClass="filter-toggle"
+    [ngModel]="condition().enabled()"
+    (ngModelChange)="condition().setEnabled($event)"
+    [ariaLabel]="(condition().enabled() ? 'Disable' : 'Enable') + ' condition ' + position()"
+  />
+  <p-select
+    styleClass="filter-column"
+    size="small"
+    appendTo="body"
+    [filter]="true"
+    [options]="columnOptions()"
+    optionLabel="label"
+    optionValue="value"
+    [ngModel]="condition().columnId()"
+    (onChange)="condition().setColumn($event.value)"
+    [ariaLabel]="'Column for condition ' + position()"
+  />
+  <p-button
+    icon="pi pi-times"
+    severity="danger"
+    text
+    size="small"
+    [ariaLabel]="'Remove condition ' + position()"
+    (onClick)="remove.emit()"
+  />
+</div>
+
+<p-select
+  styleClass="filter-operator"
+  size="small"
+  appendTo="body"
+  [options]="condition().availableOperators()"
+  optionLabel="label"
+  optionValue="value"
+  [ngModel]="condition().operator()"
+  (onChange)="condition().setOperator($event.value)"
+  [ariaLabel]="'Operator for condition ' + position()"
+/>
+
+@if (pickFromValues()) {
+  @if (isMultiValue()) {
+    <p-multiselect
+      styleClass="filter-value-select"
+      size="small"
+      appendTo="body"
+      display="chip"
+      [filter]="true"
+      [showToggleAll]="false"
+      placeholder="Select values"
+      [options]="valueOptions()"
+      [ngModel]="condition().values()"
+      (ngModelChange)="condition().setValues($event)"
+      [ariaLabel]="'Values for condition ' + position()"
+    />
+  } @else {
+    <p-select
+      styleClass="filter-value-select"
+      size="small"
+      appendTo="body"
+      [editable]="true"
+      [options]="valueOptions()"
+      placeholder="value"
+      [ngModel]="condition().values()[0] ?? ''"
+      (ngModelChange)="condition().setValue(0, $event)"
+      [ariaLabel]="'Value for condition ' + position()"
+    />
+  }
+} @else if (operands().length > 0) {
+  <div class="operands">
+    @for (operand of operands(); track operand.index) {
+      <input
+        class="value"
+        [type]="inputType()"
+        [placeholder]="operand.placeholder"
+        [value]="operand.value"
+        (change)="condition().setValue(operand.index, $any($event.target).value)"
+        [attr.aria-label]="operand.placeholder"
+      />
+    }
+  </div>
+}
+
+@if (condition().problem(); as problem) {
+  <p
+    class="filter-row-problem"
+    [class.is-error]="problem.severity === 'error'"
+    [class.is-warning]="problem.severity === 'warning'"
+  >
+    {{ problem.message }}
+  </p>
+}

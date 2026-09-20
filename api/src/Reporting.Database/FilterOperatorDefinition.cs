@@ -2,12 +2,7 @@ using Reporting.Abstractions;
 
 namespace Reporting.Database;
 
-/// <summary>
-/// One operator offerable on one column type: its display label and what operand(s) it needs.
-/// A fixed reference set, seeded so the catalogue served to the client — and used for the
-/// server-side validation in <c>ConditionTranslator</c> — is read from the database rather than
-/// compiled into the API, and the two can never disagree about what's offerable.
-/// </summary>
+/// <summary>One operator offerable on one column type: its label and operands. A seeded reference set, read from the database so the client's catalogue and the server's validation can't disagree.</summary>
 public class FilterOperatorDefinition
 {
     public int Id { get; set; }

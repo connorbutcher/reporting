@@ -11,7 +11,7 @@ import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
-import { chartBindingKey } from '../report-view-filters';
+import { chartBindingKey } from '../filters/view-filter-entry';
 
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({

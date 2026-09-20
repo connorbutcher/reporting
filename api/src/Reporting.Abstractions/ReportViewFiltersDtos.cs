@@ -1,10 +1,6 @@
 namespace Reporting.Abstractions;
 
-/// <summary>
-/// The current user's saved viewing filters for a report. <see cref="Filters"/> is the front-end's
-/// compact encoding of what they changed from the published filters, opaque to the server; null when
-/// they have nothing saved (a 200, not a 404, so opening a report never looks like a failed load).
-/// </summary>
+/// <summary>The user's saved viewing filters as the front-end's opaque encoding; null when none (still a 200).</summary>
 public class ReportViewFiltersDto
 {
     public string? Filters { get; set; }
@@ -15,11 +11,7 @@ public class SaveReportViewFiltersDto
     public string Filters { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// A shared filter snapshot, addressed by the short <see cref="Id"/> a link carries. <see cref="Filters"/>
-/// is the front-end's opaque encoding; null when no such snapshot exists for the report (a 200, not a
-/// 404, so a stale link is something the viewer explains rather than a failed request).
-/// </summary>
+/// <summary>A shared filter snapshot by its short id. <see cref="Filters"/> is null when the report has none (a 200, so a stale link is explained, not an error).</summary>
 public class ReportSharedViewDto
 {
     public string Id { get; set; } = string.Empty;

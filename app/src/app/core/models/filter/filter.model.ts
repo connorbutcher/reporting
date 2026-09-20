@@ -24,8 +24,7 @@ export type FilterOperator =
   // date, relative to today
   | 'inLastDays'
   | 'inNextDays'
-  // numeric, against the column's configured tolerance banding — no operand, the
-  // bounds come from the banding, resolved server-side at query time.
+  // numeric, against the column's tolerance banding: no operand, bounds resolved server-side
   | 'inTolerance'
   | 'needsConcession'
   | 'outOfTolerance';
@@ -33,11 +32,7 @@ export type FilterOperator =
 /** What the panel renders for an operator's operands. */
 export type FilterOperandKind = 'none' | 'text' | 'number' | 'date' | 'list';
 
-/**
- * The operators that test a value against its column's configured tolerance banding.
- * They take no operand and are only offerable on a numeric column that has banding —
- * the filter panel hides them elsewhere, and the server resolves the bounds at query time.
- */
+/** Operators that test a value against its column's tolerance banding: no operand, and only offered on a banded numeric column. */
 export const TOLERANCE_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
   'inTolerance',
   'needsConcession',
@@ -50,11 +45,7 @@ export interface FilterCondition {
   operator: FilterOperator;
   /** 0, 1 or 2 raw strings, parsed server-side against the column's type. */
   values: string[];
-  /**
-   * Whether this condition narrows the data. Omitted means enabled — so filters
-   * saved before this existed still apply. A disabled condition is kept (in the
-   * report and the viewer) but not applied, letting a reader toggle it on and off.
-   */
+  /** Omitted means enabled, so older filters still apply. A disabled condition is kept but not applied. */
   enabled?: boolean;
 }
 
@@ -66,7 +57,7 @@ export interface FilterGroup {
 
 export type FilterNode = FilterGroup | FilterCondition;
 
-/** A report-level filter, applied to every widget bound to that dataset. */
+/** Applies to every widget bound to the dataset. */
 export interface ReportFilter {
   datasetId: number;
   filter: FilterGroup;
@@ -80,7 +71,7 @@ export interface DatasetQueryResult {
   matchedRowCount: number;
 }
 
-/** The counts alone, for the filter panel's live "matches N of M" readout. */
+/** Just the counts, for the live "matches N of M" readout. */
 export interface DatasetCountResult {
   totalRowCount: number;
   matchedRowCount: number;

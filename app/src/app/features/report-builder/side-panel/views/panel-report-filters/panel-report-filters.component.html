@@ -9,19 +9,19 @@
 
   @if (datasetIds().length > 1) {
     <nav class="dataset-picker" aria-label="Dataset to filter">
-      @for (id of datasetIds(); track id) {
+      @for (chip of chips(); track chip.id) {
         <button
           type="button"
           class="dataset-chip"
-          [class.active]="id === activeDatasetId()"
-          [attr.aria-current]="id === activeDatasetId() ? 'true' : null"
-          [attr.aria-label]="datasetName(id) + ', ' + conditionCount(id)"
-          (click)="select(id)"
+          [class.active]="chip.id === activeDatasetId()"
+          [attr.aria-current]="chip.id === activeDatasetId() ? 'true' : null"
+          [attr.aria-label]="chip.label"
+          (click)="select(chip.id)"
         >
           <i class="pi pi-database" aria-hidden="true"></i>
-          <span class="dataset-chip-label">{{ datasetName(id) }}</span>
-          @if (conditionCountNumber(id); as count) {
-            <span class="dataset-chip-count">{{ count }}</span>
+          <span class="dataset-chip-label">{{ chip.name }}</span>
+          @if (chip.count) {
+            <span class="dataset-chip-count">{{ chip.count }}</span>
           }
         </button>
       }

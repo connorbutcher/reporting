@@ -7,37 +7,7 @@
 } @else if (columnOptions().length === 0) {
   <p class="panel-empty">This dataset has no columns to filter on.</p>
 } @else {
-  @if (matchNumbers(); as m) {
-    <p
-      class="filter-match"
-      [class.is-pending]="match().state === 'loading'"
-      [class.is-empty]="m.matchedRowCount === 0"
-      aria-live="polite"
-    >
-      <i class="pi pi-filter" aria-hidden="true"></i>
-      @if (m.matchedRowCount === m.totalRowCount) {
-        <span>All {{ m.totalRowCount | number }} rows match</span>
-      } @else {
-        <span
-          ><strong>{{ m.matchedRowCount | number }}</strong> of {{ m.totalRowCount | number }} rows
-          match</span
-        >
-      }
-      @if (additionalFilter()) {
-        <span class="filter-match-note">(incl. the report filter)</span>
-      }
-    </p>
-  } @else if (match().state === 'loading') {
-    <p class="filter-match is-pending" aria-live="polite">
-      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-      <span>Checking rows…</span>
-    </p>
-  } @else if (match().state === 'error') {
-    <p class="filter-match is-error" aria-live="polite">
-      <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
-      <span>Couldn’t count matching rows</span>
-    </p>
-  }
+  <app-filter-match-count [group]="group()" [additionalFilter]="additionalFilter()" />
 
   @if (group().count() > 1) {
     <div class="panel-field">
@@ -64,111 +34,17 @@
         · {{ group().enabledCount() }} active
       }
     </p>
-    <ul class="filter-rows">
+    <div class="filter-rows" role="list">
       @for (condition of group().children(); track condition) {
-        <li
-          class="filter-row"
-          [class.filter-row--off]="!condition.enabled()"
-          [class.filter-row--error]="condition.problem()?.severity === 'error'"
-          [class.filter-row--warning]="condition.problem()?.severity === 'warning'"
-        >
-          <div class="head">
-            <span class="filter-row-index" aria-hidden="true">{{ $index + 1 }}</span>
-            <p-toggleswitch
-              styleClass="filter-toggle"
-              [ngModel]="condition.enabled()"
-              (ngModelChange)="condition.setEnabled($event)"
-              [ariaLabel]="(condition.enabled() ? 'Disable' : 'Enable') + ' condition ' + ($index + 1)"
-            />
-            <p-select
-              styleClass="filter-column"
-              size="small"
-              appendTo="body"
-              [filter]="true"
-              [options]="columnOptions()"
-              optionLabel="label"
-              optionValue="value"
-              [ngModel]="condition.columnId()"
-              (onChange)="condition.setColumn($event.value)"
-              [ariaLabel]="'Column for condition ' + ($index + 1)"
-            />
-            <p-button
-              icon="pi pi-times"
-              severity="danger"
-              text
-              size="small"
-              [ariaLabel]="'Remove condition ' + ($index + 1)"
-              (onClick)="remove($index)"
-            />
-          </div>
-
-          <p-select
-            styleClass="filter-operator"
-            size="small"
-            appendTo="body"
-            [options]="condition.availableOperators()"
-            optionLabel="label"
-            optionValue="value"
-            [ngModel]="condition.operator()"
-            (onChange)="condition.setOperator($event.value)"
-            [ariaLabel]="'Operator for condition ' + ($index + 1)"
-          />
-
-          @if (usesValueList(condition)) {
-            @if (isMultiValue(condition)) {
-              <p-multiselect
-                styleClass="filter-value-select"
-                size="small"
-                appendTo="body"
-                display="chip"
-                [filter]="true"
-                [showToggleAll]="false"
-                placeholder="Select values"
-                [options]="valueOptions(condition)"
-                [ngModel]="condition.values()"
-                (ngModelChange)="condition.setValues($event)"
-                [ariaLabel]="'Values for condition ' + ($index + 1)"
-              />
-            } @else {
-              <p-select
-                styleClass="filter-value-select"
-                size="small"
-                appendTo="body"
-                [editable]="true"
-                [options]="valueOptions(condition)"
-                placeholder="value"
-                [ngModel]="condition.values()[0] ?? ''"
-                (ngModelChange)="condition.setValue(0, $event)"
-                [ariaLabel]="'Value for condition ' + ($index + 1)"
-              />
-            }
-          } @else if (condition.operandIndexes().length > 0) {
-            <div class="operands">
-              @for (i of condition.operandIndexes(); track i) {
-                <input
-                  class="value"
-                  [type]="inputType(condition)"
-                  [placeholder]="placeholder(condition, i)"
-                  [value]="operandValue(condition, i)"
-                  (change)="condition.setValue(i, $any($event.target).value)"
-                  [attr.aria-label]="placeholder(condition, i)"
-                />
-              }
-            </div>
-          }
-
-          @if (condition.problem(); as problem) {
-            <p
-              class="filter-row-problem"
-              [class.is-error]="problem.severity === 'error'"
-              [class.is-warning]="problem.severity === 'warning'"
-            >
-              {{ problem.message }}
-            </p>
-          }
-        </li>
+        <app-filter-condition-row
+          [condition]="condition"
+          [index]="$index"
+          [columnOptions]="columnOptions()"
+          [datasetId]="group().datasetId()"
+          (remove)="remove($index)"
+        />
       }
-    </ul>
+    </div>
   }
 
   <p-button

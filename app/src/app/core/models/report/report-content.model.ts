@@ -22,18 +22,12 @@ export interface ReportSummary {
   modifiedAt: string;
 }
 
-/**
- * The current user's saved viewing filters for a report. `filters` is the viewer's compact encoding
- * of what they changed from the published filters (opaque to the server); null when they have none.
- */
+/** The user's saved viewing filters as the viewer's encoded string (opaque to the server); null when none. */
 export interface ReportViewFiltersState {
   filters: string | null;
 }
 
-/**
- * A shared filter snapshot, addressed by the short `id` a link carries. `filters` is the viewer's
- * compact encoding; null when the report has no snapshot with that id (a stale or mistyped link).
- */
+/** A shared filter snapshot by the short `id` a link carries. `filters` is null when the report has none with that id. */
 export interface ReportSharedView {
   id: string;
   filters: string | null;

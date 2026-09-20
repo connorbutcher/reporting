@@ -1,0 +1,31 @@
+@if (numbers(); as m) {
+  <p
+    class="filter-match"
+    [class.is-pending]="match().state === 'loading'"
+    [class.is-empty]="m.matchedRowCount === 0"
+    aria-live="polite"
+  >
+    <i class="pi pi-filter" aria-hidden="true"></i>
+    @if (m.matchedRowCount === m.totalRowCount) {
+      <span>All {{ m.totalRowCount | number }} rows match</span>
+    } @else {
+      <span
+        ><strong>{{ m.matchedRowCount | number }}</strong> of {{ m.totalRowCount | number }} rows
+        match</span
+      >
+    }
+    @if (additionalFilter()) {
+      <span class="filter-match-note">(incl. the report filter)</span>
+    }
+  </p>
+} @else if (match().state === 'loading') {
+  <p class="filter-match is-pending" aria-live="polite">
+    <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+    <span>Checking rows…</span>
+  </p>
+} @else if (match().state === 'error') {
+  <p class="filter-match is-error" aria-live="polite">
+    <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+    <span>Couldn’t count matching rows</span>
+  </p>
+}

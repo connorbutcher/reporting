@@ -8,88 +8,70 @@ import {
 } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
+import { findProblem, problemCue, problemIssue } from './filter-condition-problem';
 import { FilterContext } from './filter-context';
+import { offerableOperators } from './offerable-operators';
 
 /** One `column operator value(s)` test. */
 export class FilterConditionModel extends EditorNode {
   public readonly columnId = signal<string>('');
   public readonly operator = signal<FilterOperator>('equals');
   public readonly values = signal<readonly string[]>([]);
-  /** When off, the condition is kept but doesn't narrow the data — a viewer can toggle it. */
+  /** Off keeps the condition but doesn't apply it. */
   public readonly enabled = signal<boolean>(true);
 
-  /** The dataset column this tests, once the schema has loaded. */
   public readonly schemaColumn: Signal<DatasetColumn | null> = computed(
     () => this.context.schema()?.columns.find((c) => c.id === this.columnId()) ?? null,
   );
 
-  /** Whether this condition's column currently has tolerance banding in this context. */
+  /** The column has tolerance banding in this context. */
   public readonly isTolerant: Signal<boolean> = computed(
     () => this.context.tolerantColumns?.().has(this.columnId()) ?? false,
   );
 
-  /** Operators offerable for that column's type. */
   public readonly availableOperators: Signal<OperatorDescriptor[]> = computed(() => {
     const type = this.schemaColumn()?.type;
     const catalogue = this.context.catalogue();
     if (!type || !catalogue) return [];
-
-    const all = catalogue[type] ?? [];
-    // Only offerable where there's a band to test against — elsewhere it'd silently no-op.
-    if (this.isTolerant()) return all;
-
-    // Keep the currently-selected operator even if it's now orphaned, so an
-    // affected condition still shows what it was set to rather than going blank.
-    const current = this.operator();
-    return all.filter((o) => !TOLERANCE_OPERATORS.has(o.value) || o.value === current);
+    return offerableOperators(catalogue[type] ?? [], this.isTolerant(), this.operator());
   });
 
-  /** The chosen operator's descriptor, which drives how many inputs to render. */
+  /** Drives how many operand inputs to render. */
   public readonly descriptor: Signal<OperatorDescriptor | null> = computed(
     () => this.availableOperators().find((o) => o.value === this.operator()) ?? null,
   );
 
-  /** The operand slots to render — empty when the operator takes none. */
   public readonly operandIndexes = computed(() =>
     Array.from({ length: this.descriptor()?.operandCount ?? 0 }, (_, i) => i),
   );
 
-  /** True once every operand the operator needs has been supplied. */
+  /** The schema has loaded and lacks this column. False while it's pending, so a slow fetch isn't read as a deleted column. */
+  public readonly columnMissing = computed(() => !!this.context.schema() && !this.schemaColumn());
+
+  /** Reads as complete while operators are unknown, so a pending schema drops nothing. */
   public readonly isComplete = computed(() => {
     const needed = this.descriptor()?.operandCount ?? 0;
     return this.values().filter((v) => v.trim().length > 0).length >= needed;
   });
 
-  /**
-   * Why this row isn't narrowing the data, for its inline cue — null when fine or
-   * disabled. Mirrors {@link ownIssues} so the cue and the Issues panel never disagree.
-   */
-  public readonly problem = computed<{ severity: 'error' | 'warning'; message: string } | null>(
-    () => {
-      if (!this.enabled()) return null;
-
-      if (this.context.schema() && !this.schemaColumn()) {
-        return { severity: 'error', message: 'This column no longer exists.' };
-      }
-      if (TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant()) {
-        return { severity: 'warning', message: 'No tolerance banding here, so nothing matches.' };
-      }
-      if (!this.isComplete()) {
-        const needed = this.descriptor()?.operandCount ?? 0;
-        return { severity: 'error', message: needed > 1 ? 'Enter both values.' : 'Enter a value.' };
-      }
-      return null;
-    },
-  );
-
-  public readonly label = computed(() => {
-    const column = this.schemaColumn()?.name ?? 'Unknown column';
-    const operator = this.descriptor()?.label ?? this.operator();
-    const values = this.values()
-      .filter((v) => v.trim().length > 0)
-      .join(' and ');
-    return `${column} ${operator}${values ? ` ${values}` : ''}`;
+  /** Why this row isn't narrowing the data; null when fine or disabled. */
+  public readonly problem = computed(() => {
+    const problem = this.currentProblem();
+    return problem && problemCue(problem);
   });
+
+  private readonly currentProblem = computed(() =>
+    this.enabled()
+      ? findProblem({
+          columnMissing: this.columnMissing(),
+          toleranceMissing: TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant(),
+          complete: this.isComplete(),
+          columnName: this.schemaColumn()?.name ?? null,
+          operatorLabel: this.descriptor()?.label ?? this.operator(),
+          needed: this.descriptor()?.operandCount ?? 0,
+        })
+      : null,
+  );
 
   constructor(
     dto: FilterCondition,
@@ -118,7 +100,6 @@ export class FilterConditionModel extends EditorNode {
     if (operator === this.operator()) return;
     this.operator.set(operator);
 
-    // Keep whatever operands still fit the new operator's arity.
     const needed = this.availableOperators().find((o) => o.value === operator)?.operandCount ?? 0;
     this.values.update((values) => values.slice(0, needed));
   }
@@ -136,7 +117,7 @@ export class FilterConditionModel extends EditorNode {
     });
   }
 
-  /** Replaces every operand at once — used by the multi-select value picker for "is any of". */
+  /** Replaces every operand at once, for the multi-select of "is any of". */
   public setValues(values: readonly string[]): void {
     this.values.set([...values]);
   }
@@ -147,8 +128,7 @@ export class FilterConditionModel extends EditorNode {
       columnId: this.columnId(),
       operator: this.operator(),
       values: [...this.values()],
-      // Omitted when enabled, so a filter's DTO (and filterKey) stays stable pre- and
-      // post-toggling support for the common, never-disabled case.
+      // Omitted when enabled, so the dto (and filterKey) is stable for the never-disabled case.
       ...(this.enabled() ? {} : { enabled: false }),
     };
   }
@@ -162,53 +142,8 @@ export class FilterConditionModel extends EditorNode {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    // A disabled condition never runs, so an incomplete or stale one isn't a problem to fix.
-    if (!this.enabled()) return [];
-
-    const issues: ValidationIssue[] = [];
-    const id = `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`;
-
-    // A pending schema fetch must not look like a deleted column.
-    if (this.context.schema() && !this.schemaColumn()) {
-      issues.push({
-        id: `${id}:missingColumn`,
-        severity: 'error',
-        title: 'A filter points at a column that no longer exists',
-        detail: 'The dataset column was removed. Remove or repoint that filter condition.',
-        widgetId: this.context.widgetId,
-        view: this.context.view ?? { kind: 'root' },
-      });
-      return issues;
-    }
-
-    // A tolerance operator resolves its bounds from the column's banding; if that's
-    // since been removed, the condition silently matches nothing.
-    if (TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant()) {
-      issues.push({
-        id: `${id}:missingTolerance`,
-        severity: 'warning',
-        title: `Tolerance filter on "${this.schemaColumn()?.name ?? 'a column'}" has no banding`,
-        detail:
-          'This column no longer has tolerance banding, so the filter matches nothing. ' +
-          'Add banding back to the column, or change this condition.',
-        widgetId: this.context.widgetId,
-        view: this.context.view ?? { kind: 'root' },
-      });
-      return issues;
-    }
-
-    const needed = this.descriptor()?.operandCount ?? 0;
-    if (!this.isComplete()) {
-      issues.push({
-        id: `${id}:missingValue`,
-        severity: 'error',
-        title: `Filter on "${this.schemaColumn()?.name ?? 'a column'}" is missing a value`,
-        detail: `"${this.descriptor()?.label ?? this.operator()}" needs ${needed} value${needed > 1 ? 's' : ''}.`,
-        widgetId: this.context.widgetId,
-        view: this.context.view ?? { kind: 'root' },
-      });
-    }
-
-    return issues;
+    const problem = this.currentProblem();
+    if (!problem) return [];
+    return [problemIssue(problem, `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`, this.context)];
   }
 }

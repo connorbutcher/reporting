@@ -3,26 +3,19 @@ import { DatasetColumn, DatasetSchema } from '../../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../../core/models/filter';
 import { PanelView } from '../../side-panel/panel-view';
 
-/** Everything a filter node needs to describe itself and validate against. */
+/** What a filter node needs to describe itself and validate against. */
 export interface FilterContext {
   /** The dataset being filtered, once its schema has loaded. */
   readonly schema: Signal<DatasetSchema | null>;
-  /** Operators per column type, once fetched. */
   readonly catalogue: Signal<OperatorCatalogue | null>;
-  /**
-   * The columns this filter may test, when narrower than the whole dataset — a
-   * table's filter offers only the columns it shows. Omitted for page-level
-   * filters, which span every column.
-   */
+  /** The columns this filter may test, when narrower than the dataset (a table offers only the columns it shows). */
   readonly columns?: Signal<DatasetColumn[]>;
-  /**
-   * Columns (by id) with tolerance banding in this context, so the tolerance
-   * operators are offered only where there's a band to test against.
-   */
+  /** Columns with tolerance banding here: tolerance operators are offered only on these. */
   readonly tolerantColumns?: Signal<ReadonlySet<string>>;
-  /** Where the builder's panel should navigate to fix a problem here. Omitted in the viewer. */
+  /** Where the builder navigates to fix a problem. Omitted in the viewer. */
   readonly view?: PanelView;
-  /** Namespaces issue ids, and ties widget-level issues to their widget. */
+  /** Namespaces issue ids. */
   readonly ownerId: string;
+  /** Ties an issue to its widget. */
   readonly widgetId?: string;
 }

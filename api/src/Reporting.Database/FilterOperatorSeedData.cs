@@ -3,11 +3,9 @@ using Reporting.Abstractions;
 namespace Reporting.Database;
 
 /// <summary>
-/// The default filter-operator catalogue: which operators each column type offers, plus each
-/// one's display label and operand shape. This is the single definition of that data — it seeds
-/// the FilterOperatorDefinitions table via migration, and the DAL falls back to building the same
-/// rows in memory for a caller with no database in play (a unit test building a filter predicate
-/// directly), so the two can never drift apart into separately maintained lists.
+/// The default operator catalogue: which operators each column type offers, with labels and operand
+/// shapes. The one definition of it: it seeds the FilterOperatorDefinitions table, and the DAL builds
+/// the same rows in memory when there's no database, so the two can't drift.
 /// </summary>
 public static class FilterOperatorSeedData
 {
@@ -49,11 +47,7 @@ public static class FilterOperatorSeedData
         Op(FilterOperator.IsNotEmpty, "is not empty", 0, FilterOperandKind.None)
     ];
 
-    /// <summary>
-    /// Tolerance checks, offerable only on a numeric column that has banding configured (the
-    /// client hides them otherwise). They take no operand — the bounds come from the banding,
-    /// resolved against a limits dataset when the query runs.
-    /// </summary>
+    /// <summary>Only offerable on a numeric column with banding (the client hides them otherwise). No operand: the bounds come from the banding at query time.</summary>
     private static IEnumerable<FilterOperatorDefinition> Tolerance() =>
     [
         Op(FilterOperator.InTolerance, "is in tolerance", 0, FilterOperandKind.None),
@@ -73,7 +67,7 @@ public static class FilterOperatorSeedData
         .. Presence()
     ];
 
-    /// <summary>Shared by Int and Double — both compare the same way, just formatted differently.</summary>
+    /// <summary>Shared by Int and Double.</summary>
     private static IEnumerable<FilterOperatorDefinition> NumberOperators() =>
     [
         Op(FilterOperator.Equals, "=", 1, FilterOperandKind.Number),

@@ -5,23 +5,16 @@ using Reporting.Database;
 namespace Reporting.DAL.Filtering;
 
 /// <summary>
-/// Translates an ordinary (non-tolerance) condition into a predicate: validates the operator and
-/// its operand count against the server's own <see cref="FilterOperators"/> catalogue, then
-/// dispatches to the translator for the column's type.
+/// Translates an ordinary (non-tolerance) condition: validates the operator and operand count against
+/// the <see cref="FilterOperators"/> catalogue, then dispatches by column type.
 /// </summary>
 internal static class ConditionTranslator
 {
-    public static Expression<Func<DatasetRow, bool>> Translate(
-        FilterConditionDto condition,
-        IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
-        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null)
+    public static Expression<Func<DatasetRow, bool>> Translate(FilterConditionDto condition, TranslationContext context)
     {
-        if (!columnsById.TryGetValue(condition.ColumnId, out var column))
-        {
-            throw new FilterException($"Column {condition.ColumnId} is not part of this dataset.");
-        }
+        var column = context.Column(condition.ColumnId);
 
-        var descriptor = FilterOperators.Find(column.Type, condition.Operator, operatorCatalogue)
+        var descriptor = FilterOperators.Find(column.Type, condition.Operator, context.OperatorCatalogue)
             ?? throw new FilterException(
                 $"Operator '{condition.Operator}' cannot be used on the {column.Type} column '{column.Name}'.");
 
@@ -31,11 +24,10 @@ internal static class ConditionTranslator
             throw new FilterException($"'{descriptor.Label}' on '{column.Name}' needs {descriptor.OperandCount} value(s).");
         }
 
-        // Cells store the column's int id; the client addressed the column by its RefId, so match
-        // against the resolved column's primary key.
+        // Cells store the column's int id; the client addressed it by RefId.
         var id = column.Id;
 
-        // Presence checks are type-independent and read off the text form.
+        // Presence checks are type-independent and read the text form.
         switch (condition.Operator)
         {
             case FilterOperator.IsEmpty:

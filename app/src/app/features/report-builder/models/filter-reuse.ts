@@ -1,23 +1,16 @@
 import { FilterGroupModel } from './filter';
 import { ReportModel } from './report.model';
-import {
-  ChartWidgetModel,
-  DataTableWidgetModel,
-  PivotTableWidgetModel,
-} from './widget.model';
+import { ChartWidgetModel, DataTableWidgetModel, PivotTableWidgetModel } from './widget.model';
 
-/** One filter elsewhere on the report that could be copied into the one being edited. */
+/** A filter elsewhere on the report that could be copied into the one being edited. */
 export interface ReusableFilter {
   readonly label: string;
   readonly group: FilterGroupModel;
 }
 
 /**
- * Every other non-empty filter on the same dataset that could seed `target` — the report
- * filter, and each table, pivot, and chart-binding filter — so a user can reuse one rather
- * than rebuild it. Same dataset only: a filter references columns by id, so copying across
- * datasets would point conditions at columns that don't exist there. `target` itself is
- * skipped, as are empty filters (nothing to copy).
+ * Every other non-empty filter on the same dataset that could seed `target`: the report filter and
+ * each table, pivot and chart-binding filter. Same dataset only, since a filter names columns by id.
  */
 export function reusableFiltersFor(
   model: ReportModel,

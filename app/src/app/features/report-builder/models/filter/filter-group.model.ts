@@ -1,40 +1,43 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn } from '../../../../core/models/dataset';
-import { FilterCondition, FilterGroup, FilterJoin, FilterNode } from '../../../../core/models/filter';
+import { FilterGroup, FilterJoin } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
 import { FilterConditionModel } from './filter-condition.model';
 import { FilterContext } from './filter-context';
+import { toConditionModels } from './filter-group-nodes';
 
 /** A set of conditions joined by AND or OR. */
 export class FilterGroupModel extends EditorNode {
   public readonly join = signal<FilterJoin>('and');
   public readonly children = signal<readonly FilterConditionModel[]>([]);
 
-  public readonly isEmpty = computed(() => this.children().length === 0);
   public readonly count = computed(() => this.children().length);
-  /** How many conditions are switched on — what actually narrows the data. */
+  /** Conditions switched on: what actually narrows the data. */
   public readonly enabledCount = computed(() => this.children().filter((c) => c.enabled()).length);
+  /** Switched-on conditions on a removed column, which {@link toQueryDto} leaves out. */
+  public readonly missingColumnCount = computed(
+    () => this.children().filter((c) => c.enabled() && c.columnMissing()).length,
+  );
 
-  /** Columns offerable in the picker, once the dataset's schema has loaded. */
+  /** The columns offerable in the picker; empty until the schema loads. */
   public readonly columns: Signal<DatasetColumn[]> = computed(() => {
     const all = this.context.schema()?.columns ?? [];
     const allowed = this.context.columns?.();
     if (!allowed) return all;
 
-    // A condition may reference a column since taken off the table; keep it listed so
-    // its select still shows what it's testing, rather than rendering blank.
+    // A condition may use a column since taken off the table; keep it listed so its select isn't blank.
     const referenced = new Set(this.children().map((c) => c.columnId()));
     const allowedIds = new Set(allowed.map((c) => c.id));
     return all.filter((c) => allowedIds.has(c.id) || referenced.has(c.id));
   });
 
-  /** False until both the schema and the operator catalogue are in. */
+  /** Both the schema and the operator catalogue are in. */
   public readonly ready: Signal<boolean> = computed(
     () => !!this.context.schema() && !!this.context.catalogue(),
   );
 
-  /** The dataset being filtered, for fetching a column's distinct values; null until the schema loads. */
+  /** Null until the schema loads. */
   public readonly datasetId: Signal<number | null> = computed(() => this.context.schema()?.id ?? null);
 
   constructor(
@@ -43,22 +46,20 @@ export class FilterGroupModel extends EditorNode {
   ) {
     super();
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditions(dto, context));
+    this.children.set(toConditionModels(dto, context));
   }
 
   public setJoin(join: FilterJoin): void {
     this.join.set(join);
   }
 
-  /** Adds a condition on the first column this filter is allowed to test. */
+  /** Adds a condition on the first column this filter may test, or on `columnId`. Null if none is offerable. */
   public addCondition(columnId?: string): FilterConditionModel | null {
     const offerable = this.columns();
     const column = columnId ? offerable.find((c) => c.id === columnId) : offerable[0];
     if (!column) return null;
 
-    const catalogue = this.context.catalogue();
-    const operator = catalogue?.[column.type]?.[0]?.value ?? 'equals';
-
+    const operator = this.context.catalogue()?.[column.type]?.[0]?.value ?? 'equals';
     const model = new FilterConditionModel(
       { kind: 'condition', columnId: column.id, operator, values: [] },
       this.context,
@@ -75,41 +76,28 @@ export class FilterGroupModel extends EditorNode {
     this.children.set([]);
   }
 
-  /** Discards the current conditions and rebuilds from a stored filter. */
+  /** Rebuilds from a stored filter, leaving that filter's own conditions untouched. */
   public replaceWith(dto: FilterGroup | null): void {
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditions(dto, this.context, { clone: true }));
+    this.children.set(toConditionModels(dto, this.context, { clone: true }));
   }
 
-  /** Null when nothing is set, so an untouched filter never narrows anything. */
+  /** Null when empty, so an untouched filter never narrows anything. */
   public toDto(): FilterGroup | null {
-    const children = this.children().map((c) => c.toDto());
-    return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
+    return this.project(() => true);
   }
 
   /**
-   * The filter as sent to the query endpoint: only enabled, complete conditions — a
-   * half-typed or disabled row is left out (the server rejects an operand-less
-   * condition, and a half-built row shouldn't blank the table) but still round-trips
-   * through {@link toDto}, so the edit isn't lost and its validation keeps it from saving.
+   * The filter sent to the query endpoint: enabled, complete conditions on columns that exist. The
+   * server rejects an operand-less condition or an unknown column outright, failing the whole widget.
    */
   public toQueryDto(): FilterGroup | null {
-    const children = this.children()
-      .filter((c) => c.enabled() && c.isComplete())
-      .map((c) => c.toDto());
-    return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
+    return this.project((c) => c.enabled() && c.isComplete() && !c.columnMissing());
   }
 
-  /**
-   * Every finished condition, enabled or not — what a reader's view amounts to, for keeping or
-   * sharing. A disabled condition is state worth keeping (it can be toggled back on); a row still
-   * being typed is not, so it stays out until it has its operands.
-   */
+  /** Every finished condition, enabled or not: a disabled one can be toggled back on, but a row still being typed isn't state yet. */
   public toCompleteDto(): FilterGroup | null {
-    const children = this.children()
-      .filter((c) => c.isComplete())
-      .map((c) => c.toDto());
-    return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
+    return this.project((c) => c.isComplete());
   }
 
   public override snapshotValue(): unknown {
@@ -123,24 +111,9 @@ export class FilterGroupModel extends EditorNode {
   public override ownIssues(): ValidationIssue[] {
     return [];
   }
-}
 
-/**
- * The UI offers one level of grouping, so a stored filter's nested groups are
- * flattened to their conditions on load rather than dropped. `clone` deep-copies
- * each condition first, for rebuilding from a filter also held elsewhere (e.g. the
- * published revision `replaceWith` restores from).
- */
-function toConditions(
-  dto: FilterGroup | null,
-  context: FilterContext,
-  options?: { clone?: boolean },
-): FilterConditionModel[] {
-  return (dto?.children ?? [])
-    .flatMap((child) => (child.kind === 'condition' ? [child] : flattenConditions(child)))
-    .map((c) => new FilterConditionModel(options?.clone ? structuredClone(c) : c, context));
-}
-
-function flattenConditions(node: FilterNode): FilterCondition[] {
-  return node.kind === 'condition' ? [node] : node.children.flatMap(flattenConditions);
+  private project(keep: (condition: FilterConditionModel) => boolean): FilterGroup | null {
+    const children = this.children().filter(keep).map((c) => c.toDto());
+    return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
+  }
 }

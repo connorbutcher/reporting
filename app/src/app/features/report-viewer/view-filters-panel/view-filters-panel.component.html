@@ -1,27 +1,5 @@
 @if (sharedLink(); as link) {
-  <div class="link-banner" role="status">
-    <p class="message">
-      <i class="pi pi-link" aria-hidden="true"></i>
-      Showing filters from a shared link.
-      @if (link.unmatched > 0) {
-        <span class="unmatched">
-          {{ link.unmatched }} of {{ link.total }} {{ link.total === 1 ? 'filter' : 'filters' }} in it
-          {{ link.unmatched === 1 ? "doesn't" : "don't" }} apply to this version and
-          {{ link.unmatched === 1 ? 'was' : 'were' }} left out.
-        </span>
-      }
-    </p>
-    <div class="banner-actions">
-      <p-button label="Save as mine" size="small" (onClick)="saveLink.emit()" />
-      <p-button
-        label="Back to mine"
-        size="small"
-        severity="secondary"
-        outlined
-        (onClick)="discardLink.emit()"
-      />
-    </div>
-  </div>
+  <app-shared-link-banner [link]="link" (save)="saveLink.emit()" (discard)="discardLink.emit()" />
 }
 
 @if (pageEntries().length === 0) {
@@ -35,64 +13,23 @@
   <section class="section">
     <h3 class="heading">Page filters</h3>
     @for (entry of pageEntries(); track entry.key) {
-      <div class="entry">
-        <button type="button" class="row" (click)="togglePage(entry)">
-          <i class="pi pi-database" aria-hidden="true"></i>
-          <span class="text">
-            <span class="label">{{ entry.label() }}</span>
-            <span class="summary">
-              {{ summary(entry) }}
-              @if (isChanged(entry)) {
-                <span class="changed">· changed</span>
-              }
-            </span>
-          </span>
-          <i
-            class="pi"
-            [class.pi-angle-down]="isPageOpen(entry)"
-            [class.pi-angle-right]="!isPageOpen(entry)"
-          ></i>
-        </button>
-        @if (isPageOpen(entry)) {
-          <div class="builder">
-            <app-filter-builder [group]="entry.group" />
-          </div>
-        }
-      </div>
+      <app-page-filter-row [entry]="entry" [open]="isPageOpen(entry)" (toggle)="togglePage(entry)" />
     }
   </section>
 
   <section class="section">
     <h3 class="heading">Widget filters</h3>
-    @for (group of widgetGroups(); track group.tabName) {
-      @if (widgetGroups().length > 1) {
-        <h4 class="tab-heading">{{ group.tabName || 'Untitled tab' }}</h4>
+    @for (tab of tabWidgets(); track tab.tabName) {
+      @if (tabWidgets().length > 1) {
+        <h4 class="tab-heading">{{ tab.tabName || 'Untitled tab' }}</h4>
       }
-      @for (entry of group.entries; track entry.key) {
-        <div class="entry">
-          <button type="button" class="row" (click)="toggleWidget(entry)">
-            <i [class]="entry.icon" aria-hidden="true"></i>
-            <span class="text">
-              <span class="label">{{ entry.label() }}</span>
-              <span class="summary">
-                {{ summary(entry) }}
-                @if (isChanged(entry)) {
-                  <span class="changed">· changed</span>
-                }
-              </span>
-            </span>
-            <i
-              class="pi"
-              [class.pi-angle-down]="isWidgetOpen(entry)"
-              [class.pi-angle-right]="!isWidgetOpen(entry)"
-            ></i>
-          </button>
-          @if (isWidgetOpen(entry)) {
-            <div class="builder">
-              <app-filter-builder [group]="entry.group" [additionalFilter]="additionalFilterFor(entry)" />
-            </div>
-          }
-        </div>
+      @for (item of tab.items; track item.widget.id) {
+        <app-widget-filter-row
+          [item]="item"
+          [filters]="filters()"
+          [open]="isWidgetOpen(item)"
+          (toggle)="toggleWidget(item)"
+        />
       }
     }
   </section>
