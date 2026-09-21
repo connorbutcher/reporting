@@ -18,7 +18,8 @@ namespace Reporting.Api.Controllers;
 public class DatasetsController(
     DatasetRepository datasets,
     DatasetRowRepository rows,
-    WidgetQueryRepository widgetQueries) : ControllerBase
+    WidgetQueryRepository widgetQueries,
+    DatasetColumnUsageService columnUsage) : ControllerBase
 {
     // --- source reference data ------------------------------------------------
 
@@ -74,6 +75,30 @@ public class DatasetsController(
     /// <paramref name="count"/> rows starting at <paramref name="first"/>, plus the
     /// total row count. Keeps a large dataset from loading into the editor at once.
     /// </summary>
+    /// <summary>
+    /// Where this dataset's columns are used in the report — the widgets and page filters that would be
+    /// left broken by removing one. Editor-level: it names the draft's widgets, and only an editor can remove a column.
+    /// </summary>
+    [HttpGet("{id:int}/column-usage")]
+    [AuthorizeDataset(AccessLevel.Editor)]
+    public async Task<ActionResult<DatasetColumnUsageDto>> GetColumnUsage(int id)
+    {
+        var usage = await columnUsage.GetAsync(id);
+        return usage is null ? NotFound() : usage;
+    }
+
+    /// <summary>
+    /// What changing a column to the given type would newly break — the widgets and page filters that
+    /// work on its current type but not the new one. Editor-level, like the usage read.
+    /// </summary>
+    [HttpGet("{id:int}/columns/{columnId:guid}/type-impact")]
+    [AuthorizeDataset(AccessLevel.Editor)]
+    public async Task<ActionResult<ColumnTypeImpactDto>> GetColumnTypeImpact(int id, Guid columnId, DatasetColumnType type)
+    {
+        var impact = await columnUsage.GetTypeChangeImpactAsync(id, columnId, type);
+        return impact is null ? NotFound() : impact;
+    }
+
     [HttpGet("{id:int}/rows")]
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<DatasetRowWindowDto>> GetRowWindow(int id, int first = 0, int count = 100)

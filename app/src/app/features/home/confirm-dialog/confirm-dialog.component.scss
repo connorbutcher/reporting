@@ -35,6 +35,18 @@
   line-height: 1.5;
 }
 
+.confirm-dialog-details {
+  margin: 10px 0 0;
+  padding: 8px 12px 8px 28px;
+  max-height: 180px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .confirm-dialog-footer {
   display: flex;
   justify-content: flex-end;

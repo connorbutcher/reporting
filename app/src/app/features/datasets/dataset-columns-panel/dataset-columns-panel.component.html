@@ -14,54 +14,101 @@
 } @else {
   <ul class="list">
     @for (column of columns(); track column.id; let i = $index) {
-      <li class="row">
-        <i
-          class="type-icon"
-          [class]="typeIcon(column.type)"
-          [attr.title]="column.type"
-          aria-hidden="true"
-        ></i>
-        <input
-          pInputText
-          [ngModel]="column.name"
-          (blur)="onRenameBlur(column, $event)"
-          [attr.aria-label]="'Name of column ' + column.name"
-        />
-        <p-select
-          [options]="columnTypes"
-          [ngModel]="column.type"
-          optionLabel="label"
-          optionValue="value"
-          appendTo="body"
-          [ariaLabel]="'Type of column ' + column.name"
-          (onChange)="retype(column, $event.value)"
-        />
-        <p-button
-          icon="pi pi-chevron-up"
-          severity="secondary"
-          text
-          size="small"
-          [ariaLabel]="'Move ' + column.name + ' up'"
-          [disabled]="i === 0"
-          (onClick)="move(i, -1)"
-        />
-        <p-button
-          icon="pi pi-chevron-down"
-          severity="secondary"
-          text
-          size="small"
-          [ariaLabel]="'Move ' + column.name + ' down'"
-          [disabled]="i === columns().length - 1"
-          (onClick)="move(i, 1)"
-        />
-        <p-button
-          icon="pi pi-times"
-          severity="danger"
-          text
-          size="small"
-          [ariaLabel]="'Delete column ' + column.name"
-          (onClick)="remove(column)"
-        />
+      <li class="item">
+        <div class="row">
+          <i
+            class="type-icon"
+            [class]="typeIcon(column.type)"
+            [attr.title]="column.type"
+            aria-hidden="true"
+          ></i>
+          <input
+            pInputText
+            [ngModel]="column.name"
+            (blur)="onRenameBlur(column, $event)"
+            [attr.aria-label]="'Name of column ' + column.name"
+          />
+          <p-select
+            #typeSelect
+            [options]="columnTypes"
+            [ngModel]="column.type"
+            optionLabel="label"
+            optionValue="value"
+            appendTo="body"
+            [ariaLabel]="'Type of column ' + column.name"
+            (onChange)="retype(column, $event.value, typeSelect)"
+          />
+          <p-button
+            icon="pi pi-chevron-up"
+            severity="secondary"
+            text
+            size="small"
+            [ariaLabel]="'Move ' + column.name + ' up'"
+            [disabled]="i === 0"
+            (onClick)="move(i, -1)"
+          />
+          <p-button
+            icon="pi pi-chevron-down"
+            severity="secondary"
+            text
+            size="small"
+            [ariaLabel]="'Move ' + column.name + ' down'"
+            [disabled]="i === columns().length - 1"
+            (onClick)="move(i, 1)"
+          />
+          <p-button
+            icon="pi pi-times"
+            severity="danger"
+            text
+            size="small"
+            [ariaLabel]="'Delete column ' + column.name"
+            (onClick)="remove(column)"
+          />
+        </div>
+        @if (usageLines().get(column.id); as lines) {
+          @if (lines.length > 0) {
+            <button
+              type="button"
+              class="usage-toggle"
+              [attr.aria-expanded]="expanded().has(column.id)"
+              (click)="toggleUsage(column)"
+            >
+              <i class="pi pi-link" aria-hidden="true"></i>
+              {{ usageSummary(column) }}
+              <i
+                class="pi"
+                [class.pi-angle-down]="!expanded().has(column.id)"
+                [class.pi-angle-up]="expanded().has(column.id)"
+                aria-hidden="true"
+              ></i>
+            </button>
+            @if (expanded().has(column.id)) {
+              <ul class="usage-list">
+                @for (line of lines; track $index) {
+                  <li class="usage-item">
+                    <i [class]="line.icon" aria-hidden="true"></i>
+                    <span class="usage-text">
+                      @if (line.widgetId) {
+                        <a
+                          class="usage-name"
+                          [routerLink]="['/reports', reportId, 'edit']"
+                          [fragment]="fragmentFor(line.widgetId)"
+                          >{{ line.name }}</a
+                        >
+                      } @else {
+                        <span class="usage-name">{{ line.name }}</span>
+                      }
+                      @if (line.where) {
+                        <span class="usage-where">{{ line.where }}</span>
+                      }
+                      <span class="usage-roles">{{ line.roles }}</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            }
+          }
+        }
       </li>
     }
   </ul>

@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 import {
+  ColumnTypeImpact,
   DatasetColumn,
+  ColumnUse,
   DatasetColumnType,
   DatasetRow,
   DatasetSourceConfig,
@@ -8,6 +11,7 @@ import {
 import { DatasetAutosave } from './state/dataset-autosave';
 import { DatasetCollection } from './state/dataset-collection';
 import { DatasetColumnCommands } from './state/dataset-column-commands';
+import { DatasetColumnUsage } from './state/dataset-column-usage';
 import { DatasetExport } from './state/dataset-export';
 import { DatasetRowCommands } from './state/dataset-row-commands';
 import { DatasetRowWindow } from './state/dataset-row-window';
@@ -44,6 +48,7 @@ export class DatasetsStore {
   private readonly sourceCommands = inject(DatasetSourceCommands);
   private readonly export = inject(DatasetExport);
   private readonly validation = inject(DatasetValidation);
+  private readonly columnUsage = inject(DatasetColumnUsage);
 
   // --- list & selection (DatasetCollection) ---------------------------------
   readonly sources = this.collection.sources;
@@ -66,6 +71,22 @@ export class DatasetsStore {
   readonly sourceConfig = this.schema.sourceConfig;
   readonly schemaLoading = this.schema.schemaLoading;
   readonly error = this.schema.error;
+
+  // --- where the columns are used in the report (DatasetColumnUsage) ---------
+  /** True once the selected dataset's column usage has loaded. */
+  readonly columnUsageKnown = this.columnUsage.known;
+  /** True when the column usage couldn't be loaded, so a delete can't say what it would break. */
+  readonly columnUsageFailed = this.columnUsage.failed;
+
+  /** Every widget/filter use of a column in the report's draft, in tab and widget order. */
+  columnUses(columnId: string): readonly ColumnUse[] {
+    return this.columnUsage.usesOf(columnId);
+  }
+
+  /** What giving a column another type would newly break, or null with no dataset selected. */
+  columnTypeImpact(columnId: string, type: DatasetColumnType): Observable<ColumnTypeImpact> | null {
+    return this.columnUsage.typeChangeImpact(columnId, type);
+  }
 
   // --- selected dataset's rows, lazily windowed (DatasetRowWindow) -----------
   /** The sparse row array bound to the grid's lazy virtual scroll; loaded windows are filled in. */

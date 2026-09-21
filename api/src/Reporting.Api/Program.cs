@@ -37,6 +37,7 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
 
 builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();
+builder.Services.AddScoped<DatasetColumnUsageService>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ReportPersonalizationService>();

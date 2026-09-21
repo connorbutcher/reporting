@@ -1,7 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
+import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
+  ColumnTypeImpact,
   DatasetColumn,
   DatasetColumnConfiguration,
   DatasetColumnType,
@@ -183,6 +185,17 @@ export class DatasetApiService {
 
   addColumn(datasetId: number, name: string, type: DatasetColumnType): Observable<DatasetColumn> {
     return this.http.post<DatasetColumn>(`/api/datasets/${datasetId}/columns`, { name, type });
+  }
+
+  /**
+   * What changing a column to `type` would newly break in the report — advisory, so a failure is left
+   * to the caller to describe rather than raised as a toast.
+   */
+  columnTypeImpact(datasetId: number, columnId: string, type: DatasetColumnType): Observable<ColumnTypeImpact> {
+    return this.http.get<ColumnTypeImpact>(`/api/datasets/${datasetId}/columns/${columnId}/type-impact`, {
+      params: new HttpParams().set('type', type),
+      context: skipHttpErrorNotification(),
+    });
   }
 
   updateColumn(

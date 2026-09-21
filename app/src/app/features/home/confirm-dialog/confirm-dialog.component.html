@@ -5,6 +5,13 @@
 
   <div class="confirm-dialog-body">
     <p class="confirm-dialog-message">{{ data.message }}</p>
+    @if (data.details?.length) {
+      <ul class="confirm-dialog-details">
+        @for (detail of data.details; track $index) {
+          <li>{{ detail }}</li>
+        }
+      </ul>
+    }
   </div>
 
   <footer class="confirm-dialog-footer">

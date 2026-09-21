@@ -7,6 +7,7 @@ import { DatasetsStore } from '../datasets.store';
 import { DatasetAutosave } from '../state/dataset-autosave';
 import { DatasetCollection } from '../state/dataset-collection';
 import { DatasetColumnCommands } from '../state/dataset-column-commands';
+import { DatasetColumnUsage } from '../state/dataset-column-usage';
 import { DatasetExport } from '../state/dataset-export';
 import { DatasetRowCommands } from '../state/dataset-row-commands';
 import { DatasetRowWindow } from '../state/dataset-row-window';
@@ -33,6 +34,7 @@ import { DatasetValidation } from '../state/dataset-validation';
     DatasetSchemaState,
     DatasetRowWindow,
     DatasetColumnCommands,
+    DatasetColumnUsage,
     DatasetRowCommands,
     DatasetSourceCommands,
     DatasetExport,
