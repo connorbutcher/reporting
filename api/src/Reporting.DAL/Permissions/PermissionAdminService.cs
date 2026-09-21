@@ -126,6 +126,15 @@ public class PermissionAdminService(
         var leaf = chain[0];
         var (subjectId, subjectName) = await ResolveSubjectAsync(dto.SubjectType, dto.SubjectId);
 
+        // A global admin's access is inferred from that status (they manage everything), so a grant
+        // to one would be noise that goes stale. Removing an old one is still allowed.
+        if (dto.SubjectType == GrantSubjectType.User
+            && await db.Users.AnyAsync(u => u.Id == subjectId && u.IsGlobalAdmin))
+        {
+            throw new DataValidationException(
+                $"{subjectName} is a global administrator and already has full access, so it can't be shared with them.");
+        }
+
         var (folderId, reportId) = SecurableIds(leaf.Type, leaf.Id);
         var (userId, groupId) = SubjectIds(dto.SubjectType, subjectId);
         var existing = await db.AccessGrants.FirstOrDefaultAsync(g =>

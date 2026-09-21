@@ -70,6 +70,7 @@
           Add
         </button>
       </div>
+      <p class="perm-dialog-muted">Global administrators always have full access, so they aren't listed here.</p>
 
       <ul class="perm-dialog-list">
         @for (grant of perms.effective; track grant.subjectType + ':' + grant.subjectId) {

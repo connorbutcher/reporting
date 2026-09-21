@@ -128,6 +128,11 @@ public partial class UserAdminService(
             await SetManageUsersAsync(user.Id, dto.CanManageUsers);
         }
 
+        // A global admin has full access to every group already, so they belong to none — saving an
+        // empty set is how an old membership is cleared.
+        if (user.IsGlobalAdmin && dto.GroupIds.Count > 0)
+            throw new DataValidationException("Global administrators already have full access to every group, so they can't be added to one.");
+
         await SetMembershipsAsync(user.Id, dto.GroupIds);
         await db.SaveChangesAsync();
 

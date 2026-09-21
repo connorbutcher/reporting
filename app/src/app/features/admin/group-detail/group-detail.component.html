@@ -52,7 +52,8 @@
           <label class="admin-label">
             Members <span class="admin-hint">({{ memberIds().length }} selected)</span>
           </label>
-          @if (userOptions().length > 8) {
+          <span class="admin-hint">Global administrators already have full access to every group, so they aren't listed.</span>
+          @if (assignableUsers().length > 8) {
             <input
               pInputText
               class="admin-input"
@@ -77,7 +78,7 @@
               </label>
             } @empty {
               <p class="admin-hint admin-picker-empty">
-                {{ userOptions().length === 0 ? 'No users exist yet.' : 'No people match.' }}
+                {{ assignableUsers().length === 0 ? 'No users exist yet.' : 'No people match.' }}
               </p>
             }
           </div>

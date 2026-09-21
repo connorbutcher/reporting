@@ -8,7 +8,7 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
-import { GroupNameAvailable, SaveGroup, UserRef } from '../../../core/models/admin';
+import { DirectoryUser, GroupNameAvailable, SaveGroup } from '../../../core/models/admin';
 import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
@@ -37,11 +37,18 @@ export class GroupDetailComponent {
   public readonly memberIds = signal<string[]>([]);
   public readonly managerIds = signal<string[]>([]);
   public readonly memberFilter = signal('');
-  public readonly userOptions = signal<UserRef[]>([]);
+  public readonly userOptions = signal<DirectoryUser[]>([]);
+
+  /**
+   * The people a group can hold. Global admins are left out throughout: they have full access to
+   * every group by that status, so they're neither members nor managers (they're managed in the
+   * Users section).
+   */
+  public readonly assignableUsers = computed(() => this.userOptions().filter((u) => !u.isGlobalAdmin));
 
   public readonly filteredUsers = computed(() => {
     const query = this.memberFilter().trim().toLowerCase();
-    const options = [...this.userOptions()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    const options = [...this.assignableUsers()].sort((a, b) => a.displayName.localeCompare(b.displayName));
     return query
       ? options.filter(
           (u) =>
@@ -53,7 +60,7 @@ export class GroupDetailComponent {
   /** Managers are chosen from the group's current members. */
   public readonly managerCandidates = computed(() => {
     const members = new Set(this.memberIds());
-    return [...this.userOptions()]
+    return [...this.assignableUsers()]
       .filter((u) => members.has(u.id))
       .sort((a, b) => a.displayName.localeCompare(b.displayName));
   });
@@ -207,8 +214,11 @@ export class GroupDetailComponent {
         this.existingNames.set(
           groups.filter((g) => g.id !== detail.id).map((g) => g.name.trim().toLowerCase()),
         );
-        this.memberIds.set(detail.members.map((m) => m.id));
-        this.managerIds.set(detail.managers.map((m) => m.id));
+        // A membership or manager row for someone who is (or has since become) a global admin is
+        // redundant, and the server refuses to save one — drop it here so the group stays editable.
+        const admins = new Set(users.filter((u) => u.isGlobalAdmin).map((u) => u.id));
+        this.memberIds.set(detail.members.map((m) => m.id).filter((id) => !admins.has(id)));
+        this.managerIds.set(detail.managers.map((m) => m.id).filter((id) => !admins.has(id)));
         this.form.name().value.set(detail.name);
         this.loading.set(false);
       },

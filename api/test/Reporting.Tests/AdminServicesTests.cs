@@ -353,6 +353,48 @@ public class AdminServicesTests : IDisposable
     }
 
     [Fact]
+    public async Task A_global_admin_cannot_be_a_group_member_or_manager()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var otherAdmin = await SeedUserAsync("o@x", "Other admin", admin: true);
+        var bob = await SeedUserAsync("b@x", "Bob");
+
+        // A global admin has full access to every group by that status alone, so neither a
+        // membership nor a delegation for one is accepted — on create...
+        var asMember = await Assert.ThrowsAsync<DataValidationException>(() =>
+            Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [otherAdmin.RefId] }));
+        Assert.Contains("Global administrators", asMember.Message);
+        await Assert.ThrowsAsync<DataValidationException>(() =>
+            Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId], ManagerIds = [otherAdmin.RefId] }));
+
+        // ...and on update, where the rest of the edit is left untouched.
+        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId], ManagerIds = [bob.RefId] });
+        await Assert.ThrowsAsync<DataValidationException>(() =>
+            Groups(admin.Id).UpdateAsync(group.Id, new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId, otherAdmin.RefId], ManagerIds = [bob.RefId] }));
+        var detail = await Groups(admin.Id).GetAsync(group.Id);
+        Assert.Equal([bob.RefId], detail!.Members.Select(m => m.Id));
+    }
+
+    [Fact]
+    public async Task A_global_admin_cannot_be_added_to_groups_from_their_user_page_but_can_be_cleared()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var other = await SeedUserAsync("o@x", "Other admin", admin: true);
+        var bob = await SeedUserAsync("b@x", "Bob");
+        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Team", MemberIds = [bob.RefId] });
+
+        await Assert.ThrowsAsync<DataValidationException>(() =>
+            Users(admin.Id).UpdateAsync(other.RefId, new SaveUserDto { DisplayName = "Other admin", GroupIds = [group.Id] }));
+
+        // A membership from before the rule (written straight to the table) is cleared by saving an empty set.
+        var groupId = await _db.UserGroups.Where(g => g.RefId == group.Id).Select(g => g.Id).FirstAsync();
+        _db.UserGroupMembers.Add(new UserGroupMember { UserGroupId = groupId, UserId = other.Id });
+        await _db.SaveChangesAsync();
+        await Users(admin.Id).UpdateAsync(other.RefId, new SaveUserDto { DisplayName = "Other admin", GroupIds = [] });
+        Assert.False(await _db.UserGroupMembers.AnyAsync(m => m.UserId == other.Id));
+    }
+
+    [Fact]
     public async Task Delegate_can_delete_their_group_and_manager_rows_cascade()
     {
         var admin = await SeedUserAsync("a@x", "A", admin: true);

@@ -46,6 +46,8 @@ export class PermissionsDialogStore {
       });
     }
     for (const user of this.users()) {
+      // A global admin's access is inferred from that status, so there's nothing to grant them.
+      if (user.isGlobalAdmin) continue;
       const value = `user:${user.id}`;
       if (!used.has(value)) {
         options.push({ label: user.displayName, value, subjectType: 'user', subjectId: user.id });

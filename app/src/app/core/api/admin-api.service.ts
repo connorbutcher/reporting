@@ -7,9 +7,9 @@ import {
   AdminGroupDetail,
   AdminUser,
   AdminUserDetail,
+  DirectoryUser,
   SaveGroup,
   SaveUser,
-  UserRef,
 } from '../models/admin';
 
 /**
@@ -26,8 +26,8 @@ export class AdminApiService {
   private readonly options = { context: skipHttpErrorNotification() };
 
   /** The full people directory (ungated), for member/manager pickers. */
-  public directory(): Observable<UserRef[]> {
-    return this.http.get<UserRef[]>('/api/users', this.options);
+  public directory(): Observable<DirectoryUser[]> {
+    return this.http.get<DirectoryUser[]>('/api/users', this.options);
   }
 
   public listUsers(): Observable<AdminUser[]> {

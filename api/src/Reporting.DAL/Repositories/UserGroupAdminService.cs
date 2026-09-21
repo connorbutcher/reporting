@@ -101,7 +101,7 @@ public class UserGroupAdminService(
         if (name.Length == 0) throw new DataValidationException("A group name is required.");
         if (await db.UserGroups.AnyAsync(g => g.Name == name))
             throw new DataValidationException($"A group called \"{name}\" already exists.");
-        RequireManagersAreMembers(dto);
+        await RequireValidMembershipAsync(dto);
 
         var group = new UserGroup { RefId = Guid.NewGuid(), Name = name };
         db.UserGroups.Add(group);
@@ -126,7 +126,7 @@ public class UserGroupAdminService(
         if (name.Length == 0) throw new DataValidationException("A group name is required.");
         if (await db.UserGroups.AnyAsync(g => g.Name == name && g.Id != group.Id))
             throw new DataValidationException($"A group called \"{name}\" already exists.");
-        RequireManagersAreMembers(dto);
+        await RequireValidMembershipAsync(dto);
 
         // A delegated manager can't drop themselves and lose access to the group mid-edit.
         if (!full)
@@ -187,8 +187,21 @@ public class UserGroupAdminService(
 
     // --- helpers ----------------------------------------------------------
 
-    private static void RequireManagersAreMembers(SaveGroupDto dto)
+    /// <summary>
+    /// Who a group may hold: managers must be members, and nobody may be a global admin. A global
+    /// admin already has full access to every group by that status alone, so a membership or a
+    /// delegation for one would record something that means nothing (and would outlive the flag if
+    /// it were ever lifted).
+    /// </summary>
+    private async Task RequireValidMembershipAsync(SaveGroupDto dto)
     {
+        var people = dto.MemberIds.Concat(dto.ManagerIds).ToHashSet();
+        if (people.Count > 0 && await db.Users.AnyAsync(u => people.Contains(u.RefId) && u.IsGlobalAdmin))
+        {
+            throw new DataValidationException(
+                "Global administrators already have full access to every group, so they can't be added as members or managers.");
+        }
+
         var members = dto.MemberIds.ToHashSet();
         if (!dto.ManagerIds.All(members.Contains))
             throw new DataValidationException("Managers must be members of the group.");

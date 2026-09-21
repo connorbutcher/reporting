@@ -8,6 +8,11 @@ export interface UserRef {
   email: string;
 }
 
+/** A person in the ungated directory, with whether they are a global admin (whose access is inferred, not granted). */
+export interface DirectoryUser extends UserRef {
+  isGlobalAdmin: boolean;
+}
+
 export interface GroupRef {
   id: string;
   name: string;

@@ -151,7 +151,9 @@ export class UserDetailComponent {
         const self = this.currentUser.user()?.id === detail.id;
         this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsers);
         this.canManageUsers.set(detail.canManageUsers);
-        this.groupIds.set(detail.groups.map((g) => g.id));
+        // A global admin belongs to no groups (they already have full access to all of them), so
+        // saving sends an empty set — which also clears any membership from before that rule.
+        this.groupIds.set(detail.isGlobalAdmin ? [] : detail.groups.map((g) => g.id));
         this.createdAt.set(detail.createdAt);
         this.form.displayName().value.set(detail.displayName);
         this.form.email().value.set(detail.email);

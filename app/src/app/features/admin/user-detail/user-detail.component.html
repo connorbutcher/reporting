@@ -92,37 +92,47 @@
           </span>
         </label>
 
-        <div class="admin-field">
-          <label class="admin-label">
-            Groups <span class="admin-hint">({{ groupIds().length }} selected)</span>
-          </label>
-          @if (groupOptions().length > 8) {
-            <input
-              pInputText
-              class="admin-input"
-              [value]="groupFilter()"
-              (input)="groupFilter.set($any($event.target).value)"
-              placeholder="Filter groups"
-              aria-label="Filter groups"
-            />
-          }
-          <div class="admin-picker">
-            @for (group of filteredGroups(); track group.id) {
-              <label class="admin-picker-item">
-                <p-checkbox
-                  [binary]="true"
-                  [ngModel]="groupIds().includes(group.id)"
-                  (onChange)="toggleGroup(group.id, $event.checked)"
-                />
-                <span>{{ group.name }}</span>
-              </label>
-            } @empty {
-              <p class="admin-hint admin-picker-empty">
-                {{ groupOptions().length === 0 ? 'No groups exist yet.' : 'No groups match.' }}
-              </p>
-            }
+        @if (isGlobalAdmin()) {
+          <div class="admin-field">
+            <label class="admin-label">Groups</label>
+            <span class="admin-hint">
+              Global administrators already have full access to every group, so they aren't added to
+              any.
+            </span>
           </div>
-        </div>
+        } @else {
+          <div class="admin-field">
+            <label class="admin-label">
+              Groups <span class="admin-hint">({{ groupIds().length }} selected)</span>
+            </label>
+            @if (groupOptions().length > 8) {
+              <input
+                pInputText
+                class="admin-input"
+                [value]="groupFilter()"
+                (input)="groupFilter.set($any($event.target).value)"
+                placeholder="Filter groups"
+                aria-label="Filter groups"
+              />
+            }
+            <div class="admin-picker">
+              @for (group of filteredGroups(); track group.id) {
+                <label class="admin-picker-item">
+                  <p-checkbox
+                    [binary]="true"
+                    [ngModel]="groupIds().includes(group.id)"
+                    (onChange)="toggleGroup(group.id, $event.checked)"
+                  />
+                  <span>{{ group.name }}</span>
+                </label>
+              } @empty {
+                <p class="admin-hint admin-picker-empty">
+                  {{ groupOptions().length === 0 ? 'No groups exist yet.' : 'No groups match.' }}
+                </p>
+              }
+            </div>
+          </div>
+        }
 
         @if (!isNew() && createdAt()) {
           <hr class="admin-divider" />
