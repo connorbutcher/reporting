@@ -24,6 +24,7 @@ import { TableCell, TableQueryResult } from '../../../../core/models/widget-quer
 import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetExportBase } from '../widget-export-base';
 
@@ -41,7 +42,7 @@ export interface DisplayColumn {
 
 @Component({
   selector: 'app-data-table-widget',
-  imports: [TableModule, WidgetExportActionsComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent],
   templateUrl: './data-table-widget.component.html',
   styleUrl: './data-table-widget.component.scss',
   host: {

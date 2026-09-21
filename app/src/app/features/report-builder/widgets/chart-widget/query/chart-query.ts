@@ -12,6 +12,7 @@ import {
   BarSeriesResult,
   BoxPlotQueryResult,
   ChartQueryResult,
+  ChartRowCounts,
   ChartSeriesResult,
   HistogramQueryResult,
 } from '../../../../../core/models/widget-query';
@@ -229,6 +230,7 @@ export class ChartQuery {
       name: first.name,
       series,
       toleranceBands: first.toleranceBands,
+      ...ChartQuery.sumRowCounts(parts),
       totalPoints,
       truncated,
     };
@@ -306,6 +308,31 @@ export class ChartQuery {
       series,
       // Bands resolve against the primary binding's dataset, matching the schema the panel offers.
       toleranceBands: first.toleranceBands,
+      ...ChartQuery.sumRowCounts(parts),
     };
+  }
+
+  /**
+   * The overlay's row counts for the "N of M rows" footer: each dataset counted once, summed across
+   * datasets. Bindings on the same dataset read the same rows, so they must not double the total;
+   * where their filters differ, the widest slice any of them plots stands for the dataset.
+   */
+  private static sumRowCounts(parts: { binding: ChartSeriesBinding; result: ChartRowCounts }[]): ChartRowCounts {
+    const byDataset = new Map<number | null, ChartRowCounts>();
+    for (const { binding, result } of parts) {
+      const seen = byDataset.get(binding.datasetId);
+      byDataset.set(binding.datasetId, {
+        totalRowCount: result.totalRowCount,
+        matchedRowCount: Math.max(seen?.matchedRowCount ?? 0, result.matchedRowCount),
+      });
+    }
+
+    let totalRowCount = 0;
+    let matchedRowCount = 0;
+    for (const counts of byDataset.values()) {
+      totalRowCount += counts.totalRowCount;
+      matchedRowCount += counts.matchedRowCount;
+    }
+    return { totalRowCount, matchedRowCount };
   }
 }

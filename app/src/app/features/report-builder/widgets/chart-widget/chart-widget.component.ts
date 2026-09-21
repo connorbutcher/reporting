@@ -11,6 +11,7 @@ import {
   ChartQueryResult,
   HistogramQueryResult,
 } from '../../../../core/models/widget-query';
+import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetExportBase } from '../widget-export-base';
@@ -31,7 +32,7 @@ import { ChartQuery } from './query/chart-query';
  */
 @Component({
   selector: 'app-chart-widget',
-  imports: [NgxEchartsDirective, ButtonModule, WidgetExportActionsComponent],
+  imports: [NgxEchartsDirective, ButtonModule, WidgetCountBarComponent, WidgetExportActionsComponent],
   templateUrl: './chart-widget.component.html',
   styleUrl: './chart-widget.component.scss',
 })
@@ -70,15 +71,41 @@ export class ChartWidgetComponent extends WidgetExportBase {
     }
   });
 
-  /** A "showing N of M points" note when the server capped a point chart's data, else null. */
-  public readonly truncationNote = computed<string | null>(() => {
-    // Only point charts (scatter/line) cap their rows; bar and box aggregate server-side.
-    if (!this.isPointChart()) return null;
-    const result = this.source.result() as ChartQueryResult | null;
-    if (!result?.truncated) return null;
-    const plotted = result.series.reduce((n, s) => n + s.points.length, 0);
-    const total = result.totalPoints ?? plotted;
-    return `Showing ${plotted.toLocaleString()} of ${total.toLocaleString()} points`;
+  /**
+   * The footer strip's content, mirroring the table's "N of M rows": the filtered view when a filter
+   * narrows the dataset, otherwise the row count. A point chart the server capped says so instead —
+   * only some of its points are drawn. Null until a result has loaded.
+   */
+  public readonly countBar = computed<{ label: string; icon: string; truncated: boolean } | null>(() => {
+    const result = this.source.result();
+    if (!result) return null;
+
+    // Only point charts (scatter/line) cap their rows; bar, box and histogram reduce server-side.
+    if (this.isPointChart() && (result as ChartQueryResult).truncated) {
+      const points = result as ChartQueryResult;
+      const plotted = points.series.reduce((n, s) => n + s.points.length, 0);
+      const total = points.totalPoints ?? plotted;
+      return {
+        label: `Showing first ${plotted.toLocaleString()} of ${total.toLocaleString()} points`,
+        icon: 'pi-list',
+        truncated: true,
+      };
+    }
+
+    const matched = result.matchedRowCount;
+    const total = result.totalRowCount;
+    if (matched !== total) {
+      return {
+        label: `Showing ${matched.toLocaleString()} of ${total.toLocaleString()} rows`,
+        icon: 'pi-filter',
+        truncated: false,
+      };
+    }
+    return {
+      label: `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`,
+      icon: 'pi-list',
+      truncated: false,
+    };
   });
 
   /** Prompt shown when the chart isn't configured enough to plot, worded per kind. */

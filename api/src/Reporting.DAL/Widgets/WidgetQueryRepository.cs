@@ -352,6 +352,19 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         _ => column?.Name ?? "Value",
     };
 
+    /// <summary>
+    /// The dataset's row count and how many of those the filter matches — the pair behind every
+    /// chart's "N of M rows" footer. <see cref="FilterTranslator.Apply"/> hands back the very same
+    /// query when no filter narrowed it, in which case a second COUNT would only repeat the first.
+    /// </summary>
+    private static async Task<(int Total, int Matched)> CountRowsAsync(
+        IQueryable<DatasetRow> all, IQueryable<DatasetRow> matching)
+    {
+        var total = await all.CountAsync();
+        var matched = ReferenceEquals(all, matching) ? total : await matching.CountAsync();
+        return (total, matched);
+    }
+
     /// <summary>Resolves each tolerance band's bounds in one batch, keyed by the band's client id.</summary>
     private async Task<Dictionary<string, ToleranceBounds?>> ResolveBandsAsync(IReadOnlyList<ChartToleranceBand> bands)
     {
@@ -458,6 +471,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
+        var (totalRowCount, matchedRowCount) = await CountRowsAsync(all, matching);
 
         // Resolve the axis columns; a missing column yields a sentinel id that matches no cell,
         // so the chart is simply empty (as before). An axis value is a string for a text column,
@@ -544,6 +558,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                     : g.Value.OrderBy(p => (double)p.X)).ToList()
             }).ToList(),
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount,
             TotalPoints = total,
             Truncated = total > MaxChartPoints
         };
@@ -584,6 +600,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
+        var (totalRowCount, matchedRowCount) = await CountRowsAsync(all, matching);
+        empty.TotalRowCount = totalRowCount;
+        empty.MatchedRowCount = matchedRowCount;
 
         // A missing category (nothing bound yet) yields an empty chart, the same graceful
         // no-op scatter/line give when their axes aren't set.
@@ -730,7 +749,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Name = dataset.Name,
             Categories = orderedCategories,
             Series = series,
-            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount
         };
     }
 
@@ -759,6 +780,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
+        var (totalRowCount, matchedRowCount) = await CountRowsAsync(all, matching);
+        empty.TotalRowCount = totalRowCount;
+        empty.MatchedRowCount = matchedRowCount;
 
         // A missing category or measure (nothing bound yet) yields an empty chart, the same
         // graceful no-op the other chart kinds give when their axes aren't set.
@@ -884,7 +908,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Name = dataset.Name,
             Categories = orderedCategories,
             Series = series,
-            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount
         };
     }
 
@@ -911,6 +937,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
+        var (totalRowCount, matchedRowCount) = await CountRowsAsync(all, matching);
+        empty.TotalRowCount = totalRowCount;
+        empty.MatchedRowCount = matchedRowCount;
 
         // Nothing bound yet yields an empty chart, the same graceful no-op the other charts give.
         var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
@@ -1020,7 +1049,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Name = dataset.Name,
             Bins = bins,
             Series = series,
-            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds)
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount
         };
     }
 

@@ -43,7 +43,7 @@ public class BarSeriesDto
     public List<double?> Values { get; set; } = new();
 }
 
-public class BarChartQueryResultDto
+public class BarChartQueryResultDto : ChartResultCountsDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

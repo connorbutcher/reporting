@@ -58,8 +58,5 @@
     }
   </p-table>
 
-  <p class="count" [class.truncated]="isTruncated()">
-    <i class="pi pi-table" aria-hidden="true"></i>
-    {{ countLabel() }}
-  </p>
+  <app-widget-count-bar icon="pi-table" [label]="countLabel()" [truncated]="isTruncated()" />
 }

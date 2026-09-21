@@ -73,7 +73,7 @@ public class BoxPlotSeriesDto
     public List<BoxOutlierDto> Outliers { get; set; } = new();
 }
 
-public class BoxPlotQueryResultDto
+public class BoxPlotQueryResultDto : ChartResultCountsDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

@@ -43,7 +43,19 @@ export interface ResolvedToleranceBand {
   outlinePoints: boolean;
 }
 
-export interface ChartQueryResult {
+/**
+ * The row counts every chart response carries, so a chart can show the same "N of M rows" footer as
+ * the table. Counted against the dataset before any per-chart narrowing (rows with no axis value,
+ * rows with no measure).
+ */
+export interface ChartRowCounts {
+  /** Every row in the dataset, ignoring the filter. */
+  totalRowCount: number;
+  /** The rows the filter matches; equals {@link totalRowCount} when there is no filter. */
+  matchedRowCount: number;
+}
+
+export interface ChartQueryResult extends ChartRowCounts {
   id: string;
   name: string;
   series: ChartSeriesResult[];

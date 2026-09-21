@@ -56,7 +56,7 @@ public class HistogramSeriesDto
     public List<double> Values { get; set; } = new();
 }
 
-public class HistogramQueryResultDto
+public class HistogramQueryResultDto : ChartResultCountsDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

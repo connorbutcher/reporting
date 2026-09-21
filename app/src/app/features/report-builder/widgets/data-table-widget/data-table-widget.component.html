@@ -86,8 +86,9 @@
     </ng-template>
   </p-table>
 
-  <p class="count" [class.truncated]="isTruncated()">
-    <i class="pi" [class.pi-filter]="isFiltered()" [class.pi-list]="!isFiltered()" aria-hidden="true"></i>
-    {{ countLabel() }}
-  </p>
+  <app-widget-count-bar
+    [label]="countLabel()"
+    [icon]="isFiltered() ? 'pi-filter' : 'pi-list'"
+    [truncated]="isTruncated()"
+  />
 }

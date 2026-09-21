@@ -7,6 +7,7 @@ import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query
 import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetExportBase } from '../widget-export-base';
 
@@ -25,7 +26,7 @@ interface PivotDisplayRow {
 
 @Component({
   selector: 'app-pivot-table-widget',
-  imports: [TableModule, WidgetExportActionsComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent],
   templateUrl: './pivot-table-widget.component.html',
   styleUrl: './pivot-table-widget.component.scss',
 })

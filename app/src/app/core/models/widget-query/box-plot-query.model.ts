@@ -1,6 +1,6 @@
 import { BoxSort, BoxWhisker, ChartToleranceBand } from '../report';
 import { FilterGroup } from '../filter';
-import { ResolvedToleranceBand } from './chart-query.model';
+import { ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
 export interface BoxPlotQueryRequest {
   filter: FilterGroup | null;
@@ -52,7 +52,7 @@ export interface BoxPlotSeriesResult {
   outliers: BoxOutlier[];
 }
 
-export interface BoxPlotQueryResult {
+export interface BoxPlotQueryResult extends ChartRowCounts {
   id: string;
   name: string;
   /** The box categories, in display order — the shared axis every series aligns to. */

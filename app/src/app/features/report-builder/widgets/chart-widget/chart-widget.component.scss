@@ -29,27 +29,15 @@
     opacity: 1;
   }
 
-  // A quiet corner note when the server capped the plotted points — kept clear of
-  // the export actions in the top-right.
-  .point-cap-note {
-    position: absolute;
-    top: 6px;
-    left: 8px;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, 0.06);
-    color: #64748b;
-    font-size: 0.72rem;
-    pointer-events: none;
-  }
-
   .status {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 100%;
+    // Fills the space above the count bar (when there is one) rather than the whole widget.
+    flex: 1;
+    min-height: 0;
     padding: 12px;
     color: #64748b;
     font-size: 0.85rem;

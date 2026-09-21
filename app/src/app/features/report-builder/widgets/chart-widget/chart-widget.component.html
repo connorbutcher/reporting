@@ -29,6 +29,9 @@
       <i class="pi pi-inbox" aria-hidden="true"></i>
       No rows match the current filters.
     </div>
+    @if (countBar(); as bar) {
+      <app-widget-count-bar [label]="bar.label" [icon]="bar.icon" [truncated]="bar.truncated" />
+    }
   }
   @case ('ready') {
     @if (chartOption(); as option) {
@@ -40,10 +43,8 @@
         (chartInit)="onChartInit($event)"
       ></div>
       <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
-      @if (truncationNote(); as note) {
-        <div class="point-cap-note" title="The dataset has more points than the chart plots.">
-          {{ note }}
-        </div>
+      @if (countBar(); as bar) {
+        <app-widget-count-bar [label]="bar.label" [icon]="bar.icon" [truncated]="bar.truncated" />
       }
       @if (reloading()) {
         <div class="reload-veil" aria-live="polite">
