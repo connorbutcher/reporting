@@ -143,4 +143,36 @@ public class ChartRowCountTests : SqliteDbTestBase
         Assert.Equal(5, result.TotalRowCount);
         Assert.Equal(0, result.MatchedRowCount);
     }
+
+    [Fact]
+    public async Task Box_plot_and_histogram_report_the_rows_they_scanned_and_are_not_truncated_under_the_cap()
+    {
+        var id = await SeedAsync();
+        var repo = Repo();
+
+        var box = await repo.QueryForBoxPlotAsync(id, new BoxPlotQueryDto { CategoryColumnId = _regionRef, ValueColumnId = _valueRef });
+        var histogram = await repo.QueryForHistogramAsync(id, new HistogramQueryDto { ValueColumnId = _valueRef, Filter = RegionEquals("North") });
+
+        Assert.False(box!.Truncated);
+        Assert.Equal(5, box.ScannedRowCount);
+        Assert.False(histogram!.Truncated);
+        Assert.Equal(3, histogram.ScannedRowCount);
+    }
+
+    [Fact]
+    public void TrimToScanCap_drops_the_probe_row_and_reports_truncation_only_when_the_cap_was_exceeded()
+    {
+        var overCap = new List<int> { 1, 2, 3 };
+        Assert.True(WidgetQueryRepository.TrimToScanCap(overCap, 2));
+        Assert.Equal([1, 2], overCap);
+
+        // Exactly at the cap is a complete scan, not a truncated one.
+        var atCap = new List<int> { 1, 2 };
+        Assert.False(WidgetQueryRepository.TrimToScanCap(atCap, 2));
+        Assert.Equal([1, 2], atCap);
+
+        var underCap = new List<int> { 1 };
+        Assert.False(WidgetQueryRepository.TrimToScanCap(underCap, 2));
+        Assert.Equal([1], underCap);
+    }
 }

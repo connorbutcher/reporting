@@ -1,6 +1,6 @@
 import { Aggregate, ChartToleranceBand } from '../report';
 import { FilterGroup } from '../filter';
-import { ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
+import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 
 export interface BarChartQueryRequest {
   filter: FilterGroup | null;
@@ -29,7 +29,7 @@ export interface BarSeriesResult {
   values: (number | null)[];
 }
 
-export interface BarChartQueryResult extends ChartRowCounts {
+export interface BarChartQueryResult extends ChartRowCounts, PartialChartLoad {
   id: string;
   name: string;
   /** The bar categories, in display order — the shared axis every series aligns to. */

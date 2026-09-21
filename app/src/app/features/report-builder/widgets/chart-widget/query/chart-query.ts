@@ -75,7 +75,8 @@ export class ChartQuery {
             })
             .pipe(
               map((result): BarChartPart => ({ binding, result })),
-              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart.
+              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart;
+              // the merge counts the drop-outs so the widget can say a series is missing.
               catchError(() => of(null)),
             );
         })
@@ -87,7 +88,7 @@ export class ChartQuery {
         map((results) => {
           const ok = results.filter((r): r is BarChartPart => r !== null);
           if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-          return ChartQuery.mergeBar(ok);
+          return { ...ChartQuery.mergeBar(ok), failedBindingCount: results.length - ok.length };
         }),
       );
     }
@@ -178,7 +179,7 @@ export class ChartQuery {
       map((results) => {
         const ok = results.filter((r): r is ChartQueryPart => r !== null);
         if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-        return ChartQuery.merge(ok);
+        return { ...ChartQuery.merge(ok), failedBindingCount: results.length - ok.length };
       }),
     );
   }

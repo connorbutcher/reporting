@@ -1,36 +1,29 @@
 @switch (view()) {
   @case ('noDataset') {
-    <div class="status">
-      <i [class]="placeholderIcon()" aria-hidden="true"></i>
-      Choose a dataset for this chart in the side panel.
-    </div>
+    <app-widget-status [icon]="placeholderIcon()">Choose a dataset for this chart in the side panel.</app-widget-status>
   }
   @case ('needsConfig') {
-    <div class="status">
-      <i class="pi pi-sliders-h" aria-hidden="true"></i>
-      {{ configHint() }}
-    </div>
+    <app-widget-status icon="pi-sliders-h">{{ configHint() }}</app-widget-status>
   }
   @case ('error') {
-    <div class="status error">
-      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
-      <span>Couldn’t load this chart’s data.</span>
-      <p-button label="Retry" icon="pi pi-refresh" size="small" text (onClick)="retry()" />
-    </div>
+    <app-widget-status icon="pi-exclamation-triangle" tone="error" [retryable]="true" (retry)="retry()">
+      Couldn’t load this chart’s data.
+    </app-widget-status>
   }
   @case ('loading') {
-    <div class="status">
-      <i class="pi pi-spinner pi-spin" aria-hidden="true"></i>
-      Loading…
-    </div>
+    <app-chart-skeleton [shape]="skeletonShape()" />
   }
   @case ('empty') {
-    <div class="status">
-      <i class="pi pi-inbox" aria-hidden="true"></i>
-      No rows match the current filters.
-    </div>
+    <app-widget-status icon="pi-inbox">No rows match the current filters.</app-widget-status>
     @if (countBar(); as bar) {
-      <app-widget-count-bar [label]="bar.label" [icon]="bar.icon" [truncated]="bar.truncated" />
+      <app-widget-count-bar
+        [label]="bar.label"
+        [icon]="bar.icon"
+        [warning]="bar.warning"
+        [filters]="filterLines()"
+        [actionable]="filterable()"
+        (activate)="filterRequest.emit()"
+      />
     }
   }
   @case ('ready') {
@@ -44,7 +37,14 @@
       ></div>
       <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
       @if (countBar(); as bar) {
-        <app-widget-count-bar [label]="bar.label" [icon]="bar.icon" [truncated]="bar.truncated" />
+        <app-widget-count-bar
+          [label]="bar.label"
+          [icon]="bar.icon"
+          [warning]="bar.warning"
+          [filters]="filterLines()"
+          [actionable]="filterable()"
+          (activate)="filterRequest.emit()"
+        />
       }
       @if (reloading()) {
         <div class="reload-veil" aria-live="polite">

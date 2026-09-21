@@ -1,9 +1,6 @@
 :host {
   display: flex;
-  align-items: center;
-  gap: 6px;
   flex: 0 0 auto;
-  padding: 4px 10px;
   border-top: 1px solid var(--app-card-border);
   background: #f8fafc;
   color: #64748b;
@@ -14,7 +11,40 @@
   }
 }
 
-:host(.truncated) {
+:host(.warning) {
   color: #92400e;
   background: #fffbeb;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  padding: 4px 10px;
+}
+
+// A button dressed as the strip, so it reads as a footer that happens to be clickable.
+button.content {
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(15, 23, 42, 0.05);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #152a55);
+    outline-offset: -2px;
+  }
+
+  .chevron {
+    margin-left: auto;
+    opacity: 0.6;
+  }
 }

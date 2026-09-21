@@ -1,0 +1,79 @@
+:host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 20px 12px;
+  gap: 8px;
+}
+
+// The plot area: an L of axis lines, with the placeholder shape sitting inside it.
+.frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-left: 2px solid #e2e8f0;
+  border-bottom: 2px solid #e2e8f0;
+  background: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), #f1f5f9 calc(25% - 1px), #f1f5f9 25%);
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4%;
+  height: 100%;
+  padding: 0 4%;
+}
+
+.bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: #e2e8f0;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+
+  @for $i from 1 through 7 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{($i - 1) * 0.1}s;
+    }
+  }
+}
+
+.trend {
+  width: 100%;
+  height: 100%;
+  padding: 4%;
+  box-sizing: border-box;
+
+  polyline {
+    fill: none;
+    stroke: #cbd5e1;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+.label {
+  align-self: center;
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar,
+  .trend polyline {
+    animation: none;
+  }
+}

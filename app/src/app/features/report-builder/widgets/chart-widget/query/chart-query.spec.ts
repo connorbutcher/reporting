@@ -1,4 +1,4 @@
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { ChartSeriesBinding, ChartWidgetConfig } from '../../../../../core/models/report';
@@ -90,5 +90,33 @@ describe('ChartQuery row counts', () => {
 
     expect(result.totalRowCount).toBe(152);
     expect(result.matchedRowCount).toBe(140);
+  });
+
+  it('draws the bindings that loaded and counts the ones that failed', async () => {
+    const api = {
+      queryBarChart: (datasetId: number) =>
+        datasetId === 2
+          ? throwError(() => new Error('boom'))
+          : of({
+              id: '1',
+              name: 'D',
+              categories: ['a'],
+              series: [{ label: '', valueColumnId: 'value', values: [1] }],
+              toleranceBands: [],
+              totalRowCount: 52,
+              matchedRowCount: 40,
+            } satisfies BarChartQueryResult),
+    } as unknown as DatasetApiService;
+
+    const result = await run(api, barConfig(binding('a', 1), binding('b', 2)));
+
+    expect(result.failedBindingCount).toBe(1);
+    expect(result.matchedRowCount).toBe(40);
+  });
+
+  it('reports no failures when every binding loads', async () => {
+    const api = apiWith({ 1: { totalRowCount: 52, matchedRowCount: 40 } });
+
+    expect((await run(api, barConfig(binding('a', 1)))).failedBindingCount).toBe(0);
   });
 });

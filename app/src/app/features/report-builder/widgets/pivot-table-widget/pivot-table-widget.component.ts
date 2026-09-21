@@ -1,4 +1,4 @@
-import { Component, Signal, computed, effect, inject, input, untracked } from '@angular/core';
+import { Component, Signal, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
@@ -7,15 +7,24 @@ import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query
 import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
-import { WidgetExportBase } from '../widget-export-base';
+import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
 /** One rendered column of the pivot: a dimension or a measure, with its display alignment. */
 interface PivotColumn {
   label: string;
   align: 'left' | 'right';
   isMeasure: boolean;
+  /** For a measure, its position in the widget's configured measures (what a sort request names); null for a dimension. */
+  measureIndex: number | null;
+}
+
+/** A sort by one measure; the reader's session choice or the report's saved default. */
+interface PivotSort {
+  index: number;
+  descending: boolean;
 }
 
 /** A row flattened to display strings aligned to {@link PivotTableWidgetComponent.columns}. */
@@ -26,11 +35,11 @@ interface PivotDisplayRow {
 
 @Component({
   selector: 'app-pivot-table-widget',
-  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent, WidgetStatusComponent],
   templateUrl: './pivot-table-widget.component.html',
   styleUrl: './pivot-table-widget.component.scss',
 })
-export class PivotTableWidgetComponent extends WidgetExportBase {
+export class PivotTableWidgetComponent extends DataWidgetBase {
   public readonly config = input.required<PivotTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -50,9 +59,33 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
     const data = this.source.result();
     if (!data) return [];
     return [
-      ...data.rowFields.map((f) => ({ label: f.label, align: 'left' as const, isMeasure: false })),
-      ...data.measures.map((m) => ({ label: m.label, align: 'right' as const, isMeasure: true })),
+      ...data.rowFields.map((f) => ({
+        label: f.label,
+        align: 'left' as const,
+        isMeasure: false,
+        measureIndex: null,
+      })),
+      // The key is "m<request position>" — the server drops unusable measures but keeps the numbering.
+      ...data.measures.map((m) => ({
+        label: m.label,
+        align: 'right' as const,
+        isMeasure: true,
+        measureIndex: Number(m.key.slice(1)),
+      })),
     ];
+  });
+
+  /**
+   * The sort the table is showing: the reader's own choice from clicking a header (null = they
+   * turned sorting off), else the report's saved one. Clicking is a view choice for this session —
+   * it never edits the report — and is dropped whenever the widget's configuration changes.
+   */
+  public readonly effectiveSort = computed<PivotSort | null>(() => {
+    const override = this.viewSort();
+    if (override !== undefined) return override;
+    const config = this.config();
+    const index = config.sortMeasureId ? config.measures.findIndex((m) => m.id === config.sortMeasureId) : -1;
+    return index >= 0 ? { index, descending: config.sortDescending } : null;
   });
 
   /**
@@ -91,6 +124,11 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
 
   public readonly isTruncated = computed(() => !!this.source.result()?.truncated);
 
+  /** What is narrowing the rows, for the count bar's hover text. */
+  public readonly filterLines = computed(() =>
+    this.describeFilters([this.effectiveFilter()], this.source.columns()),
+  );
+
   /** The always-on footer text, mirroring the data table's "N of M rows". */
   public readonly countLabel = computed(() => {
     const data = this.source.result();
@@ -108,6 +146,9 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
 
   private readonly datasetApi = inject(DatasetApiService);
 
+  /** The reader's header-click sort: undefined follows the report's saved sort, null is "unsorted". */
+  private readonly viewSort = signal<PivotSort | null | undefined>(undefined);
+
   private readonly effectiveFilter = computed(() =>
     resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
@@ -122,10 +163,8 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
       const measures = config.measures;
       if (!datasetId || measures.length === 0) return null;
 
-      // The config stores the sort measure by id; the request wants its position in the measures list.
-      const sortIndex = config.sortMeasureId
-        ? measures.findIndex((m) => m.id === config.sortMeasureId)
-        : -1;
+      // The request names the sort measure by its position in the measures list.
+      const sort = this.effectiveSort();
 
       return this.datasetApi.queryPivot(datasetId, {
         filter: this.effectiveFilter(),
@@ -135,8 +174,8 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
           aggregate: m.aggregate,
           label: m.label,
         })),
-        sortMeasureIndex: sortIndex >= 0 ? sortIndex : null,
-        sortDescending: config.sortDescending,
+        sortMeasureIndex: sort?.index ?? null,
+        sortDescending: sort?.descending ?? false,
         showGrandTotal: config.showGrandTotal,
       });
     },
@@ -177,11 +216,31 @@ export class PivotTableWidgetComponent extends WidgetExportBase {
       this.config().showGrandTotal;
 
       untracked(() => {
+        // A configuration change resets the view to the report's own sort.
+        this.viewSort.set(undefined);
         this.source.loading.set(true);
         this.source.error.set(false);
         this.source.reloadDebounced();
       });
     });
+  }
+
+  /** A measure header was clicked: highest first, then lowest first, then unsorted. */
+  public toggleSort(measureIndex: number): void {
+    const current = this.effectiveSort();
+    if (current?.index !== measureIndex) this.viewSort.set({ index: measureIndex, descending: true });
+    else this.viewSort.set(current.descending ? { index: measureIndex, descending: false } : null);
+
+    this.source.error.set(false);
+    this.source.loading.set(true);
+    this.source.reloadNow();
+  }
+
+  /** A column header's sort state, for aria-sort and its icon. */
+  public sortState(column: PivotColumn): 'ascending' | 'descending' | 'none' {
+    const sort = this.effectiveSort();
+    if (column.measureIndex === null || sort?.index !== column.measureIndex) return 'none';
+    return sort.descending ? 'descending' : 'ascending';
   }
 
   /** Retries the last query after a load failure. */

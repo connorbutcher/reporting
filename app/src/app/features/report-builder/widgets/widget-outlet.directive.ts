@@ -34,6 +34,8 @@ export type WidgetOutputHandler = (value: never) => void;
  *    only on components that declare them (static text, say, has none of them).
  *  - each entry in {@link widgetOutputs} is subscribed only if the component actually
  *    declares that output (only a table emits `sortChange`/`columnResize`).
+ *  - a data widget's `filterable` input is on exactly when the host handles its
+ *    `filterRequest` output, so the count bar is only a button where it can do something.
  */
 @Directive({
   selector: '[appWidgetOutlet]',
@@ -73,6 +75,7 @@ export class WidgetOutletDirective {
       this.setOptionalInput('widgetFilter', this.widgetFilter());
       this.setOptionalInput('bindingFilters', this.bindingFilters());
       this.setOptionalInput('datasetVersion', this.datasetVersion());
+      this.setOptionalInput('filterable', 'filterRequest' in this.widgetOutputs());
     });
   }
 

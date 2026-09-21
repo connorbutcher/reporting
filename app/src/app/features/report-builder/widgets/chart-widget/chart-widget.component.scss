@@ -28,23 +28,4 @@
   &:hover app-widget-export-actions {
     opacity: 1;
   }
-
-  .status {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    // Fills the space above the count bar (when there is one) rather than the whole widget.
-    flex: 1;
-    min-height: 0;
-    padding: 12px;
-    color: #64748b;
-    font-size: 0.85rem;
-    text-align: center;
-
-    &.error {
-      color: #e5484d;
-    }
-  }
 }

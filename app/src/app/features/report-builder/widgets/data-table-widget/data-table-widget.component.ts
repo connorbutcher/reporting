@@ -24,9 +24,10 @@ import { TableCell, TableQueryResult } from '../../../../core/models/widget-quer
 import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
+import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
-import { WidgetExportBase } from '../widget-export-base';
+import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
 /** Cap on how many rows a non-paginated table pulls in one request. */
 const MAX_ROWS = 500;
@@ -42,14 +43,14 @@ export interface DisplayColumn {
 
 @Component({
   selector: 'app-data-table-widget',
-  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent, WidgetStatusComponent],
   templateUrl: './data-table-widget.component.html',
   styleUrl: './data-table-widget.component.scss',
   host: {
     '[class.data-table-widget--no-head]': '!config().showColumnHeaders',
   },
 })
-export class DataTableWidgetComponent extends WidgetExportBase {
+export class DataTableWidgetComponent extends DataWidgetBase {
   readonly config = input.required<DataTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   readonly datasetVersion = input(0);
@@ -135,11 +136,16 @@ export class DataTableWidgetComponent extends WidgetExportBase {
    * showing 500 as if it were the whole dataset) and reports the filtered view.
    */
   protected readonly countLabel = computed(() => {
-    const matched = this.matchedRowCount();
-    if (this.isTruncated()) return `Showing first ${this.rows().length} of ${matched} rows`;
-    if (this.isFiltered()) return `Showing ${matched} of ${this.totalRowCount()} rows`;
-    return `${matched} row${matched === 1 ? '' : 's'}`;
+    const matched = this.matchedRowCount().toLocaleString();
+    if (this.isTruncated()) return `Showing first ${this.rows().length.toLocaleString()} of ${matched} rows`;
+    if (this.isFiltered()) return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
+    return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
   });
+
+  /** What is narrowing the rows, for the count bar's hover text. */
+  public readonly filterLines = computed(() =>
+    this.describeFilters([this.effectiveFilter()], this.source.columns()),
+  );
 
   /** Row height (px) for the virtual scroller, matched to the table's density. */
   protected readonly rowHeight = computed(() => {

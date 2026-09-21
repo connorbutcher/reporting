@@ -53,15 +53,25 @@ export interface ChartRowCounts {
   totalRowCount: number;
   /** The rows the filter matches; equals {@link totalRowCount} when there is no filter. */
   matchedRowCount: number;
+  /** True when the server drew on only part of the matching rows (a point chart's point cap, a box plot's or histogram's scan cap). */
+  truncated?: boolean;
+  /** How many rows a capped scan (box plot, histogram) actually read; only meaningful with {@link truncated}. */
+  scannedRowCount?: number;
 }
 
-export interface ChartQueryResult extends ChartRowCounts {
+/**
+ * Set client-side when an overlay chart queries several bindings and some fail: the chart still
+ * draws the ones that loaded, and this says how many it had to leave out.
+ */
+export interface PartialChartLoad {
+  failedBindingCount?: number;
+}
+
+export interface ChartQueryResult extends ChartRowCounts, PartialChartLoad {
   id: string;
   name: string;
   series: ChartSeriesResult[];
   toleranceBands: ResolvedToleranceBand[];
   /** Total rows that matched before the server's point cap; equals the plotted count when not truncated. */
   totalPoints?: number;
-  /** True when the server returned only a capped subset of the matching points. */
-  truncated?: boolean;
 }

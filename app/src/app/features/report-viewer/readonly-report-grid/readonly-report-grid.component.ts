@@ -10,8 +10,11 @@ import {
 import { isChartWidget } from '../../../core/models/widget-catalog';
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
-import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
+import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
 import { chartBindingKey } from '../filters/view-filter-entry';
+
+/** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
+const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
 
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
@@ -45,6 +48,23 @@ export class ReadonlyReportGridComponent {
 
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
+
+  private readonly widgetOutputs = new Map<string, Record<string, WidgetOutputHandler>>();
+
+  /**
+   * The outputs to handle for a widget: a filterable one's count bar asks for its filters, which
+   * opens them just as its filter button does. Cached per widget so the outlet is handed the same
+   * object on every change-detection pass (a fresh one each time would re-set its input forever).
+   */
+  protected outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
+    if (!this.canFilter(widget)) return NO_OUTPUTS;
+    let outputs = this.widgetOutputs.get(widget.id);
+    if (!outputs) {
+      outputs = { filterRequest: () => this.filterWidget.emit(widget.id) };
+      this.widgetOutputs.set(widget.id, outputs);
+    }
+    return outputs;
+  }
 
   /** The fragment a link can name to jump straight to this widget. */
   protected fragmentFor(widget: Widget): string {

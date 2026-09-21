@@ -1,21 +1,11 @@
 @if (!config().datasetId) {
-  <div class="status">
-    <i class="pi pi-database" aria-hidden="true"></i>
-    Choose a dataset for this pivot in the side panel.
-  </div>
+  <app-widget-status icon="pi-database">Choose a dataset for this pivot in the side panel.</app-widget-status>
 } @else if (error()) {
-  <div class="status error">
-    <span>Failed to load dataset.</span>
-    <button type="button" class="retry" (click)="retry()">
-      <i class="pi pi-refresh" aria-hidden="true"></i>
-      Retry
-    </button>
-  </div>
+  <app-widget-status icon="pi-exclamation-triangle" tone="error" [retryable]="true" (retry)="retry()">
+    Couldn’t load this pivot’s data.
+  </app-widget-status>
 } @else if (!configured() && !loading()) {
-  <div class="status">
-    <i class="pi pi-calculator" aria-hidden="true"></i>
-    Add a measure to summarise in the side panel.
-  </div>
+  <app-widget-status icon="pi-calculator">Add a measure to summarise in the side panel.</app-widget-status>
 } @else {
   @if (columns().length > 0) {
     <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
@@ -31,7 +21,26 @@
     <ng-template #header>
       <tr>
         @for (col of columns(); track $index) {
-          <th [style.text-align]="col.align" [class.measure]="col.isMeasure">{{ col.label }}</th>
+          <th
+            [style.text-align]="col.align"
+            [class.measure]="col.isMeasure"
+            [attr.aria-sort]="col.measureIndex !== null ? sortState(col) : null"
+          >
+            @if (col.measureIndex !== null) {
+              <button type="button" class="sort" (click)="toggleSort(col.measureIndex)">
+                {{ col.label }}
+                <i
+                  class="pi"
+                  [class.pi-sort-alt]="sortState(col) === 'none'"
+                  [class.pi-sort-amount-down]="sortState(col) === 'descending'"
+                  [class.pi-sort-amount-up-alt]="sortState(col) === 'ascending'"
+                  aria-hidden="true"
+                ></i>
+              </button>
+            } @else {
+              {{ col.label }}
+            }
+          </th>
         }
       </tr>
     </ng-template>
@@ -58,5 +67,12 @@
     }
   </p-table>
 
-  <app-widget-count-bar icon="pi-table" [label]="countLabel()" [truncated]="isTruncated()" />
+  <app-widget-count-bar
+    icon="pi-table"
+    [label]="countLabel()"
+    [warning]="isTruncated()"
+    [filters]="filterLines()"
+    [actionable]="filterable()"
+    (activate)="filterRequest.emit()"
+  />
 }

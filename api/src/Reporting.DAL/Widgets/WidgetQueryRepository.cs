@@ -353,6 +353,18 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     };
 
     /// <summary>
+    /// Settles a capped scan that was fetched one row past its cap: the extra row only proves the cap
+    /// was hit, so it is dropped from <paramref name="fetched"/> and the scan reported as truncated.
+    /// Fetching the extra row makes that flag exact rather than a guess from the matched count.
+    /// </summary>
+    public static bool TrimToScanCap<T>(List<T> fetched, int cap)
+    {
+        if (fetched.Count <= cap) return false;
+        fetched.RemoveRange(cap, fetched.Count - cap);
+        return true;
+    }
+
+    /// <summary>
     /// The dataset's row count and how many of those the filter matches — the pair behind every
     /// chart's "N of M rows" footer. <see cref="FilterTranslator.Apply"/> hands back the very same
     /// query when no filter narrowed it, in which case a second COUNT would only repeat the first.
@@ -812,7 +824,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // never null here: rowsQuery already required a numeric measure on every row.
         var scanned = await rowsQuery
             .OrderBy(r => r.Id)
-            .Take(MaxBoxPlotScanRows)
+            .Take(MaxBoxPlotScanRows + 1)
             .Select(r => new
             {
                 Category = r.Cells
@@ -823,6 +835,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
             })
             .ToListAsync();
+
+        var truncated = TrimToScanCap(scanned, MaxBoxPlotScanRows);
 
         var projected = scanned
             .Select(r => new BoxProjection
@@ -910,7 +924,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Series = series,
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
             TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount
+            MatchedRowCount = matchedRowCount,
+            Truncated = truncated,
+            ScannedRowCount = scanned.Count
         };
     }
 
@@ -954,13 +970,15 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
 
         var scanned = await rowsQuery
             .OrderBy(r => r.Id)
-            .Take(MaxHistogramScanRows)
+            .Take(MaxHistogramScanRows + 1)
             .Select(r => new
             {
                 Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
                 Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
             })
             .ToListAsync();
+
+        var truncated = TrimToScanCap(scanned, MaxHistogramScanRows);
 
         var projected = scanned
             .Select(r => (Series: (r.Series ?? "").Trim(), Value: r.Value ?? 0d))
@@ -1051,7 +1069,9 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Series = series,
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
             TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount
+            MatchedRowCount = matchedRowCount,
+            Truncated = truncated,
+            ScannedRowCount = scanned.Count
         };
     }
 

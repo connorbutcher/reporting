@@ -1,21 +1,11 @@
 @if (!config().datasetId) {
-  <div class="status">
-    <i class="pi pi-database" aria-hidden="true"></i>
-    Choose a dataset for this table in the side panel.
-  </div>
+  <app-widget-status icon="pi-database">Choose a dataset for this table in the side panel.</app-widget-status>
 } @else if (error()) {
-  <div class="status error">
-    <span>Failed to load dataset.</span>
-    <button type="button" class="retry" (click)="retry()">
-      <i class="pi pi-refresh" aria-hidden="true"></i>
-      Retry
-    </button>
-  </div>
+  <app-widget-status icon="pi-exclamation-triangle" tone="error" [retryable]="true" (retry)="retry()">
+    Couldn’t load this table’s data.
+  </app-widget-status>
 } @else if (displayColumns().length === 0 && !loading()) {
-  <div class="status">
-    <i class="pi pi-list" aria-hidden="true"></i>
-    Add the columns you want from the side panel.
-  </div>
+  <app-widget-status icon="pi-list">Add the columns you want from the side panel.</app-widget-status>
 } @else {
   @if (displayColumns().length > 0) {
     <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
@@ -89,6 +79,9 @@
   <app-widget-count-bar
     [label]="countLabel()"
     [icon]="isFiltered() ? 'pi-filter' : 'pi-list'"
-    [truncated]="isTruncated()"
+    [warning]="isTruncated()"
+    [filters]="filterLines()"
+    [actionable]="filterable()"
+    (activate)="filterRequest.emit()"
   />
 }

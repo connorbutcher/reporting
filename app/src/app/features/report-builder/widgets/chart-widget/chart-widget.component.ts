@@ -1,6 +1,5 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
-import { ButtonModule } from 'primeng/button';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { ChartWidgetConfig, barValueColumnIds, readChartBindings } from '../../../../core/models/report';
@@ -11,11 +10,14 @@ import {
   ChartQueryResult,
   HistogramQueryResult,
 } from '../../../../core/models/widget-query';
+import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
-import { WidgetExportBase } from '../widget-export-base';
+import { WidgetStatusComponent } from '../widget-status/widget-status.component';
+import { ChartSkeletonComponent, ChartSkeletonShape } from '../chart-skeleton/chart-skeleton.component';
 import { BoxOption } from './options/box-option';
+import { ChartCountBar, ChartCountBarContent } from './chart-count-bar';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
 import { ComboOption } from './options/combo-option';
@@ -32,11 +34,17 @@ import { ChartQuery } from './query/chart-query';
  */
 @Component({
   selector: 'app-chart-widget',
-  imports: [NgxEchartsDirective, ButtonModule, WidgetCountBarComponent, WidgetExportActionsComponent],
+  imports: [
+    NgxEchartsDirective,
+    ChartSkeletonComponent,
+    WidgetCountBarComponent,
+    WidgetExportActionsComponent,
+    WidgetStatusComponent,
+  ],
   templateUrl: './chart-widget.component.html',
   styleUrl: './chart-widget.component.scss',
 })
-export class ChartWidgetComponent extends WidgetExportBase {
+export class ChartWidgetComponent extends DataWidgetBase {
   public readonly config = input.required<ChartWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -71,42 +79,19 @@ export class ChartWidgetComponent extends WidgetExportBase {
     }
   });
 
-  /**
-   * The footer strip's content, mirroring the table's "N of M rows": the filtered view when a filter
-   * narrows the dataset, otherwise the row count. A point chart the server capped says so instead —
-   * only some of its points are drawn. Null until a result has loaded.
-   */
-  public readonly countBar = computed<{ label: string; icon: string; truncated: boolean } | null>(() => {
+  /** The footer strip's content — see {@link ChartCountBar}. Null until a result has loaded. */
+  public readonly countBar = computed<ChartCountBarContent | null>(() => {
     const result = this.source.result();
-    if (!result) return null;
-
-    // Only point charts (scatter/line) cap their rows; bar, box and histogram reduce server-side.
-    if (this.isPointChart() && (result as ChartQueryResult).truncated) {
-      const points = result as ChartQueryResult;
-      const plotted = points.series.reduce((n, s) => n + s.points.length, 0);
-      const total = points.totalPoints ?? plotted;
-      return {
-        label: `Showing first ${plotted.toLocaleString()} of ${total.toLocaleString()} points`,
-        icon: 'pi-list',
-        truncated: true,
-      };
-    }
-
-    const matched = result.matchedRowCount;
-    const total = result.totalRowCount;
-    if (matched !== total) {
-      return {
-        label: `Showing ${matched.toLocaleString()} of ${total.toLocaleString()} rows`,
-        icon: 'pi-filter',
-        truncated: false,
-      };
-    }
-    return {
-      label: `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`,
-      icon: 'pi-list',
-      truncated: false,
-    };
+    return result ? ChartCountBar.build(result, this.isPointChart()) : null;
   });
+
+  /** What is narrowing the chart, for the count bar's hover text. Reads the chart's first dataset's columns. */
+  public readonly filterLines = computed(() =>
+    this.describeFilters(Object.values(this.bindingFilters() ?? {}), this.source.columns()),
+  );
+
+  /** The loading skeleton's silhouette: a trend for scatter and line, columns for everything else. */
+  public readonly skeletonShape = computed<ChartSkeletonShape>(() => (this.isPointChart() ? 'line' : 'bars'));
 
   /** Prompt shown when the chart isn't configured enough to plot, worded per kind. */
   public readonly configHint = computed(() => {
