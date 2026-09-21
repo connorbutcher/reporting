@@ -106,7 +106,8 @@ export class TableColumnModel extends EditorNode {
     }
 
     // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
-    // so they're checked against that dataset's schema rather than this column's own.
+    // so they're checked against that dataset's schema rather than this column's own. A per-row
+    // match adds one column on each side: its identifier in the limits dataset, and the table's own.
     const tolerance = this.tolerance();
     const toleranceSchema = this.toleranceSchema();
     if (tolerance && toleranceSchema) {
@@ -116,15 +117,21 @@ export class TableColumnModel extends EditorNode {
         tolerance.maxColumnId,
         tolerance.concessionLowerColumnId,
         tolerance.concessionUpperColumnId,
+        tolerance.match?.sourceColumnId,
       ].filter((id): id is string => !!id);
+      const ownSchema = this.schema();
+      const matchColumnGone =
+        !!tolerance.match &&
+        !!ownSchema &&
+        !ownSchema.columns.some((c) => c.id === tolerance.match!.columnId);
 
-      if (pointers.some((id) => !columnIds.has(id))) {
+      if (pointers.some((id) => !columnIds.has(id)) || matchColumnGone) {
         return [
           {
             id: `${this.widgetId}:column:${this.columnId}:toleranceMissing`,
             severity: 'error',
             title: `"${this.label()}"'s tolerance points at a removed column`,
-            detail: `"${toleranceSchema.name}" no longer has one of the columns this tolerance uses. Re-point it or remove the banding.`,
+            detail: `A column this tolerance uses (in "${toleranceSchema.name}" or in this table's own dataset) has been removed. Re-point it or remove the banding.`,
             widgetId: this.widgetId,
             view: { kind: 'columnTolerance', widgetId: this.widgetId, columnId: this.columnId },
           },

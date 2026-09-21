@@ -87,17 +87,34 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // used both to band the returned cells and to evaluate any tolerance filter operators,
         // which reuse the column's banding. Keyed by the column RefId the filter also addresses.
         var pointers = dto.Columns
-            .Where(c => c.Tolerance is not null)
+            .Where(c => c.Tolerance is { SourceRowId: not null, Match: null })
             .Select(c => (
                 Key: c.ColumnId,
                 c.Tolerance!.SourceDatasetId,
-                c.Tolerance.SourceRowId,
+                SourceRowId: c.Tolerance.SourceRowId!.Value,
                 c.Tolerance.MinColumnId,
                 c.Tolerance.MaxColumnId,
                 c.Tolerance.ConcessionLowerColumnId,
                 c.Tolerance.ConcessionUpperColumnId))
             .ToList();
         var bounds = await tolerance.ResolveAsync(pointers);
+
+        // Columns that opted in to matching pick their limits per row, so they resolve to a table of
+        // limits by identifier rather than one set of bounds. The tolerance filter operators need a
+        // single band, so they (which read only `bounds`) don't apply to these columns.
+        var matchSpecs = dto.Columns
+            .Where(c => c.Tolerance is { Match: not null })
+            .Select(c => (
+                Key: c.ColumnId,
+                c.Tolerance!.SourceDatasetId,
+                MatchColumnId: c.Tolerance.Match!.SourceColumnId,
+                c.Tolerance.MinColumnId,
+                c.Tolerance.MaxColumnId,
+                c.Tolerance.ConcessionLowerColumnId,
+                c.Tolerance.ConcessionUpperColumnId))
+            .ToList();
+        var matchedLimits = await tolerance.ResolveMatchedAsync(matchSpecs);
+
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds, operatorCatalogue);
 
@@ -127,10 +144,22 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 var display = cell is null ? null : CellFormatter.Format(cell, column.Type, column.GetConfig());
 
                 var status = ToleranceStatus.None;
-                if (setting.Tolerance is not null
-                    && cell?.NumberValue is { } value
-                    && bounds.TryGetValue(setting.ColumnId, out var columnBounds))
+                if (setting.Tolerance is not null && cell?.NumberValue is { } value)
                 {
+                    ToleranceBounds? columnBounds = null;
+                    if (setting.Tolerance.Match is { } match)
+                    {
+                        // This row's limits row is the one whose identifier equals the row's own value.
+                        if (matchedLimits.TryGetValue(setting.ColumnId, out var limits)
+                            && columnsByRef.TryGetValue(match.ColumnId, out var keyColumn))
+                        {
+                            columnBounds = limits.For(row.Cells.FirstOrDefault(c => c.ColumnId == keyColumn.Id));
+                        }
+                    }
+                    else
+                    {
+                        bounds.TryGetValue(setting.ColumnId, out columnBounds);
+                    }
                     status = ToleranceResolver.Classify(value, columnBounds);
                 }
 

@@ -5,6 +5,7 @@ import {
   DataTableWidget,
   DataTableWidgetConfig,
   SortDirection,
+  hasFixedLimits,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
@@ -66,10 +67,10 @@ export class DataTableWidgetModel extends WidgetModel {
           .map((c) => c.schemaColumn())
           .filter((c): c is NonNullable<typeof c> => !!c),
       ),
-      // The columns on this table that have tolerance banding, so the filter can offer
-      // "in/out of tolerance" on them.
+      // The columns on this table that have fixed tolerance banding, so the filter can offer
+      // "in/out of tolerance" on them. A column whose limits are matched per row has no single band.
       tolerantColumns: computed(
-        () => new Set(this.columns().filter((c) => c.tolerance()).map((c) => c.columnId)),
+        () => new Set(this.columns().filter((c) => hasFixedLimits(c.tolerance())).map((c) => c.columnId)),
       ),
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,

@@ -115,7 +115,9 @@ export class PanelColumnSettingsComponent {
   }
 
   protected toleranceSummary(column: TableColumnModel): string {
-    return column.tolerance() ? 'Highlighting on' : 'Not set';
+    const tolerance = column.tolerance();
+    if (!tolerance) return 'Not set';
+    return tolerance.match ? 'Highlighting on · matched by value' : 'Highlighting on';
   }
 
   protected openTolerance(columnId: string): void {

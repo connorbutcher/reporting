@@ -2,12 +2,14 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset';
-import { ToleranceConfig } from '../../../core/models/report';
+import { FixedToleranceConfig, ToleranceConfig, ToleranceMatch } from '../../../core/models/report';
 
 /** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
 export interface ToleranceSeed {
   readonly sourceDatasetId?: number | null;
   readonly sourceRowId?: string | null;
+  /** Only a table column's tolerance can match per row; a chart band never carries this. */
+  readonly match?: ToleranceMatch | null;
   readonly minColumnId?: string | null;
   readonly maxColumnId?: string | null;
   readonly concessionLowerColumnId?: string | null;
@@ -21,6 +23,10 @@ export interface ToleranceSeed {
  * tolerance-band panel. Resolution of the actual bounds happens where the
  * widget renders; this only records and edits the pointers.
  *
+ * A table column can also opt in to matching (see {@link matchEnabled}): instead of one fixed
+ * spec row, each data row's limits row is the one whose value in a chosen column equals the
+ * data row's value in another. A chart band never does, so it never turns that on.
+ *
  * Provided per-panel (in each tolerance panel's `providers`) so every panel
  * instance gets its own picker state, and injected there rather than the panel
  * reaching for the dataset API itself.
@@ -33,6 +39,12 @@ export class ToleranceSourcePicker {
   readonly maxColumnId = signal<string | null>(null);
   readonly concessionLowerColumnId = signal<string | null>(null);
   readonly concessionUpperColumnId = signal<string | null>(null);
+  /** The reader opted in to choosing the limits row per data row, by matching values. */
+  readonly matchEnabled = signal(false);
+  /** The column of the table's own dataset whose value picks the limits row. */
+  readonly matchColumnId = signal<string | null>(null);
+  /** The column of the limits dataset that holds the same identifiers. */
+  readonly sourceMatchColumnId = signal<string | null>(null);
   readonly loadingSource = signal(false);
 
   private readonly sourceSchema = signal<DatasetSchema | null>(null);
@@ -42,13 +54,19 @@ export class ToleranceSourcePicker {
     () => this.sourceSchema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
   );
 
+  /** Every column of the limits dataset — an identifier can be text, a number or a date. */
+  readonly sourceColumns = computed(() => this.sourceSchema()?.columns ?? []);
+
   readonly rowOptions = computed(() =>
     (this.sourceData()?.rows ?? []).map((row) => ({ id: row.id, label: this.rowLabel(row) })),
   );
 
-  readonly isComplete = computed(
-    () => !!this.sourceRowId() && !!this.minColumnId() && !!this.maxColumnId(),
-  );
+  readonly isComplete = computed(() => {
+    const hasBounds = !!this.minColumnId() && !!this.maxColumnId();
+    return this.matchEnabled()
+      ? hasBounds && !!this.matchColumnId() && !!this.sourceMatchColumnId()
+      : hasBounds && !!this.sourceRowId();
+  });
 
   private readonly datasetApi = inject(DatasetApiService);
   private readonly notify = inject(NotificationService);
@@ -61,13 +79,20 @@ export class ToleranceSourcePicker {
     this.maxColumnId.set(pointer?.maxColumnId || null);
     this.concessionLowerColumnId.set(pointer?.concessionLowerColumnId || null);
     this.concessionUpperColumnId.set(pointer?.concessionUpperColumnId || null);
+    this.matchEnabled.set(!!pointer?.match);
+    this.matchColumnId.set(pointer?.match?.columnId || null);
+    this.sourceMatchColumnId.set(pointer?.match?.sourceColumnId || null);
     this.loadSource(pointer?.sourceDatasetId || null);
   }
 
-  /** Swapping dataset invalidates every downstream pick — the old row and columns belong to the old schema. */
+  /**
+   * Swapping dataset invalidates every downstream pick — the old row and columns belong to the old
+   * schema. The table-side match column and the opt-in itself belong to the table, so they stay.
+   */
   selectDataset(datasetId: number | null): void {
     this.sourceDatasetId.set(datasetId);
     this.sourceRowId.set(null);
+    this.sourceMatchColumnId.set(null);
     this.minColumnId.set(null);
     this.maxColumnId.set(null);
     this.concessionLowerColumnId.set(null);
@@ -75,8 +100,34 @@ export class ToleranceSourcePicker {
     this.loadSource(datasetId);
   }
 
-  /** The current draft in the shared pointer shape, or null while incomplete. */
-  toPointer(): ToleranceConfig | null {
+  /**
+   * The draft as a table column's tolerance: the fixed-row pointer, or — when matching is on — the
+   * limits plus the match (with no fixed row). Null while incomplete.
+   */
+  toColumnTolerance(): ToleranceConfig | null {
+    if (!this.matchEnabled()) return this.toPointer();
+
+    const sourceDatasetId = this.sourceDatasetId();
+    const minColumnId = this.minColumnId();
+    const maxColumnId = this.maxColumnId();
+    const columnId = this.matchColumnId();
+    const sourceColumnId = this.sourceMatchColumnId();
+    if (!sourceDatasetId || !minColumnId || !maxColumnId || !columnId || !sourceColumnId) return null;
+
+    const concessionLowerColumnId = this.concessionLowerColumnId();
+    const concessionUpperColumnId = this.concessionUpperColumnId();
+    return {
+      sourceDatasetId,
+      match: { columnId, sourceColumnId },
+      minColumnId,
+      maxColumnId,
+      ...(concessionLowerColumnId ? { concessionLowerColumnId } : {}),
+      ...(concessionUpperColumnId ? { concessionUpperColumnId } : {}),
+    };
+  }
+
+  /** The current draft as a fixed-row pointer (the shape a chart band also uses), or null while incomplete. */
+  toPointer(): FixedToleranceConfig | null {
     const sourceDatasetId = this.sourceDatasetId();
     const sourceRowId = this.sourceRowId();
     const minColumnId = this.minColumnId();

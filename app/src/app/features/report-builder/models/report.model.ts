@@ -1,5 +1,5 @@
 import { Signal, computed, signal } from '@angular/core';
-import { ReportRevisionContent, Tab, bandedChartColumns } from '../../../core/models/report';
+import { ReportRevisionContent, Tab, bandedChartColumns, hasFixedLimits } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter';
@@ -246,7 +246,7 @@ export class ReportModel extends EditorNode {
         if (widget instanceof DataTableWidgetModel) {
           if (widget.datasetId() !== datasetId) continue;
           for (const column of widget.columns()) {
-            if (column.tolerance()) columns.add(column.columnId);
+            if (hasFixedLimits(column.tolerance())) columns.add(column.columnId);
           }
         } else if (widget instanceof ChartWidgetModel) {
           const bands = widget.toleranceBands();

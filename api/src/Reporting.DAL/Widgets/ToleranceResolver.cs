@@ -8,6 +8,23 @@ namespace Reporting.DAL.Widgets;
 public record ToleranceBounds(double Min, double Max, double? ConcessionLower, double? ConcessionUpper);
 
 /// <summary>
+/// The limits rows of a limits dataset, indexed by their match identifier, for tolerance that picks
+/// a data row's limits by value rather than pointing at one fixed row.
+/// </summary>
+public sealed class MatchedLimits(IReadOnlyDictionary<string, ToleranceBounds> byKey)
+{
+    public static readonly MatchedLimits Empty = new(new Dictionary<string, ToleranceBounds>());
+
+    /// <summary>The limits for a data row, from its cell in the match column; null when it has no identifier or no limits row matches.</summary>
+    public ToleranceBounds? For(DatasetCell? keyCell)
+    {
+        if (keyCell is null) return null;
+        var key = ToleranceResolver.MatchKey(keyCell.StringValue, keyCell.NumberValue, keyCell.DateValue);
+        return key is not null && byKey.TryGetValue(key, out var bounds) ? bounds : null;
+    }
+}
+
+/// <summary>
 /// Resolves tolerance pointers (spec row + min/max/concession column ids) against
 /// the typed <see cref="DatasetCell.NumberValue"/> already stored for those cells —
 /// no re-parsing, and no need to load the whole limits dataset the pointer targets.
@@ -86,6 +103,85 @@ public class ToleranceResolver(ReportingDbContext db)
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Resolves limits that are chosen per data row: for each spec, every row of its limits dataset
+    /// with its bounds, indexed by the value in the spec's match column. Looked up per data row with
+    /// <see cref="MatchedLimits.For"/>. A limits dataset is a spec table (rows of limits), so it is
+    /// read whole — just the match, min, max and concession columns — rather than queried per row.
+    /// </summary>
+    public async Task<Dictionary<TKey, MatchedLimits>> ResolveMatchedAsync<TKey>(
+        IReadOnlyList<(TKey Key, int SourceDatasetId, Guid MatchColumnId, Guid MinColumnId, Guid MaxColumnId,
+            Guid? ConcessionLowerColumnId, Guid? ConcessionUpperColumnId)> specs)
+        where TKey : notnull
+    {
+        var result = new Dictionary<TKey, MatchedLimits>();
+        foreach (var spec in specs)
+        {
+            result[spec.Key] = await LoadMatchedAsync(spec.SourceDatasetId, spec.MatchColumnId, spec.MinColumnId,
+                spec.MaxColumnId, spec.ConcessionLowerColumnId, spec.ConcessionUpperColumnId);
+        }
+        return result;
+    }
+
+    private async Task<MatchedLimits> LoadMatchedAsync(
+        int datasetId, Guid matchRef, Guid minRef, Guid maxRef, Guid? lowerRef, Guid? upperRef)
+    {
+        var wanted = new[] { matchRef, minRef, maxRef, lowerRef, upperRef }
+            .Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        var columnPkByRef = await db.DatasetColumns
+            .Where(c => c.DatasetId == datasetId && wanted.Contains(c.RefId))
+            .Select(c => new { c.Id, c.RefId })
+            .ToDictionaryAsync(c => c.RefId, c => c.Id);
+
+        // A pointer to a column that no longer exists resolves to no limits at all, so nothing is highlighted.
+        if (!columnPkByRef.TryGetValue(matchRef, out var matchPk)
+            || !columnPkByRef.TryGetValue(minRef, out var minPk)
+            || !columnPkByRef.TryGetValue(maxRef, out var maxPk))
+        {
+            return MatchedLimits.Empty;
+        }
+        int? lowerPk = lowerRef is { } l && columnPkByRef.TryGetValue(l, out var lp) ? lp : null;
+        int? upperPk = upperRef is { } u && columnPkByRef.TryGetValue(u, out var up) ? up : null;
+
+        var columnPks = columnPkByRef.Values.ToList();
+        var cells = await db.DatasetCells
+            .Where(c => c.Row!.DatasetId == datasetId && columnPks.Contains(c.ColumnId))
+            .OrderBy(c => c.RowId)
+            .Select(c => new { c.RowId, c.ColumnId, c.StringValue, c.NumberValue, c.DateValue })
+            .ToListAsync();
+
+        var byKey = new Dictionary<string, ToleranceBounds>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in cells.GroupBy(c => c.RowId))
+        {
+            double? Number(int? columnPk) =>
+                columnPk is { } pk ? row.FirstOrDefault(c => c.ColumnId == pk)?.NumberValue : null;
+
+            var keyCell = row.FirstOrDefault(c => c.ColumnId == matchPk);
+            var key = keyCell is null ? null : MatchKey(keyCell.StringValue, keyCell.NumberValue, keyCell.DateValue);
+            var min = Number(minPk);
+            var max = Number(maxPk);
+            // A limits row with no identifier, or without both bounds, can't be matched to anything.
+            // Rows arrive in id order, so where several share an identifier the first one wins.
+            if (key is null || min is null || max is null || byKey.ContainsKey(key)) continue;
+
+            byKey[key] = new ToleranceBounds(min.Value, max.Value, Number(lowerPk), Number(upperPk));
+        }
+
+        return new MatchedLimits(byKey);
+    }
+
+    /// <summary>
+    /// The identifier a cell is matched on: a number by its value (so 1001 and 1001.0 agree), a date
+    /// by its instant, otherwise the trimmed text — compared ignoring case. Null for a blank cell.
+    /// </summary>
+    public static string? MatchKey(string? text, double? number, DateTime? date)
+    {
+        if (number is { } n) return n.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        if (date is { } d) return d.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        var trimmed = text?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     /// <summary>Red below/above a concession bound, amber within the concession band, else in-spec.</summary>

@@ -1,7 +1,7 @@
 @if (column(); as column) {
   <div class="panel-section">
     <p class="panel-hint">
-      Values are compared against one row of a limits dataset. Below the concession-lower or
+      Values are compared against a row of a limits dataset. Below the concession-lower or
       above the concession-upper bound is red; between a concession bound and min/max is orange;
       inside min/max is unmarked.
     </p>
@@ -26,19 +26,66 @@
         @if (picker.loadingSource()) {
           <p class="panel-empty">Loading…</p>
         } @else {
-          <label class="panel-field">
-            <span class="panel-field-label">Spec row</span>
-            <p-select
-              [options]="picker.rowOptions()"
-              [ngModel]="picker.sourceRowId()"
-              optionLabel="label"
-              optionValue="id"
-              placeholder="Choose a row"
-              appendTo="body"
-              fluid
-              (onChange)="picker.sourceRowId.set($event.value ?? null)"
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="tolerance-match"
+              [ngModel]="picker.matchEnabled()"
+              (onChange)="picker.matchEnabled.set($event.checked)"
             />
-          </label>
+            <label for="tolerance-match">Choose the limits row from each row's value</label>
+          </div>
+
+          @if (picker.matchEnabled()) {
+            <p class="panel-hint">
+              Each row is checked against the limits row where the two columns hold the same value —
+              text ignoring case and spaces, numbers by value. Rows with no matching limits row aren't
+              highlighted. Tolerance filters aren't available on a column set up like this, since
+              its limits change from row to row.
+            </p>
+            <div class="panel-grid-fields">
+              <label class="panel-field">
+                <span class="panel-field-label">This table's column</span>
+                <p-select
+                  [options]="tableColumns()"
+                  [ngModel]="picker.matchColumnId()"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Column"
+                  appendTo="body"
+                  fluid
+                  (onChange)="picker.matchColumnId.set($event.value ?? null)"
+                />
+              </label>
+              <label class="panel-field">
+                <span class="panel-field-label">Limits dataset's column</span>
+                <p-select
+                  [options]="picker.sourceColumns()"
+                  [ngModel]="picker.sourceMatchColumnId()"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Column"
+                  appendTo="body"
+                  fluid
+                  (onChange)="picker.sourceMatchColumnId.set($event.value ?? null)"
+                />
+              </label>
+            </div>
+          } @else {
+            <label class="panel-field">
+              <span class="panel-field-label">Spec row</span>
+              <p-select
+                [options]="picker.rowOptions()"
+                [ngModel]="picker.sourceRowId()"
+                optionLabel="label"
+                optionValue="id"
+                placeholder="Choose a row"
+                appendTo="body"
+                fluid
+                (onChange)="picker.sourceRowId.set($event.value ?? null)"
+              />
+            </label>
+          }
 
           <div class="panel-grid-fields">
             <label class="panel-field">
@@ -99,7 +146,11 @@
 
           @if (!picker.isComplete()) {
             <p class="panel-hint">
-              Pick a spec row plus min and max columns to turn on highlighting.
+              {{
+                picker.matchEnabled()
+                  ? 'Pick the two columns to match on, plus min and max columns, to turn on highlighting.'
+                  : 'Pick a spec row plus min and max columns to turn on highlighting.'
+              }}
             </p>
           }
         }

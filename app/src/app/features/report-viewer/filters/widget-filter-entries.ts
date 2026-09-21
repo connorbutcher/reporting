@@ -3,6 +3,7 @@ import {
   ChartWidget,
   DataTableWidget,
   bandedChartColumns,
+  hasFixedLimits,
   readChartBindings,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
@@ -41,7 +42,7 @@ export function buildTableEntry(
 
   const schema = ctx.schemaFor(datasetId);
   const placed = new Set(widget.config.columns.map((c) => c.columnId));
-  const banded = widget.config.columns.filter((c) => c.tolerance).map((c) => c.columnId);
+  const banded = widget.config.columns.filter((c) => hasFixedLimits(c.tolerance)).map((c) => c.columnId);
   ctx.addTolerant(datasetId, banded);
 
   return createViewFilterEntry({

@@ -41,19 +41,43 @@ public class DataTableColumnSetting
 }
 
 /// <summary>
-/// Red/amber banding for a numeric column, resolved against one row of a
-/// separate limits dataset so the same spec can be reused across columns and
-/// reports. Min/Max is the in-spec range; the optional concession bounds
-/// widen it into an amber "needs sign-off" zone before a value goes red.
+/// Red/amber banding for a numeric column, resolved against a separate limits dataset so the same
+/// spec can be reused across columns and reports. Min/Max is the in-spec range; the optional
+/// concession bounds widen it into an amber "needs sign-off" zone before a value goes red.
+///
+/// By default every value is checked against one fixed row of the limits dataset
+/// (<see cref="SourceRowId"/>). Opting in to <see cref="Match"/> instead picks the limits row per
+/// data row, by matching a value in the row against a column of the limits dataset.
 /// </summary>
 public class ToleranceConfig
 {
     public int SourceDatasetId { get; set; }
-    public Guid SourceRowId { get; set; }
+
+    /// <summary>The fixed limits row. Null when <see cref="Match"/> chooses the row per data row.</summary>
+    public Guid? SourceRowId { get; set; }
+
+    /// <summary>Opt-in: choose each data row's limits row by matching values, instead of one fixed row.</summary>
+    public ToleranceMatch? Match { get; set; }
+
     public Guid MinColumnId { get; set; }
     public Guid MaxColumnId { get; set; }
     public Guid? ConcessionLowerColumnId { get; set; }
     public Guid? ConcessionUpperColumnId { get; set; }
+}
+
+/// <summary>
+/// Picks a data row's limits row by value: the row of the limits dataset whose
+/// <see cref="SourceColumnId"/> equals the data row's <see cref="ColumnId"/>. Text is compared
+/// ignoring case and surrounding spaces, numbers by value. A row with no match, or an empty value,
+/// simply isn't highlighted; if several limits rows share a value the first one wins.
+/// </summary>
+public class ToleranceMatch
+{
+    /// <summary>The column of the table's own dataset whose value identifies the row's spec.</summary>
+    public Guid ColumnId { get; set; }
+
+    /// <summary>The column of the limits dataset holding the same identifier.</summary>
+    public Guid SourceColumnId { get; set; }
 }
 
 public class DataTableWidgetConfig : WidgetConfig
