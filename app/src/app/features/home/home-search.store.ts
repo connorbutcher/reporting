@@ -1,8 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { ReportSearchResult } from '../../core/models/report';
+import { NotificationService } from '../../core/services/notification.service';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -18,6 +19,7 @@ export class HomeSearchStore {
   public readonly searching = signal(false);
 
   private readonly reportApi = inject(ReportApiService);
+  private readonly notify = inject(NotificationService);
   private readonly input$ = new Subject<string>();
 
   constructor() {
@@ -29,7 +31,14 @@ export class HomeSearchStore {
           const trimmed = query.trim();
           if (!trimmed) return of(null);
           this.searching.set(true);
-          return this.reportApi.search(trimmed);
+          // Caught here, inside the switchMap: an uncaught error would propagate to the outer
+          // subscribe and tear down the whole pipeline, leaving every later keystroke dead.
+          return this.reportApi.search(trimmed).pipe(
+            catchError((err) => {
+              this.notify.apiError(err, 'Search failed. Please try again.');
+              return of(null);
+            }),
+          );
         }),
         takeUntilDestroyed(),
       )

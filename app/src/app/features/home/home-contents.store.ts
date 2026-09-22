@@ -46,11 +46,16 @@ export class HomeContentsStore {
       this.pathResource.error() != null,
   );
 
+  // Sorted here rather than left in server order, which is by id/creation and not meaningful to browse by.
   public readonly folderRows = computed<FolderRow[]>(() =>
-    (this.foldersResource.hasValue() ? this.foldersResource.value() : []).map(folderToRow),
+    (this.foldersResource.hasValue() ? this.foldersResource.value() : [])
+      .map(folderToRow)
+      .sort((a, b) => a.name.localeCompare(b.name)),
   );
   public readonly reportRows = computed<ReportRow[]>(() =>
-    (this.reportsResource.hasValue() ? this.reportsResource.value() : []).map(reportToRow),
+    (this.reportsResource.hasValue() ? this.reportsResource.value() : [])
+      .map(reportToRow)
+      .sort((a, b) => a.name.localeCompare(b.name)),
   );
   public readonly hasContent = computed(
     () => this.folderRows().length + this.reportRows().length > 0,

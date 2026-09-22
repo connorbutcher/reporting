@@ -18,6 +18,7 @@ import { skipHttpErrorNotification } from '../../../core/http/http-error-notific
 import { Folder } from '../../../core/models/folder.model';
 import { ReportSummary } from '../../../core/models/report';
 import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
+import { ROOT_KEY } from '../folder-tree.store';
 import { groupByParent } from '../group-by-parent.util';
 
 export type CreateKind = 'folder' | 'report';
@@ -110,7 +111,7 @@ export class CreateDialogComponent implements AfterViewInit {
 
   public readonly treeNodes = computed<TreeNode[]>(() => [
     {
-      key: '__root__',
+      key: ROOT_KEY,
       label: 'Home',
       icon: 'pi pi-home',
       selectable: false,

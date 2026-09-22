@@ -15,9 +15,10 @@
       <app-search-box />
 
       @if (actionsBusy()) {
-        <!-- Covers Move too, not just Create: both prefetch the whole folder tree before their
-             dialog can open, and Move's trigger (a context-menu item) has nowhere of its own to
-             show a pending state. -->
+        <!-- Covers every row action's server round trip: Move/Create prefetching the folder tree
+             before their dialog can open, and rename/move/remove/create's mutation once a dialog
+             has closed with a choice. None of those triggers has anywhere of its own to show a
+             pending state. -->
         <i class="pi pi-spin pi-spinner home-action-pending" aria-label="Preparing…"></i>
       }
 

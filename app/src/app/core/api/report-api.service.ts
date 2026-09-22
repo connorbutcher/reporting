@@ -19,9 +19,13 @@ export class ReportApiService {
     return this.http.get<ReportSummary[]>('/api/reports/all');
   }
 
+  // The caller (HomeSearchStore) shows its own failure message, so this opts out of the global toast.
   /** Finds reports anywhere in the tree by name or report number (e.g. "42" or "R-42"). */
   search(query: string): Observable<ReportSearchResult[]> {
-    return this.http.get<ReportSearchResult[]>('/api/reports/search', { params: { q: query } });
+    return this.http.get<ReportSearchResult[]>('/api/reports/search', {
+      params: { q: query },
+      context: skipHttpErrorNotification(),
+    });
   }
 
   /** The reports the current user has starred. */

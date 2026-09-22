@@ -21,9 +21,11 @@ const group = (...children: FilterGroup['children']): FilterGroup => ({
 
 /** A one-tab report: table `w1` on dataset 7 with a published filter, table `w2` on dataset 8 with none. */
 function content(): ReportRevisionContent {
-  const table = (id: string, datasetId: number, filter: FilterGroup | null) => ({
+  const table = (id: string, datasetId: number, filter: FilterGroup | null, x = 0) => ({
     id,
     type: 'dataTable',
+    x,
+    y: 0,
     config: { type: 'dataTable', datasetId, title: id, columns: [], filter },
   });
 
@@ -39,7 +41,7 @@ function content(): ReportRevisionContent {
         order: 0,
         columns: 12,
         rows: 12,
-        widgets: [table('w1', 7, group(condition('status', 'Open'))), table('w2', 8, null)],
+        widgets: [table('w1', 7, group(condition('status', 'Open')), 0), table('w2', 8, null, 6)],
       },
     ],
   } as unknown as ReportRevisionContent;

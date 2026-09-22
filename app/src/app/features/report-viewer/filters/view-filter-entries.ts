@@ -34,9 +34,15 @@ export function collectViewFilterEntries(
     },
   };
 
+  // Within a tab, widgets are ordered by grid position — top-to-bottom, then left-to-right within a
+  // row — so the filter panel lists them the way a reader would scan the canvas, not creation order.
   const widgetEntries = [...content.tabs]
     .sort((a, b) => a.order - b.order)
-    .flatMap((tab) => tab.widgets.flatMap((widget) => widgetFilterEntries(widget, tab.name, ctx)));
+    .flatMap((tab) =>
+      [...tab.widgets]
+        .sort((a, b) => a.y - b.y || a.x - b.x)
+        .flatMap((widget) => widgetFilterEntries(widget, tab.name, ctx)),
+    );
 
   // A page filter exists for every dataset in use, so a reader can add one where the author set none.
   const datasetIds = new Set(widgetEntries.map((e) => e.datasetId));

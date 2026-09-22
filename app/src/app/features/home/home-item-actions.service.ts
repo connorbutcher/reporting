@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
-import { Observable, defer, filter, forkJoin, map, switchMap, tap } from 'rxjs';
+import { Observable, defer, filter, finalize, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { Folder } from '../../core/models/folder.model';
@@ -35,9 +35,12 @@ export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: num
 @Injectable()
 export class HomeItemActionsService {
   /**
-   * True only while {@link move} or {@link create} are prefetching the data their dialog needs
-   * to build its folder tree — the two flows with a gap between the trigger and the dialog
-   * appearing. Rename/remove/permissions open their dialog immediately, so they never set this.
+   * True while a row action is talking to the server: {@link move} and {@link create} prefetching
+   * the folder tree their dialog needs before it can open, and the rename/move/remove/create
+   * mutation itself once its dialog has closed with a choice. None of those triggers (a
+   * context-menu item, or a dialog that's already gone) has anywhere of its own to show a
+   * pending state, so the toolbar shows this instead. Permissions opens its own dialog immediately
+   * and owns its saving state there, so it never sets this.
    */
   public readonly busy = signal(false);
 
@@ -54,11 +57,14 @@ export class HomeItemActionsService {
         }).closed,
     ).pipe(
       filter((newName): newName is string => !!newName),
-      switchMap((newName) =>
-        row.kind === 'folder'
-          ? this.folderApi.rename(row.id, newName, row.folder.parentFolderId)
-          : this.reportApi.rename(row.id, newName, row.report.folderId),
-      ),
+      switchMap((newName) => {
+        this.busy.set(true);
+        const renamed: Observable<Folder | ReportSummary> =
+          row.kind === 'folder'
+            ? this.folderApi.rename(row.id, newName, row.folder.parentFolderId)
+            : this.reportApi.rename(row.id, newName, row.report.folderId);
+        return renamed.pipe(finalize(() => this.busy.set(false)));
+      }),
       map(() => undefined),
     );
   }
@@ -83,11 +89,15 @@ export class HomeItemActionsService {
       ),
       filter((destination): destination is number | null => destination !== undefined),
       switchMap((destination) => {
+        this.busy.set(true);
         const moved: Observable<Folder | ReportSummary> =
           row.kind === 'folder'
             ? this.folderApi.move(row.id, destination, row.name)
             : this.reportApi.move(row.id, destination, row.name);
-        return moved.pipe(map(() => destination));
+        return moved.pipe(
+          map(() => destination),
+          finalize(() => this.busy.set(false)),
+        );
       }),
     );
   }
@@ -109,9 +119,11 @@ export class HomeItemActionsService {
         }).closed,
     ).pipe(
       filter((confirmed): confirmed is boolean => !!confirmed),
-      switchMap(() =>
-        row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id),
-      ),
+      switchMap(() => {
+        this.busy.set(true);
+        const removed = row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id);
+        return removed.pipe(finalize(() => this.busy.set(false)));
+      }),
       map(() => undefined),
     );
   }
@@ -138,15 +150,18 @@ export class HomeItemActionsService {
           }).closed,
       ),
       filter((result): result is CreateDialogResult => !!result),
-      switchMap((result) =>
-        result.kind === 'folder'
-          ? this.folderApi
-              .create(result.name, folderId)
-              .pipe(map((): CreateOutcome => ({ kind: 'folder' })))
-          : this.reportApi
-              .create(result.name, folderId, result.sourceReportId)
-              .pipe(map((report): CreateOutcome => ({ kind: 'report', reportId: report.id }))),
-      ),
+      switchMap((result) => {
+        this.busy.set(true);
+        const created =
+          result.kind === 'folder'
+            ? this.folderApi
+                .create(result.name, folderId)
+                .pipe(map((): CreateOutcome => ({ kind: 'folder' })))
+            : this.reportApi
+                .create(result.name, folderId, result.sourceReportId)
+                .pipe(map((report): CreateOutcome => ({ kind: 'report', reportId: report.id })));
+        return created.pipe(finalize(() => this.busy.set(false)));
+      }),
     );
   }
 }

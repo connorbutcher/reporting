@@ -20,7 +20,10 @@ const binding = (id: string, datasetId: number, label: string) => ({
   filter: null,
 });
 
-/** A table on dataset 7, a chart overlaying datasets 7 and 8, and a chart on dataset 7 alone. */
+/**
+ * A table on dataset 7 (top-left), a chart overlaying datasets 7 and 8 (top-right), and a chart on
+ * dataset 7 alone (bottom row) — listed out of grid order here, to prove the panel re-sorts them.
+ */
 const CONTENT = {
   reportId: 1,
   name: 'Report',
@@ -35,13 +38,17 @@ const CONTENT = {
       rows: 12,
       widgets: [
         {
-          id: 'tbl',
-          type: 'dataTable',
-          config: { type: 'dataTable', datasetId: 7, title: 'Bearings table', columns: [], filter: null },
+          id: 'solo',
+          type: 'scatterChart',
+          x: 0,
+          y: 4,
+          config: { type: 'scatterChart', title: 'Solo chart', bindings: [binding('b3', 7, '')], toleranceBands: [] },
         },
         {
           id: 'multi',
           type: 'scatterChart',
+          x: 6,
+          y: 0,
           config: {
             type: 'scatterChart',
             title: 'Cost vs Time',
@@ -50,9 +57,11 @@ const CONTENT = {
           },
         },
         {
-          id: 'solo',
-          type: 'scatterChart',
-          config: { type: 'scatterChart', title: 'Solo chart', bindings: [binding('b3', 7, '')], toleranceBands: [] },
+          id: 'tbl',
+          type: 'dataTable',
+          x: 0,
+          y: 0,
+          config: { type: 'dataTable', datasetId: 7, title: 'Bearings table', columns: [], filter: null },
         },
       ],
     },
@@ -104,7 +113,7 @@ describe('ViewFiltersPanelComponent', () => {
     fixture.detectChanges();
   }
 
-  it('lists each widget once: a multi-dataset chart is one row, not one per dataset', () => {
+  it('lists each widget once, in grid reading order (top-to-bottom, left-to-right) rather than tab order', () => {
     expect(widgetRowLabels()).toEqual(['Bearings table', 'Cost vs Time', 'Solo chart']);
   });
 
