@@ -59,10 +59,16 @@
             <td class="admin-col-access">
               @if (user.isGlobalAdmin) {
                 <p-tag value="Global admin" severity="warn" />
-              } @else if (user.canManageUsers) {
-                <p-tag value="User admin" severity="info" />
               } @else {
-                <span class="admin-col-muted">Standard</span>
+                @if (user.canManageUsers) {
+                  <p-tag value="User admin" severity="info" />
+                }
+                @if (user.canCreateGroups) {
+                  <p-tag value="Group creator" severity="info" />
+                }
+                @if (!user.canManageUsers && !user.canCreateGroups) {
+                  <span class="admin-col-muted">Standard</span>
+                }
               }
             </td>
             <td class="admin-col-count">{{ user.groupCount }}</td>

@@ -52,7 +52,15 @@ public class AdminServicesTests : IDisposable
         {
             var u = await db.Users
                 .Where(x => x.Id == userId)
-                .Select(x => new { x.Id, x.RefId, x.DisplayName, x.Email, x.IsGlobalAdmin, GroupIds = x.Memberships.Select(m => m.UserGroupId).ToList() })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.RefId,
+                    x.DisplayName,
+                    x.Email,
+                    IsGlobalAdmin = db.AppPermissionGrants.Any(g => g.UserId == x.Id && g.Permission == AppPermission.GlobalAdmin),
+                    GroupIds = x.Memberships.Select(m => m.UserGroupId).ToList()
+                })
                 .FirstAsync();
             return new CurrentUser(u.Id, u.RefId, u.DisplayName, u.Email, u.IsGlobalAdmin, u.GroupIds);
         }
@@ -60,15 +68,27 @@ public class AdminServicesTests : IDisposable
 
     private async Task<User> SeedUserAsync(string email, string name, bool admin = false)
     {
-        var user = new User { RefId = Guid.NewGuid(), Email = email, DisplayName = name, IsGlobalAdmin = admin, CreatedAt = DateTime.UtcNow };
+        var user = new User { RefId = Guid.NewGuid(), Email = email, DisplayName = name, CreatedAt = DateTime.UtcNow };
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+        if (admin)
+        {
+            _db.AppPermissionGrants.Add(new AppPermissionGrant
+            {
+                Permission = AppPermission.GlobalAdmin,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = 0
+            });
+            await _db.SaveChangesAsync();
+        }
         return user;
     }
 
     private AppPermissionService AppPerms(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
     private UserAdminService Users(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
-    private UserGroupAdminService Groups(int actingUserId) => new(_db, new FakeAccessor(_db, actingUserId));
+    private UserGroupAdminService Groups(int actingUserId) =>
+        new(_db, new FakeAccessor(_db, actingUserId), AppPerms(actingUserId));
 
     // --- app-permission guard (the primitive the [RequireAppPermission] attribute enforces) ----
 
@@ -270,6 +290,76 @@ public class AdminServicesTests : IDisposable
         await Assert.ThrowsAsync<AccessDeniedException>(() => Groups(userAdmin.Id).ListAsync());
         await Assert.ThrowsAsync<AccessDeniedException>(() =>
             Groups(userAdmin.Id).CreateAsync(new SaveGroupDto { Name = "Nope" }));
+    }
+
+    // --- the create-groups permission --------------------------------------
+
+    [Fact]
+    public async Task CreateGroups_permission_lets_a_non_admin_create_a_group_and_become_its_manager()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var creator = await SeedUserAsync("c@x", "Creator");
+        await Users(admin.Id).UpdateAsync(creator.RefId, new SaveUserDto { DisplayName = "Creator", CanCreateGroups = true });
+
+        // Before creating anything, they can already reach the Groups section (with an empty list).
+        Assert.True(await Groups(creator.Id).CurrentUserManagesAnyGroupAsync());
+        Assert.Empty(await Groups(creator.Id).ListAsync());
+
+        var group = await Groups(creator.Id).CreateAsync(new SaveGroupDto { Name = "Creator's group" });
+
+        var detail = await Groups(creator.Id).GetAsync(group.Id);
+        Assert.NotNull(detail);
+        Assert.Contains(detail!.Members, m => m.Id == creator.RefId);
+        Assert.Contains(detail.Managers, m => m.Id == creator.RefId);
+
+        // They now manage exactly the group they made, same as any other delegate.
+        var list = await Groups(creator.Id).ListAsync();
+        Assert.Single(list);
+        Assert.Equal("Creator's group", list[0].Name);
+    }
+
+    [Fact]
+    public async Task CreateGroups_permission_does_not_widen_visibility_of_other_groups()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var creator = await SeedUserAsync("c@x", "Creator");
+        await Users(admin.Id).UpdateAsync(creator.RefId, new SaveUserDto { DisplayName = "Creator", CanCreateGroups = true });
+        await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Someone else's group" });
+
+        var own = await Groups(creator.Id).CreateAsync(new SaveGroupDto { Name = "Own group" });
+
+        // They see only what they made, not every group — CreateGroups isn't full admin scope.
+        var list = await Groups(creator.Id).ListAsync();
+        Assert.Single(list);
+        Assert.Equal(own.Id, list[0].Id);
+    }
+
+    [Fact]
+    public async Task Global_admin_creating_a_group_is_not_added_as_member_or_manager()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var group = await Groups(admin.Id).CreateAsync(new SaveGroupDto { Name = "Admin's group" });
+
+        var detail = await Groups(admin.Id).GetAsync(group.Id);
+        Assert.NotNull(detail);
+        Assert.Empty(detail!.Members);
+        Assert.Empty(detail.Managers);
+    }
+
+    [Fact]
+    public async Task Revoking_create_groups_stops_future_creation_but_keeps_existing_management()
+    {
+        var admin = await SeedUserAsync("a@x", "A", admin: true);
+        var creator = await SeedUserAsync("c@x", "Creator");
+        await Users(admin.Id).UpdateAsync(creator.RefId, new SaveUserDto { DisplayName = "Creator", CanCreateGroups = true });
+        var group = await Groups(creator.Id).CreateAsync(new SaveGroupDto { Name = "Creator's group" });
+
+        await Users(admin.Id).UpdateAsync(creator.RefId, new SaveUserDto { DisplayName = "Creator", CanCreateGroups = false });
+
+        await Assert.ThrowsAsync<AccessDeniedException>(() =>
+            Groups(creator.Id).CreateAsync(new SaveGroupDto { Name = "Second group" }));
+        // Still manages the one they already made — the grant only gates creation, not their manager row.
+        Assert.NotNull(await Groups(creator.Id).GetAsync(group.Id));
     }
 
     // --- delegated group managers -----------------------------------------

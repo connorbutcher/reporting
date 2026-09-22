@@ -178,7 +178,14 @@
 }
 
 .admin-col-access {
-  width: 150px;
+  width: 170px;
+}
+
+td.admin-col-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
 }
 
 .admin-col-count {

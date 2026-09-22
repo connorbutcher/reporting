@@ -27,7 +27,8 @@ public class MeController(
             IsGlobalAdmin = user.IsGlobalAdmin,
             Permissions = permissions.ToList(),
             CanManageUsers = permissions.Contains(AppPermission.ManageUsers),
-            CanManageGroups = await userGroups.CurrentUserManagesAnyGroupAsync()
+            CanManageGroups = await userGroups.CurrentUserManagesAnyGroupAsync(),
+            CanCreateGroups = permissions.Contains(AppPermission.CreateGroups)
         };
     }
 

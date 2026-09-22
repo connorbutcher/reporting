@@ -14,9 +14,20 @@ public class SharingWithGlobalAdminTests : SqliteDbTestBase
     private async Task<User> SeedAdminAsync()
     {
         var admin = await SeedUserAsync("admin@x");
-        admin.IsGlobalAdmin = true;
-        await Db.SaveChangesAsync();
+        await GrantGlobalAdminAsync(admin);
         return admin;
+    }
+
+    private async Task GrantGlobalAdminAsync(User user)
+    {
+        Db.AppPermissionGrants.Add(new AppPermissionGrant
+        {
+            Permission = AppPermission.GlobalAdmin,
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = 0
+        });
+        await Db.SaveChangesAsync();
     }
 
     private static SaveGrantDto ViewerGrant(User user) =>
@@ -59,8 +70,7 @@ public class SharingWithGlobalAdminTests : SqliteDbTestBase
         await service.UpsertReportGrantAsync(report.Id, ViewerGrant(bob));
 
         // Bob is later made a global admin: his old grant is now redundant, and must be removable.
-        bob.IsGlobalAdmin = true;
-        await Db.SaveChangesAsync();
+        await GrantGlobalAdminAsync(bob);
 
         Assert.True(await service.RemoveReportGrantAsync(report.Id, new RemoveGrantDto
         {

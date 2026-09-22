@@ -43,7 +43,15 @@ public class ResourceAuthorizerTests : IDisposable
         {
             var u = await db.Users
                 .Where(x => x.Id == userId)
-                .Select(x => new { x.Id, x.RefId, x.DisplayName, x.Email, x.IsGlobalAdmin, GroupIds = x.Memberships.Select(m => m.UserGroupId).ToList() })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.RefId,
+                    x.DisplayName,
+                    x.Email,
+                    IsGlobalAdmin = db.AppPermissionGrants.Any(g => g.UserId == x.Id && g.Permission == AppPermission.GlobalAdmin),
+                    GroupIds = x.Memberships.Select(m => m.UserGroupId).ToList()
+                })
                 .FirstAsync();
             return new CurrentUser(u.Id, u.RefId, u.DisplayName, u.Email, u.IsGlobalAdmin, u.GroupIds);
         }
@@ -58,9 +66,20 @@ public class ResourceAuthorizerTests : IDisposable
 
     private async Task<User> SeedUserAsync(bool admin = false)
     {
-        var user = new User { RefId = Guid.NewGuid(), Email = $"u{Guid.NewGuid():N}@x", DisplayName = "U", IsGlobalAdmin = admin, CreatedAt = DateTime.UtcNow };
+        var user = new User { RefId = Guid.NewGuid(), Email = $"u{Guid.NewGuid():N}@x", DisplayName = "U", CreatedAt = DateTime.UtcNow };
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+        if (admin)
+        {
+            _db.AppPermissionGrants.Add(new AppPermissionGrant
+            {
+                Permission = AppPermission.GlobalAdmin,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = 0
+            });
+            await _db.SaveChangesAsync();
+        }
         return user;
     }
 

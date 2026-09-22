@@ -1,5 +1,5 @@
 /** An application-wide permission, granted independently of the folder/report ACL. */
-export type AppPermission = 'manageUsers';
+export type AppPermission = 'globalAdmin' | 'manageUsers' | 'createGroups';
 
 /** A user or group reference, for member/membership lists. */
 export interface UserRef {
@@ -23,10 +23,12 @@ export interface AdminUser {
   id: string;
   displayName: string;
   email: string;
-  /** Seed-level super-admin; implies every permission and is read-only in the admin UI. */
+  /** Global admin; implies every permission and is read-only in the admin UI. */
   isGlobalAdmin: boolean;
   /** Holds the manage-users permission, granted directly to them. */
   canManageUsers: boolean;
+  /** Holds the create-groups permission (directly, or implied by `isGlobalAdmin`). */
+  canCreateGroups: boolean;
   groupCount: number;
 }
 
@@ -41,6 +43,7 @@ export interface SaveUser {
   displayName: string;
   email: string;
   canManageUsers: boolean;
+  canCreateGroups: boolean;
   /** RefIds of the groups the user should belong to (set to exactly this). */
   groupIds: string[];
 }
@@ -82,6 +85,9 @@ export interface CurrentUser {
   permissions: AppPermission[];
   /** Full admin — the Users section and every group. */
   canManageUsers: boolean;
-  /** Can reach the Groups section — a full admin, or a delegated manager of at least one group. */
+  /** Can reach the Groups section — a full admin, a delegated manager of at least one group, or a
+   * holder of `canCreateGroups` (who may not manage any yet). */
   canManageGroups: boolean;
+  /** Can create a new group (and becomes its manager on creation). */
+  canCreateGroups: boolean;
 }

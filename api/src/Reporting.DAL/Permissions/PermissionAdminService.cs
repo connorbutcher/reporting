@@ -129,7 +129,7 @@ public class PermissionAdminService(
         // A global admin's access is inferred from that status (they manage everything), so a grant
         // to one would be noise that goes stale. Removing an old one is still allowed.
         if (dto.SubjectType == GrantSubjectType.User
-            && await db.Users.AnyAsync(u => u.Id == subjectId && u.IsGlobalAdmin))
+            && await db.AppPermissionGrants.AnyAsync(g => g.Permission == AppPermission.GlobalAdmin && g.UserId == subjectId))
         {
             throw new DataValidationException(
                 $"{subjectName} is a global administrator and already has full access, so it can't be shared with them.");

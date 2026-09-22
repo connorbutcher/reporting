@@ -127,6 +127,24 @@
   }
 }
 
+.perm-dialog-group-label {
+  padding: 10px 2px 4px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+
+  &:first-child {
+    padding-top: 2px;
+  }
+}
+
+// A row right after a group label shouldn't double up on the divider the label already implies.
+.perm-dialog-group-label + .perm-dialog-row {
+  border-top: none;
+}
+
 .perm-dialog-subject {
   flex: 1 1 auto;
   min-width: 0;

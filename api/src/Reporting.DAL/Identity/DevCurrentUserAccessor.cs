@@ -35,7 +35,7 @@ public class DevCurrentUserAccessor(ReportingDbContext db) : ICurrentUserAccesso
                 u.RefId,
                 u.DisplayName,
                 u.Email,
-                u.IsGlobalAdmin,
+                IsGlobalAdmin = db.AppPermissionGrants.Any(g => g.UserId == u.Id && g.Permission == AppPermission.GlobalAdmin),
                 GroupIds = u.Memberships.Select(m => m.UserGroupId).ToList()
             })
             .FirstOrDefaultAsync()

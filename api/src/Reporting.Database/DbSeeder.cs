@@ -20,15 +20,25 @@ public static class DbSeeder
 
         if (!db.Users.Any(u => u.RefId == WellKnownIds.DefaultUser))
         {
-            db.Users.Add(new User
+            var user = new User
             {
                 RefId = WellKnownIds.DefaultUser,
                 Email = "dev@local",
                 DisplayName = "Local Developer",
-                // A global admin so every existing flow keeps working before enforcement lands.
-                // Flip to false (and grant explicitly) to exercise the permission checks.
-                IsGlobalAdmin = true,
                 CreatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+            // Needed before the default user has an id to attach the grant below to.
+            db.SaveChanges();
+
+            // A global admin so every existing flow keeps working before enforcement lands. Remove
+            // the grant (and add one explicitly elsewhere) to exercise the permission checks.
+            db.AppPermissionGrants.Add(new AppPermissionGrant
+            {
+                Permission = AppPermission.GlobalAdmin,
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = 0
             });
             changed = true;
         }

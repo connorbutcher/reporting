@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Permissions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
@@ -10,18 +11,22 @@ namespace Reporting.DAL.Repositories;
 /// access is scoped by whether the caller manages groups. A global admin sees and manages every
 /// group (and creates them); everyone else is a delegated manager — a user with a
 /// <see cref="UserGroupManager"/> row — who sees only the groups they manage and may edit their
-/// membership, name, managers, and deletion, but can't create groups or remove themselves as a
-/// manager. App permissions are never granted to a group (only to a user directly), so managing a
-/// group can't escalate anyone. Groups are addressed by their RefId; all child rows cascade on delete.
+/// membership, name, managers, and deletion, but can't remove themselves as a manager. Creating a
+/// new group additionally requires the <see cref="AppPermission.CreateGroups"/> permission (which a
+/// global admin holds implicitly): the creator is made that group's manager automatically, unless
+/// they're a global admin, whose access is already implied. App permissions are never granted to a
+/// group (only to a user directly), so managing a group can't escalate anyone. Groups are addressed
+/// by their RefId; all child rows cascade on delete.
 /// </summary>
 public class UserGroupAdminService(
     ReportingDbContext db,
-    ICurrentUserAccessor currentUserAccessor)
+    ICurrentUserAccessor currentUserAccessor,
+    AppPermissionService appPermissions)
 {
     public async Task<List<AdminGroupDto>> ListAsync()
     {
         var (full, scope) = await ScopeAsync();
-        if (!full && scope.Count == 0)
+        if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
             throw new AccessDeniedException("You don't have access to group administration.");
 
         var query = full ? db.UserGroups : db.UserGroups.Where(g => scope.Contains(g.Id));
@@ -81,7 +86,7 @@ public class UserGroupAdminService(
     public async Task<bool> NameAvailableAsync(string? name, Guid? excludeId)
     {
         var (full, scope) = await ScopeAsync();
-        if (!full && scope.Count == 0)
+        if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
             throw new AccessDeniedException("You don't have access to group administration.");
 
         var trimmed = (name ?? string.Empty).Trim();
@@ -92,10 +97,10 @@ public class UserGroupAdminService(
 
     public async Task<AdminGroupDetailDto> CreateAsync(SaveGroupDto dto)
     {
-        // Creating groups is reserved for a full admin (a global admin). Delegated managers only ever
-        // manage existing groups, so a new group is a bootstrap the top-level admin performs.
-        var (full, _) = await ScopeAsync();
-        if (!full) throw new AccessDeniedException("Only an administrator can create groups.");
+        // Creating groups needs the CreateGroups permission — held explicitly, or implicitly by a
+        // global admin (who holds every app permission; see AppPermissionService).
+        if (!await CanCreateGroupsAsync())
+            throw new AccessDeniedException("You don't have permission to create groups.");
 
         var name = (dto.Name ?? string.Empty).Trim();
         if (name.Length == 0) throw new DataValidationException("A group name is required.");
@@ -107,8 +112,19 @@ public class UserGroupAdminService(
         db.UserGroups.Add(group);
         await db.SaveChangesAsync();
 
-        await SetMembersAsync(group.Id, dto.MemberIds);
-        await SetManagersAsync(group.Id, dto.ManagerIds);
+        // The creator manages what they made, unless they're a global admin — whose access to every
+        // group is already implied, and who RequireValidMembershipAsync refuses to add as one anyway.
+        var actor = await currentUserAccessor.GetAsync();
+        var memberIds = dto.MemberIds;
+        var managerIds = dto.ManagerIds;
+        if (!actor.IsGlobalAdmin)
+        {
+            if (!memberIds.Contains(actor.RefId)) memberIds = [.. memberIds, actor.RefId];
+            if (!managerIds.Contains(actor.RefId)) managerIds = [.. managerIds, actor.RefId];
+        }
+
+        await SetMembersAsync(group.Id, memberIds);
+        await SetManagersAsync(group.Id, managerIds);
         await db.SaveChangesAsync();
 
         return (await GetAsync(group.RefId))!;
@@ -158,12 +174,17 @@ public class UserGroupAdminService(
         return true;
     }
 
-    /// <summary>Whether the current user can reach the Groups section — a full admin, or a delegate of at least one group.</summary>
+    /// <summary>Whether the current user can reach the Groups section — a full admin, a delegate of at
+    /// least one group, or a holder of <see cref="AppPermission.CreateGroups"/> (who may manage none yet).</summary>
     public async Task<bool> CurrentUserManagesAnyGroupAsync()
     {
         var (full, scope) = await ScopeAsync();
-        return full || scope.Count > 0;
+        return full || scope.Count > 0 || await CanCreateGroupsAsync();
     }
+
+    /// <summary>Whether the current user may create a new group — implied for a global admin via
+    /// <see cref="AppPermissionService"/>'s "holds everything" short-circuit, so no separate admin check is needed.</summary>
+    private Task<bool> CanCreateGroupsAsync() => appPermissions.HasAsync(AppPermission.CreateGroups);
 
     // --- scope ------------------------------------------------------------
 
@@ -196,7 +217,8 @@ public class UserGroupAdminService(
     private async Task RequireValidMembershipAsync(SaveGroupDto dto)
     {
         var people = dto.MemberIds.Concat(dto.ManagerIds).ToHashSet();
-        if (people.Count > 0 && await db.Users.AnyAsync(u => people.Contains(u.RefId) && u.IsGlobalAdmin))
+        if (people.Count > 0 && await db.AppPermissionGrants.AnyAsync(g =>
+                g.Permission == AppPermission.GlobalAdmin && db.Users.Any(u => u.Id == g.UserId && people.Contains(u.RefId))))
         {
             throw new DataValidationException(
                 "Global administrators already have full access to every group, so they can't be added as members or managers.");

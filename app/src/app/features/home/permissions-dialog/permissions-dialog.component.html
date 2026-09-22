@@ -73,37 +73,44 @@
       <p class="perm-dialog-muted">Global administrators always have full access, so they aren't listed here.</p>
 
       <ul class="perm-dialog-list">
-        @for (grant of perms.effective; track grant.subjectType + ':' + grant.subjectId) {
-          <li class="perm-dialog-row">
-            <span class="perm-dialog-subject">
-              <span class="perm-dialog-subject-name">{{ grant.subjectName }}</span>
-              @if (grant.inherited) {
-                <span class="perm-dialog-badge">Inherited · {{ grant.inheritedFrom }}</span>
+        @for (
+          row of store.effectiveRows();
+          track row.kind === 'header' ? 'header:' + row.label : row.grant.subjectType + ':' + row.grant.subjectId
+        ) {
+          @if (row.kind === 'header') {
+            <li class="perm-dialog-group-label">{{ row.label }}</li>
+          } @else {
+            <li class="perm-dialog-row">
+              <span class="perm-dialog-subject">
+                <span class="perm-dialog-subject-name">{{ row.grant.subjectName }}</span>
+                @if (row.grant.inherited) {
+                  <span class="perm-dialog-badge">Inherited · {{ row.grant.inheritedFrom }}</span>
+                }
+              </span>
+              @if (row.grant.inherited) {
+                <span class="perm-dialog-level-static">{{ levelLabel(row.grant.level) }}</span>
+              } @else {
+                <p-select
+                  [options]="levels"
+                  [ngModel]="row.grant.level"
+                  (ngModelChange)="changeLevel(row.grant, $event)"
+                  optionLabel="label"
+                  optionValue="value"
+                  appendTo="body"
+                  [disabled]="store.saving()"
+                />
+                <button
+                  type="button"
+                  class="perm-dialog-icon"
+                  [disabled]="store.saving()"
+                  (click)="store.remove(row.grant)"
+                  [attr.aria-label]="'Remove ' + row.grant.subjectName"
+                >
+                  ✕
+                </button>
               }
-            </span>
-            @if (grant.inherited) {
-              <span class="perm-dialog-level-static">{{ levelLabel(grant.level) }}</span>
-            } @else {
-              <p-select
-                [options]="levels"
-                [ngModel]="grant.level"
-                (ngModelChange)="changeLevel(grant, $event)"
-                optionLabel="label"
-                optionValue="value"
-                appendTo="body"
-                [disabled]="store.saving()"
-              />
-              <button
-                type="button"
-                class="perm-dialog-icon"
-                [disabled]="store.saving()"
-                (click)="store.remove(grant)"
-                [attr.aria-label]="'Remove ' + grant.subjectName"
-              >
-                ✕
-              </button>
-            }
-          </li>
+            </li>
+          }
         } @empty {
           <li class="perm-dialog-muted">No one has access yet.</li>
         }

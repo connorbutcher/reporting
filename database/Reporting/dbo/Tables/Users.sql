@@ -3,7 +3,6 @@ CREATE TABLE [dbo].[Users] (
     [RefId]         UNIQUEIDENTIFIER NOT NULL,
     [Email]         NVARCHAR (450)   NOT NULL,
     [DisplayName]   NVARCHAR (MAX)   NOT NULL,
-    [IsGlobalAdmin] BIT              NOT NULL,
     [CreatedAt]     DATETIME2 (7)    NOT NULL,
     CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED ([Id] ASC)
 );

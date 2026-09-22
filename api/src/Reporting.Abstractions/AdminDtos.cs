@@ -22,11 +22,17 @@ public class AdminUserDto
     public string DisplayName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
 
-    /// <summary>Seed-level super-admin flag; implies every app permission and is read-only in the admin UI.</summary>
+    /// <summary>Whether the user holds the <see cref="AppPermission.GlobalAdmin"/> grant; implies every
+    /// other app permission and full ACL access, and is read-only in the admin UI (there's no
+    /// self-service way to grant or revoke it).</summary>
     public bool IsGlobalAdmin { get; set; }
 
     /// <summary>Whether the user holds the <see cref="AppPermission.ManageUsers"/> permission (granted directly to them).</summary>
     public bool CanManageUsers { get; set; }
+
+    /// <summary>Whether the user holds the <see cref="AppPermission.CreateGroups"/> permission (directly, or
+    /// implied by <see cref="IsGlobalAdmin"/>) — lets them create new groups even without managing any yet.</summary>
+    public bool CanCreateGroups { get; set; }
 
     public int GroupCount { get; set; }
 }
@@ -46,6 +52,9 @@ public class SaveUserDto
 
     /// <summary>Grants or revokes the ManageUsers app permission directly on this user.</summary>
     public bool CanManageUsers { get; set; }
+
+    /// <summary>Grants or revokes the CreateGroups app permission directly on this user.</summary>
+    public bool CanCreateGroups { get; set; }
 
     /// <summary>The RefIds of the groups the user should belong to (membership is set to exactly this).</summary>
     public List<Guid> GroupIds { get; set; } = new();
@@ -103,6 +112,11 @@ public class CurrentUserDto
     /// <summary>Convenience flag mirroring <see cref="AppPermission.ManageUsers"/> in <see cref="Permissions"/> — full admin.</summary>
     public bool CanManageUsers { get; set; }
 
-    /// <summary>Whether the user can reach the Groups section — a full admin, or a delegated manager of at least one group.</summary>
+    /// <summary>Whether the user can reach the Groups section — a full admin, a delegated manager of at
+    /// least one group, or a holder of <see cref="AppPermission.CreateGroups"/> (who may have none yet).</summary>
     public bool CanManageGroups { get; set; }
+
+    /// <summary>Convenience flag mirroring <see cref="AppPermission.CreateGroups"/> in <see cref="Permissions"/> —
+    /// whether the user can create a new group (and become its manager on creation).</summary>
+    public bool CanCreateGroups { get; set; }
 }

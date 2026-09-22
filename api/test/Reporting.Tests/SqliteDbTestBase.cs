@@ -58,7 +58,8 @@ public abstract class SqliteDbTestBase : IDisposable
         public async Task<ICurrentUser> GetAsync()
         {
             var u = await db.Users.Where(x => x.Id == userId).FirstAsync();
-            return new CurrentUser(u.Id, u.RefId, u.DisplayName, u.Email, u.IsGlobalAdmin, []);
+            var isGlobalAdmin = await db.AppPermissionGrants.AnyAsync(g => g.UserId == userId && g.Permission == AppPermission.GlobalAdmin);
+            return new CurrentUser(u.Id, u.RefId, u.DisplayName, u.Email, isGlobalAdmin, []);
         }
     }
 }

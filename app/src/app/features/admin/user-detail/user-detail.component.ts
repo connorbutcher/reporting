@@ -38,6 +38,7 @@ export class UserDetailComponent {
   public readonly createdAt = signal<string | null>(null);
 
   public readonly canManageUsers = signal(false);
+  public readonly canCreateGroups = signal(false);
   public readonly groupIds = signal<string[]>([]);
   public readonly groupFilter = signal('');
   public readonly groupOptions = signal<AdminGroup[]>([]);
@@ -100,6 +101,7 @@ export class UserDetailComponent {
       displayName: this.form.displayName().value().trim(),
       email: this.form.email().value().trim(),
       canManageUsers: this.isGlobalAdmin() || this.lockManageUsers() ? true : this.canManageUsers(),
+      canCreateGroups: this.isGlobalAdmin() ? true : this.canCreateGroups(),
       groupIds: this.groupIds(),
     };
     const request = this.isNew()
@@ -151,6 +153,7 @@ export class UserDetailComponent {
         const self = this.currentUser.user()?.id === detail.id;
         this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsers);
         this.canManageUsers.set(detail.canManageUsers);
+        this.canCreateGroups.set(detail.canCreateGroups);
         // A global admin belongs to no groups (they already have full access to all of them), so
         // saving sends an empty set — which also clears any membership from before that rule.
         this.groupIds.set(detail.isGlobalAdmin ? [] : detail.groups.map((g) => g.id));

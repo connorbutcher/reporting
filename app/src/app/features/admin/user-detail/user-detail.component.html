@@ -92,6 +92,27 @@
           </span>
         </label>
 
+        <label class="admin-check">
+          <p-checkbox
+            [binary]="true"
+            inputId="user-create-groups"
+            [ngModel]="canCreateGroups() || isGlobalAdmin()"
+            [disabled]="isGlobalAdmin()"
+            (onChange)="canCreateGroups.set($event.checked)"
+          />
+          <span class="admin-check-text">
+            <span class="admin-check-label">Can create groups</span>
+            <span class="admin-hint">
+              @if (isGlobalAdmin()) {
+                Global admins can always create groups.
+              } @else {
+                Lets them create new groups in the Groups section; they're automatically made the
+                manager of any group they create.
+              }
+            </span>
+          </span>
+        </label>
+
         @if (isGlobalAdmin()) {
           <div class="admin-field">
             <label class="admin-label">Groups</label>

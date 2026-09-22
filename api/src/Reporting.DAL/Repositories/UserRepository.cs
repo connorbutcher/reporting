@@ -15,7 +15,7 @@ public class UserRepository(ReportingDbContext db)
                 Id = u.RefId,
                 DisplayName = u.DisplayName,
                 Email = u.Email,
-                IsGlobalAdmin = u.IsGlobalAdmin
+                IsGlobalAdmin = db.AppPermissionGrants.Any(g => g.UserId == u.Id && g.Permission == AppPermission.GlobalAdmin)
             })
             .ToListAsync();
 

@@ -10,6 +10,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
 import { DirectoryUser, GroupNameAvailable, SaveGroup } from '../../../core/models/admin';
 import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   ConfirmDialogComponent,
@@ -67,6 +68,10 @@ export class GroupDetailComponent {
 
   public readonly title = computed(() => (this.isNew() ? 'New group' : 'Edit group'));
 
+  /** A non-admin creator is auto-added as the new group's manager — see the server-side rule in
+   * `UserGroupAdminService.CreateAsync`. A global admin's access is already implied, so it's skipped. */
+  public readonly willAutoManage = computed(() => this.isNew() && !this.currentUser.isGlobalAdmin());
+
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A group name is required.' });
     // Fast, offline check against the groups this admin can already see — catches the common case
@@ -106,6 +111,7 @@ export class GroupDetailComponent {
   private readonly api = inject(AdminApiService);
   private readonly notify = inject(NotificationService);
   private readonly dialog = inject(Dialog);
+  private readonly currentUser = inject(CurrentUserService);
   private readonly existingNames = signal<string[]>([]);
   private refId: string | null = null;
 

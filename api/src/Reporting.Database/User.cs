@@ -15,9 +15,6 @@ public class User
     public string Email { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
 
-    /// <summary>Bypasses the ACL entirely — resolves to <see cref="Reporting.Abstractions.AccessLevel.Manager"/> on everything.</summary>
-    public bool IsGlobalAdmin { get; set; }
-
     public DateTime CreatedAt { get; set; }
 
     public List<UserGroupMember> Memberships { get; set; } = new();

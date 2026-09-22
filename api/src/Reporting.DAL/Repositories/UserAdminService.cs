@@ -26,20 +26,22 @@ public partial class UserAdminService(
                 u.RefId,
                 u.DisplayName,
                 u.Email,
-                u.IsGlobalAdmin,
                 GroupIds = u.Memberships.Select(m => m.UserGroupId).ToList()
             })
             .ToListAsync();
 
-        var canManage = await ManageUsersUserIdsAsync();
+        var globalAdmins = await UserIdsWithPermissionAsync(AppPermission.GlobalAdmin);
+        var canManage = await UserIdsWithPermissionAsync(AppPermission.ManageUsers);
+        var canCreateGroups = await UserIdsWithPermissionAsync(AppPermission.CreateGroups);
         return users
             .Select(u => new AdminUserDto
             {
                 Id = u.RefId,
                 DisplayName = u.DisplayName,
                 Email = u.Email,
-                IsGlobalAdmin = u.IsGlobalAdmin,
-                CanManageUsers = u.IsGlobalAdmin || canManage.Contains(u.Id),
+                IsGlobalAdmin = globalAdmins.Contains(u.Id),
+                CanManageUsers = globalAdmins.Contains(u.Id) || canManage.Contains(u.Id),
+                CanCreateGroups = globalAdmins.Contains(u.Id) || canCreateGroups.Contains(u.Id),
                 GroupCount = u.GroupIds.Count
             })
             .ToList();
@@ -55,7 +57,6 @@ public partial class UserAdminService(
                 u.RefId,
                 u.DisplayName,
                 u.Email,
-                u.IsGlobalAdmin,
                 u.CreatedAt,
                 GroupIds = u.Memberships.Select(m => m.UserGroupId).ToList(),
                 Groups = u.Memberships
@@ -65,14 +66,15 @@ public partial class UserAdminService(
             .FirstOrDefaultAsync();
         if (user is null) return null;
 
-        var canManage = await ManageUsersUserIdsAsync();
+        var isGlobalAdmin = await HasDirectPermissionAsync(user.Id, AppPermission.GlobalAdmin);
         return new AdminUserDetailDto
         {
             Id = user.RefId,
             DisplayName = user.DisplayName,
             Email = user.Email,
-            IsGlobalAdmin = user.IsGlobalAdmin,
-            CanManageUsers = user.IsGlobalAdmin || canManage.Contains(user.Id),
+            IsGlobalAdmin = isGlobalAdmin,
+            CanManageUsers = isGlobalAdmin || await HasDirectManageUsersAsync(user.Id),
+            CanCreateGroups = isGlobalAdmin || await HasDirectPermissionAsync(user.Id, AppPermission.CreateGroups),
             Groups = user.Groups.OrderBy(g => g.Name).ToList(),
             CreatedAt = user.CreatedAt
         };
@@ -98,7 +100,8 @@ public partial class UserAdminService(
         await db.SaveChangesAsync();
 
         await SetMembershipsAsync(user.Id, dto.GroupIds);
-        await SetManageUsersAsync(user.Id, dto.CanManageUsers);
+        await SetPermissionAsync(user.Id, AppPermission.ManageUsers, dto.CanManageUsers);
+        await SetPermissionAsync(user.Id, AppPermission.CreateGroups, dto.CanCreateGroups);
         await db.SaveChangesAsync();
 
         return (await GetAsync(user.RefId))!;
@@ -115,9 +118,11 @@ public partial class UserAdminService(
         // Email is the identity and immutable here; only the display name is editable.
         user.DisplayName = displayName;
 
+        var isGlobalAdmin = await HasDirectPermissionAsync(user.Id, AppPermission.GlobalAdmin);
+
         // Global admins already hold every permission implicitly, so the direct grant is a no-op
         // for them; leave it untouched to avoid a confusing "revoked but still can" state.
-        if (!user.IsGlobalAdmin)
+        if (!isGlobalAdmin)
         {
             var actor = await currentUserAccessor.GetAsync();
             // Don't let an admin strip their own manage-users access out from under themselves —
@@ -125,12 +130,13 @@ public partial class UserAdminService(
             if (user.Id == actor.Id && !actor.IsGlobalAdmin && !dto.CanManageUsers && await HasDirectManageUsersAsync(user.Id))
                 throw new DataValidationException("You can't remove your own manage-users permission.");
 
-            await SetManageUsersAsync(user.Id, dto.CanManageUsers);
+            await SetPermissionAsync(user.Id, AppPermission.ManageUsers, dto.CanManageUsers);
+            await SetPermissionAsync(user.Id, AppPermission.CreateGroups, dto.CanCreateGroups);
         }
 
         // A global admin has full access to every group already, so they belong to none — saving an
         // empty set is how an old membership is cleared.
-        if (user.IsGlobalAdmin && dto.GroupIds.Count > 0)
+        if (isGlobalAdmin && dto.GroupIds.Count > 0)
             throw new DataValidationException("Global administrators already have full access to every group, so they can't be added to one.");
 
         await SetMembershipsAsync(user.Id, dto.GroupIds);
@@ -157,40 +163,43 @@ public partial class UserAdminService(
             db.UserGroupMembers.Add(new UserGroupMember { UserId = userId, UserGroupId = groupId });
     }
 
-    /// <summary>Adds or removes the user's ManageUsers grant to match <paramref name="canManage"/>.</summary>
-    private async Task SetManageUsersAsync(int userId, bool canManage)
+    /// <summary>Adds or removes the user's grant for the given app permission to match <paramref name="grant"/>.</summary>
+    private async Task SetPermissionAsync(int userId, AppPermission permission, bool grant)
     {
         var existing = await db.AppPermissionGrants.FirstOrDefaultAsync(g =>
-            g.Permission == AppPermission.ManageUsers && g.UserId == userId);
+            g.Permission == permission && g.UserId == userId);
 
-        if (canManage && existing is null)
+        if (grant && existing is null)
         {
             var actor = await currentUserAccessor.GetAsync();
             db.AppPermissionGrants.Add(new AppPermissionGrant
             {
-                Permission = AppPermission.ManageUsers,
+                Permission = permission,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 CreatedByUserId = actor.Id
             });
         }
-        else if (!canManage && existing is not null)
+        else if (!grant && existing is not null)
         {
             db.AppPermissionGrants.Remove(existing);
         }
     }
 
-    /// <summary>The ids of every user holding a ManageUsers grant, so a list resolves each user's flag in memory.</summary>
-    private async Task<HashSet<int>> ManageUsersUserIdsAsync() =>
+    /// <summary>The ids of every user holding the given app permission directly, so a list resolves each user's flag in memory.</summary>
+    private async Task<HashSet<int>> UserIdsWithPermissionAsync(AppPermission permission) =>
         (await db.AppPermissionGrants
-            .Where(g => g.Permission == AppPermission.ManageUsers)
+            .Where(g => g.Permission == permission)
             .Select(g => g.UserId)
             .ToListAsync())
         .ToHashSet();
 
+    /// <summary>Whether the given user holds the given app permission directly.</summary>
+    private Task<bool> HasDirectPermissionAsync(int userId, AppPermission permission) =>
+        db.AppPermissionGrants.AnyAsync(g => g.Permission == permission && g.UserId == userId);
+
     /// <summary>Whether the given user holds a ManageUsers grant.</summary>
-    private Task<bool> HasDirectManageUsersAsync(int userId) =>
-        db.AppPermissionGrants.AnyAsync(g => g.Permission == AppPermission.ManageUsers && g.UserId == userId);
+    private Task<bool> HasDirectManageUsersAsync(int userId) => HasDirectPermissionAsync(userId, AppPermission.ManageUsers);
 
     private static bool IsValidEmail(string email) => email.Length > 0 && EmailPattern().IsMatch(email);
 

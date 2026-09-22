@@ -21,8 +21,9 @@ export class GroupsListComponent {
   );
   public readonly loading = computed(() => this.resource.isLoading());
   public readonly failed = computed(() => this.resource.error() != null);
-  /** Only a global admin can create groups; delegated managers only edit the ones they manage. */
-  public readonly canCreate = inject(CurrentUserService).isGlobalAdmin;
+  /** A global admin or a create-groups permission holder can create groups; a plain delegated
+   * manager only edits the ones they already manage. */
+  public readonly canCreate = inject(CurrentUserService).canCreateGroups;
   /** Subtitle text — "N groups", or "M of N groups" once the table's own global filter (see
    * `onFilter`) has narrowed the rows shown. */
   public readonly countLabel = computed(() => {

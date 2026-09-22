@@ -47,6 +47,10 @@
           }
         </div>
 
+        @if (willAutoManage()) {
+          <p class="admin-hint">You'll be added as a member and manager of this group automatically.</p>
+        }
+
         <hr class="admin-divider" />
         <div class="admin-field">
           <label class="admin-label">
