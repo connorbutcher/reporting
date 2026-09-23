@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
+using Reporting.DAL.Formulas;
 
 namespace Reporting.DAL.Repositories;
 
 /// <summary>Row and cell CRUD for a dataset.</summary>
-public class DatasetRowRepository(ReportingDbContext db)
+public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationService formulas)
 {
     public async Task<DatasetDataDto?> GetDataAsync(int id)
     {
@@ -52,6 +53,7 @@ public class DatasetRowRepository(ReportingDbContext db)
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
         ApplyValues(dataset, row, values);
+        await formulas.ApplyToRowAsync(dataset, row);
 
         db.DatasetRows.Add(row);
         await db.SaveChangesAsync();
@@ -69,6 +71,7 @@ public class DatasetRowRepository(ReportingDbContext db)
         if (row is null) return null;
 
         ApplyValues(dataset, row, values);
+        await formulas.ApplyToRowAsync(dataset, row);
         await db.SaveChangesAsync();
         return row.ToDto(ColumnRefMap(dataset));
     }
@@ -89,7 +92,9 @@ public class DatasetRowRepository(ReportingDbContext db)
     /// <summary>
     /// Rewrites a row's cells from the submitted values, parsing each against its
     /// column's type. Values for columns the dataset doesn't have are ignored, so
-    /// stale keys never accumulate. Values are keyed by column RefId.
+    /// stale keys never accumulate. Values are keyed by column RefId. A computed column can't
+    /// be set by hand: anything submitted for it is ignored and its cell is left for the
+    /// formula service to fill.
     /// </summary>
     private void ApplyValues(Dataset dataset, DatasetRow row, Dictionary<Guid, string> values)
     {
@@ -97,7 +102,7 @@ public class DatasetRowRepository(ReportingDbContext db)
 
         foreach (var (columnRef, raw) in values)
         {
-            if (!columnsByRef.TryGetValue(columnRef, out var column)) continue;
+            if (!columnsByRef.TryGetValue(columnRef, out var column) || column.IsComputed) continue;
 
             var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id);
             if (cell is null)
@@ -116,7 +121,8 @@ public class DatasetRowRepository(ReportingDbContext db)
             .Where(columnsByRef.ContainsKey)
             .Select(k => columnsByRef[k].Id)
             .ToHashSet();
-        var dropped = row.Cells.Where(c => !submittedPks.Contains(c.ColumnId)).ToList();
+        var computedIds = dataset.Columns.Where(c => c.IsComputed).Select(c => c.Id).ToHashSet();
+        var dropped = row.Cells.Where(c => !submittedPks.Contains(c.ColumnId) && !computedIds.Contains(c.ColumnId)).ToList();
         foreach (var cell in dropped)
         {
             row.Cells.Remove(cell);

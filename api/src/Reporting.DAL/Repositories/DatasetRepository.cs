@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Formulas;
 
 namespace Reporting.DAL.Repositories;
 
@@ -12,7 +13,7 @@ public sealed record DatasetOwner(int ReportId, int? FolderId, bool InheritsPerm
 public sealed record ReportDraftContext(int RevisionId, int? FolderId, bool InheritsPermissions);
 
 /// <summary>Dataset metadata and column schema CRUD, plus the generic filtered row query.</summary>
-public class DatasetRepository(ReportingDbContext db)
+public class DatasetRepository(ReportingDbContext db, FormulaCalculationService formulas)
 {
     // --- authorization context (resolved by the controller against the owning report) --------
 
@@ -222,6 +223,8 @@ public class DatasetRepository(ReportingDbContext db)
                 Type = column.Type,
                 Order = column.Order,
                 ConfigurationJson = column.ConfigurationJson,
+                FormulaExpression = column.FormulaExpression,
+                FormulaError = column.FormulaError,
             };
             copy.Columns.Add(columnCopy);
             columnByOldId[column.Id] = columnCopy;
@@ -343,17 +346,28 @@ public class DatasetRepository(ReportingDbContext db)
 
         dataset.Columns.Add(column);
         await db.SaveChangesAsync();
+
+        // A new column can be what a formula that was waiting on a missing column needs.
+        if (dataset.Columns.Any(c => c.FormulaError is not null)) await formulas.RecalculateAsync(dataset);
         return column.ToDto();
     }
 
     public async Task<DatasetColumnDto?> UpdateColumnAsync(int id, Guid columnId, string name, DatasetColumnType type)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null) return null;
+        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var column = dataset?.Columns.FirstOrDefault(c => c.RefId == columnId);
+        if (dataset is null || column is null) return null;
 
         var typeChanged = column.Type != type;
+        if (typeChanged && column.IsComputed)
+            throw new DataValidationException("A formula column's type comes from its formula; edit the formula to change it.");
+
+        var oldName = column.Name;
         column.Name = name;
         column.Type = type;
+
+        // Formulas name columns, so a rename carries through to the formulas that read this one.
+        if (!string.Equals(oldName, name, StringComparison.Ordinal)) FormulaColumnRename.Apply(dataset.Columns, oldName, name);
 
         if (typeChanged)
         {
@@ -364,6 +378,9 @@ public class DatasetRepository(ReportingDbContext db)
         }
 
         await db.SaveChangesAsync();
+
+        // Formulas that read this column see different values (or types) now.
+        if (typeChanged && dataset.Columns.Any(c => c.IsComputed)) await formulas.RecalculateAsync(dataset);
         return column.ToDto();
     }
 
@@ -371,6 +388,14 @@ public class DatasetRepository(ReportingDbContext db)
     {
         var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
         if (column is null) return false;
+
+        var formulaColumns = await db.DatasetColumns.Where(c => c.DatasetId == id && c.FormulaExpression != null).ToListAsync();
+        var dependents = FormulaColumnRename.Dependents(formulaColumns, column);
+        if (dependents.Count > 0)
+        {
+            throw new DataConflictException(
+                $"[{column.Name}] is read by the formula in {string.Join(", ", dependents.Select(d => $"[{d}]"))}. Change or remove that formula first.");
+        }
 
         db.DatasetColumns.Remove(column);
 

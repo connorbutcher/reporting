@@ -18,6 +18,7 @@ namespace Reporting.Api.Controllers;
 public class DatasetsController(
     DatasetRepository datasets,
     DatasetRowRepository rows,
+    DatasetFormulaRepository formulaColumns,
     WidgetQueryRepository widgetQueries,
     DatasetColumnUsageService columnUsage) : ControllerBase
 {
@@ -315,6 +316,50 @@ public class DatasetsController(
     public async Task<ActionResult<DatasetSchemaDto>> ReorderColumns(int id, ReorderColumnsDto dto)
     {
         var schema = await datasets.ReorderColumnsAsync(id, dto.ColumnIds);
+        return schema is null ? NotFound() : schema;
+    }
+
+    // --- formula columns ------------------------------------------------------
+
+    /// <summary>
+    /// Adds a computed column. Its formula is checked against the dataset and the function catalogue, then
+    /// evaluated server-side for every row; the values are stored like any others.
+    /// </summary>
+    [HttpPost("{id:int}/columns/formula")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<ActionResult<DatasetColumnDto>> AddFormulaColumn(int id, SaveFormulaColumnDto dto)
+    {
+        var column = await formulaColumns.AddAsync(id, dto);
+        return column is null ? NotFound() : column;
+    }
+
+    /// <summary>Replaces a computed column's name, formula and type, and recomputes it.</summary>
+    [HttpPut("{id:int}/columns/{columnId:guid}/formula")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<ActionResult<DatasetColumnDto>> UpdateFormulaColumn(int id, Guid columnId, SaveFormulaColumnDto dto)
+    {
+        var column = await formulaColumns.UpdateAsync(id, columnId, dto);
+        return column is null ? NotFound() : column;
+    }
+
+    /// <summary>
+    /// Checks an unsaved formula and evaluates it against a sample of the dataset's rows, changing nothing —
+    /// what the formula builder calls as the user edits. Problems come back as structured errors, not a failed request.
+    /// </summary>
+    [HttpPost("{id:int}/formula/preview")]
+    [AuthorizeDataset(AccessLevel.Editor)]
+    public async Task<ActionResult<FormulaPreviewDto>> PreviewFormula(int id, FormulaPreviewRequestDto dto)
+    {
+        var preview = await formulaColumns.PreviewAsync(id, dto);
+        return preview is null ? NotFound() : preview;
+    }
+
+    /// <summary>Recomputes every formula column of the dataset — for after the function catalogue changed.</summary>
+    [HttpPost("{id:int}/formula/recalculate")]
+    [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
+    public async Task<ActionResult<DatasetSchemaDto>> RecalculateFormulas(int id)
+    {
+        var schema = await formulaColumns.RecalculateAsync(id);
         return schema is null ? NotFound() : schema;
     }
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Reporting.Api;
 using Reporting.Abstractions;
 using Reporting.DAL.Identity;
+using Reporting.DAL.Formulas;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
@@ -38,6 +39,9 @@ builder.Services.AddDbContext<ReportingDbContext>(options =>
 builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();
 builder.Services.AddScoped<DatasetColumnUsageService>();
+builder.Services.AddScoped<FormulaFunctionCatalogueLoader>();
+builder.Services.AddScoped<FormulaCalculationService>();
+builder.Services.AddScoped<DatasetFormulaRepository>();
 builder.Services.AddScoped<FolderRepository>();
 builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ReportPersonalizationService>();

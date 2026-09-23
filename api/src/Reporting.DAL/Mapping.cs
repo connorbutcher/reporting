@@ -230,6 +230,8 @@ public static class Mapping
         Name = column.Name,
         Type = column.Type,
         Order = column.Order,
+        Formula = column.FormulaExpression,
+        FormulaError = column.FormulaError,
         Configuration = column.GetConfig()
     };
 
