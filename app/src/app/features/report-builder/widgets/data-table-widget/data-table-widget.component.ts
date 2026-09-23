@@ -26,7 +26,6 @@ import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
-import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
 /** Cap on how many rows a non-paginated table pulls in one request. */
@@ -43,7 +42,7 @@ export interface DisplayColumn {
 
 @Component({
   selector: 'app-data-table-widget',
-  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent, WidgetStatusComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetStatusComponent],
   templateUrl: './data-table-widget.component.html',
   styleUrl: './data-table-widget.component.scss',
   host: {

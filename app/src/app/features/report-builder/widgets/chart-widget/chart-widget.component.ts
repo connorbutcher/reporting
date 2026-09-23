@@ -13,7 +13,6 @@ import {
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
-import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 import { ChartSkeletonComponent, ChartSkeletonShape } from '../chart-skeleton/chart-skeleton.component';
 import { BoxOption } from './options/box-option';
@@ -38,7 +37,6 @@ import { ChartQuery } from './query/chart-query';
     NgxEchartsDirective,
     ChartSkeletonComponent,
     WidgetCountBarComponent,
-    WidgetExportActionsComponent,
     WidgetStatusComponent,
   ],
   templateUrl: './chart-widget.component.html',

@@ -1,10 +1,10 @@
 import { Component, output } from '@angular/core';
 
 /**
- * The small floating toolbar every exportable widget (chart, table, pivot)
- * shows for "download a screenshot" / "download the data" — one template so
- * the three don't each restyle their own pair of buttons. The click just
- * bubbles up as an output; the host decides what exporting actually means via
+ * The "download a screenshot" / "download the data" buttons shown in the header
+ * of every exportable widget (chart, table, pivot) — one template so the
+ * builder and viewer headers don't each restyle their own pair. The click just
+ * bubbles up as an output; the header decides what exporting actually means via
  * {@link WidgetExportBase}.
  */
 @Component({

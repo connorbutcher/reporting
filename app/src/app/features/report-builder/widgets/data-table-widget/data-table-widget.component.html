@@ -7,9 +7,6 @@
 } @else if (displayColumns().length === 0 && !loading()) {
   <app-widget-status icon="pi-list">Add the columns you want from the side panel.</app-widget-status>
 } @else {
-  @if (displayColumns().length > 0) {
-    <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
-  }
   <!-- [loading] shows a built-in overlay rather than us swapping this element
        out of the @if — a lazy p-table re-fires onLazyLoad on every fresh
        mount, which would otherwise turn a loading toggle into a fetch loop. -->

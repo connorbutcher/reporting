@@ -35,7 +35,6 @@
         class="canvas"
         (chartInit)="onChartInit($event)"
       ></div>
-      <app-widget-export-actions (screenshot)="downloadScreenshot()" (exportCsv)="downloadCsv()" />
       @if (countBar(); as bar) {
         <app-widget-count-bar
           [label]="bar.label"

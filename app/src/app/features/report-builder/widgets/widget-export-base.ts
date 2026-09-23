@@ -1,9 +1,6 @@
 import { Directive, ElementRef, inject } from '@angular/core';
 import { toPng } from 'html-to-image';
 
-/** The tag of {@link WidgetExportActionsComponent}, hidden from a DOM screenshot so a widget's own toolbar doesn't end up in the image. */
-const EXPORT_ACTIONS_TAG = 'app-widget-export-actions';
-
 /**
  * Base every exportable widget extends, so "download a screenshot" and
  * "download the data as CSV" are one contract instead of each widget growing
@@ -32,17 +29,8 @@ export abstract class WidgetExportBase {
 
   /** Saves a screenshot of the widget as a PNG. Charts override this to export their canvas directly. */
   public async downloadScreenshot(): Promise<void> {
-    const host = this.exportHost.nativeElement;
-    // The export toolbar itself sits on top of the widget — exclude it from its own screenshot.
-    const toolbar = host.querySelector<HTMLElement>(EXPORT_ACTIONS_TAG);
-    const previousVisibility = toolbar?.style.visibility;
-    if (toolbar) toolbar.style.visibility = 'hidden';
-    try {
-      const dataUrl = await toPng(host, { pixelRatio: 2, backgroundColor: '#fff' });
-      this.downloadUrl(dataUrl, `${this.exportName()}.png`);
-    } finally {
-      if (toolbar) toolbar.style.visibility = previousVisibility ?? '';
-    }
+    const dataUrl = await toPng(this.exportHost.nativeElement, { pixelRatio: 2, backgroundColor: '#fff' });
+    this.downloadUrl(dataUrl, `${this.exportName()}.png`);
   }
 
   /** Downloads a blob, then releases its object URL once the download has had a beat to start. */

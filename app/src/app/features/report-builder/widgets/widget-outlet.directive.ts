@@ -14,6 +14,7 @@ import {
 import { FilterGroup } from '../../../core/models/filter';
 import { Widget, WidgetType } from '../../../core/models/report';
 import { WIDGET_COMPONENTS } from './widget-component.registry';
+import { WidgetExportBase } from './widget-export-base';
 
 /**
  * A handler for one of a widget's outputs. Its parameter is `never` so a host can
@@ -39,6 +40,7 @@ export type WidgetOutputHandler = (value: never) => void;
  */
 @Directive({
   selector: '[appWidgetOutlet]',
+  exportAs: 'widgetOutlet',
 })
 export class WidgetOutletDirective {
   /** The widget to render; its `type` selects the component, its `config` seeds it. */
@@ -77,6 +79,12 @@ export class WidgetOutletDirective {
       this.setOptionalInput('datasetVersion', this.datasetVersion());
       this.setOptionalInput('filterable', 'filterRequest' in this.widgetOutputs());
     });
+  }
+
+  /** The rendered widget when it can be exported (chart, table, pivot); null for the rest. */
+  public exporter(): WidgetExportBase | null {
+    const instance = this.ref?.instance;
+    return instance instanceof WidgetExportBase ? instance : null;
   }
 
   /** (Re)creates the component when the widget's type changes; reuses it otherwise. */

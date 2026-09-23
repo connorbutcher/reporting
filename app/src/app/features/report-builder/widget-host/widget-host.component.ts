@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection, widgetFragment } from '../../../core/models/report';
+import { isExportableWidgetType } from '../../../core/models/widget-catalog';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { GridPreview } from '../grid.util';
 import {
@@ -13,6 +14,7 @@ import { DatasetSchema } from '../state/dataset-schema';
 import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
 import { WidgetSelection } from '../state/widget-selection';
+import { WidgetExportActionsComponent } from '../widgets/widget-export-actions/widget-export-actions.component';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
@@ -20,6 +22,7 @@ import { WidgetResizeDirective } from './widget-resize.directive';
 @Component({
   selector: 'app-widget-host',
   imports: [
+    WidgetExportActionsComponent,
     WidgetOutletDirective,
     WidgetDragDirective,
     WidgetResizeDirective,
@@ -67,6 +70,8 @@ export class WidgetHostComponent {
   protected readonly fragment = computed(() => widgetFragment(this.widget().id));
   protected readonly title = computed(() => this.widget().label());
   protected readonly showTitle = computed(() => this.widget().showTitle());
+
+  protected readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
 
   /** The widget's current DTO — its config reflects live edits — for the render outlet. */
   protected readonly widgetDto = computed(() => this.widget().toDto());

@@ -40,10 +40,6 @@
   display: none;
 }
 
-:host:hover app-widget-export-actions {
-  opacity: 1;
-}
-
 // Tolerance banding: red is a straight reject, orange sits inside the
 // concession zone and still needs a sign-off before it ships.
 :host ::ng-deep .cell-red {

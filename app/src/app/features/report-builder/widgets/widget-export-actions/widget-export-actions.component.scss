@@ -1,38 +1,27 @@
-// Kept faintly visible at rest so the actions are discoverable (and reachable
-// on touch, where there's no hover), then brought to full strength on hover or
-// focus — of the toolbar itself, or (via the widget's own stylesheet) of the
-// whole widget it sits on.
+// Sits inline in a widget's header, always at full strength.
 :host {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 1;
-  display: flex;
+  display: inline-flex;
   gap: 4px;
-  opacity: 0.4;
-  transition: opacity 0.15s ease;
-
-  &:hover,
-  &:focus-within {
-    opacity: 1;
-  }
 
   button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border: 1px solid #e2e8f0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid transparent;
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #475569;
+    background: transparent;
+    color: #64748b;
     font-size: 0.8rem;
     cursor: pointer;
 
-    &:hover {
+    &:hover,
+    &:focus-visible {
+      border-color: var(--app-card-border, #e2e8f0);
       background: #fff;
-      color: #1e293b;
+      color: var(--app-navy, #152a55);
     }
   }
 }

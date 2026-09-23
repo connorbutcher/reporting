@@ -7,9 +7,10 @@ import {
   readChartBindings,
   widgetFragment,
 } from '../../../core/models/report';
-import { isChartWidget } from '../../../core/models/widget-catalog';
+import { isChartWidget, isExportableWidgetType } from '../../../core/models/widget-catalog';
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
+import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
 import { chartBindingKey } from '../filters/view-filter-entry';
 
@@ -19,7 +20,7 @@ const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
   selector: 'app-readonly-report-grid',
-  imports: [WidgetOutletDirective, ScrollToFragmentDirective],
+  imports: [WidgetExportActionsComponent, WidgetOutletDirective, ScrollToFragmentDirective],
   templateUrl: './readonly-report-grid.component.html',
   styleUrl: './readonly-report-grid.component.scss',
 })
@@ -69,6 +70,10 @@ export class ReadonlyReportGridComponent {
   /** The fragment a link can name to jump straight to this widget. */
   protected fragmentFor(widget: Widget): string {
     return widgetFragment(widget.id);
+  }
+
+  protected isExportable(widget: Widget): boolean {
+    return isExportableWidgetType(widget.type);
   }
 
   /** Only a table, pivot, or chart bound to a dataset has anything to filter. */

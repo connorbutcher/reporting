@@ -25,6 +25,14 @@
       } @else {
         <span class="grip" aria-hidden="true"><i class="pi pi-ellipsis-h"></i></span>
       }
+      @if (exportable()) {
+        <app-widget-export-actions
+          class="export"
+          (pointerdown)="$event.stopPropagation()"
+          (screenshot)="outlet.exporter()?.downloadScreenshot()"
+          (exportCsv)="outlet.exporter()?.downloadCsv()"
+        />
+      }
       @if (issues().length > 0) {
         <button
           type="button"
@@ -48,6 +56,7 @@
     <div class="body">
       <ng-container
         [appWidgetOutlet]="widgetDto()"
+        #outlet="widgetOutlet"
         [datasetVersion]="datasetVersion()"
         [reportFilter]="reportFilter()"
         [widgetFilter]="widgetFilter()"

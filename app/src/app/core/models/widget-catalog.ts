@@ -126,6 +126,11 @@ export function isChartWidgetType(type: WidgetType): boolean {
   return widgetTypeDescriptor(type).group === 'chart';
 }
 
+/** Whether a widget of this type can be downloaded as a screenshot or CSV — the charts, table and pivot. */
+export function isExportableWidgetType(type: WidgetType): boolean {
+  return isChartWidgetType(type) || type === 'dataTable' || type === 'pivotTable';
+}
+
 /** Narrows a widget to a chart kind, so callers can reach the shared chart config fields. */
 export function isChartWidget(widget: Widget): widget is ChartWidget {
   return isChartWidgetType(widget.type);

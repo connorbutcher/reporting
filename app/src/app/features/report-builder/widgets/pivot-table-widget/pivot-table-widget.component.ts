@@ -9,7 +9,6 @@ import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
-import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
 /** One rendered column of the pivot: a dimension or a measure, with its display alignment. */
@@ -35,7 +34,7 @@ interface PivotDisplayRow {
 
 @Component({
   selector: 'app-pivot-table-widget',
-  imports: [TableModule, WidgetCountBarComponent, WidgetExportActionsComponent, WidgetStatusComponent],
+  imports: [TableModule, WidgetCountBarComponent, WidgetStatusComponent],
   templateUrl: './pivot-table-widget.component.html',
   styleUrl: './pivot-table-widget.component.scss',
 })
