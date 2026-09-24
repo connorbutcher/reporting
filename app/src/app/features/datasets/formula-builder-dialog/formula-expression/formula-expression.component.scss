@@ -116,6 +116,7 @@
 }
 
 .chip {
+  user-select: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -352,6 +353,18 @@
   &:hover {
     background: #fff;
   }
+}
+
+// Selected items: what wrap, copy and delete act on.
+.selected {
+  outline: 2px solid var(--fb-accent);
+  outline-offset: 1px;
+  background-color: var(--fb-accent-wash);
+}
+
+.card-head,
+.group .paren {
+  user-select: none;
 }
 
 .linked {

@@ -21,6 +21,10 @@
   color: #475569;
 }
 
+.scroll {
+  overflow-x: auto;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -40,6 +44,26 @@
   th {
     font-weight: 600;
     color: #475569;
+  }
+
+  .input {
+    color: #475569;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .result {
+    background: #f8fafc;
+    font-weight: 600;
+  }
+
+  .reason {
+    display: block;
+    font-weight: 400;
+    font-size: 0.72rem;
+    color: #64748b;
   }
 
   .row-no {

@@ -56,6 +56,8 @@ const TYPE_NAMES: Record<DatasetColumnType, string> = {
   host: {
     role: 'dialog',
     'aria-label': 'Formula builder',
+    // Focusable, so a click on an item leaves focus in the dialog and its shortcuts (copy, paste, delete) keep working.
+    tabindex: '-1',
     '(keydown)': 'onKeydown($event)',
   },
 })
@@ -65,6 +67,7 @@ export class FormulaBuilderDialogComponent {
   public readonly canUndo = computed(() => this.store.canUndo());
   public readonly canRedo = computed(() => this.store.canRedo());
   public readonly saving = computed(() => this.store.saving());
+  public readonly canPaste = computed(() => this.store.clipboard().length > 0);
   public readonly editing = computed(() => this.store.data.column !== null);
 
   public readonly nameTouched = computed(() => this.store.nameForm.name().touched());
@@ -108,6 +111,10 @@ export class FormulaBuilderDialogComponent {
     this.store.redo();
   }
 
+  public paste(): void {
+    this.store.paste();
+  }
+
   public clear(): void {
     this.store.clear();
   }
@@ -120,18 +127,46 @@ export class FormulaBuilderDialogComponent {
     this.store.cancel();
   }
 
+  /**
+   * Shortcuts, when the keyboard isn't in a text box: Ctrl+Z / Ctrl+Y undo and redo; Ctrl+C / Ctrl+V copy
+   * and paste the selected items; Delete removes them; "(" puts them in brackets; Escape lets go of the selection.
+   */
   public onKeydown(event: KeyboardEvent): void {
-    const typing = (event.target as HTMLElement).matches('input, textarea, [contenteditable]');
-    if (typing || !(event.ctrlKey || event.metaKey)) return;
+    if ((event.target as HTMLElement).matches('input, textarea, [contenteditable]')) return;
 
     const key = event.key.toLowerCase();
-    if (key === 'z') {
-      event.preventDefault();
-      if (event.shiftKey) this.store.redo();
-      else this.store.undo();
-    } else if (key === 'y') {
-      event.preventDefault();
-      this.store.redo();
+    const modifier = event.ctrlKey || event.metaKey;
+    const handled = (): void => event.preventDefault();
+
+    if (modifier) {
+      if (key === 'z') {
+        handled();
+        if (event.shiftKey) this.store.redo();
+        else this.store.undo();
+      } else if (key === 'y') {
+        handled();
+        this.store.redo();
+      } else if (key === 'c' && this.store.selectionRange()) {
+        handled();
+        this.store.copySelection();
+      } else if (key === 'v' && this.canPaste()) {
+        handled();
+        this.store.paste();
+      }
+      return;
+    }
+
+    if (!this.store.selectionRange()) return;
+    if (key === 'escape') {
+      handled();
+      event.stopPropagation(); // let go of the selection rather than closing the dialog
+      this.store.clearSelection();
+    } else if (key === 'delete' || key === 'backspace') {
+      handled();
+      this.store.deleteSelection();
+    } else if (key === '(') {
+      handled();
+      this.store.wrapSelectionInBrackets();
     }
   }
 

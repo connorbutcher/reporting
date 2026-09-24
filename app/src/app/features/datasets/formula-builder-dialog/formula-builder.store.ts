@@ -19,7 +19,10 @@ import {
   LiteralBlock,
   OPERATORS,
   ROOT,
+  argumentForWrap,
+  cloneItem,
   columnBlock,
+  emptyArguments,
   functionBlock,
   groupBlock,
   literalBlock,
@@ -28,7 +31,7 @@ import {
   parameterFor,
   slotIsOptional,
 } from './model/formula-block';
-import { FormulaIssue, analyzeFormula, parametersOf, scopeOf } from './model/formula-checker';
+import { FormulaIssue, analyzeFormula, kindOfExpression, parametersOf, scopeOf } from './model/formula-checker';
 import { FormulaParseError, parseFormula } from './model/formula-parser';
 import { blockAtPosition, serializeFormula } from './model/formula-serializer';
 import {
@@ -37,8 +40,13 @@ import {
   expressionAt,
   findItem,
   insertItem,
+  insertItems,
+  locateSelection,
   removeArgument,
   removeItem,
+  removeItems,
+  replaceItems,
+  unwrapGroup,
   updateItem,
 } from './model/formula-tree';
 
@@ -175,6 +183,32 @@ export class FormulaBuilderStore {
   public readonly dropPoint = signal<DropPoint | null>(null);
   /** The expression that click-to-add puts things into: the last one worked in. */
   public readonly active = signal<ExpressionAddress>(ROOT);
+
+  // --- selection and clipboard ---------------------------------------------------
+  /** The ids of the selected items — all in one expression. Ids that have since gone are ignored (see {@link selectionRange}). */
+  public readonly selection = signal<readonly number[]>([]);
+  /** Copied items, held as they were; each paste makes fresh copies of them. */
+  public readonly clipboard = signal<readonly FormulaItem[]>([]);
+
+  /** The selection as it stands in the formula, or null when nothing (still) is selected. */
+  public readonly selectionRange = computed(() => {
+    const ids = this.selection();
+    return ids.length > 0 ? locateSelection(this.root(), ids) : null;
+  });
+
+  public readonly selectedIds = computed(() => new Set(this.selectionRange()?.items.map((item) => item.id) ?? []));
+
+  /** The kind of value the selection makes, which decides which argument of a wrapping function it fills. */
+  public readonly selectionKind = computed(() => {
+    const range = this.selectionRange();
+    return range ? kindOfExpression(range.items, this.scope()) : 'any';
+  });
+
+  /** A single group is selected, so its brackets can be dissolved. */
+  public readonly canUnwrap = computed(() => {
+    const range = this.selectionRange();
+    return range?.items.length === 1 && range.items[0].kind === 'group';
+  });
   /** A one-line nudge shown near the palette. */
   public readonly hint = signal<string | null>(null);
   /** A block id to draw attention to, after clicking its problem in the list. */
@@ -192,6 +226,7 @@ export class FormulaBuilderStore {
   private readonly api = inject(FormulaApiService);
   private readonly notify = inject(NotificationService);
   private readonly dialogRef = inject<DialogRef<DatasetColumn | undefined>>(DialogRef);
+  private anchor: number | null = null;
   private readonly previewRequests = new Subject<{ text: string; type: DatasetColumnType | null } | null>();
 
   constructor() {
@@ -349,6 +384,122 @@ export class FormulaBuilderStore {
   public clear(): void {
     if (this.root().length > 0) this.commit([]);
     this.active.set(ROOT);
+    this.clearSelection();
+  }
+
+  // --- selection -----------------------------------------------------------------
+
+  /**
+   * Selects an item: on its own, extended from the last one clicked to this one (a range, within one
+   * expression), or added to / taken out of the selection. A selection never spans expressions — selecting
+   * in another one starts again.
+   */
+  public select(id: number, mode: 'single' | 'range' | 'toggle'): void {
+    const found = findItem(this.root(), id);
+    if (!found) return;
+
+    const current = this.selectionRange();
+    const sameExpression = (a: ExpressionAddress): boolean => a.ownerId === found.address.ownerId && a.arg === found.address.arg;
+
+    if (mode === 'range' && this.anchor !== null) {
+      const anchor = findItem(this.root(), this.anchor);
+      const expression = expressionAt(this.root(), found.address);
+      if (anchor && expression && sameExpression(anchor.address)) {
+        const [from, to] = [Math.min(anchor.index, found.index), Math.max(anchor.index, found.index)];
+        this.selection.set(expression.slice(from, to + 1).map((item) => item.id));
+        return;
+      }
+    }
+
+    if (mode === 'toggle' && current && sameExpression(current.address)) {
+      const expression = expressionAt(this.root(), found.address) ?? [];
+      const ids = new Set(current.items.map((item) => item.id));
+      if (!ids.delete(id)) ids.add(id);
+      this.selection.set(expression.filter((item) => ids.has(item.id)).map((item) => item.id));
+      this.anchor = id;
+      return;
+    }
+
+    this.selection.set([id]);
+    this.anchor = id;
+  }
+
+  public clearSelection(): void {
+    this.selection.set([]);
+    this.anchor = null;
+  }
+
+  /** Puts the selected items in brackets, so they are worked out first and count as one value. */
+  public wrapSelectionInBrackets(): void {
+    const range = this.selectionRange();
+    if (!range?.contiguous) return;
+
+    const group = groupBlock(range.items);
+    this.commit(replaceItems(this.root(), range.address, range.start, range.items.length, [group]));
+    this.selectOnly(group);
+    this.active.set(range.address);
+  }
+
+  /** Makes the selected items an argument of a function — the first that takes what they produce — and leaves the others to fill. */
+  public wrapSelectionInFunction(name: string): void {
+    const range = this.selectionRange();
+    const fn = this.scope().functions.get(name.toUpperCase());
+    if (!range?.contiguous || !fn) return;
+
+    const args = emptyArguments(fn);
+    args[argumentForWrap(fn, this.selectionKind())] = range.items;
+    const wrapper = functionBlock(fn, fn.name, args);
+    this.commit(replaceItems(this.root(), range.address, range.start, range.items.length, [wrapper]));
+    this.selectOnly(wrapper);
+
+    // Carry on in the first argument that still needs something.
+    const next = args.findIndex((arg, i) => arg.length === 0 && !slotIsOptional(fn.parameters, i));
+    this.active.set(next >= 0 ? { ownerId: wrapper.id, arg: next } : range.address);
+  }
+
+  /** Dissolves the selected group, leaving what was inside it. */
+  public unwrapSelection(): void {
+    const range = this.selectionRange();
+    const group = range?.items[0];
+    if (!range || group?.kind !== 'group') return;
+
+    this.commit(unwrapGroup(this.root(), group.id));
+    this.selection.set(group.body.map((item) => item.id));
+    this.anchor = group.body[0]?.id ?? null;
+  }
+
+  public deleteSelection(): void {
+    const range = this.selectionRange();
+    if (!range) return;
+
+    this.commit(removeItems(this.root(), range.items.map((item) => item.id)));
+    this.clearSelection();
+  }
+
+  public copySelection(): void {
+    const range = this.selectionRange();
+    if (!range) return;
+
+    this.clipboard.set(range.items);
+    const count = range.items.length;
+    this.hint.set(`Copied ${count} item${count === 1 ? '' : 's'}. Paste puts a copy after the selection, or at the end of the row you last used.`);
+  }
+
+  /** Puts a copy of the clipboard after the selection, or at the end of the expression last worked in, and selects it. */
+  public paste(): void {
+    const items = this.clipboard().map(cloneItem);
+    if (items.length === 0) return;
+    this.hint.set(null);
+
+    const range = this.selectionRange();
+    const address = range ? range.address : expressionAt(this.root(), this.active()) ? this.active() : ROOT;
+    const expression = expressionAt(this.root(), address) ?? [];
+    const index = range ? range.start + range.items.length : expression.length;
+
+    this.commit(insertItems(this.root(), address, index, items));
+    this.selection.set(items.map((item) => item.id));
+    this.anchor = items[0].id;
+    this.active.set(address);
   }
 
   public toggleCollapsed(id: number): void {
@@ -438,6 +589,11 @@ export class FormulaBuilderStore {
     this.future.set([]);
     this.root.set(next);
     this.saveError.set(null);
+  }
+
+  private selectOnly(item: FormulaItem): void {
+    this.selection.set([item.id]);
+    this.anchor = item.id;
   }
 
   /** After adding a function or brackets, work goes on inside them; otherwise it stays where it was. */

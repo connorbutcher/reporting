@@ -62,14 +62,21 @@ public class FormulaCalculationService(ReportingDbContext db, FormulaFunctionCat
             .Include(r => r.Cells)
             .ToListAsync();
 
+        var inputs = planned.Analysis.References.Where(c => c.Id != 0).OrderBy(c => c.Order).ToList();
+        preview.InputColumns = inputs.Select(c => c.Name).ToList();
+
         foreach (var row in rows)
         {
             var outcome = plan.Evaluate(row)[candidate];
+            var cells = row.Cells.GroupBy(c => c.ColumnId).ToDictionary(g => g.Key, g => g.First());
             preview.Rows.Add(new FormulaPreviewRowDto
             {
                 RowId = row.RefId,
                 Value = FormulaValues.ToCellText(outcome.Value, candidate.Type),
-                Error = outcome.Error
+                Error = outcome.Error,
+                Inputs = inputs.ToDictionary(
+                    c => c.Name,
+                    c => cells.TryGetValue(c.Id, out var cell) && !string.IsNullOrWhiteSpace(cell.StringValue) ? cell.StringValue : null)
             });
         }
 

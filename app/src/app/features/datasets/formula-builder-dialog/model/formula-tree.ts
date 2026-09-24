@@ -119,3 +119,57 @@ export function removeArgument(root: Expression, functionId: number, index: numb
     item.kind === 'function' ? { ...item, args: item.args.filter((_, i) => i !== index) } : item,
   );
 }
+
+/** A selection of items that all sit in one expression. */
+export interface SelectionRange {
+  address: ExpressionAddress;
+  /** The selected items, in the order they appear. */
+  items: FormulaItem[];
+  /** Where the first one is in its expression. */
+  start: number;
+  /** Whether they are next to each other, so they can be wrapped as one. */
+  contiguous: boolean;
+}
+
+/**
+ * Finds a selection in the formula. Ids that no longer exist are ignored, and a selection that has spread
+ * across more than one expression is no selection at all (null).
+ */
+export function locateSelection(root: Expression, ids: readonly number[]): SelectionRange | null {
+  const found = ids.map((id) => findItem(root, id)).filter((location): location is ItemLocation => location !== null);
+  if (found.length === 0) return null;
+
+  const { address } = found[0];
+  if (found.some((location) => location.address.ownerId !== address.ownerId || location.address.arg !== address.arg)) return null;
+
+  const ordered = [...found].sort((a, b) => a.index - b.index);
+  const start = ordered[0].index;
+  return {
+    address,
+    items: ordered.map((location) => location.item),
+    start,
+    contiguous: ordered[ordered.length - 1].index - start + 1 === ordered.length,
+  };
+}
+
+/** Replaces `count` items from `start` in the expression at `address` with `replacement`. */
+export function replaceItems(root: Expression, address: ExpressionAddress, start: number, count: number, replacement: readonly FormulaItem[]): Expression {
+  return changeExpression(root, address, (expression) => [...expression.slice(0, start), ...replacement, ...expression.slice(start + count)]);
+}
+
+/** Puts `items` into the expression at `address`, before the item at `index` (or at the end). */
+export function insertItems(root: Expression, address: ExpressionAddress, index: number, items: readonly FormulaItem[]): Expression {
+  return replaceItems(root, address, Math.max(0, index), 0, items);
+}
+
+/** Takes several items out, wherever they are. */
+export function removeItems(root: Expression, ids: readonly number[]): Expression {
+  return ids.reduce((next, id) => removeItem(next, id), root);
+}
+
+/** Dissolves a group, leaving what was inside it in its place. */
+export function unwrapGroup(root: Expression, groupId: number): Expression {
+  const found = findItem(root, groupId);
+  if (found?.item.kind !== 'group') return root;
+  return replaceItems(root, found.address, found.index, 1, found.item.body);
+}

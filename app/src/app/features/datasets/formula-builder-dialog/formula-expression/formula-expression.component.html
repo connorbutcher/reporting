@@ -20,6 +20,8 @@
         <span
           class="chip column"
           data-item
+          [class.selected]="isSelected(item.id)"
+          (click)="select($event, item)"
           [class.bad]="isBad(item.id)"
           [class.linked]="isLinked(item.id)"
           [class.flash]="isFlashed(item.id)"
@@ -43,6 +45,8 @@
         <span
           class="chip literal"
           data-item
+          [class.selected]="isSelected(item.id)"
+          (click)="select($event, item)"
           [class.bad]="isBad(item.id)"
           [class.linked]="isLinked(item.id)"
           [class.flash]="isFlashed(item.id)"
@@ -83,6 +87,8 @@
         <span
           class="op"
           data-item
+          [class.selected]="isSelected(item.id)"
+          (click)="select($event, item)"
           [class.word]="isWord(item.op)"
           [class.bad]="isBad(item.id)"
           [class.linked]="isLinked(item.id)"
@@ -106,6 +112,8 @@
         <div
           class="group"
           data-item
+          [class.selected]="isSelected(item.id)"
+          (click)="selectGroup($event, item)"
           [class.bad]="isBad(item.id)"
           [class.linked]="isLinked(item.id)"
           [class.flash]="isFlashed(item.id)"
@@ -126,6 +134,7 @@
         <div
           class="card"
           data-item
+          [class.selected]="isSelected(item.id)"
           [class.bad]="isBad(item.id)"
           [class.linked]="isLinked(item.id)"
           [class.flash]="isFlashed(item.id)"
@@ -133,7 +142,7 @@
           (mouseover)="hover($event, item)"
           (mouseleave)="unhover(item)"
         >
-          <div class="card-head" draggable="true" (dragstart)="startDrag($event, item)" (dragend)="endDrag()">
+          <div class="card-head" draggable="true" (dragstart)="startDrag($event, item)" (dragend)="endDrag()" (click)="select($event, item)">
             <button
               type="button"
               class="icon-btn"

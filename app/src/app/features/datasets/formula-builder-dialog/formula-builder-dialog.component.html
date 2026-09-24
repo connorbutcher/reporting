@@ -51,6 +51,9 @@
     <div class="tools">
       <p-button label="Undo" icon="pi pi-undo" severity="secondary" text size="small" [disabled]="!canUndo()" (onClick)="undo()" />
       <p-button label="Redo" severity="secondary" text size="small" [disabled]="!canRedo()" (onClick)="redo()" />
+      @if (canPaste()) {
+        <p-button label="Paste" icon="pi pi-clipboard" severity="secondary" text size="small" (onClick)="paste()" />
+      }
       <p-button label="Clear" severity="secondary" text size="small" (onClick)="clear()" />
     </div>
   </div>

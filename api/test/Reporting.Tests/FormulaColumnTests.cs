@@ -441,6 +441,26 @@ public class FormulaColumnTests : SqliteDbTestBase
     }
 
     [Fact]
+    public async Task Preview_shows_each_rows_values_in_the_columns_the_formula_reads()
+    {
+        await SeedAsync();
+
+        var preview = (await Fresh().Formulas.PreviewAsync(_datasetId,
+            new FormulaPreviewRequestDto { Expression = "[Price] * [Qty] + 1", SampleSize = 5 }))!;
+
+        // Only the columns the formula reads, in dataset order (not the order it names them).
+        Assert.Equal(["Qty", "Price"], preview.InputColumns);
+        Assert.Equal("2", preview.Rows[0].Inputs["Qty"]);
+        Assert.Equal("10.5", preview.Rows[0].Inputs["Price"]);
+        Assert.Equal("22", preview.Rows[0].Value);
+
+        // A blank input is null, which is what makes a blank result explicable.
+        Assert.Null(preview.Rows[2].Inputs["Qty"]);
+        Assert.Equal("7", preview.Rows[2].Inputs["Price"]);
+        Assert.Null(preview.Rows[2].Value);
+    }
+
+    [Fact]
     public async Task Preview_reports_problems_as_structured_errors_rather_than_failing()
     {
         await SeedAsync();

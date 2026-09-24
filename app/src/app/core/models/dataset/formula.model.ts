@@ -35,6 +35,8 @@ export interface FormulaPreviewRow {
   /** The computed value in the column's canonical text form; null when blank. */
   value: string | null;
   error: string | null;
+  /** What the row holds in each column the formula reads, by column name; null when blank. */
+  inputs: Record<string, string | null>;
 }
 
 export interface FormulaPreview {
@@ -42,6 +44,8 @@ export interface FormulaPreview {
   errors: FormulaError[];
   /** The column type the formula evaluates to; null when it can't be told statically. */
   inferredType: DatasetColumnType | null;
+  /** The columns the formula reads, in dataset order — the keys of each row's inputs. */
+  inputColumns: string[];
   rows: FormulaPreviewRow[];
 }
 

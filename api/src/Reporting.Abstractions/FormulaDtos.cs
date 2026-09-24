@@ -71,6 +71,9 @@ public class FormulaPreviewRowDto
     /// <summary>The computed value in the column's canonical text form; null when blank.</summary>
     public string? Value { get; set; }
     public string? Error { get; set; }
+
+    /// <summary>What this row holds in each column the formula reads, by column name — so a blank or surprising result can be traced to its inputs. Null when the cell is blank.</summary>
+    public Dictionary<string, string?> Inputs { get; set; } = new();
 }
 
 public class FormulaPreviewDto
@@ -80,5 +83,8 @@ public class FormulaPreviewDto
 
     /// <summary>The column type the expression evaluates to; null when it can't be told statically.</summary>
     public DatasetColumnType? InferredType { get; set; }
+    /// <summary>The columns the formula reads, in dataset order — the keys of each row's <c>Inputs</c>.</summary>
+    public List<string> InputColumns { get; set; } = new();
+
     public List<FormulaPreviewRowDto> Rows { get; set; } = new();
 }

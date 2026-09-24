@@ -1,4 +1,6 @@
+
 :host {
+  outline: none;
   --fb-accent: #2563eb;
   --fb-accent-wash: #eff6ff;
   --fb-border: #cbd5e1;
@@ -134,7 +136,7 @@
 // Palette | canvas | the formula read back, its problems and a preview.
 .workspace {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 320px;
+  grid-template-columns: 220px minmax(0, 1fr) 360px;
   gap: 10px;
   flex: 1;
   min-height: 0;

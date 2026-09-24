@@ -152,6 +152,31 @@ export function emptyArguments(fn: FormulaFunction | undefined): Expression[] {
   return args;
 }
 
+/** A deep copy with fresh ids, so a copy can sit beside its original without the two sharing an identity. */
+export function cloneItem(item: FormulaItem): FormulaItem {
+  switch (item.kind) {
+    case 'function':
+      return { ...item, id: newItemId(), args: item.args.map(cloneExpression) };
+    case 'group':
+      return { ...item, id: newItemId(), body: cloneExpression(item.body) };
+    default:
+      return { ...item, id: newItemId() };
+  }
+}
+
+export function cloneExpression(expression: Expression): Expression {
+  return expression.map(cloneItem);
+}
+
+/**
+ * Which argument of `fn` a selection of the given kind should go into when wrapped in it: the first
+ * parameter that takes that kind, else the first one — so wrapping a yes/no test in IF fills its condition.
+ */
+export function argumentForWrap(fn: FormulaFunction, kind: FormulaValueKind): number {
+  const index = fn.parameters.findIndex((p) => p.kind === 'any' || kind === 'any' || p.kind === kind);
+  return Math.max(index, 0);
+}
+
 export function isOperand(item: FormulaItem): item is OperandItem {
   return item.kind !== 'operator';
 }

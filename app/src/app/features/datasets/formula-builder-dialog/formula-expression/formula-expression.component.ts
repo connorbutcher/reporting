@@ -145,6 +145,10 @@ export class FormulaExpressionComponent {
     return this.store.hovered() === id;
   }
 
+  public isSelected(id: number): boolean {
+    return this.store.selectedIds().has(id);
+  }
+
   public isFlashed(id: number): boolean {
     return this.store.flashed() === id;
   }
@@ -183,7 +187,22 @@ export class FormulaExpressionComponent {
   public activate(event: Event): void {
     if ((event.target as HTMLElement).closest('.expr') === event.currentTarget) {
       this.store.active.set(this.address());
+      // Clicking the empty part of the row lets go of the selection.
+      if (event.target === event.currentTarget) this.store.clearSelection();
     }
+  }
+
+  /** Selects an item: on its own, with Shift extended from the last one to this, with Ctrl or Cmd added or taken out. */
+  public select(event: MouseEvent, item: FormulaItem): void {
+    // Buttons and text boxes inside an item do their own thing.
+    if ((event.target as HTMLElement).closest('button, input')) return;
+    this.store.select(item.id, event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'single');
+  }
+
+  /** A group is selected by clicking its brackets or its edge — a click inside it belongs to what is in there. */
+  public selectGroup(event: MouseEvent, item: FormulaItem): void {
+    const target = event.target as HTMLElement;
+    if (target === event.currentTarget || target.classList.contains('paren')) this.select(event, item);
   }
 
   public startDrag(event: DragEvent, item: FormulaItem): void {

@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormulaExpressionComponent } from '../formula-expression/formula-expression.component';
 import { FormulaBuilderStore } from '../formula-builder.store';
+import { FormulaSelectionBarComponent } from '../formula-selection-bar/formula-selection-bar.component';
 import { ROOT } from '../model/formula-block';
 
 /**
@@ -9,7 +10,7 @@ import { ROOT } from '../model/formula-block';
  */
 @Component({
   selector: 'app-formula-canvas',
-  imports: [FormulaExpressionComponent],
+  imports: [FormulaExpressionComponent, FormulaSelectionBarComponent],
   templateUrl: './formula-canvas.component.html',
   styleUrl: './formula-canvas.component.scss',
 })

@@ -3,6 +3,8 @@ import { DatasetColumn, FormulaFunction, FormulaParameter, FormulaValueKind } fr
 import {
   Expression,
   FormulaItem,
+  argumentForWrap,
+  cloneItem,
   columnBlock,
   functionBlock,
   groupBlock,
@@ -13,7 +15,20 @@ import { analyzeFormula, checkFormula, kindOfExpression, scopeOf } from './formu
 import { FormulaParseError, parseFormula } from './formula-parser';
 import { foldRpn, toRpn } from './formula-rpn';
 import { blockAtPosition, serializeFormula } from './formula-serializer';
-import { addArgument, containsItem, expressionAt, findItem, insertItem, removeItem, updateItem } from './formula-tree';
+import {
+  addArgument,
+  containsItem,
+  expressionAt,
+  findItem,
+  insertItem,
+  insertItems,
+  locateSelection,
+  removeItem,
+  removeItems,
+  replaceItems,
+  unwrapGroup,
+  updateItem,
+} from './formula-tree';
 
 const param = (name: string, kind: FormulaValueKind, extra: Partial<FormulaParameter> = {}): FormulaParameter => ({
   name,
@@ -437,5 +452,120 @@ describe('formula tree operations', () => {
     const sum = call('SUM', [], []);
     const next = addArgument([sum], sum.id);
     expect(next[0].kind === 'function' && next[0].args).toHaveLength(3);
+  });
+});
+
+describe('working with several items', () => {
+  const ROOT = { ownerId: null, arg: 0 };
+
+  it('finds a selection, in reading order, and says whether its items are neighbours', () => {
+    const [a, plus, b, times, c] = [col('Qty'), op('+'), col('Price'), op('*'), lit(2)];
+    const root: Expression = [a, plus, b, times, c];
+
+    const together = locateSelection(root, [b.id, plus.id]);
+    expect(together?.items.map((i) => i.id)).toEqual([plus.id, b.id]);
+    expect(together).toMatchObject({ start: 1, contiguous: true, address: ROOT });
+
+    expect(locateSelection(root, [a.id, b.id])?.contiguous).toBe(false);
+  });
+
+  it('ignores selected items that have gone, and refuses a selection that spans expressions', () => {
+    const qty = col('Qty');
+    const inner = col('Price');
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [[inner], []]);
+    const root: Expression = [qty, round];
+
+    expect(locateSelection(root, [qty.id, 9999])?.items).toEqual([qty]);
+    expect(locateSelection(root, [])).toBeNull();
+    expect(locateSelection(root, [qty.id, inner.id])).toBeNull();
+  });
+
+  it('wraps neighbouring items in brackets, keeping their order and the rest of the row', () => {
+    const [a, plus, b, times, c] = [col('Qty'), op('+'), col('Price'), op('*'), lit(2)];
+    const root: Expression = [a, plus, b, times, c];
+    const range = locateSelection(root, [a.id, plus.id, b.id])!;
+    const group = groupBlock(range.items);
+
+    const next = replaceItems(root, range.address, range.start, range.items.length, [group]);
+
+    expect(next.map((i) => i.kind)).toEqual(['group', 'operator', 'literal']);
+    expect(write(next)).toBe('([Qty] + [Price]) * 2');
+    expect(root).toHaveLength(5); // the original is untouched, so undo has it
+  });
+
+  it('wraps a selection as an argument of a function, in a nested expression', () => {
+    const [qty, times, price, plus, one] = [col('Qty'), op('*'), col('Price'), op('+'), lit(1)];
+    const root: Expression = [qty, times, price, plus, one];
+    const range = locateSelection(root, [qty.id, times.id, price.id])!;
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [range.items, []]);
+
+    const next = replaceItems(root, range.address, range.start, 3, [round]);
+
+    const written = serializeFormula(next, (_, i) => ({ name: 'n', optional: i === 1 })).text;
+    expect(written).toBe(['ROUND(', '  [Qty] * [Price]', ') + 1'].join('\n'));
+    expect(expressionAt(next, { ownerId: round.id, arg: 0 })).toHaveLength(3);
+  });
+
+  it('chooses the argument a wrapped selection fills by the kind it produces', () => {
+    const IF = SCOPE.functions.get('IF')!;
+    const DATEADD = SCOPE.functions.get('DATEADD')!;
+    expect(argumentForWrap(IF, 'bool')).toBe(0); // the condition
+    expect(argumentForWrap(IF, 'number')).toBe(1); // condition wants true/false, so the first that takes a number
+    expect(argumentForWrap(DATEADD, 'date')).toBe(2); // unit is text, amount a number, date is the third
+    expect(argumentForWrap(DATEADD, 'any')).toBe(0);
+    expect(argumentForWrap(SCOPE.functions.get('ROUND')!, 'text')).toBe(0); // nothing fits: the first, and the checker will say so
+  });
+
+  it('dissolves a group, leaving what was inside it where it stood', () => {
+    const [qty, plus, one] = [col('Qty'), op('+'), lit(1)];
+    const group = groupBlock([qty, plus, one]);
+    const root: Expression = [op('-'), group, op('*'), col('Price')];
+
+    const next = unwrapGroup(root, group.id);
+
+    expect(next.map((i) => i.kind)).toEqual(['operator', 'column', 'operator', 'literal', 'operator', 'column']);
+    expect(unwrapGroup(root, root[0].id)).toBe(root); // not a group: nothing changes
+  });
+
+  it('removes several items at once, from anywhere', () => {
+    const [a, b] = [col('Qty'), col('Price')];
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [[a], []]);
+    const root: Expression = [round, op('+'), b];
+
+    const next = removeItems(root, [a.id, b.id]);
+
+    expect(expressionAt(next, { ownerId: round.id, arg: 0 })).toEqual([]);
+    expect(next.map((i) => i.kind)).toEqual(['function', 'operator']);
+  });
+
+  it('inserts several items at a place', () => {
+    const [a, b] = [col('Qty'), col('Price')];
+    const next = insertItems([a], ROOT, 1, [op('+'), b]);
+    expect(next.map((i) => i.kind)).toEqual(['column', 'operator', 'column']);
+  });
+
+  it('copies deeply with fresh ids, so a paste is independent of what it was copied from', () => {
+    const qty = col('Qty');
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [[qty, op('*'), lit(2)], []]);
+    const group = groupBlock([round]);
+
+    const copy = cloneItem(group);
+
+    expect(copy.id).not.toBe(group.id);
+    expect(write([copy])).toBe(write([group]));
+
+    const ids = (item: FormulaItem): number[] => {
+      const found: number[] = [];
+      const visit = (i: FormulaItem): void => {
+        found.push(i.id);
+        if (i.kind === 'group') i.body.forEach(visit);
+        if (i.kind === 'function') i.args.forEach((arg) => arg.forEach(visit));
+      };
+      visit(item);
+      return found;
+    };
+    const original = new Set(ids(group));
+    expect(ids(copy).some((id) => original.has(id))).toBe(false);
+    expect(ids(copy)).toHaveLength(ids(group).length);
   });
 });
