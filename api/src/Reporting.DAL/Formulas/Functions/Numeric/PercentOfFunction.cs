@@ -5,8 +5,16 @@ namespace Reporting.DAL.Formulas.Functions.Numeric;
 /// <summary>One number as a percentage of another; blank when the whole is zero.</summary>
 public sealed class PercentOfFunction : IFormulaFunctionImplementation
 {
-    public string Key => "PERCENTOF";
+    public string Key { get; } = "PERCENTOF";
 
-    public object? Invoke(IReadOnlyList<object?> args) =>
-        Number(args, 1) == 0 ? null : Number(args, 0) / Number(args, 1) * 100;
+    public object? Invoke(IReadOnlyList<object?> args)
+    {
+        var whole = Number(args, 1);
+        if (whole == 0)
+        {
+            return null;
+        }
+
+        return Number(args, 0) / whole * 100;
+    }
 }

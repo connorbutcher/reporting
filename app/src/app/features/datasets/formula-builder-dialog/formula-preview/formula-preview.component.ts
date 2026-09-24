@@ -22,7 +22,9 @@ export class FormulaPreviewComponent {
     const blanks = Object.entries(row.inputs)
       .filter(([, value]) => value === null)
       .map(([name]) => name);
-    if (blanks.length === 0) return null;
+    if (blanks.length === 0) {
+      return null;
+    }
     return `because ${blanks.map((b) => `[${b}]`).join(', ')} ${blanks.length === 1 ? 'is' : 'are'} blank`;
   }
 }

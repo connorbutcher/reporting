@@ -3,6 +3,7 @@ using Reporting.Abstractions;
 using Reporting.Database;
 using Reporting.DAL.Filtering;
 using Reporting.DAL.Formulas;
+using Reporting.DAL.Formulas.References;
 
 namespace Reporting.DAL.Repositories;
 
@@ -348,7 +349,11 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
         await db.SaveChangesAsync();
 
         // A new column can be what a formula that was waiting on a missing column needs.
-        if (dataset.Columns.Any(c => c.FormulaError is not null)) await formulas.RecalculateAsync(dataset);
+        if (dataset.Columns.Any(c => c.FormulaError is not null))
+        {
+            await formulas.RecalculateAsync(dataset);
+        }
+
         return column.ToDto();
     }
 
@@ -367,7 +372,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
         column.Type = type;
 
         // Formulas name columns, so a rename carries through to the formulas that read this one.
-        if (!string.Equals(oldName, name, StringComparison.Ordinal)) FormulaColumnRename.Apply(dataset.Columns, oldName, name);
+        if (!string.Equals(oldName, name, StringComparison.Ordinal))
+        {
+            FormulaColumnRename.Apply(dataset.Columns, oldName, name);
+        }
 
         if (typeChanged)
         {
@@ -380,7 +388,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
         await db.SaveChangesAsync();
 
         // Formulas that read this column see different values (or types) now.
-        if (typeChanged && dataset.Columns.Any(c => c.IsComputed)) await formulas.RecalculateAsync(dataset);
+        if (typeChanged && dataset.Columns.Any(c => c.IsComputed))
+        {
+            await formulas.RecalculateAsync(dataset);
+        }
         return column.ToDto();
     }
 

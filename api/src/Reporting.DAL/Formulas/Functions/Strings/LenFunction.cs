@@ -5,8 +5,10 @@ namespace Reporting.DAL.Formulas.Functions.Strings;
 /// <summary>The number of characters in the text.</summary>
 public sealed class LenFunction : IFormulaFunctionImplementation
 {
-    public string Key => "LEN";
+    public string Key { get; } = "LEN";
 
-    public object? Invoke(IReadOnlyList<object?> args) =>
-        (double)Text(args, 0).Length;
+    public object? Invoke(IReadOnlyList<object?> args)
+    {
+        return (double)Text(args, 0).Length;
+    }
 }

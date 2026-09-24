@@ -16,7 +16,7 @@ import {
 } from '../../home/confirm-dialog/confirm-dialog.component';
 import { DatasetsStore } from '../datasets.store';
 import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula-builder-dialog.component';
-import { FormulaBuilderData } from '../formula-builder-dialog/formula-builder.store';
+import { FormulaBuilderData } from '../formula-builder-dialog/store/formula-builder-data';
 import { describeUse, summariseUses, useDetails } from '../state/column-usage-display';
 
 const COLUMN_TYPES: { label: string; value: DatasetColumnType }[] = [

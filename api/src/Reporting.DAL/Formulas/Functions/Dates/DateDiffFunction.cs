@@ -5,7 +5,7 @@ namespace Reporting.DAL.Formulas.Functions.Dates;
 /// <summary>The whole units from one date to another; negative when the end is earlier.</summary>
 public sealed class DateDiffFunction : IFormulaFunctionImplementation
 {
-    public string Key => "DATEDIFF";
+    public string Key { get; } = "DATEDIFF";
 
     public object? Invoke(IReadOnlyList<object?> args)
     {
@@ -13,20 +13,29 @@ public sealed class DateDiffFunction : IFormulaFunctionImplementation
         var start = Date(args, 1);
         var end = Date(args, 2);
 
-        if (unit is "year" or "month")
+        if (unit == "year")
         {
-            var months = DateUnits.WholeMonths(start, end);
-            return (double)(unit == "year" ? months / 12 : months);
+            return (double)(DateUnits.WholeMonths(start, end) / 12);
+        }
+
+        if (unit == "month")
+        {
+            return (double)DateUnits.WholeMonths(start, end);
         }
 
         var span = end - start;
-        return unit switch
+        switch (unit)
         {
-            "week" => Math.Truncate(span.TotalDays / 7),
-            "day" => Math.Truncate(span.TotalDays),
-            "hour" => Math.Truncate(span.TotalHours),
-            "minute" => Math.Truncate(span.TotalMinutes),
-            _ => Math.Truncate(span.TotalSeconds)
-        };
+            case "week":
+                return Math.Truncate(span.TotalDays / 7);
+            case "day":
+                return Math.Truncate(span.TotalDays);
+            case "hour":
+                return Math.Truncate(span.TotalHours);
+            case "minute":
+                return Math.Truncate(span.TotalMinutes);
+            default:
+                return Math.Truncate(span.TotalSeconds);
+        }
     }
 }

@@ -5,8 +5,10 @@ namespace Reporting.DAL.Formulas.Functions.Dates;
 /// <summary>The calendar quarter of a date, 1 to 4.</summary>
 public sealed class QuarterFunction : IFormulaFunctionImplementation
 {
-    public string Key => "QUARTER";
+    public string Key { get; } = "QUARTER";
 
-    public object? Invoke(IReadOnlyList<object?> args) =>
-        (double)((Date(args, 0).Month - 1) / 3 + 1);
+    public object? Invoke(IReadOnlyList<object?> args)
+    {
+        return (double)((Date(args, 0).Month - 1) / 3 + 1);
+    }
 }

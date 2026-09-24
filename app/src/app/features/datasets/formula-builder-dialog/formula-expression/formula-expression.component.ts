@@ -4,27 +4,20 @@ import { FormulaBuilderStore } from '../formula-builder.store';
 import {
   Expression,
   ExpressionAddress,
+  FormulaIssue,
   FormulaItem,
   FunctionBlock,
   KIND_BADGES,
   columnTypeKind,
+  kindOfExpression,
   operatorDefinition,
   operatorSymbol,
   parameterFor,
-} from '../model/formula-block';
-import { FormulaIssue, kindOfExpression, parametersOf } from '../model/formula-checker';
-
-/** One argument of a function, prepared for the template. */
-interface ArgumentView {
-  index: number;
-  expression: Expression;
-  parameter: FormulaParameter | null;
-  label: string;
-  /** Problems with the argument as a whole: empty when it needs a value, or the wrong kind of value. */
-  issues: FormulaIssue[];
-  /** A repeating parameter's spare argument the user can take away again. */
-  removable: boolean;
-}
+  parametersOf,
+} from '../model';
+import { ArgumentView } from './argument-view';
+import { ArgumentViews } from './argument-views';
+import { ResultBadge } from './result-badge';
 
 /**
  * An expression: the items of a formula, or of one function argument or bracket group, in the order the
@@ -79,6 +72,8 @@ export class FormulaExpressionComponent {
 
   private readonly store = inject(FormulaBuilderStore);
   private readonly addresses = new Map<string, ExpressionAddress>();
+  private readonly argumentViews = new WeakMap<FunctionBlock, ArgumentViews>();
+  private readonly badgesByItem = new WeakMap<FormulaItem, ResultBadge>();
 
   /** A stable address object per function argument or group, so nested inputs don't see a "new" value on every check. */
   public addressOf(ownerId: number, arg: number): ExpressionAddress {
@@ -91,20 +86,32 @@ export class FormulaExpressionComponent {
     return address;
   }
 
+  /** The call's arguments prepared for the template; remembered per call, so a check that changes nothing about it allocates nothing. */
   public argumentsOf(call: FunctionBlock): ArgumentView[] {
-    const params = parametersOf(call, this.store.scope());
+    const scope = this.store.scope();
     const argumentIssues = this.store.argumentIssues();
-    return call.args.map((expression, index) => {
+
+    const cached = this.argumentViews.get(call);
+    if (cached && cached.scope === scope && cached.issues === argumentIssues) {
+      return cached.views;
+    }
+
+    const params = parametersOf(call, scope);
+    const views: ArgumentView[] = [];
+    for (let index = 0; index < call.args.length; index++) {
       const parameter = params.length ? parameterFor(params, index) : null;
-      return {
+      views.push({
         index,
-        expression,
+        expression: call.args[index],
         parameter,
-        label: parameter ? (parameter.isVariadic ? `${parameter.name} ${index - params.length + 2}` : parameter.name) : `value ${index + 1}`,
+        label: this.argumentLabel(parameter, params.length, index),
         issues: argumentIssues.get(`${call.id}:${index}`) ?? [],
         removable: !!parameter?.isVariadic && index >= params.length,
-      };
-    });
+      });
+    }
+
+    this.argumentViews.set(call, { scope, issues: argumentIssues, views });
+    return views;
   }
 
   /** The repeating parameter a call ends in, so it offers an "add another" button. */
@@ -115,7 +122,15 @@ export class FormulaExpressionComponent {
 
   /** The kind of value an item produces, for a function's return badge. */
   public resultBadge(item: FormulaItem): string {
-    return this.badges[kindOfExpression([item], this.store.scope())];
+    const scope = this.store.scope();
+    const cached = this.badgesByItem.get(item);
+    if (cached && cached.scope === scope) {
+      return cached.badge;
+    }
+
+    const badge = this.badges[kindOfExpression([item], scope)];
+    this.badgesByItem.set(item, { scope, badge });
+    return badge;
   }
 
   public columnBadge(name: string): string {
@@ -188,29 +203,39 @@ export class FormulaExpressionComponent {
     if ((event.target as HTMLElement).closest('.expr') === event.currentTarget) {
       this.store.active.set(this.address());
       // Clicking the empty part of the row lets go of the selection.
-      if (event.target === event.currentTarget) this.store.clearSelection();
+      if (event.target === event.currentTarget) {
+        this.store.clearSelection();
+      }
     }
   }
 
   /** Selects an item: on its own, with Shift extended from the last one to this, with Ctrl or Cmd added or taken out. */
   public select(event: MouseEvent, item: FormulaItem): void {
     // Buttons and text boxes inside an item do their own thing.
-    if ((event.target as HTMLElement).closest('button, input')) return;
+    if ((event.target as HTMLElement).closest('button, input')) {
+      return;
+    }
     this.store.select(item.id, event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'single');
   }
 
   /** A group is selected by clicking its brackets or its edge — a click inside it belongs to what is in there. */
   public selectGroup(event: MouseEvent, item: FormulaItem): void {
     const target = event.target as HTMLElement;
-    if (target === event.currentTarget || target.classList.contains('paren')) this.select(event, item);
+    if (target === event.currentTarget || target.classList.contains('paren')) {
+      this.select(event, item);
+    }
   }
 
   public startDrag(event: DragEvent, item: FormulaItem): void {
     event.stopPropagation();
     event.dataTransfer?.setData('text/plain', String(item.id));
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
     // Set after the browser has taken its drag image, so the highlights don't end up in it.
-    setTimeout(() => this.store.dragging.set({ kind: 'block', id: item.id }));
+    setTimeout(() => {
+      this.store.dragging.set({ kind: 'block', id: item.id });
+    });
   }
 
   public endDrag(): void {
@@ -220,28 +245,40 @@ export class FormulaExpressionComponent {
   }
 
   public dragOver(event: DragEvent): void {
-    if (!this.store.dragging()) return;
+    if (!this.store.dragging()) {
+      return;
+    }
     event.stopPropagation();
     if (!this.store.canDropAt(this.address())) {
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'none';
+      }
       return;
     }
 
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
     this.over.set(true);
     this.store.dropPoint.set({ address: this.address(), index: this.insertionIndex(event) });
   }
 
   public dragLeave(event: DragEvent): void {
     const next = event.relatedTarget as Node | null;
-    if (next && (event.currentTarget as HTMLElement).contains(next)) return;
+    if (next && (event.currentTarget as HTMLElement).contains(next)) {
+      return;
+    }
     this.over.set(false);
-    if (this.caret() >= 0) this.store.dropPoint.set(null);
+    if (this.caret() >= 0) {
+      this.store.dropPoint.set(null);
+    }
   }
 
   public drop(event: DragEvent): void {
-    if (!this.store.dragging()) return;
+    if (!this.store.dragging()) {
+      return;
+    }
     event.stopPropagation();
     this.over.set(false);
     if (!this.store.canDropAt(this.address())) {
@@ -288,11 +325,21 @@ export class FormulaExpressionComponent {
   }
 
   public unhover(item: FormulaItem): void {
-    if (this.store.hovered() === item.id) this.store.hovered.set(null);
+    if (this.store.hovered() === item.id) {
+      this.store.hovered.set(null);
+    }
   }
 
   public trackIssue(issue: FormulaIssue): string {
     return `${issue.kind}-${issue.blockId}-${issue.arg ?? 'x'}-${issue.message}`;
+  }
+
+  private argumentLabel(parameter: FormulaParameter | null, parameterCount: number, index: number): string {
+    if (!parameter) {
+      return `value ${index + 1}`;
+    }
+
+    return parameter.isVariadic ? `${parameter.name} ${index - parameterCount + 2}` : parameter.name;
   }
 
   /**
@@ -304,8 +351,12 @@ export class FormulaExpressionComponent {
     const items = Array.from(row.children).filter((child) => child.hasAttribute('data-item'));
     for (let i = 0; i < items.length; i++) {
       const box = items[i].getBoundingClientRect();
-      if (event.clientY < box.top) return i;
-      if (event.clientY <= box.bottom && event.clientX < box.left + box.width / 2) return i;
+      if (event.clientY < box.top) {
+        return i;
+      }
+      if (event.clientY <= box.bottom && event.clientX < box.left + box.width / 2) {
+        return i;
+      }
     }
     return items.length;
   }

@@ -4,10 +4,11 @@ import {
   FormulaFunction,
   FormulaFunctionCategory,
 } from '../../../../core/models/dataset';
-import { FormulaBuilderStore, DragPayload } from '../formula-builder.store';
-import { KIND_BADGES, KIND_LABELS, OPERATORS, OperatorDefinition, columnTypeKind } from '../model/formula-block';
+import { FormulaBuilderStore } from '../formula-builder.store';
+import { PalettePayload } from '../store/palette-payload';
+import { KIND_BADGES, KIND_LABELS, OPERATORS, OperatorDefinition, columnTypeKind } from '../model';
 
-type PaletteItem = Exclude<DragPayload, { kind: 'block' }>;
+type PaletteItem = PalettePayload;
 
 interface FunctionGroup {
   category: FormulaFunctionCategory;
@@ -90,9 +91,13 @@ export class FormulaPaletteComponent {
 
   public startDrag(event: DragEvent, item: PaletteItem): void {
     event.dataTransfer?.setData('text/plain', 'formula-block');
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove';
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'copyMove';
+    }
     // Set after the browser has taken its drag image, so the highlights don't appear in it.
-    setTimeout(() => this.store.dragging.set(item));
+    setTimeout(() => {
+      this.store.dragging.set(item);
+    });
   }
 
   public endDrag(): void {

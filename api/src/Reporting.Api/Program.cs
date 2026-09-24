@@ -5,6 +5,7 @@ using Reporting.Api;
 using Reporting.Abstractions;
 using Reporting.DAL.Identity;
 using Reporting.DAL.Formulas;
+using Reporting.DAL.Formulas.Catalogue;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;

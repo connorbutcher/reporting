@@ -5,8 +5,11 @@ namespace Reporting.DAL.Formulas.Functions.Dates;
 /// <summary>The last day of the date's month.</summary>
 public sealed class EndOfMonthFunction : IFormulaFunctionImplementation
 {
-    public string Key => "ENDOFMONTH";
+    public string Key { get; } = "ENDOFMONTH";
 
-    public object? Invoke(IReadOnlyList<object?> args) =>
-        new DateTime(Date(args, 0).Year, Date(args, 0).Month, DateTime.DaysInMonth(Date(args, 0).Year, Date(args, 0).Month));
+    public object? Invoke(IReadOnlyList<object?> args)
+    {
+        var date = Date(args, 0);
+        return new DateTime(date.Year, date.Month, DateTime.DaysInMonth(date.Year, date.Month));
+    }
 }

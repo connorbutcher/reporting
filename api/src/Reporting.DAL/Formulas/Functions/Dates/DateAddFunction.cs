@@ -5,7 +5,7 @@ namespace Reporting.DAL.Formulas.Functions.Dates;
 /// <summary>Adds an amount of a unit to a date; blank when the result leaves the calendar.</summary>
 public sealed class DateAddFunction : IFormulaFunctionImplementation
 {
-    public string Key => "DATEADD";
+    public string Key { get; } = "DATEADD";
 
     public object? Invoke(IReadOnlyList<object?> args)
     {
@@ -15,16 +15,23 @@ public sealed class DateAddFunction : IFormulaFunctionImplementation
 
         try
         {
-            return unit switch
+            switch (unit)
             {
-                "year" => date.AddYears((int)Math.Truncate(amount)),
-                "month" => date.AddMonths((int)Math.Truncate(amount)),
-                "week" => date.AddDays(amount * 7),
-                "day" => date.AddDays(amount),
-                "hour" => date.AddHours(amount),
-                "minute" => date.AddMinutes(amount),
-                _ => date.AddSeconds(amount)
-            };
+                case "year":
+                    return date.AddYears((int)Math.Truncate(amount));
+                case "month":
+                    return date.AddMonths((int)Math.Truncate(amount));
+                case "week":
+                    return date.AddDays(amount * 7);
+                case "day":
+                    return date.AddDays(amount);
+                case "hour":
+                    return date.AddHours(amount);
+                case "minute":
+                    return date.AddMinutes(amount);
+                default:
+                    return date.AddSeconds(amount);
+            }
         }
         catch (ArgumentOutOfRangeException)
         {

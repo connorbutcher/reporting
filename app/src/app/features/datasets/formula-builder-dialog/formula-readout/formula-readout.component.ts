@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { FormulaBuilderStore } from '../formula-builder.store';
-import { FormulaSegment } from '../model/formula-serializer';
+import { FormulaSegment } from '../model';
 
 /**
  * The formula as the text that will be saved: indented so nested calls read as a tree, coloured by kind of
@@ -23,7 +23,9 @@ export class FormulaReadoutComponent {
   private readonly badBlocks = computed(() => new Set(this.store.blockIssues().keys()));
 
   public isBad(segment: FormulaSegment): boolean {
-    if (segment.style === 'missing') return true;
+    if (segment.style === 'missing') {
+      return true;
+    }
     return segment.blockId !== null && segment.style !== 'punctuation' && this.badBlocks().has(segment.blockId);
   }
 
@@ -32,7 +34,9 @@ export class FormulaReadoutComponent {
   }
 
   public hover(segment: FormulaSegment): void {
-    if (segment.blockId !== null) this.store.hovered.set(segment.blockId);
+    if (segment.blockId !== null) {
+      this.store.hovered.set(segment.blockId);
+    }
   }
 
   public unhover(): void {

@@ -1,7 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { FormulaBuilderStore } from '../formula-builder.store';
-import { FormulaIssue } from '../model/formula-checker';
+import { FormulaIssue } from '../model';
 
 /**
  * Every problem with the formula in one list. Each is also shown on the block that caused it; this is the

@@ -37,7 +37,9 @@ export class FormulaSelectionBarComponent {
   }
 
   public wrapIn(fn: FormulaFunction | null, select: Select): void {
-    if (fn) this.store.wrapSelectionInFunction(fn.name);
+    if (fn) {
+      this.store.wrapSelectionInFunction(fn.name);
+    }
     select.writeValue(null); // ready for the next one
   }
 

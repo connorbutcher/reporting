@@ -12,11 +12,28 @@ public static class FormulaFunctionImplementations
 {
     public static IReadOnlyDictionary<string, IFormulaFunctionImplementation> All { get; } = Discover();
 
-    private static Dictionary<string, IFormulaFunctionImplementation> Discover() =>
-        typeof(IFormulaFunctionImplementation).Assembly
-            .GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false } && t.IsAssignableTo(typeof(IFormulaFunctionImplementation)))
-            .Where(t => t.GetConstructor(Type.EmptyTypes) is not null)
-            .Select(t => (IFormulaFunctionImplementation)Activator.CreateInstance(t)!)
-            .ToDictionary(f => f.Key, StringComparer.OrdinalIgnoreCase);
+    private static Dictionary<string, IFormulaFunctionImplementation> Discover()
+    {
+        var implementations = new Dictionary<string, IFormulaFunctionImplementation>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var type in typeof(IFormulaFunctionImplementation).Assembly.GetTypes())
+        {
+            if (!IsImplementation(type))
+            {
+                continue;
+            }
+
+            var implementation = (IFormulaFunctionImplementation)Activator.CreateInstance(type)!;
+            implementations.Add(implementation.Key, implementation);
+        }
+
+        return implementations;
+    }
+
+    private static bool IsImplementation(Type type)
+    {
+        return type is { IsClass: true, IsAbstract: false }
+            && type.IsAssignableTo(typeof(IFormulaFunctionImplementation))
+            && type.GetConstructor(Type.EmptyTypes) is not null;
+    }
 }

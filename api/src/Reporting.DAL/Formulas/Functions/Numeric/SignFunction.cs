@@ -5,8 +5,10 @@ namespace Reporting.DAL.Formulas.Functions.Numeric;
 /// <summary>-1, 0 or 1 according to the number's sign.</summary>
 public sealed class SignFunction : IFormulaFunctionImplementation
 {
-    public string Key => "SIGN";
+    public string Key { get; } = "SIGN";
 
-    public object? Invoke(IReadOnlyList<object?> args) =>
-        (double)Math.Sign(Number(args, 0));
+    public object? Invoke(IReadOnlyList<object?> args)
+    {
+        return (double)Math.Sign(Number(args, 0));
+    }
 }
