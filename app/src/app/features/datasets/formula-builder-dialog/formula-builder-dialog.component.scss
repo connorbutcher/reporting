@@ -1,0 +1,171 @@
+:host {
+  --fb-accent: #2563eb;
+  --fb-accent-wash: #eff6ff;
+  --fb-border: #cbd5e1;
+  --fb-card-bg: #f8fafc;
+  --fb-card-border: #cbd5e1;
+  --fb-rail: #c7d2fe;
+  --fb-function-fg: #3730a3;
+  --fb-column-bg: #e0ecff;
+  --fb-column-fg: #1e40af;
+  --fb-column-border: #b6cdf5;
+  --fb-value-bg: #e4f5ec;
+  --fb-value-fg: #166534;
+  --fb-value-border: #b5dfc6;
+  --fb-error-bg: #fdecec;
+  --fb-error-fg: #b42318;
+  --fb-error-border: #f0a29b;
+
+  display: flex;
+  flex-direction: column;
+  width: min(1320px, calc(100vw - 32px));
+  height: min(880px, calc(100vh - 32px));
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--app-card-border);
+
+  .title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--app-navy);
+  }
+
+  .close {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #475569;
+    padding: 6px;
+    border-radius: 6px;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+}
+
+// The workspace fills what the bar leaves, and each column scrolls on its own, so nothing hides behind the dialog scrolling.
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 20px;
+  background: var(--app-page-bg);
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    input {
+      width: 220px;
+    }
+  }
+
+  .summary {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-bottom: 6px;
+  }
+
+  .tools {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+  }
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--app-card-border);
+  background: #fff;
+  font-size: 0.78rem;
+  color: #334155;
+
+  &.ok {
+    background: #e4f5ec;
+    color: #166534;
+    border-color: #b5dfc6;
+  }
+
+  &.bad {
+    background: var(--fb-error-bg);
+    color: var(--fb-error-fg);
+    border-color: var(--fb-error-border);
+  }
+}
+
+.name-error {
+  margin: -4px 0 0;
+  font-size: 0.8rem;
+  color: var(--fb-error-fg);
+}
+
+// Palette | canvas | the formula read back, its problems and a preview.
+.workspace {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 320px;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+
+  app-formula-palette,
+  app-formula-canvas,
+  .side {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+input.pristine {
+  // Empty is not yet an error: only show the field red once it has been touched.
+  border-color: #cbd5e1;
+
+  &::placeholder {
+    color: #64748b;
+  }
+}
+
+.foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--app-card-border);
+}

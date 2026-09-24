@@ -1,0 +1,210 @@
+<div
+  class="expr"
+  [class.large]="large()"
+  [class.empty]="items().length === 0"
+  [class.armed]="armed()"
+  [class.over]="over()"
+  [class.active]="isActive()"
+  (dragover)="dragOver($event)"
+  (dragleave)="dragLeave($event)"
+  (drop)="drop($event)"
+  (click)="activate($event)"
+>
+  @for (item of items(); track item.id; let i = $index) {
+    @if (caret() === i) {
+      <span class="caret" aria-hidden="true"></span>
+    }
+
+    @switch (item.kind) {
+      @case ('column') {
+        <span
+          class="chip column"
+          data-item
+          [class.bad]="isBad(item.id)"
+          [class.linked]="isLinked(item.id)"
+          [class.flash]="isFlashed(item.id)"
+          [attr.data-block-id]="item.id"
+          draggable="true"
+          (dragstart)="startDrag($event, item)"
+          (dragend)="endDrag()"
+          (mouseover)="hover($event, item)"
+          (mouseleave)="unhover(item)"
+        >
+          <i class="pi pi-table" aria-hidden="true"></i>
+          <span class="chip-name" [attr.title]="item.name">{{ item.name }}</span>
+          <span class="badge">{{ columnBadge(item.name) }}</span>
+          <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove column ' + item.name">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </span>
+      }
+
+      @case ('literal') {
+        <span
+          class="chip literal"
+          data-item
+          [class.bad]="isBad(item.id)"
+          [class.linked]="isLinked(item.id)"
+          [class.flash]="isFlashed(item.id)"
+          [attr.data-block-id]="item.id"
+          draggable="true"
+          (dragstart)="startDrag($event, item)"
+          (dragend)="endDrag()"
+          (mouseover)="hover($event, item)"
+          (mouseleave)="unhover(item)"
+        >
+          @if (isBlank(item)) {
+            <span class="chip-name muted">blank</span>
+          } @else if (isBool(item)) {
+            <span class="chip-name">{{ boolText(item) }}</span>
+          } @else {
+            @if (isText(item)) {
+              <span aria-hidden="true">"</span>
+            }
+            <input
+              class="literal-input"
+              [value]="literalText(item)"
+              [style.width.ch]="literalWidth(item)"
+              (change)="setLiteral($event, item)"
+              (dragstart)="$event.preventDefault()"
+              aria-label="Value"
+            />
+            @if (isText(item)) {
+              <span aria-hidden="true">"</span>
+            }
+          }
+          <button type="button" class="icon-btn" (click)="remove(item)" aria-label="Remove value">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </span>
+      }
+
+      @case ('operator') {
+        <span
+          class="op"
+          data-item
+          [class.word]="isWord(item.op)"
+          [class.bad]="isBad(item.id)"
+          [class.linked]="isLinked(item.id)"
+          [class.flash]="isFlashed(item.id)"
+          [attr.data-block-id]="item.id"
+          [attr.title]="operatorName(item.op)"
+          draggable="true"
+          (dragstart)="startDrag($event, item)"
+          (dragend)="endDrag()"
+          (mouseover)="hover($event, item)"
+          (mouseleave)="unhover(item)"
+        >
+          <span class="op-symbol">{{ symbol(item.op) }}</span>
+          <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove ' + operatorName(item.op)">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </span>
+      }
+
+      @case ('group') {
+        <div
+          class="group"
+          data-item
+          [class.bad]="isBad(item.id)"
+          [class.linked]="isLinked(item.id)"
+          [class.flash]="isFlashed(item.id)"
+          [attr.data-block-id]="item.id"
+          (mouseover)="hover($event, item)"
+          (mouseleave)="unhover(item)"
+        >
+          <span class="paren" draggable="true" (dragstart)="startDrag($event, item)" (dragend)="endDrag()" title="Brackets: work out what is inside first">(</span>
+          <app-formula-expression [items]="item.body" [address]="addressOf(item.id, 0)" hint="Drop or type inside the brackets" />
+          <span class="paren" aria-hidden="true">)</span>
+          <button type="button" class="icon-btn" (click)="remove(item)" aria-label="Remove the brackets and what is inside">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </div>
+      }
+
+      @case ('function') {
+        <div
+          class="card"
+          data-item
+          [class.bad]="isBad(item.id)"
+          [class.linked]="isLinked(item.id)"
+          [class.flash]="isFlashed(item.id)"
+          [attr.data-block-id]="item.id"
+          (mouseover)="hover($event, item)"
+          (mouseleave)="unhover(item)"
+        >
+          <div class="card-head" draggable="true" (dragstart)="startDrag($event, item)" (dragend)="endDrag()">
+            <button
+              type="button"
+              class="icon-btn"
+              (click)="toggle(item)"
+              [attr.aria-expanded]="!isCollapsed(item.id)"
+              [attr.aria-label]="(isCollapsed(item.id) ? 'Expand ' : 'Collapse ') + item.name"
+            >
+              <i class="pi" [class.pi-chevron-right]="isCollapsed(item.id)" [class.pi-chevron-down]="!isCollapsed(item.id)" aria-hidden="true"></i>
+            </button>
+            <span class="card-name">{{ item.name }}({{ isCollapsed(item.id) ? '…)' : '' }}</span>
+            <span class="badge" title="What this returns">→ {{ resultBadge(item) }}</span>
+            <span class="spacer"></span>
+            <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove ' + item.name">
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          @if (!isCollapsed(item.id)) {
+            <div class="args">
+              @for (view of argumentsOf(item); track view.index) {
+                <div class="arg" [class.bad]="view.issues.length > 0">
+                  <div class="arg-label">
+                    <span class="arg-name">{{ view.label }}</span>
+                    @if (view.parameter) {
+                      <span class="badge">{{ badges[view.parameter.kind] }}</span>
+                      @if (view.parameter.isOptional) {
+                        <span class="optional">optional</span>
+                      }
+                    }
+                  </div>
+                  <div class="arg-body">
+                    <app-formula-expression [items]="view.expression" [address]="addressOf(item.id, view.index)" />
+                    @for (issue of view.issues; track trackIssue(issue)) {
+                      <p class="issue" role="alert">
+                        <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+                        <span>{{ issue.message }}</span>
+                      </p>
+                    }
+                    @if (view.removable) {
+                      <button type="button" class="link" (click)="removeArgument(item, view)">Remove this argument</button>
+                    }
+                  </div>
+                </div>
+              }
+              @if (repeating(item); as repeat) {
+                <button type="button" class="add" (click)="addArgument(item)">
+                  <i class="pi pi-plus" aria-hidden="true"></i> Add another {{ repeat.name }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  }
+
+  @if (caret() === items().length) {
+    <span class="caret" aria-hidden="true"></span>
+  }
+
+  <input
+    class="type-in"
+    [placeholder]="items().length === 0 ? hint() : 'type…'"
+    (change)="type($event)"
+    [attr.aria-label]="items().length === 0 ? hint() : 'Type a value or operator to add here'"
+  />
+</div>
+
+@for (issue of ownIssues(); track trackIssue(issue)) {
+  <p class="issue" role="alert">
+    <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ issue.message }}</span>
+  </p>
+}

@@ -1,0 +1,80 @@
+<header class="head">
+  <h2 class="title">{{ editing() ? 'Edit formula column' : 'New formula column' }}</h2>
+  <button type="button" class="close" (click)="cancel()" aria-label="Close">
+    <i class="pi pi-times" aria-hidden="true"></i>
+  </button>
+</header>
+
+<div class="body">
+  <div class="bar">
+    <div class="field">
+      <label for="formula-name">Column name</label>
+      <input
+        id="formula-name"
+        pInputText
+        [formField]="nameForm.name"
+        [class.pristine]="!nameTouched()"
+        placeholder="Line total"
+        [attr.aria-invalid]="nameError() ? 'true' : null"
+      />
+    </div>
+    <div class="field">
+      <label for="formula-type">Column type</label>
+      <p-select
+        inputId="formula-type"
+        [options]="typeOptions"
+        [ngModel]="chosenType()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        ariaLabel="Column type"
+        (onChange)="setType($event.value)"
+      />
+    </div>
+    <div class="summary">
+      <span class="pill">{{ resultText() }}</span>
+      <span class="pill" [class.ok]="status().tone === 'ok'" [class.bad]="status().tone === 'bad'" aria-live="polite">
+        @switch (status().tone) {
+          @case ('ok') {
+            <i class="pi pi-check" aria-hidden="true"></i>
+          }
+          @case ('bad') {
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+          }
+          @case ('busy') {
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          }
+        }
+        {{ status().text }}
+      </span>
+    </div>
+    <div class="tools">
+      <p-button label="Undo" icon="pi pi-undo" severity="secondary" text size="small" [disabled]="!canUndo()" (onClick)="undo()" />
+      <p-button label="Redo" severity="secondary" text size="small" [disabled]="!canRedo()" (onClick)="redo()" />
+      <p-button label="Clear" severity="secondary" text size="small" (onClick)="clear()" />
+    </div>
+  </div>
+  @if (nameError(); as message) {
+    <p class="name-error" role="alert">{{ message }}</p>
+  }
+
+  <div class="workspace">
+    <app-formula-palette />
+    <app-formula-canvas />
+    <div class="side">
+      <app-formula-readout />
+      <app-formula-problems />
+      <app-formula-preview />
+    </div>
+  </div>
+</div>
+
+<footer class="foot">
+  <p-button label="Cancel" severity="secondary" outlined (onClick)="cancel()" />
+  <p-button
+    [label]="editing() ? 'Save changes' : 'Add column'"
+    icon="pi pi-check"
+    [loading]="saving()"
+    (onClick)="save()"
+  />
+</footer>

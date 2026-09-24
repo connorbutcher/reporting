@@ -15,6 +15,8 @@ import {
   ConfirmDialogData,
 } from '../../home/confirm-dialog/confirm-dialog.component';
 import { DatasetsStore } from '../datasets.store';
+import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula-builder-dialog.component';
+import { FormulaBuilderData } from '../formula-builder-dialog/formula-builder.store';
 import { describeUse, summariseUses, useDetails } from '../state/column-usage-display';
 
 const COLUMN_TYPES: { label: string; value: DatasetColumnType }[] = [
@@ -250,6 +252,22 @@ export class DatasetColumnsPanelComponent {
       confirmLabel: 'Delete',
       danger: true,
     };
+  }
+
+  /** Opens the formula builder to add a formula column, or — given one — to edit it. */
+  protected openFormulaBuilder(column: DatasetColumn | null): void {
+    const datasetId = this.store.selectedId();
+    if (datasetId === null) return;
+
+    this.dialog
+      .open<DatasetColumn | undefined, FormulaBuilderData>(FormulaBuilderDialogComponent, {
+        data: { datasetId, columns: this.columns(), column },
+        ariaLabel: 'Formula builder',
+        autoFocus: 'dialog',
+      })
+      .closed.subscribe((saved) => {
+        if (saved) this.store.applyFormulaColumnSaved(saved);
+      });
   }
 
   protected move(index: number, offset: number): void {

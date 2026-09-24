@@ -1,0 +1,133 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 10px;
+  background: #fff;
+  overflow-y: auto;
+}
+
+.search {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+
+  &:focus {
+    outline: 2px solid var(--fb-accent);
+    outline-offset: -1px;
+  }
+}
+
+.group {
+  margin: 12px 0 5px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--fb-border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.8rem;
+  color: #0f172a;
+  cursor: grab;
+  user-select: none;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--fb-accent);
+    outline-offset: 1px;
+  }
+
+  &.column {
+    background: var(--fb-column-bg);
+    color: var(--fb-column-fg);
+    border-color: var(--fb-column-border);
+  }
+
+  &.value {
+    background: var(--fb-value-bg);
+    color: var(--fb-value-fg);
+    border-color: var(--fb-value-border);
+    font-family: var(--app-font-mono, monospace);
+  }
+
+  &.function {
+    font-family: var(--app-font-mono, monospace);
+    font-size: 0.76rem;
+    color: var(--fb-function-fg);
+  }
+
+  &.operator {
+    min-width: 30px;
+    justify-content: center;
+    font-weight: 600;
+  }
+
+  .badge {
+    font-size: 0.66rem;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid var(--app-card-border);
+    color: #475569;
+  }
+}
+
+.note {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #475569;
+
+  &.error {
+    color: var(--fb-error-fg);
+  }
+}
+
+.help {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--app-card-border);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #475569;
+  min-height: 84px;
+
+  p {
+    margin: 12px 0 0;
+  }
+
+  .help-title {
+    margin-top: 10px;
+    font-family: var(--app-font-mono, monospace);
+    font-weight: 600;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .hint {
+    color: var(--fb-error-fg);
+  }
+}

@@ -1,0 +1,12 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.canvas {
+  min-height: 100%;
+  padding: 12px;
+  border: 1px solid var(--app-card-border);
+  border-radius: 10px;
+  background: #fff;
+}

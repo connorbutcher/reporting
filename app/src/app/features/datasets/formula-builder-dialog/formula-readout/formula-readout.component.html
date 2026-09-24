@@ -1,0 +1,12 @@
+<h3 class="title">Formula</h3>
+@if (loadError(); as message) {
+  <p class="load-error" role="alert">
+    <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+    This column's saved formula couldn't be opened in the builder: {{ message }}
+  </p>
+}
+@if (empty()) {
+  <p class="empty">Nothing yet. Your formula will read here as you build it.</p>
+} @else {
+  <pre class="code" aria-label="The formula as text">@for (segment of segments(); track $index) {<span class="seg" [class]="segment.style" [class.bad]="isBad(segment)" [class.linked]="isLinked(segment)" (mouseenter)="hover(segment)" (mouseleave)="unhover()">{{ segment.text }}</span>}</pre>
+}

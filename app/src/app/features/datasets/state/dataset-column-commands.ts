@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -29,6 +30,31 @@ export class DatasetColumnCommands {
       .some((c) => c.id !== exceptId && c.name.trim().toLowerCase() === key);
   }
 
+  /**
+   * Takes on a formula column the builder dialog has just saved (it saved through its own request). A
+   * formula changes values server-side — its own column's, and any formula reading it — so the schema and
+   * rows are refetched rather than patched.
+   */
+  applyFormulaColumnSaved(column: DatasetColumn): void {
+    this.schema.columns.update((columns) =>
+      columns.some((c) => c.id === column.id) ? columns.map((c) => (c.id === column.id ? column : c)) : [...columns, column],
+    );
+    this.refreshComputed();
+  }
+
+  /** The explanation the server gave for a refused request (a conflict or validation failure), if it gave one. */
+  private serverMessage(err: unknown): string | null {
+    const refused = err instanceof HttpErrorResponse && (err.status === 400 || err.status === 409);
+    return refused && typeof err.error === 'string' && err.error ? err.error : null;
+  }
+
+  /** Refetches schema and rows when the dataset has formula columns, whose values follow other columns' changes. */
+  private refreshComputed(): void {
+    if (!this.schema.columns().some((c) => c.formula != null)) return;
+    this.schema.reload();
+    this.rows.reload();
+  }
+
   addColumn(name: string, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
@@ -40,7 +66,10 @@ export class DatasetColumnCommands {
     }
 
     this.autosave.track(this.api.addColumn(id, trimmed, type)).subscribe({
-      next: (column) => this.schema.columns.update((columns) => [...columns, column]),
+      next: (column) => {
+        this.schema.columns.update((columns) => [...columns, column]);
+        this.refreshComputed();
+      },
       error: (err) => this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
     });
   }
@@ -54,10 +83,13 @@ export class DatasetColumnCommands {
       return;
     }
     this.autosave.track(this.api.updateColumn(id, column.id, trimmed, column.type)).subscribe({
-      next: (updated) =>
+      next: (updated) => {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
-        ),
+        );
+        // Formulas that read this column were rewritten to its new name on the server.
+        this.refreshComputed();
+      },
       error: (err) => this.notify.apiError(err, "Couldn't rename the column. Please try again."),
     });
   }
@@ -66,11 +98,14 @@ export class DatasetColumnCommands {
     const id = this.collection.selectedId();
     if (!id || type === column.type) return;
     this.autosave.track(this.api.updateColumn(id, column.id, column.name, type)).subscribe({
-      next: (updated) =>
+      next: (updated) => {
         this.schema.columns.update((columns) =>
           columns.map((c) => (c.id === updated.id ? updated : c)),
-        ),
-      error: (err) => this.notify.apiError(err, "Couldn't change the column type. Please try again."),
+        );
+        this.refreshComputed();
+      },
+      error: (err) =>
+        this.notify.apiError(err, this.serverMessage(err) ?? "Couldn't change the column type. Please try again."),
     });
   }
 
@@ -90,7 +125,8 @@ export class DatasetColumnCommands {
         // The server strips the value too, so mirror that on the loaded rows.
         this.rows.stripColumn(column.id);
       },
-      error: (err) => this.notify.apiError(err, `Couldn't delete "${column.name}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, this.serverMessage(err) ?? `Couldn't delete "${column.name}". Please try again.`),
     });
   }
 

@@ -117,6 +117,14 @@ export class DatasetRowWindow {
     });
   }
 
+  /** Starts over from the first window — for after values changed on the server (a formula column recomputed). */
+  reload(): void {
+    const id = this.collection.selectedId();
+    if (id === null) return;
+    this._ready.set(false);
+    this.fetch(id, 0, WINDOW);
+  }
+
   /** Replaces the loaded row with the same id — used for optimistic edits and server confirmations. */
   replaceRow(row: DatasetRow): void {
     this._rows.update((rows) => rows.map((r) => (r?.id === row.id ? row : r)));

@@ -1,0 +1,137 @@
+<input
+  class="search"
+  type="search"
+  placeholder="Search columns and functions"
+  aria-label="Search columns and functions"
+  [value]="search()"
+  (input)="onSearch($event)"
+/>
+
+@switch (catalogueState()) {
+  @case ('loading') {
+    <p class="note">Loading functions…</p>
+  }
+  @case ('failed') {
+    <p class="note error">Couldn't load the function list. Close this and try again.</p>
+  }
+}
+
+@if (columns().length > 0) {
+  <h3 class="group">Columns</h3>
+  <div class="chips">
+    @for (column of columns(); track column.id) {
+      <button
+        type="button"
+        class="chip column"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'column', name: column.name })"
+        (dragend)="endDrag()"
+        (click)="add({ kind: 'column', name: column.name })"
+        (mouseenter)="explainColumn(column)"
+        (focus)="explainColumn(column)"
+        (mouseleave)="clearHelp()"
+        (blur)="clearHelp()"
+      >
+        <i class="pi pi-table" aria-hidden="true"></i>{{ column.name }}
+        <span class="badge">{{ columnBadge(column) }}</span>
+      </button>
+    }
+  </div>
+}
+
+@if (showValues()) {
+  <h3 class="group">Values</h3>
+  <div class="chips">
+    @for (value of values; track value.label) {
+      <button
+        type="button"
+        class="chip value"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'literal', value: value.value })"
+        (dragend)="endDrag()"
+        (click)="add({ kind: 'literal', value: value.value })"
+        (mouseenter)="explainValue(value.label)"
+        (focus)="explainValue(value.label)"
+        (mouseleave)="clearHelp()"
+        (blur)="clearHelp()"
+      >
+        {{ value.label }}
+      </button>
+    }
+  </div>
+}
+
+@if (shownOperators().length > 0) {
+  <h3 class="group">Operators</h3>
+  <div class="chips">
+    <button
+      type="button"
+      class="chip operator"
+      draggable="true"
+      aria-label="Brackets: work out what is inside first"
+      (dragstart)="startDrag($event, { kind: 'group' })"
+      (dragend)="endDrag()"
+      (click)="add({ kind: 'group' })"
+      (mouseenter)="explainGroup()"
+      (focus)="explainGroup()"
+      (mouseleave)="clearHelp()"
+      (blur)="clearHelp()"
+    >
+      ( )
+    </button>
+    @for (operator of shownOperators(); track operator.op) {
+      <button
+        type="button"
+        class="chip operator"
+        draggable="true"
+        [attr.aria-label]="operator.description"
+        (dragstart)="startDrag($event, { kind: 'operator', op: operator.op })"
+        (dragend)="endDrag()"
+        (click)="add({ kind: 'operator', op: operator.op })"
+        (mouseenter)="explainOperator(operator)"
+        (focus)="explainOperator(operator)"
+        (mouseleave)="clearHelp()"
+        (blur)="clearHelp()"
+      >
+        {{ operator.symbol }}
+      </button>
+    }
+  </div>
+}
+
+@for (group of groups(); track group.category) {
+  <h3 class="group">{{ group.label }}</h3>
+  <div class="chips">
+    @for (fn of group.functions; track fn.name) {
+      <button
+        type="button"
+        class="chip function"
+        draggable="true"
+        (dragstart)="startDrag($event, { kind: 'function', name: fn.name })"
+        (dragend)="endDrag()"
+        (click)="add({ kind: 'function', name: fn.name })"
+        (mouseenter)="explainFunction(fn)"
+        (focus)="explainFunction(fn)"
+        (mouseleave)="clearHelp()"
+        (blur)="clearHelp()"
+      >
+        {{ fn.name }}
+      </button>
+    }
+  </div>
+}
+
+@if (nothingFound() && catalogueState() === 'ready') {
+  <p class="note">Nothing matches "{{ search() }}".</p>
+}
+
+<div class="help" aria-live="polite">
+  @if (hint(); as message) {
+    <p class="hint">{{ message }}</p>
+  } @else if (help(); as info) {
+    <p class="help-title">{{ info.title }}</p>
+    <p>{{ info.text }}</p>
+  } @else {
+    <p>Drag a chip to a place in the formula. Click one to add it at the end of the row you last used.</p>
+  }
+</div>

@@ -1,0 +1,38 @@
+<h3 class="title">Preview on the first rows</h3>
+
+@if (!hasFormula()) {
+  <p class="note">Add something to the canvas to see its results.</p>
+} @else if (blocked()) {
+  <p class="note">Fix the problems above to see results.</p>
+} @else if (preview(); as result) {
+  @if (result.rows.length === 0) {
+    <p class="note">This dataset has no rows yet.</p>
+  } @else {
+    <table class="table" [class.stale]="checking()">
+      <thead>
+        <tr>
+          <th scope="col" class="row-no">Row</th>
+          <th scope="col">{{ columnName() }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of result.rows; track row.rowId; let i = $index) {
+          <tr>
+            <td class="row-no">{{ i + 1 }}</td>
+            <td>
+              @if (row.error) {
+                <span class="cell-error"><i class="pi pi-exclamation-circle" aria-hidden="true"></i> {{ row.error }}</span>
+              } @else if (row.value === null) {
+                <span class="blank">blank</span>
+              } @else {
+                {{ row.value }}
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+} @else {
+  <p class="note">{{ checking() ? 'Working out the results…' : 'No results yet.' }}</p>
+}

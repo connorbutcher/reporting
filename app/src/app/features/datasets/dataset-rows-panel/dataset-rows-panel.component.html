@@ -56,7 +56,12 @@
       <ng-template #header>
         <tr>
           @for (column of columns(); track column.id) {
-            <th>{{ column.name }}</th>
+            <th>
+              @if (column.formula != null) {
+                <i class="fx" title="Calculated from a formula">fx</i>
+              }
+              {{ column.name }}
+            </th>
           }
           <th class="actions"><span class="sr-only">Actions</span></th>
         </tr>
@@ -66,7 +71,9 @@
         <tr [style.height.px]="rowHeight">
           @for (column of columns(); track column.id) {
             <td>
-              @if (isBool(column)) {
+              @if (column.formula != null) {
+                <span class="cell computed" [attr.aria-label]="column.name + ' (calculated)'">{{ cellValue(row, column) }}</span>
+              } @else if (isBool(column)) {
                 <select
                   class="cell"
                   [value]="row.values[column.id] ?? 'False'"
