@@ -1,0 +1,39 @@
+<h3 class="title">
+  Problems
+  @if (issues().length > 0) {
+    <span class="count">{{ issues().length }}</span>
+  }
+</h3>
+
+@if (saveError(); as message) {
+  <p class="row error" role="alert">
+    <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+    <span>{{ message }}</span>
+  </p>
+}
+
+@if (issues().length > 0) {
+  <ul class="list">
+    @for (issue of issues(); track $index) {
+      <li>
+        <button type="button" class="row error" (click)="show(issue)">
+          <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+          <span>{{ issue.message }}</span>
+          <span class="go">Show</span>
+        </button>
+      </li>
+    }
+  </ul>
+} @else if (!hasFormula()) {
+  <p class="row muted">Nothing to check yet.</p>
+} @else if (!complete()) {
+  <p class="row muted"><i class="pi pi-info-circle" aria-hidden="true"></i> Fill in the empty slots to finish the formula.</p>
+} @else if (checkFailed()) {
+  <p class="row warn"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> Couldn't check this with the server just now. It's checked again when you save.</p>
+} @else if (checking()) {
+  <p class="row muted"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i> Checking…</p>
+} @else if (needsType()) {
+  <p class="row warn"><i class="pi pi-info-circle" aria-hidden="true"></i> The formula is fine, but its result could be a number or text depending on the row. Choose the column type above.</p>
+} @else {
+  <p class="row ok"><i class="pi pi-check-circle" aria-hidden="true"></i> Every function has what it needs, and the types line up.</p>
+}

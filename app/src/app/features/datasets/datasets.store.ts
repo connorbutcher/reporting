@@ -156,6 +156,11 @@ export class DatasetsStore {
     this.columnCommands.retypeColumn(column, type);
   }
 
+  /** Takes on a formula column the builder dialog saved. */
+  applyFormulaColumnSaved(column: DatasetColumn): void {
+    this.columnCommands.applyFormulaColumnSaved(column);
+  }
+
   deleteColumn(column: DatasetColumn): void {
     this.columnCommands.deleteColumn(column);
   }

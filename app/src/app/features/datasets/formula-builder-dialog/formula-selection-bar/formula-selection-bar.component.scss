@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--fb-accent);
+  border-radius: 8px;
+  background: var(--fb-accent-wash);
+
+  .count {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #1e3a8a;
+    margin-right: 4px;
+  }
+
+  .note {
+    font-size: 0.78rem;
+    color: #475569;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+}
+
+.fn-name {
+  font-family: var(--app-font-mono, monospace);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.fn-what {
+  font-size: 0.78rem;
+  color: #64748b;
+}

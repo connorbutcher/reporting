@@ -138,6 +138,33 @@ a.usage-name {
   color: #94a3b8;
 }
 
+// A calculated column carries "fx" where an ordinary one shows its type icon.
+.fx {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  font-size: 0.72rem;
+  font-style: italic;
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.formula-error {
+  margin: 0 0 0 22px;
+  font-size: 0.76rem;
+  color: #b42318;
+
+  .link {
+    border: none;
+    background: none;
+    padding: 0 0 0 4px;
+    font: inherit;
+    color: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
 .error {
   margin: 0;
   font-size: 0.78rem;

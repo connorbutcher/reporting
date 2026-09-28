@@ -31,6 +31,8 @@ public class ReportingDbContext : DbContext
     public DbSet<ReportViewState> ReportViewStates => Set<ReportViewState>();
     public DbSet<ReportSharedView> ReportSharedViews => Set<ReportSharedView>();
     public DbSet<FilterOperatorDefinition> FilterOperatorDefinitions => Set<FilterOperatorDefinition>();
+    public DbSet<FormulaFunctionDefinition> FormulaFunctionDefinitions => Set<FormulaFunctionDefinition>();
+    public DbSet<FormulaFunctionParameter> FormulaFunctionParameters => Set<FormulaFunctionParameter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -331,5 +333,30 @@ public class ReportingDbContext : DbContext
             .HasIndex(o => new { o.ColumnType, o.Operator })
             .IsUnique();
         modelBuilder.Entity<FilterOperatorDefinition>().HasData(FilterOperatorSeedData.Rows());
+
+        // --- formula function catalogue ------------------------------------
+
+        // Reference data seeded from FormulaFunctionSeedData (the same rows the DAL falls back to
+        // in memory). The rows describe each function; the code that runs one lives on the server,
+        // found through ImplementationKey.
+        modelBuilder.Entity<FormulaFunctionDefinition>().Property(f => f.Category).HasConversion<string>();
+        modelBuilder.Entity<FormulaFunctionDefinition>().Property(f => f.ReturnKind).HasConversion<string>();
+        modelBuilder.Entity<FormulaFunctionDefinition>().Property(f => f.Name).HasMaxLength(64);
+        modelBuilder.Entity<FormulaFunctionDefinition>().Property(f => f.ImplementationKey).HasMaxLength(64);
+        modelBuilder.Entity<FormulaFunctionDefinition>().HasIndex(f => f.Name).IsUnique();
+        modelBuilder.Entity<FormulaFunctionParameter>().Property(p => p.Kind).HasConversion<string>();
+        modelBuilder.Entity<FormulaFunctionParameter>().Property(p => p.Name).HasMaxLength(64);
+        modelBuilder.Entity<FormulaFunctionDefinition>()
+            .HasMany(f => f.Parameters)
+            .WithOne(p => p.FormulaFunctionDefinition)
+            .HasForeignKey(p => p.FormulaFunctionDefinitionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<FormulaFunctionParameter>()
+            .HasIndex(p => new { p.FormulaFunctionDefinitionId, p.Position })
+            .IsUnique();
+
+        var (formulaFunctions, formulaParameters) = FormulaFunctionSeedData.Rows();
+        modelBuilder.Entity<FormulaFunctionDefinition>().HasData(formulaFunctions);
+        modelBuilder.Entity<FormulaFunctionParameter>().HasData(formulaParameters);
     }
 }

@@ -357,6 +357,8 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
                         Type = column.Type,
                         Order = column.Order,
                         ConfigurationJson = column.ConfigurationJson,
+                        FormulaExpression = column.FormulaExpression,
+                        FormulaError = column.FormulaError,
                     };
                     copy.Columns.Add(columnCopy);
                     columnPairs.Add((column, columnCopy));

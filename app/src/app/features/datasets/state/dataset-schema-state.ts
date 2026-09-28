@@ -50,6 +50,11 @@ export class DatasetSchemaState {
     this.schemaResource.hasValue() ? this.schemaResource.value().sourceConfig : null,
   );
 
+  /** Fetches the schema again — for after a change that alters columns the client did not edit itself (a formula recalculating). */
+  reload(): void {
+    this.schemaResource.reload();
+  }
+
   /** True while the selected dataset's schema is loading, for the columns skeleton. */
   readonly schemaLoading = this.schemaResource.isLoading;
 

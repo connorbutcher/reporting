@@ -16,12 +16,16 @@
     @for (column of columns(); track column.id; let i = $index) {
       <li class="item">
         <div class="row">
-          <i
-            class="type-icon"
-            [class]="typeIcon(column.type)"
-            [attr.title]="column.type"
-            aria-hidden="true"
-          ></i>
+          @if (column.formula != null) {
+            <span class="fx" title="Calculated from a formula" aria-hidden="true">fx</span>
+          } @else {
+            <i
+              class="type-icon"
+              [class]="typeIcon(column.type)"
+              [attr.title]="column.type"
+              aria-hidden="true"
+            ></i>
+          }
           <input
             pInputText
             [ngModel]="column.name"
@@ -35,9 +39,20 @@
             optionLabel="label"
             optionValue="value"
             appendTo="body"
+            [disabled]="column.formula != null"
             [ariaLabel]="'Type of column ' + column.name"
             (onChange)="retype(column, $event.value, typeSelect)"
           />
+          @if (column.formula != null) {
+            <p-button
+              icon="pi pi-pencil"
+              severity="secondary"
+              text
+              size="small"
+              [ariaLabel]="'Edit the formula of ' + column.name"
+              (onClick)="openFormulaBuilder(column)"
+            />
+          }
           <p-button
             icon="pi pi-chevron-up"
             severity="secondary"
@@ -65,6 +80,13 @@
             (onClick)="remove(column)"
           />
         </div>
+        @if (column.formulaError; as problem) {
+          <p class="formula-error" role="alert">
+            <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+            This formula can't run: {{ problem }}
+            <button type="button" class="link" (click)="openFormulaBuilder(column)">Fix formula</button>
+          </p>
+        }
         @if (usageLines().get(column.id); as lines) {
           @if (lines.length > 0) {
             <button
@@ -140,6 +162,14 @@
     (onClick)="add()"
   />
 </div>
+<p-button
+  label="Add formula column"
+  icon="pi pi-calculator"
+  severity="secondary"
+  text
+  size="small"
+  (onClick)="openFormulaBuilder(null)"
+/>
 
 @if (addNameError() ?? renameError(); as message) {
   <p class="error">{{ message }}</p>

@@ -203,6 +203,12 @@ namespace Reporting.Database.Migrations
                     b.Property<int>("DatasetId")
                         .HasColumnType("int");
 
+                    b.Property<string>("FormulaError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FormulaExpression")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -847,6 +853,1904 @@ namespace Reporting.Database.Migrations
                     b.ToTable("Folders");
                 });
 
+            modelBuilder.Entity("Reporting.Database.FormulaFunctionDefinition", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Example")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImplementationKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("PropagatesNull")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ReturnKind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("FormulaFunctionDefinitions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Category = "Math",
+                            Description = "Rounds to a number of decimal places (default 0); halves round away from zero.",
+                            Example = "ROUND([Price] * 1.2, 2)",
+                            ImplementationKey = "ROUND",
+                            IsEnabled = true,
+                            Name = "ROUND",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Category = "Math",
+                            Description = "Rounds away from zero to a number of decimal places.",
+                            Example = "ROUNDUP([Length], 1)",
+                            ImplementationKey = "ROUNDUP",
+                            IsEnabled = true,
+                            Name = "ROUNDUP",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Category = "Math",
+                            Description = "Rounds toward zero to a number of decimal places.",
+                            Example = "ROUNDDOWN([Length], 1)",
+                            ImplementationKey = "ROUNDDOWN",
+                            IsEnabled = true,
+                            Name = "ROUNDDOWN",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 2
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Category = "Math",
+                            Description = "Rounds up to the next whole number.",
+                            Example = "CEILING([Pallets])",
+                            ImplementationKey = "CEILING",
+                            IsEnabled = true,
+                            Name = "CEILING",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 3
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Category = "Math",
+                            Description = "Rounds down to the previous whole number.",
+                            Example = "FLOOR([Age])",
+                            ImplementationKey = "FLOOR",
+                            IsEnabled = true,
+                            Name = "FLOOR",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 4
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Category = "Math",
+                            Description = "The absolute value: the number without its sign.",
+                            Example = "ABS([Actual] - [Target])",
+                            ImplementationKey = "ABS",
+                            IsEnabled = true,
+                            Name = "ABS",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 5
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Category = "Math",
+                            Description = "-1, 0 or 1 according to the number's sign.",
+                            Example = "SIGN([Variance])",
+                            ImplementationKey = "SIGN",
+                            IsEnabled = true,
+                            Name = "SIGN",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 6
+                        },
+                        new
+                        {
+                            Id = 8,
+                            Category = "Math",
+                            Description = "The square root. Blank for a negative number.",
+                            Example = "SQRT([Area])",
+                            ImplementationKey = "SQRT",
+                            IsEnabled = true,
+                            Name = "SQRT",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 7
+                        },
+                        new
+                        {
+                            Id = 9,
+                            Category = "Math",
+                            Description = "A number raised to a power.",
+                            Example = "POWER([Radius], 2)",
+                            ImplementationKey = "POWER",
+                            IsEnabled = true,
+                            Name = "POWER",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 8
+                        },
+                        new
+                        {
+                            Id = 10,
+                            Category = "Math",
+                            Description = "The remainder after dividing. Blank when dividing by zero.",
+                            Example = "MOD([Count], 12)",
+                            ImplementationKey = "MOD",
+                            IsEnabled = true,
+                            Name = "MOD",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 9
+                        },
+                        new
+                        {
+                            Id = 11,
+                            Category = "Math",
+                            Description = "e raised to a power.",
+                            Example = "EXP([Rate])",
+                            ImplementationKey = "EXP",
+                            IsEnabled = true,
+                            Name = "EXP",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 10
+                        },
+                        new
+                        {
+                            Id = 12,
+                            Category = "Math",
+                            Description = "The natural logarithm. Blank unless the number is positive.",
+                            Example = "LN([Value])",
+                            ImplementationKey = "LN",
+                            IsEnabled = true,
+                            Name = "LN",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 11
+                        },
+                        new
+                        {
+                            Id = 13,
+                            Category = "Math",
+                            Description = "The logarithm to a base (default 10). Blank unless the number is positive.",
+                            Example = "LOG([Value], 2)",
+                            ImplementationKey = "LOG",
+                            IsEnabled = true,
+                            Name = "LOG",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 12
+                        },
+                        new
+                        {
+                            Id = 14,
+                            Category = "Math",
+                            Description = "The smallest of the numbers, ignoring blanks.",
+                            Example = "MIN([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "MIN",
+                            IsEnabled = true,
+                            Name = "MIN",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 13
+                        },
+                        new
+                        {
+                            Id = 15,
+                            Category = "Math",
+                            Description = "The largest of the numbers, ignoring blanks.",
+                            Example = "MAX([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "MAX",
+                            IsEnabled = true,
+                            Name = "MAX",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 14
+                        },
+                        new
+                        {
+                            Id = 16,
+                            Category = "Math",
+                            Description = "The total of the numbers, ignoring blanks.",
+                            Example = "SUM([Labour], [Materials], [Freight])",
+                            ImplementationKey = "SUM",
+                            IsEnabled = true,
+                            Name = "SUM",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 15
+                        },
+                        new
+                        {
+                            Id = 17,
+                            Category = "Math",
+                            Description = "The mean of the numbers, ignoring blanks.",
+                            Example = "AVERAGE([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "AVERAGE",
+                            IsEnabled = true,
+                            Name = "AVERAGE",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 16
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Category = "Math",
+                            Description = "The middle of the numbers, ignoring blanks.",
+                            Example = "MEDIAN([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "MEDIAN",
+                            IsEnabled = true,
+                            Name = "MEDIAN",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 17
+                        },
+                        new
+                        {
+                            Id = 19,
+                            Category = "Math",
+                            Description = "Limits a number to lie between a minimum and a maximum.",
+                            Example = "CLAMP([Score], 0, 100)",
+                            ImplementationKey = "CLAMP",
+                            IsEnabled = true,
+                            Name = "CLAMP",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 18
+                        },
+                        new
+                        {
+                            Id = 20,
+                            Category = "Math",
+                            Description = "Divides, giving the fallback (default blank) instead of failing when the divisor is zero or blank.",
+                            Example = "DIVIDE([Scrap], [Produced], 0)",
+                            ImplementationKey = "DIVIDE",
+                            IsEnabled = true,
+                            Name = "DIVIDE",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 19
+                        },
+                        new
+                        {
+                            Id = 21,
+                            Category = "Math",
+                            Description = "One number as a percentage of another. Blank when the whole is zero.",
+                            Example = "PERCENTOF([Defects], [Inspected])",
+                            ImplementationKey = "PERCENTOF",
+                            IsEnabled = true,
+                            Name = "PERCENTOF",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 20
+                        },
+                        new
+                        {
+                            Id = 22,
+                            Category = "Math",
+                            Description = "The percentage change from an old value to a new one. Blank when the old value is zero.",
+                            Example = "PERCENTCHANGE([Last Month], [This Month])",
+                            ImplementationKey = "PERCENTCHANGE",
+                            IsEnabled = true,
+                            Name = "PERCENTCHANGE",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 21
+                        },
+                        new
+                        {
+                            Id = 23,
+                            Category = "Math",
+                            Description = "The constant π.",
+                            Example = "PI() * POWER([Radius], 2)",
+                            ImplementationKey = "PI",
+                            IsEnabled = true,
+                            Name = "PI",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 22
+                        },
+                        new
+                        {
+                            Id = 24,
+                            Category = "Text",
+                            Description = "Converts text to upper case.",
+                            Example = "UPPER([Region])",
+                            ImplementationKey = "UPPER",
+                            IsEnabled = true,
+                            Name = "UPPER",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 23
+                        },
+                        new
+                        {
+                            Id = 25,
+                            Category = "Text",
+                            Description = "Converts text to lower case.",
+                            Example = "LOWER([Email])",
+                            ImplementationKey = "LOWER",
+                            IsEnabled = true,
+                            Name = "LOWER",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 24
+                        },
+                        new
+                        {
+                            Id = 26,
+                            Category = "Text",
+                            Description = "Capitalises the first letter of every word.",
+                            Example = "PROPER([Name])",
+                            ImplementationKey = "PROPER",
+                            IsEnabled = true,
+                            Name = "PROPER",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 25
+                        },
+                        new
+                        {
+                            Id = 27,
+                            Category = "Text",
+                            Description = "Removes leading and trailing spaces and collapses repeated inner spaces.",
+                            Example = "TRIM([Part Number])",
+                            ImplementationKey = "TRIM",
+                            IsEnabled = true,
+                            Name = "TRIM",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 26
+                        },
+                        new
+                        {
+                            Id = 28,
+                            Category = "Text",
+                            Description = "The number of characters in the text.",
+                            Example = "LEN([Serial])",
+                            ImplementationKey = "LEN",
+                            IsEnabled = true,
+                            Name = "LEN",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 27
+                        },
+                        new
+                        {
+                            Id = 29,
+                            Category = "Text",
+                            Description = "The first characters of the text.",
+                            Example = "LEFT([Serial], 3)",
+                            ImplementationKey = "LEFT",
+                            IsEnabled = true,
+                            Name = "LEFT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 28
+                        },
+                        new
+                        {
+                            Id = 30,
+                            Category = "Text",
+                            Description = "The last characters of the text.",
+                            Example = "RIGHT([Serial], 4)",
+                            ImplementationKey = "RIGHT",
+                            IsEnabled = true,
+                            Name = "RIGHT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 29
+                        },
+                        new
+                        {
+                            Id = 31,
+                            Category = "Text",
+                            Description = "Characters from the middle of the text, starting at a 1-based position.",
+                            Example = "MID([Serial], 4, 2)",
+                            ImplementationKey = "MID",
+                            IsEnabled = true,
+                            Name = "MID",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 30
+                        },
+                        new
+                        {
+                            Id = 32,
+                            Category = "Text",
+                            Description = "Joins values into one piece of text; blanks contribute nothing.",
+                            Example = "CONCAT([First Name], \" \", [Last Name])",
+                            ImplementationKey = "CONCAT",
+                            IsEnabled = true,
+                            Name = "CONCAT",
+                            PropagatesNull = false,
+                            ReturnKind = "Text",
+                            SortOrder = 31
+                        },
+                        new
+                        {
+                            Id = 33,
+                            Category = "Text",
+                            Description = "Joins values with a delimiter between them, skipping blanks.",
+                            Example = "TEXTJOIN(\", \", [City], [Region], [Country])",
+                            ImplementationKey = "TEXTJOIN",
+                            IsEnabled = true,
+                            Name = "TEXTJOIN",
+                            PropagatesNull = false,
+                            ReturnKind = "Text",
+                            SortOrder = 32
+                        },
+                        new
+                        {
+                            Id = 34,
+                            Category = "Text",
+                            Description = "Whether the text contains another piece of text (ignoring case).",
+                            Example = "CONTAINS([Notes], \"urgent\")",
+                            ImplementationKey = "CONTAINS",
+                            IsEnabled = true,
+                            Name = "CONTAINS",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 33
+                        },
+                        new
+                        {
+                            Id = 35,
+                            Category = "Text",
+                            Description = "Whether the text begins with another piece of text (ignoring case).",
+                            Example = "STARTSWITH([Serial], \"ENG\")",
+                            ImplementationKey = "STARTSWITH",
+                            IsEnabled = true,
+                            Name = "STARTSWITH",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 34
+                        },
+                        new
+                        {
+                            Id = 36,
+                            Category = "Text",
+                            Description = "Whether the text ends with another piece of text (ignoring case).",
+                            Example = "ENDSWITH([File], \".pdf\")",
+                            ImplementationKey = "ENDSWITH",
+                            IsEnabled = true,
+                            Name = "ENDSWITH",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 35
+                        },
+                        new
+                        {
+                            Id = 37,
+                            Category = "Text",
+                            Description = "Replaces every occurrence of some text with other text.",
+                            Example = "REPLACE([Part], \"-\", \"\")",
+                            ImplementationKey = "REPLACE",
+                            IsEnabled = true,
+                            Name = "REPLACE",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 36
+                        },
+                        new
+                        {
+                            Id = 38,
+                            Category = "Text",
+                            Description = "The 1-based position of some text within other text (ignoring case); 0 when it isn't there.",
+                            Example = "FIND(\"-\", [Serial])",
+                            ImplementationKey = "FIND",
+                            IsEnabled = true,
+                            Name = "FIND",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 37
+                        },
+                        new
+                        {
+                            Id = 39,
+                            Category = "Text",
+                            Description = "Repeats the text a number of times.",
+                            Example = "REPEAT(\"*\", [Rating])",
+                            ImplementationKey = "REPEAT",
+                            IsEnabled = true,
+                            Name = "REPEAT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 38
+                        },
+                        new
+                        {
+                            Id = 40,
+                            Category = "Text",
+                            Description = "Pads the text on the left up to a length, with spaces or the given character.",
+                            Example = "PADLEFT(TEXT([Id]), 6, \"0\")",
+                            ImplementationKey = "PADLEFT",
+                            IsEnabled = true,
+                            Name = "PADLEFT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 39
+                        },
+                        new
+                        {
+                            Id = 41,
+                            Category = "Date",
+                            Description = "The year of a date.",
+                            Example = "YEAR([Build Date])",
+                            ImplementationKey = "YEAR",
+                            IsEnabled = true,
+                            Name = "YEAR",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 40
+                        },
+                        new
+                        {
+                            Id = 42,
+                            Category = "Date",
+                            Description = "The month of a date, 1 to 12.",
+                            Example = "MONTH([Build Date])",
+                            ImplementationKey = "MONTH",
+                            IsEnabled = true,
+                            Name = "MONTH",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 41
+                        },
+                        new
+                        {
+                            Id = 43,
+                            Category = "Date",
+                            Description = "The day of the month, 1 to 31.",
+                            Example = "DAY([Build Date])",
+                            ImplementationKey = "DAY",
+                            IsEnabled = true,
+                            Name = "DAY",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 42
+                        },
+                        new
+                        {
+                            Id = 44,
+                            Category = "Date",
+                            Description = "The hour of a date and time, 0 to 23.",
+                            Example = "HOUR([Logged At])",
+                            ImplementationKey = "HOUR",
+                            IsEnabled = true,
+                            Name = "HOUR",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 43
+                        },
+                        new
+                        {
+                            Id = 45,
+                            Category = "Date",
+                            Description = "The calendar quarter of a date, 1 to 4.",
+                            Example = "QUARTER([Build Date])",
+                            ImplementationKey = "QUARTER",
+                            IsEnabled = true,
+                            Name = "QUARTER",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 44
+                        },
+                        new
+                        {
+                            Id = 46,
+                            Category = "Date",
+                            Description = "The day of the week, 1 (Sunday) to 7 (Saturday).",
+                            Example = "WEEKDAY([Build Date])",
+                            ImplementationKey = "WEEKDAY",
+                            IsEnabled = true,
+                            Name = "WEEKDAY",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 45
+                        },
+                        new
+                        {
+                            Id = 47,
+                            Category = "Date",
+                            Description = "The ISO week number of the year, 1 to 53.",
+                            Example = "ISOWEEK([Build Date])",
+                            ImplementationKey = "ISOWEEK",
+                            IsEnabled = true,
+                            Name = "ISOWEEK",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 46
+                        },
+                        new
+                        {
+                            Id = 48,
+                            Category = "Date",
+                            Description = "Builds a date from a year, month and day. Blank when they don't make a real date.",
+                            Example = "DATE([Year], [Month], 1)",
+                            ImplementationKey = "DATE",
+                            IsEnabled = true,
+                            Name = "DATE",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 47
+                        },
+                        new
+                        {
+                            Id = 49,
+                            Category = "Date",
+                            Description = "Adds an amount of a unit (year, month, week, day, hour, minute or second) to a date.",
+                            Example = "DATEADD(\"day\", 30, [Invoice Date])",
+                            ImplementationKey = "DATEADD",
+                            IsEnabled = true,
+                            Name = "DATEADD",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 48
+                        },
+                        new
+                        {
+                            Id = 50,
+                            Category = "Date",
+                            Description = "The whole units (year, month, week, day, hour, minute or second) from one date to another; negative when the end is earlier.",
+                            Example = "DATEDIFF(\"day\", [Ordered], [Shipped])",
+                            ImplementationKey = "DATEDIFF",
+                            IsEnabled = true,
+                            Name = "DATEDIFF",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 49
+                        },
+                        new
+                        {
+                            Id = 51,
+                            Category = "Date",
+                            Description = "The first day of the date's month.",
+                            Example = "STARTOFMONTH([Build Date])",
+                            ImplementationKey = "STARTOFMONTH",
+                            IsEnabled = true,
+                            Name = "STARTOFMONTH",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 50
+                        },
+                        new
+                        {
+                            Id = 52,
+                            Category = "Date",
+                            Description = "The last day of the date's month.",
+                            Example = "ENDOFMONTH([Build Date])",
+                            ImplementationKey = "ENDOFMONTH",
+                            IsEnabled = true,
+                            Name = "ENDOFMONTH",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 51
+                        },
+                        new
+                        {
+                            Id = 53,
+                            Category = "Logic",
+                            Description = "One value when a condition is true and another when it's false. A blank condition counts as false.",
+                            Example = "IF([Diameter] > 100, \"Oversize\", \"OK\")",
+                            ImplementationKey = "IF",
+                            IsEnabled = true,
+                            Name = "IF",
+                            PropagatesNull = false,
+                            ReturnKind = "Any",
+                            SortOrder = 52
+                        },
+                        new
+                        {
+                            Id = 54,
+                            Category = "Logic",
+                            Description = "The first value that isn't blank.",
+                            Example = "COALESCE([Override], [Default], 0)",
+                            ImplementationKey = "COALESCE",
+                            IsEnabled = true,
+                            Name = "COALESCE",
+                            PropagatesNull = false,
+                            ReturnKind = "Any",
+                            SortOrder = 53
+                        },
+                        new
+                        {
+                            Id = 55,
+                            Category = "Logic",
+                            Description = "Whether a value is blank.",
+                            Example = "ISBLANK([Inspected By])",
+                            ImplementationKey = "ISBLANK",
+                            IsEnabled = true,
+                            Name = "ISBLANK",
+                            PropagatesNull = false,
+                            ReturnKind = "Bool",
+                            SortOrder = 54
+                        },
+                        new
+                        {
+                            Id = 56,
+                            Category = "Logic",
+                            Description = "True when every condition is true; false as soon as one is false, even if another is blank.",
+                            Example = "AND([Passed], [Signed Off])",
+                            ImplementationKey = "AND",
+                            IsEnabled = true,
+                            Name = "AND",
+                            PropagatesNull = false,
+                            ReturnKind = "Bool",
+                            SortOrder = 55
+                        },
+                        new
+                        {
+                            Id = 57,
+                            Category = "Logic",
+                            Description = "True when any condition is true; false only when all are false.",
+                            Example = "OR([Late], [Damaged])",
+                            ImplementationKey = "OR",
+                            IsEnabled = true,
+                            Name = "OR",
+                            PropagatesNull = false,
+                            ReturnKind = "Bool",
+                            SortOrder = 56
+                        },
+                        new
+                        {
+                            Id = 58,
+                            Category = "Logic",
+                            Description = "Reverses a condition.",
+                            Example = "NOT([Passed])",
+                            ImplementationKey = "NOT",
+                            IsEnabled = true,
+                            Name = "NOT",
+                            PropagatesNull = false,
+                            ReturnKind = "Bool",
+                            SortOrder = 57
+                        },
+                        new
+                        {
+                            Id = 59,
+                            Category = "Logic",
+                            Description = "Whether a number lies between a minimum and a maximum, inclusive.",
+                            Example = "BETWEEN([Diameter], 99.9, 100.1)",
+                            ImplementationKey = "BETWEEN",
+                            IsEnabled = true,
+                            Name = "BETWEEN",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 58
+                        },
+                        new
+                        {
+                            Id = 60,
+                            Category = "Logic",
+                            Description = "Whether a value equals any of the listed options.",
+                            Example = "ONEOF([Region], \"North\", \"East\")",
+                            ImplementationKey = "ONEOF",
+                            IsEnabled = true,
+                            Name = "ONEOF",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 59
+                        },
+                        new
+                        {
+                            Id = 61,
+                            Category = "Conversion",
+                            Description = "Converts a value to text, optionally with a .NET format such as \"0.00\", \"N0\" or \"yyyy-MM-dd\".",
+                            Example = "TEXT([Build Date], \"dd MMM yyyy\")",
+                            ImplementationKey = "TEXT",
+                            IsEnabled = true,
+                            Name = "TEXT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 60
+                        },
+                        new
+                        {
+                            Id = 62,
+                            Category = "Conversion",
+                            Description = "Reads text as a number. Blank when it isn't one.",
+                            Example = "VALUE([Reading Text])",
+                            ImplementationKey = "VALUE",
+                            IsEnabled = true,
+                            Name = "VALUE",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 61
+                        });
+                });
+
+            modelBuilder.Entity("Reporting.Database.FormulaFunctionParameter", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("FormulaFunctionDefinitionId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsOptional")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVariadic")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FormulaFunctionDefinitionId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("FormulaFunctionParameters");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            FormulaFunctionDefinitionId = 1,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            FormulaFunctionDefinitionId = 1,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "digits",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 3,
+                            FormulaFunctionDefinitionId = 2,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            FormulaFunctionDefinitionId = 2,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "digits",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 5,
+                            FormulaFunctionDefinitionId = 3,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            FormulaFunctionDefinitionId = 3,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "digits",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 7,
+                            FormulaFunctionDefinitionId = 4,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            FormulaFunctionDefinitionId = 5,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            FormulaFunctionDefinitionId = 6,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 10,
+                            FormulaFunctionDefinitionId = 7,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 11,
+                            FormulaFunctionDefinitionId = 8,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 12,
+                            FormulaFunctionDefinitionId = 9,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "base",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            FormulaFunctionDefinitionId = 9,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "exponent",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 14,
+                            FormulaFunctionDefinitionId = 10,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            FormulaFunctionDefinitionId = 10,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "divisor",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 16,
+                            FormulaFunctionDefinitionId = 11,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            FormulaFunctionDefinitionId = 12,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            FormulaFunctionDefinitionId = 13,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 19,
+                            FormulaFunctionDefinitionId = 13,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "base",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 20,
+                            FormulaFunctionDefinitionId = 14,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 21,
+                            FormulaFunctionDefinitionId = 15,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 22,
+                            FormulaFunctionDefinitionId = 16,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 23,
+                            FormulaFunctionDefinitionId = 17,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 24,
+                            FormulaFunctionDefinitionId = 18,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 25,
+                            FormulaFunctionDefinitionId = 19,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 26,
+                            FormulaFunctionDefinitionId = 19,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "min",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 27,
+                            FormulaFunctionDefinitionId = 19,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "max",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 28,
+                            FormulaFunctionDefinitionId = 20,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "numerator",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 29,
+                            FormulaFunctionDefinitionId = 20,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "denominator",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 30,
+                            FormulaFunctionDefinitionId = 20,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "fallback",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 31,
+                            FormulaFunctionDefinitionId = 21,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "part",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 32,
+                            FormulaFunctionDefinitionId = 21,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "whole",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 33,
+                            FormulaFunctionDefinitionId = 22,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "old",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 34,
+                            FormulaFunctionDefinitionId = 22,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "new",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 35,
+                            FormulaFunctionDefinitionId = 24,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 36,
+                            FormulaFunctionDefinitionId = 25,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 37,
+                            FormulaFunctionDefinitionId = 26,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 38,
+                            FormulaFunctionDefinitionId = 27,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 39,
+                            FormulaFunctionDefinitionId = 28,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 40,
+                            FormulaFunctionDefinitionId = 29,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 41,
+                            FormulaFunctionDefinitionId = 29,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "count",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 42,
+                            FormulaFunctionDefinitionId = 30,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 43,
+                            FormulaFunctionDefinitionId = 30,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "count",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 44,
+                            FormulaFunctionDefinitionId = 31,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 45,
+                            FormulaFunctionDefinitionId = 31,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "start",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 46,
+                            FormulaFunctionDefinitionId = 31,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "length",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 47,
+                            FormulaFunctionDefinitionId = 32,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 48,
+                            FormulaFunctionDefinitionId = 33,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "delimiter",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 49,
+                            FormulaFunctionDefinitionId = 33,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 50,
+                            FormulaFunctionDefinitionId = 34,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 51,
+                            FormulaFunctionDefinitionId = 34,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "find",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 52,
+                            FormulaFunctionDefinitionId = 35,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 53,
+                            FormulaFunctionDefinitionId = 35,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "prefix",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 54,
+                            FormulaFunctionDefinitionId = 36,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 55,
+                            FormulaFunctionDefinitionId = 36,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "suffix",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 56,
+                            FormulaFunctionDefinitionId = 37,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 57,
+                            FormulaFunctionDefinitionId = 37,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "find",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 58,
+                            FormulaFunctionDefinitionId = 37,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "replacement",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 59,
+                            FormulaFunctionDefinitionId = 38,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "find",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 60,
+                            FormulaFunctionDefinitionId = 38,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 61,
+                            FormulaFunctionDefinitionId = 38,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "start",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 62,
+                            FormulaFunctionDefinitionId = 39,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 63,
+                            FormulaFunctionDefinitionId = 39,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "count",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 64,
+                            FormulaFunctionDefinitionId = 40,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 65,
+                            FormulaFunctionDefinitionId = 40,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "length",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 66,
+                            FormulaFunctionDefinitionId = 40,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "pad",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 67,
+                            FormulaFunctionDefinitionId = 41,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 68,
+                            FormulaFunctionDefinitionId = 42,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 69,
+                            FormulaFunctionDefinitionId = 43,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 70,
+                            FormulaFunctionDefinitionId = 44,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 71,
+                            FormulaFunctionDefinitionId = 45,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 72,
+                            FormulaFunctionDefinitionId = 46,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 73,
+                            FormulaFunctionDefinitionId = 47,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 74,
+                            FormulaFunctionDefinitionId = 48,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "year",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 75,
+                            FormulaFunctionDefinitionId = 48,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "month",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 76,
+                            FormulaFunctionDefinitionId = 48,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "day",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 77,
+                            FormulaFunctionDefinitionId = 49,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "unit",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 78,
+                            FormulaFunctionDefinitionId = 49,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "amount",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 79,
+                            FormulaFunctionDefinitionId = 49,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 80,
+                            FormulaFunctionDefinitionId = 50,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "unit",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 81,
+                            FormulaFunctionDefinitionId = 50,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "start",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 82,
+                            FormulaFunctionDefinitionId = 50,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "end",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 83,
+                            FormulaFunctionDefinitionId = 51,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 84,
+                            FormulaFunctionDefinitionId = 52,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 85,
+                            FormulaFunctionDefinitionId = 53,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Bool",
+                            Name = "condition",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 86,
+                            FormulaFunctionDefinitionId = 53,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "then",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 87,
+                            FormulaFunctionDefinitionId = 53,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "else",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 88,
+                            FormulaFunctionDefinitionId = 54,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 89,
+                            FormulaFunctionDefinitionId = 55,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 90,
+                            FormulaFunctionDefinitionId = 56,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Bool",
+                            Name = "condition",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 91,
+                            FormulaFunctionDefinitionId = 57,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Bool",
+                            Name = "condition",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 92,
+                            FormulaFunctionDefinitionId = 58,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Bool",
+                            Name = "condition",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 93,
+                            FormulaFunctionDefinitionId = 59,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 94,
+                            FormulaFunctionDefinitionId = 59,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "min",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 95,
+                            FormulaFunctionDefinitionId = 59,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "max",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 96,
+                            FormulaFunctionDefinitionId = 60,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 97,
+                            FormulaFunctionDefinitionId = 60,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Any",
+                            Name = "option",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 98,
+                            FormulaFunctionDefinitionId = 61,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 99,
+                            FormulaFunctionDefinitionId = 61,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "format",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 100,
+                            FormulaFunctionDefinitionId = 62,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        });
+                });
+
             modelBuilder.Entity("Reporting.Database.GrantAuditEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -1372,6 +3276,17 @@ namespace Reporting.Database.Migrations
                     b.Navigation("ParentFolder");
                 });
 
+            modelBuilder.Entity("Reporting.Database.FormulaFunctionParameter", b =>
+                {
+                    b.HasOne("Reporting.Database.FormulaFunctionDefinition", "FormulaFunctionDefinition")
+                        .WithMany("Parameters")
+                        .HasForeignKey("FormulaFunctionDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FormulaFunctionDefinition");
+                });
+
             modelBuilder.Entity("Reporting.Database.Report", b =>
                 {
                     b.HasOne("Reporting.Database.Folder", "Folder")
@@ -1522,6 +3437,11 @@ namespace Reporting.Database.Migrations
             modelBuilder.Entity("Reporting.Database.DatasetRow", b =>
                 {
                     b.Navigation("Cells");
+                });
+
+            modelBuilder.Entity("Reporting.Database.FormulaFunctionDefinition", b =>
+                {
+                    b.Navigation("Parameters");
                 });
 
             modelBuilder.Entity("Reporting.Database.Report", b =>
