@@ -556,6 +556,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         plottable = RequireAxisValue(plottable, yId, yColumn?.Type);
 
         var seriesColumn = dto.SeriesColumnId is { } seriesId ? columnsByRef.GetValueOrDefault(seriesId) : null;
+        // Bubble sizing needs a real number; a text/date/bool column is ignored rather than erroring,
+        // the same way a stale/mistyped column id would be.
+        var sizeColumn = dto.SizeColumnId is { } sizeId ? columnsByRef.GetValueOrDefault(sizeId) : null;
+        if (sizeColumn?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double)) sizeColumn = null;
         var tooltipColumns = dto.TooltipColumns
             .Select(tc => (Setting: tc, Column: columnsByRef.GetValueOrDefault(tc.ColumnId)))
             .Where(p => p.Column is not null)
@@ -573,6 +577,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         // every cell in the row across the wire.
         var neededIds = new HashSet<int> { xId, yId };
         if (seriesColumn is not null) neededIds.Add(seriesColumn.Id);
+        if (sizeColumn is not null) neededIds.Add(sizeColumn.Id);
         if (sortColumn is not null) neededIds.Add(sortColumn.Id);
         foreach (var (_, column) in tooltipColumns) neededIds.Add(column!.Id);
 
@@ -622,7 +627,11 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 ? SortValue(row.Cells.FirstOrDefault(c => c.ColumnId == sortColumn.Id), sortColumn.Type)
                 : (IComparable)x;
 
-            var point = new ChartPointDto { X = x, Y = y, TooltipLines = tooltipLines };
+            var size = sizeColumn is not null
+                ? row.Cells.FirstOrDefault(c => c.ColumnId == sizeColumn.Id)?.NumberValue
+                : null;
+
+            var point = new ChartPointDto { X = x, Y = y, Size = size, TooltipLines = tooltipLines };
             if (groups.TryGetValue(key, out var points)) points.Add((point, sortKey));
             else groups[key] = [(point, sortKey)];
         }

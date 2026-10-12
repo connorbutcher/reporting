@@ -8,13 +8,18 @@ import { ChartScale } from './chart-scale';
 import { PointAxes } from './point-axes';
 import { PointSeries } from './point-series';
 import { PointTooltip } from './point-tooltip';
-import { AXIS_OFFSET, Coord, PointChartConfig, ScatterTooltipParams, SeriesStyle } from './point-types';
+import { AXIS_OFFSET, Coord, PointChartConfig, ScatterTooltipParams, SeriesStyle, SizeScale } from './point-types';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
 
 // A perceptual-ish, colourblind-safe blue→red ramp for the colour-by-value scale (RdYlBu, reversed).
 const VALUE_COLOR_SCALE = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c'];
+
+// A bubble's pixel diameter range; unbound points (or a series with no size column) keep the
+// chart's fixed pointSize instead.
+const MIN_BUBBLE_PX = 8;
+const MAX_BUBBLE_PX = 40;
 
 /** Builds the scatter/line echarts option: value axes with one mark per row, grouped into series. */
 export class PointOption {
@@ -64,6 +69,10 @@ export class PointOption {
     // with a numeric Y and actual data; when on it drives the mark colours and replaces the legend.
     const yExtent = PointOption.extent(series, 'y');
     const colorByValue = !!config.colorByValue && !yPrimaryIsText && yExtent !== null;
+    // Bubble sizing: one shared scale across every series, so bubbles stay comparable across an
+    // overlay. Null when nothing plotted has a bound size value — every marker then keeps the
+    // chart's fixed pointSize, same as before this existed.
+    const sizeScale = PointOption.sizeScale(series, config.pointSize);
     // Size the X name's gap to clear its tick labels (category labels verbatim, else the
     // widest formatted data value), so the two never overlap.
     const xLongest = xIsText
@@ -254,7 +263,7 @@ export class PointOption {
         const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
         const main = {
           name: s.label || config.title || 'Series',
-          ...PointSeries.kindOptions(config, color, seriesStyle[i]),
+          ...PointSeries.kindOptions(config, color, seriesStyle[i], sizeScale),
           ...(colorByValue ? {} : { itemStyle: { color } }),
           data: PointSeries.points(s, color, outlineColor),
           ...(config.showValueLabels
@@ -293,6 +302,33 @@ export class PointOption {
     const extent = PointOption.extent(series, dim);
     if (!extent) return 0;
     return Math.max(format(extent.min).length, format(extent.max).length);
+  }
+
+  /**
+   * A shared bubble-size scale fitted to every bound size value across every series, or null when
+   * none plotted one. Diameter grows with the square root of the value's position in that range,
+   * so a bubble's *area* — what the eye actually compares — scales with the value, the standard
+   * bubble-chart convention. A point with no size value (unbound, or missing on that row) falls
+   * back to the chart's fixed pointSize.
+   */
+  private static sizeScale(series: readonly ChartSeriesResult[], fallbackPointSize: number): SizeScale | null {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const s of series) {
+      for (const p of s.points) {
+        if (typeof p.size !== 'number') continue;
+        if (p.size < min) min = p.size;
+        if (p.size > max) max = p.size;
+      }
+    }
+    if (!Number.isFinite(min)) return null;
+
+    return (size) => {
+      if (typeof size !== 'number') return fallbackPointSize;
+      if (max === min) return (MIN_BUBBLE_PX + MAX_BUBBLE_PX) / 2;
+      const t = (size - min) / (max - min);
+      return MIN_BUBBLE_PX + Math.sqrt(t) * (MAX_BUBBLE_PX - MIN_BUBBLE_PX);
+    };
   }
 
   /** The numeric [min, max] of a dimension across all series, or null when it has no numbers. */

@@ -32,14 +32,15 @@ export class ChartExport {
     return ChartExport.pointCsv(data as ChartQueryResult, x, y);
   }
 
-  /** One row per point, with a Series column once there's more than one. */
+  /** One row per point, with a Series column once there's more than one and a Size column when any point has a bubble size. */
   private static pointCsv(
     data: ChartQueryResult,
     xColumn: DatasetColumn | null,
     yColumn: DatasetColumn | null,
   ): string {
     const multi = data.series.length > 1;
-    const rows = [[...(multi ? ['Series'] : []), 'X', 'Y'].join(',')];
+    const hasSize = data.series.some((s) => s.points.some((p) => typeof p.size === 'number'));
+    const rows = [[...(multi ? ['Series'] : []), 'X', 'Y', ...(hasSize ? ['Size'] : [])].join(',')];
     for (const series of data.series) {
       for (const point of series.points) {
         rows.push(
@@ -47,6 +48,7 @@ export class ChartExport {
             ...(multi ? [csvCell(series.label)] : []),
             ChartExport.csvAxisCell(point.x, xColumn),
             ChartExport.csvAxisCell(point.y, yColumn),
+            ...(hasSize ? [csvCell(point.size ?? '')] : []),
           ].join(','),
         );
       }

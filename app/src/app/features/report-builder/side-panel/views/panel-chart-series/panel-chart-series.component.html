@@ -94,6 +94,23 @@
           />
         </label>
       </div>
+      @if (isScatter()) {
+        <label class="panel-field">
+          <span class="panel-field-label">Size by (optional)</span>
+          <p-select
+            [options]="binding.numericColumns()"
+            [ngModel]="binding.sizeColumnId()"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Fixed point size"
+            appendTo="body"
+            [showClear]="true"
+            [disabled]="!binding.datasetId()"
+            fluid
+            (onChange)="binding.sizeColumnId.set($event.value ?? null)"
+          />
+        </label>
+      }
     }
   </app-panel-group>
 

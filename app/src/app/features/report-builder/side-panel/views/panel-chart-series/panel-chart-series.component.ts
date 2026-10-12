@@ -15,6 +15,7 @@ import {
   ComboChartWidgetModel,
   HistogramWidgetModel,
   LineChartWidgetModel,
+  ScatterChartWidgetModel,
 } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
@@ -55,6 +56,9 @@ export class PanelChartSeriesComponent {
 
   /** Line-only options (line style, the 'None' marker) show for a line chart, or a combo line series. */
   public readonly isLine = computed(() => this.chart() instanceof LineChartWidgetModel);
+
+  /** Bubble sizing is scatter-only — a varying marker size over a connected line reads poorly. */
+  public readonly isScatter = computed(() => this.chart() instanceof ScatterChartWidgetModel);
 
   /** The model narrowed to a bar chart, so a bar series shows a category + measures instead of X/Y. */
   public readonly barChart = computed(() => {

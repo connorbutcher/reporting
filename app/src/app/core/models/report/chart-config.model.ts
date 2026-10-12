@@ -155,6 +155,12 @@ export interface ChartSeriesBinding {
   xColumnId: string | null;
   yColumnId: string | null;
   /**
+   * Scales each point's marker by this numeric column's value — a bubble chart. Scatter only;
+   * ignored by every other chart kind (including line, where a varying marker size over a
+   * connected line reads poorly).
+   */
+  sizeColumnId?: string | null;
+  /**
    * A bar chart's measures, each plotted as its own series (grouped or stacked). Null/empty on
    * point and box charts, which use the single {@link yColumnId}. When a bar binding has these,
    * {@link yColumnId} mirrors the first so code reading a single measure still resolves one.
@@ -458,6 +464,7 @@ export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
   datasetId: null,
   xColumnId: null,
   yColumnId: null,
+  sizeColumnId: null,
   valueColumnIds: null,
   seriesColumnId: null,
   renderAs: null,

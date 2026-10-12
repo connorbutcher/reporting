@@ -6,6 +6,9 @@ public class ChartQueryDto
     public Guid XColumnId { get; set; }
     public Guid YColumnId { get; set; }
     public Guid? SeriesColumnId { get; set; }
+
+    /// <summary>Scales each point's marker by this numeric column's value — a scatter bubble chart.</summary>
+    public Guid? SizeColumnId { get; set; }
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
     public List<ChartTooltipColumn> TooltipColumns { get; set; } = new();
 
@@ -22,6 +25,9 @@ public class ChartPointDto
     /// Serialized by its runtime type, so the client reads <c>number | string</c>.</summary>
     public object X { get; set; } = 0d;
     public object Y { get; set; } = 0d;
+
+    /// <summary>The bubble size column's value for this point; null when not bound or not set on this row.</summary>
+    public double? Size { get; set; }
 
     /// <summary>One "prefix+value+suffix" entry per configured tooltip column, in order. Missing values are omitted.</summary>
     public List<string> TooltipLines { get; set; } = new();

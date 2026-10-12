@@ -147,6 +147,13 @@ public class ChartSeriesBinding
     public Guid? YColumnId { get; set; }
 
     /// <summary>
+    /// Scales each point's marker by this numeric column's value — a bubble chart. Scatter only;
+    /// ignored by every other chart kind (including line, where a varying marker size over a
+    /// connected line reads poorly).
+    /// </summary>
+    public Guid? SizeColumnId { get; set; }
+
+    /// <summary>
     /// A bar chart's measures, each plotted as its own series (grouped or stacked). Empty/null on
     /// point and box charts, which use the single <see cref="YColumnId"/>. When a bar binding has
     /// these, <see cref="YColumnId"/> mirrors the first so older readers still resolve a measure.

@@ -159,6 +159,8 @@ export class ChartWidgetComponent extends DataWidgetBase {
       // A bar chart plots several measures; changing them (beyond the mirrored first) must reload.
       b.valueColumnIds ?? null,
       b.seriesColumnId,
+      // A scatter bubble's size column — server-resolved, so changing it must reload too.
+      b.sizeColumnId ?? null,
       // A point chart's own draw order; ignored server-side by every grouping chart, so harmless
       // to include unconditionally here too.
       b.sort ?? null,

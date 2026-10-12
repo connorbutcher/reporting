@@ -209,6 +209,7 @@ export class ChartQuery {
           xColumnId: binding.xColumnId,
           yColumnId: binding.yColumnId,
           seriesColumnId: binding.seriesColumnId,
+          sizeColumnId: binding.sizeColumnId ?? null,
           toleranceBands: config.toleranceBands,
           tooltipColumns: binding.id === axisBindingId ? config.tooltipColumns : [],
           sort: binding.sort ?? null,

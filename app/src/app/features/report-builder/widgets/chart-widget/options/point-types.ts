@@ -29,9 +29,14 @@ export interface SeriesStyle {
 export interface ScatterPoint {
   value: [Coord, Coord];
   tooltipLines: string[];
+  /** The bubble size column's raw value for this point; undefined when not bound or not set on this row. */
+  size?: number | null;
   /** Per-point override, set only for points outlined as out of tolerance. */
   itemStyle?: OutlineItemStyle;
 }
+
+/** Maps a bubble point's raw size value to its marker's pixel diameter; a missing value falls back to a default. */
+export type SizeScale = (size: number | null | undefined) => number;
 
 export interface ScatterTooltipParams {
   value: [Coord, Coord];

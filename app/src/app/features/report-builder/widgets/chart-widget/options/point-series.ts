@@ -1,15 +1,23 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
 import { LineSeriesOption, PointSeriesOption } from './chart-option.types';
 import { ToleranceOutline } from './tolerance-outline';
-import { Coord, PointChartConfig, ScatterPoint, SeriesStyle } from './point-types';
+import { Coord, PointChartConfig, ScatterPoint, SeriesStyle, SizeScale } from './point-types';
 
 /** The per-kind echarts series options and the plotted points for a point chart. */
 export class PointSeries {
   /**
    * The echarts series options specific to one point-chart kind — its type and per-kind styling.
-   * Name, colour, data and mark lines are shared by the caller.
+   * Name, colour, data and mark lines are shared by the caller. `sizeScale`, when a scatter series
+   * has at least one bound bubble size, maps each point's raw size value to its marker's pixel
+   * diameter; null/omitted keeps every marker at the chart's fixed `pointSize` (unbound, or a line
+   * chart, where a varying marker size over a connected line reads poorly).
    */
-  public static kindOptions(config: PointChartConfig, color: string, style: SeriesStyle): PointSeriesOption {
+  public static kindOptions(
+    config: PointChartConfig,
+    color: string,
+    style: SeriesStyle,
+    sizeScale?: SizeScale | null,
+  ): PointSeriesOption {
     // A per-binding symbol override wins over the kind's default marker; 'none' hides it.
     const symbol = style.symbol;
     switch (config.type) {
@@ -33,7 +41,10 @@ export class PointSeries {
         return {
           type: 'scatter',
           ...(symbol && symbol !== 'none' ? { symbol } : {}),
-          symbolSize: config.pointSize,
+          symbolSize: sizeScale
+            ? (_value: unknown, params: unknown) =>
+                sizeScale((params as { data?: ScatterPoint }).data?.size)
+            : config.pointSize,
           large: true,
           largeThreshold: 2000,
         };
@@ -44,12 +55,15 @@ export class PointSeries {
    * A dashed overlay fitting {@link ChartSeriesResult.trendLine}, drawn in the series' own colour
    * so it reads as "that series, straightened out". Null when the series has no fit — the trend
    * toggle is off, the axes aren't both numeric, or there weren't enough points. Kept out of the
-   * legend (the caller doesn't add its name to `legend.data`); hovering it shows the fit's R²
-   * instead of a point's X/Y, since it isn't one of the plotted rows.
+   * legend (the caller doesn't add its name to `legend.data`). Its fit stats (slope and R²) are
+   * always shown at the line's end, rather than only on hover, so the numbers are readable at a
+   * glance; hovering anywhere on the line shows the same text.
    */
   public static trendLine(series: ChartSeriesResult, color: string, yAxisIndex: number | null): LineSeriesOption | null {
     const trend = series.trendLine;
     if (!trend) return null;
+
+    const stats = `Slope: ${trend.slope.toFixed(2)} · R²: ${trend.rSquared.toFixed(2)}`;
 
     return {
       type: 'line',
@@ -62,8 +76,15 @@ export class PointSeries {
       symbol: 'none',
       legendHoverLink: false,
       lineStyle: { type: 'dashed', color, width: 1.5 },
+      endLabel: {
+        show: true,
+        formatter: () => stats,
+        color,
+        fontSize: 11,
+        distance: 6,
+      },
       tooltip: {
-        formatter: () => `R² = ${trend.rSquared.toFixed(3)}`,
+        formatter: () => stats,
       },
       ...(yAxisIndex !== null ? { yAxisIndex } : {}),
     };
@@ -79,6 +100,7 @@ export class PointSeries {
       return {
         value: [p.x, p.y],
         tooltipLines: p.tooltipLines,
+        size: p.size,
         ...(border ? { itemStyle: ToleranceOutline.itemStyle(color, border) } : {}),
       };
     });
