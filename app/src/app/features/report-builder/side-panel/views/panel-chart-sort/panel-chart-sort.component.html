@@ -1,0 +1,56 @@
+<label class="panel-field">
+  <span class="panel-field-label">Order by</span>
+  <p-select
+    [options]="byOptions()"
+    [ngModel]="resolved().by"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="setBy($event.value)"
+  />
+</label>
+
+@if (resolved().by === 'column') {
+  <label class="panel-field">
+    <span class="panel-field-label">Column</span>
+    <p-select
+      [options]="columns()"
+      [ngModel]="resolved().columnId"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Pick a column"
+      appendTo="body"
+      fluid
+      (onChange)="setColumn($event.value ?? null)"
+    />
+  </label>
+
+  @if (showAggregate()) {
+    <label class="panel-field">
+      <span class="panel-field-label">Reduce each category by</span>
+      <p-select
+        [options]="aggregateOptions"
+        [ngModel]="resolved().aggregate"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="setAggregate($event.value)"
+      />
+    </label>
+  }
+}
+
+<label class="panel-field">
+  <span class="panel-field-label">Direction</span>
+  <p-select
+    [options]="directionOptions"
+    [ngModel]="resolved().descending"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="setDescending($event.value)"
+  />
+</label>

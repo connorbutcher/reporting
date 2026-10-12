@@ -1,4 +1,4 @@
-import { ChartAxis, ChartToleranceBand, ChartTooltipColumn } from '../report';
+import { ChartAxis, ChartSort, ChartToleranceBand, ChartTooltipColumn } from '../report';
 import { FilterGroup } from '../filter';
 
 export interface ChartQueryRequest {
@@ -8,6 +8,10 @@ export interface ChartQueryRequest {
   seriesColumnId: string | null;
   toleranceBands: ChartToleranceBand[];
   tooltipColumns: ChartTooltipColumn[];
+  /** Draw order for the returned points; null keeps the default X-ascending order. */
+  sort?: ChartSort | null;
+  /** Fits a least-squares trend line per series, when both axes are numeric/date. */
+  showTrendLine?: boolean;
 }
 
 export interface ChartPoint {
@@ -28,6 +32,23 @@ export interface ChartSeriesResult {
    * binding that splits by colour contributes several series that share this id.
    */
   bindingId?: string;
+  /** This series' least-squares fit, when requested and both axes are numeric/date. */
+  trendLine?: TrendLine | null;
+}
+
+/**
+ * A series' linear trend: the two endpoints to draw a line through (its fitted Y at the series'
+ * min and max X), plus the fit's slope/intercept/R² should the client want to show them.
+ */
+export interface TrendLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  slope: number;
+  intercept: number;
+  /** The coefficient of determination (0..1) — how well the line fits the series' points. */
+  rSquared: number;
 }
 
 export interface ResolvedToleranceBand {

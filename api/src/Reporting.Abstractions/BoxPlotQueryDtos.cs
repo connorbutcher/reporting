@@ -19,8 +19,8 @@ public class BoxPlotQueryDto
     /// <summary>The whisker length multiplier — of the IQR for Tukey, of the standard deviation for StdDev.</summary>
     public double WhiskerFactor { get; set; } = 1.5;
 
-    /// <summary>How the categories are ordered along the axis.</summary>
-    public BoxSort Sort { get; set; } = BoxSort.Category;
+    /// <summary>How the boxes are ordered along the category axis.</summary>
+    public ChartSort Sort { get; set; } = new();
 
     /// <summary>When set, each box also carries a (capped) sample of its raw values for a jittered overlay.</summary>
     public bool IncludePoints { get; set; }

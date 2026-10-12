@@ -70,39 +70,38 @@ export class HistogramWidgetModel extends ChartWidgetModel {
   }
 
   // The binned column maps to xColumnId; there is no measure, so only a dataset and that column
-  // are required. A worded message matches the box/bar checks' one-prompt-at-a-time style.
+  // are required. Every overlaid series is checked, not just the first, so a half-configured
+  // overlaid distribution still raises a warning (mirroring the base class's generic bindings check,
+  // which histogram can't use as-is since it requires a yColumnId histogram doesn't have).
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
-    const shared = this.sharedChartIssues();
+    const bindings = this.bindings();
+    const multi = bindings.length > 1;
+    const issues: ValidationIssue[] = [...this.sharedChartIssues()];
 
-    if (!this.datasetId()) {
-      return [
-        ...shared,
-        {
-          id: `${this.id}:noDataset`,
+    bindings.forEach((binding, i) => {
+      const where = multi ? `${name} (series ${i + 1})` : name;
+      if (!binding.datasetId()) {
+        issues.push({
+          id: `${this.id}:noDataset:${binding.id}`,
           severity: 'warning',
-          title: `${name} has no dataset`,
+          title: `${where} has no dataset`,
           detail: 'Pick a dataset so the chart has something to plot.',
           widgetId: this.id,
           view: { kind: 'widget', widgetId: this.id },
-        },
-      ];
-    }
-
-    if (!this.xColumnId()) {
-      return [
-        ...shared,
-        {
-          id: `${this.id}:noValue`,
+        });
+      } else if (!binding.xColumnId()) {
+        issues.push({
+          id: `${this.id}:noValue:${binding.id}`,
           severity: 'warning',
-          title: `${name} has no value`,
+          title: `${where} has no value`,
           detail: 'Pick a numeric column whose distribution the histogram bins.',
           widgetId: this.id,
           view: { kind: 'widget', widgetId: this.id },
-        },
-      ];
-    }
+        });
+      }
+    });
 
-    return shared;
+    return issues;
   }
 }

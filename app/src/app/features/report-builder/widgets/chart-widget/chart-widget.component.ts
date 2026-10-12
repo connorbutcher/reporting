@@ -144,9 +144,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /**
    * A signature of just the config fields the server query depends on — each
-   * binding's dataset and columns, the bar aggregate, the tolerance bands, and the
-   * tooltip columns. The reload effect watches this rather than the whole config,
-   * so appearance-only edits (axis labels, colours, zoom, markers, bounds) don't
+   * binding's dataset, columns, and draw-order sort, whether a trend line is
+   * fitted, the bar aggregate and sort, the tolerance bands, and the tooltip
+   * columns. The reload effect watches this rather than the whole config, so
+   * appearance-only edits (axis labels, colours, zoom, markers, bounds) don't
    * fire a needless reload that would briefly dim the chart.
    */
   private readonly queryKey = computed(() => {
@@ -158,8 +159,16 @@ export class ChartWidgetComponent extends DataWidgetBase {
       // A bar chart plots several measures; changing them (beyond the mirrored first) must reload.
       b.valueColumnIds ?? null,
       b.seriesColumnId,
+      // A point chart's own draw order; ignored server-side by every grouping chart, so harmless
+      // to include unconditionally here too.
+      b.sort ?? null,
     ]);
+    // Whether a trend line is fitted per series — a point-chart-only option, but harmless to
+    // include unconditionally (every grouping chart ignores it server-side too).
+    const trend = config.showTrendLine ?? false;
     const aggregate = config.type === 'barChart' || config.type === 'comboChart' ? config.aggregate : null;
+    // A bar/combo chart's category order, resolved against the primary binding's dataset.
+    const barSort = config.type === 'barChart' || config.type === 'comboChart' ? config.sort : null;
     // Box options that change the server response: whisker mode/length (which values become
     // outliers), the sort order, and whether raw points are pulled. Mean/n/capability/highlighting
     // are render-only (the summary always carries mean & σ), so they don't force a reload.
@@ -181,7 +190,16 @@ export class ChartWidgetComponent extends DataWidgetBase {
             cu: config.cumulative,
           }
         : null;
-    return JSON.stringify({ bindings, aggregate, box, hist, tol: config.toleranceBands, tip: config.tooltipColumns });
+    return JSON.stringify({
+      bindings,
+      trend,
+      aggregate,
+      barSort,
+      box,
+      hist,
+      tol: config.toleranceBands,
+      tip: config.tooltipColumns,
+    });
   });
 
   /** Per-binding response cache so editing one binding doesn't refetch the others. */
@@ -230,8 +248,8 @@ export class ChartWidgetComponent extends DataWidgetBase {
       return !!(b?.datasetId && b.xColumnId && b.yColumnId);
     }
     if (config.type === 'histogram') {
-      const b = bindings[0];
-      return !!(b?.datasetId && b.xColumnId);
+      // Any bound series is enough to plot — the others can still be mid-setup.
+      return bindings.some((b) => b.datasetId && b.xColumnId);
     }
     return bindings.some((b) => b.datasetId && b.xColumnId && b.yColumnId);
   });

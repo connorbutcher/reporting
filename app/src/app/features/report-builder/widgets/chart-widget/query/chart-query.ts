@@ -1,4 +1,4 @@
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../../core/models/filter';
 import {
@@ -14,7 +14,9 @@ import {
   ChartQueryResult,
   ChartRowCounts,
   ChartSeriesResult,
+  HistogramQueryRequest,
   HistogramQueryResult,
+  HistogramSeriesResult,
 } from '../../../../../core/models/widget-query';
 
 /** One binding's point-chart response, tagged with the binding it came from. */
@@ -27,6 +29,12 @@ interface ChartQueryPart {
 interface BarChartPart {
   binding: ChartSeriesBinding;
   result: BarChartQueryResult;
+}
+
+/** One binding's histogram response, tagged with the binding it came from. */
+interface HistogramPart {
+  binding: ChartSeriesBinding;
+  result: HistogramQueryResult;
 }
 
 /** Builds the server query for a chart's current config. */
@@ -72,6 +80,7 @@ export class ChartQuery {
               aggregate: config.aggregate,
               seriesColumnId: binding.seriesColumnId,
               toleranceBands: config.toleranceBands,
+              sort: config.sort,
             })
             .pipe(
               map((result): BarChartPart => ({ binding, result })),
@@ -111,15 +120,16 @@ export class ChartQuery {
     }
 
     if (config.type === 'histogram') {
-      // A histogram bins one numeric column of a single dataset, so like the box plot it queries
-      // its primary binding only — reading xColumnId as the column whose distribution it draws.
-      const primary = bindings[0];
-      if (!primary?.datasetId || !primary.xColumnId) return null;
+      // Each bound binding overlays its own distribution — its own dataset and column, reading
+      // xColumnId as the value being binned. A single binding queries exactly as before; several
+      // are bound onto one shared set of bin edges (below) so their bars line up on one axis.
+      const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
+      if (bound.length === 0) return null;
 
-      return api.queryHistogram(primary.datasetId, {
-        filter: bindingFilters?.[primary.id] ?? null,
-        valueColumnId: primary.xColumnId,
-        seriesColumnId: primary.seriesColumnId,
+      const request = (b: ChartSeriesBinding, overrides?: Partial<HistogramQueryRequest>): HistogramQueryRequest => ({
+        filter: bindingFilters?.[b.id] ?? null,
+        valueColumnId: b.xColumnId!,
+        seriesColumnId: b.seriesColumnId,
         binMode: config.binMode,
         binCount: config.binCount,
         binWidth: config.binWidth,
@@ -128,7 +138,61 @@ export class ChartQuery {
         normalize: config.normalize,
         cumulative: config.cumulative,
         toleranceBands: config.toleranceBands,
+        ...overrides,
       });
+
+      const queryAll = (
+        overridesFor: (b: ChartSeriesBinding) => Partial<HistogramQueryRequest>,
+      ): Observable<(HistogramPart | null)[]> =>
+        forkJoin(
+          bound.map((b) =>
+            api.queryHistogram(b.datasetId!, request(b, overridesFor(b))).pipe(
+              map((result): HistogramPart => ({ binding: b, result })),
+              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart.
+              catchError(() => of(null)),
+            ),
+          ),
+        );
+
+      const toResult = (results: (HistogramPart | null)[]): HistogramQueryResult => {
+        const ok = results.filter((r): r is HistogramPart => r !== null);
+        if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+        return { ...ChartQuery.mergeHistogram(ok), failedBindingCount: results.length - ok.length };
+      };
+
+      // A lone binding needs no shared range or bin count to agree with — query it exactly as
+      // before. Several only need the extra probe-and-align round trip when something about the
+      // bins would otherwise be decided independently per dataset: an auto-fit range, or Auto mode's
+      // data-driven bin count.
+      const needsSharedEdges =
+        bound.length > 1 && (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
+
+      if (!needsSharedEdges) {
+        return queryAll(() => ({})).pipe(map(toResult));
+      }
+
+      // Probe pass: each binding's own natural bins, to learn the overall data range (for an
+      // auto-fit bound) and the finest Auto bin count among them. The final pass pins every
+      // binding to that shared range — and, for Auto mode, to that shared count via an explicit
+      // Count override — so every series' edges come out identical.
+      return queryAll(() => ({})).pipe(
+        switchMap((probe) => {
+          const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
+          if (ok.length === 0) return of(toResult(probe));
+
+          const rangeMin = config.rangeMin ?? Math.min(...ok.map((r) => r.result.bins[0].lower));
+          const rangeMax =
+            config.rangeMax ?? Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
+          const sharedCount = Math.max(...ok.map((r) => r.result.bins.length));
+
+          const finalOverrides =
+            config.binMode === 'auto'
+              ? { rangeMin, rangeMax, binMode: 'count' as const, binCount: sharedCount }
+              : { rangeMin, rangeMax };
+
+          return queryAll(() => finalOverrides).pipe(map(toResult));
+        }),
+      );
     }
 
     // Tooltip columns are chosen from the axis-defining dataset's schema (the first bound
@@ -147,6 +211,8 @@ export class ChartQuery {
           seriesColumnId: binding.seriesColumnId,
           toleranceBands: config.toleranceBands,
           tooltipColumns: binding.id === axisBindingId ? config.tooltipColumns : [],
+          sort: binding.sort ?? null,
+          showTrendLine: config.showTrendLine ?? false,
         };
         const key = `${binding.datasetId}|${JSON.stringify(request)}`;
         wanted.add(key);
@@ -310,6 +376,56 @@ export class ChartQuery {
       // Bands resolve against the primary binding's dataset, matching the schema the panel offers.
       toleranceBands: first.toleranceBands,
       ...ChartQuery.sumRowCounts(parts),
+    };
+  }
+
+  /**
+   * Flattens each binding's distribution into one result. A single binding keeps its series and
+   * bins untouched. With several, their bins are assumed identical (the caller aligns them onto a
+   * shared range and bin count before querying) — the first binding with any data stands in for
+   * the shared axis. Each series is named for its binding (label, else dataset name), with a
+   * binding's own split-by key appended when it has one; colliding names are suffixed.
+   */
+  private static mergeHistogram(parts: HistogramPart[]): HistogramQueryResult {
+    const first = parts[0].result;
+    if (parts.length === 1) return first;
+
+    const basis = parts.find((p) => p.result.bins.length > 0) ?? parts[0];
+
+    const bases = parts.map(({ binding, result }) => binding.label.trim() || result.name);
+    const counts = new Map<string, number>();
+    for (const base of bases) counts.set(base, (counts.get(base) ?? 0) + 1);
+    const seen = new Map<string, number>();
+    const uniqueBases = bases.map((base) => {
+      if ((counts.get(base) ?? 0) <= 1) return base;
+      const n = (seen.get(base) ?? 0) + 1;
+      seen.set(base, n);
+      return `${base} (${n})`;
+    });
+
+    const series: HistogramSeriesResult[] = parts.flatMap((part, i) => {
+      const { result } = part;
+      const base = uniqueBases[i];
+      const split = result.series.length > 1;
+      return result.series.map((s): HistogramSeriesResult => ({
+        values: s.values,
+        label: split && s.label ? `${base} · ${s.label}` : base,
+      }));
+    });
+
+    return {
+      id: first.id,
+      name: first.name,
+      bins: basis.result.bins,
+      series,
+      // Bands resolve against each binding's own dataset but the same spec, so every binding's
+      // response carries the same resolved bounds — the first (non-empty) one stands for all.
+      toleranceBands: basis.result.toleranceBands,
+      ...ChartQuery.sumRowCounts(parts),
+      // Any binding's scan hitting its cap makes the overlay incomplete; the rows actually read
+      // add up across bindings the same way the matched/total counts do.
+      truncated: parts.some((p) => p.result.truncated),
+      scannedRowCount: parts.reduce((sum, p) => sum + (p.result.scannedRowCount ?? 0), 0),
     };
   }
 

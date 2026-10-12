@@ -13,21 +13,31 @@ import { ChartBindingModel } from '../../../models/chart-binding.model';
 import {
   BarChartWidgetModel,
   ComboChartWidgetModel,
+  HistogramWidgetModel,
   LineChartWidgetModel,
 } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
+import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.component';
 
 /**
  * One data series' full configuration — its dataset, axes, colour-by split, style,
- * assigned Y axis, and row filter. Reached from the series list on the chart detail
- * panel, so the list stays a scannable summary rather than a stack of long cards.
+ * assigned Y axis, draw order, and row filter. Reached from the series list on the
+ * chart detail panel, so the list stays a scannable summary rather than a stack of
+ * long cards.
  */
 @Component({
   selector: 'app-panel-chart-series',
-  imports: [FormsModule, ButtonModule, CheckboxModule, SelectModule, PanelGroupComponent],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    CheckboxModule,
+    SelectModule,
+    PanelGroupComponent,
+    PanelChartSortComponent,
+  ],
   templateUrl: './panel-chart-series.component.html',
 })
 export class PanelChartSeriesComponent {
@@ -66,6 +76,9 @@ export class PanelChartSeriesComponent {
 
   /** Bar and combo bind the same way — a category and one or more measures, not a single X/Y pair. */
   public readonly isBarLike = computed(() => this.isBar() || this.isCombo());
+
+  /** Whether this series belongs to a histogram — it bins a single column, with no Y, marker, or axis. */
+  public readonly isHistogram = computed(() => this.chart() instanceof HistogramWidgetModel);
 
   /** Bars/lines whose aggregate is Count need no measure, so the value picker is hidden. */
   public readonly needsValue = computed(
@@ -134,8 +147,9 @@ export class PanelChartSeriesComponent {
     return this.isLine() || (this.isCombo() && binding.renderAs() === 'line');
   }
 
-  /** Markers (and the 'None' option) apply to point charts and combo line series, never to bars. */
+  /** Markers (and the 'None' option) apply to point charts and combo line series, never to bars or bins. */
   public showMarker(binding: ChartBindingModel): boolean {
+    if (this.isHistogram()) return false;
     return !this.isBarLike() || this.isLineSeries(binding);
   }
 

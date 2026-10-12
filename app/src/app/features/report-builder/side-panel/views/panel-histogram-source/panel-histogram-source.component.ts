@@ -1,27 +1,14 @@
-import { Component, inject, input } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { SelectModule } from 'primeng/select';
+import { Component, input } from '@angular/core';
 import { HistogramWidgetModel } from '../../../models/widget.model';
-import { PanelNavigation } from '../../../state/panel-navigation';
-import { ReportSession } from '../../../state/report-session';
-import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
+import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 
-/** The histogram's data source: its dataset, the value/split columns, and its row filter. */
+/** The histogram's data source: each overlaid distribution picks its own dataset and column. */
 @Component({
   selector: 'app-panel-histogram-source',
-  imports: [FormsModule, SelectModule, PanelGroupComponent],
+  imports: [PanelGroupComponent, PanelChartSeriesListComponent],
   templateUrl: './panel-histogram-source.component.html',
 })
 export class PanelHistogramSourceComponent {
   public readonly chart = input.required<HistogramWidgetModel>();
-
-  /** The datasets on this report, for the data-source picker. */
-  public readonly datasets = inject(ReportSession).datasets;
-
-  private readonly navigation = inject(PanelNavigation);
-
-  public navigate(view: PanelView): void {
-    this.navigation.navigate(view);
-  }
 }

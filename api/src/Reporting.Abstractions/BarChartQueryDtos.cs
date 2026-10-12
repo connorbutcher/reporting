@@ -26,6 +26,9 @@ public class BarChartQueryDto
     public Guid? SeriesColumnId { get; set; }
 
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
+
+    /// <summary>How the bars are ordered along the category axis.</summary>
+    public ChartSort Sort { get; set; } = new();
 }
 
 public class BarSeriesDto

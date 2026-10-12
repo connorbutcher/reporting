@@ -11,8 +11,40 @@ export type Aggregate = 'sum' | 'average' | 'count' | 'min' | 'max';
  */
 export type BoxWhisker = 'tukey' | 'minMax' | 'stdDev';
 
-/** How a box plot orders its categories: the column's own order, or by each group's pooled median/spread. */
-export type BoxSort = 'category' | 'medianAsc' | 'medianDesc' | 'spreadDesc';
+/**
+ * What a chart's own order falls back to when nothing overrides it: a bar/combo/box plot's
+ * category order, or a point chart's X order.
+ */
+export type ChartSortBy = 'default' | 'column';
+
+/**
+ * How several rows in one category collapse to the single number a sort ranks it by. Ignored by
+ * a point chart's per-row sort, which has nothing to reduce — each row is its own point.
+ */
+export type SortAggregate = 'sum' | 'average' | 'count' | 'min' | 'max' | 'median' | 'spread';
+
+/**
+ * How a chart orders its categories (bar, combo, box plot) or its points (scatter, line).
+ * `by: 'default'` keeps the chart's own natural order — the category column's own order, or X
+ * ascending. `by: 'column'` ranks by any column in the dataset, not necessarily one plotted on
+ * the chart, reduced per category by `aggregate` (ignored for a point chart, whose rows aren't
+ * grouped).
+ */
+export interface ChartSort {
+  by: ChartSortBy;
+  /** The column to rank by; required (and resolved against its own dataset) when `by` is `'column'`. */
+  columnId: string | null;
+  aggregate: SortAggregate;
+  descending: boolean;
+}
+
+/** A fresh sort: the chart's own natural order, ascending. */
+export const DEFAULT_CHART_SORT: ChartSort = {
+  by: 'default',
+  columnId: null,
+  aggregate: 'sum',
+  descending: false,
+};
 
 /**
  * How a histogram chooses its bin edges. `count` divides the range into a fixed number of equal
@@ -152,6 +184,13 @@ export interface ChartSeriesBinding {
   dashStyle?: LineDashStyle | null;
   /** Rows this binding plots, narrowed server-side. Null means no per-series filter. */
   filter: FilterGroup | null;
+  /**
+   * Draw order for a point chart's (scatter/line) own rows — each binding's points are queried
+   * and ordered independently, since overlaid bindings don't share a merged axis the way bar's
+   * categories do. Null keeps the default X-ascending order. Ignored by every grouping chart
+   * (bar, combo, box plot, histogram), which order via their own chart-level `sort` instead.
+   */
+  sort?: ChartSort | null;
 }
 
 /**
@@ -209,6 +248,9 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
    */
   colorByValue?: boolean;
 
+  /** Fits and draws a least-squares trend line per series. Point charts only; ignored by grouping charts. */
+  showTrendLine?: boolean;
+
   showLegend: boolean;
   pointSize: number;
 
@@ -247,6 +289,8 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
   stacked: boolean;
   /** Draws bars horizontally (categories down the Y axis) rather than as vertical columns. */
   horizontal: boolean;
+  /** How the bars are ordered along the category axis. */
+  sort: ChartSort;
 }
 
 /**
@@ -269,6 +313,8 @@ export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
   showPoints: boolean;
   /** Shades the area under line series. */
   areaFill: boolean;
+  /** How the bars/lines are ordered along the category axis. */
+  sort: ChartSort;
 }
 
 /**
@@ -284,8 +330,8 @@ export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
   whisker: BoxWhisker;
   /** The whisker length multiplier — of the IQR for `tukey`, of the standard deviation for `stdDev`. Ignored for `minMax`. */
   whiskerFactor: number;
-  /** How the categories are ordered along the axis. */
-  sort: BoxSort;
+  /** How the boxes are ordered along the category axis. */
+  sort: ChartSort;
   /** Draws the mean as a marker inside each box, alongside the median line. */
   showMean: boolean;
   /** Prints each box's sample size (n) above it. */
@@ -367,6 +413,7 @@ export const DEFAULT_BAR_CHART_CONFIG: Omit<BarChartWidgetConfig, 'type'> = {
   aggregate: 'sum',
   stacked: false,
   horizontal: false,
+  sort: DEFAULT_CHART_SORT,
 };
 
 export const DEFAULT_COMBO_CHART_CONFIG: Omit<ComboChartWidgetConfig, 'type'> = {
@@ -377,6 +424,7 @@ export const DEFAULT_COMBO_CHART_CONFIG: Omit<ComboChartWidgetConfig, 'type'> = 
   smooth: false,
   showPoints: true,
   areaFill: false,
+  sort: DEFAULT_CHART_SORT,
 };
 
 export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
@@ -384,7 +432,7 @@ export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
   title: 'Box plot',
   whisker: 'tukey',
   whiskerFactor: 1.5,
-  sort: 'category',
+  sort: DEFAULT_CHART_SORT,
   showMean: false,
   showSampleSize: false,
   showPoints: false,
@@ -419,4 +467,5 @@ export const EMPTY_CHART_BINDING: Omit<ChartSeriesBinding, 'id'> = {
   symbol: null,
   dashStyle: null,
   filter: null,
+  sort: null,
 };

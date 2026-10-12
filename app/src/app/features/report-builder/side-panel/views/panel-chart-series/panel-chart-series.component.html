@@ -48,6 +48,21 @@
           }
         </div>
       }
+    } @else if (isHistogram()) {
+      <label class="panel-field">
+        <span class="panel-field-label">Column</span>
+        <p-select
+          [options]="binding.numericColumns()"
+          [ngModel]="binding.xColumnId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Column to distribute"
+          appendTo="body"
+          [disabled]="!binding.datasetId()"
+          fluid
+          (onChange)="binding.xColumnId.set($event.value ?? null)"
+        />
+      </label>
     } @else {
       <div class="panel-grid-fields">
         <label class="panel-field">
@@ -102,13 +117,13 @@
     }
 
     <label class="panel-field">
-      <span class="panel-field-label">Colour by (optional)</span>
+      <span class="panel-field-label">{{ isHistogram() ? 'Split by (optional)' : 'Colour by (optional)' }}</span>
       <p-select
         [options]="binding.schema()?.columns ?? []"
         [ngModel]="binding.seriesColumnId()"
         optionLabel="name"
         optionValue="id"
-        placeholder="One series"
+        [placeholder]="isHistogram() ? 'One distribution' : 'One series'"
         appendTo="body"
         [showClear]="true"
         [disabled]="!binding.datasetId()"
@@ -170,7 +185,17 @@
       </div>
     }
 
-    @if (!isBar() && (chart()?.yAxes()?.length ?? 0) > 1) {
+    @if (!isBarLike() && !isHistogram()) {
+      <app-panel-chart-sort
+        [sort]="binding.sort()"
+        [columns]="binding.schema()?.columns ?? []"
+        [showAggregate]="false"
+        defaultLabel="X order"
+        (sortChange)="binding.sort.set($event)"
+      />
+    }
+
+    @if (!isBar() && !isHistogram() && (chart()?.yAxes()?.length ?? 0) > 1) {
       <label class="panel-field">
         <span class="panel-field-label">Plot on axis</span>
         <p-select

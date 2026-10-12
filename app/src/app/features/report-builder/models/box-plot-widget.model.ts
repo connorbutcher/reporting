@@ -2,9 +2,10 @@ import { signal } from '@angular/core';
 import {
   BoxPlotWidget,
   BoxPlotWidgetConfig,
-  BoxSort,
   BoxWhisker,
+  ChartSort,
   DEFAULT_BOX_PLOT_CONFIG,
+  DEFAULT_CHART_SORT,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
@@ -23,8 +24,8 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   public readonly whisker = signal<BoxWhisker>('tukey');
   /** The whisker length multiplier — of the IQR for `tukey`, of the standard deviation for `stdDev`. */
   public readonly whiskerFactor = signal(1.5);
-  /** How the categories are ordered along the axis. */
-  public readonly sort = signal<BoxSort>('category');
+  /** How the boxes are ordered along the category axis. */
+  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
   /** Draws the mean as a marker inside each box, alongside the median line. */
   public readonly showMean = signal(false);
   /** Prints each box's sample size (n) above it. */
@@ -41,7 +42,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     this.whisker.set(widget.config.whisker);
     // Charts saved before these existed default to the box-plot config defaults.
     this.whiskerFactor.set(widget.config.whiskerFactor ?? 1.5);
-    this.sort.set(widget.config.sort ?? 'category');
+    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
     this.showMean.set(widget.config.showMean ?? false);
     this.showSampleSize.set(widget.config.showSampleSize ?? false);
     this.showPoints.set(widget.config.showPoints ?? false);

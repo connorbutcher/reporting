@@ -237,6 +237,66 @@ public class BarChartQueryTests : IDisposable
         Assert.Equal([10d], series.Values);
     }
 
+    [Fact]
+    public async Task QueryForBarChart_sort_descending_reverses_the_natural_order()
+    {
+        var categoryRef = Guid.NewGuid();
+        var revRef = Guid.NewGuid();
+        var dataset = NewDataset(
+            (categoryRef, "Region", DatasetColumnType.String),
+            (revRef, "Revenue", DatasetColumnType.Double));
+        var cat = dataset.Columns[0].Id;
+        var rev = dataset.Columns[1].Id;
+
+        AddRow(dataset.Id, cat, "North", (rev, 10));
+        AddRow(dataset.Id, cat, "South", (rev, 5));
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
+        {
+            CategoryColumnId = categoryRef,
+            ValueColumnIds = [revRef],
+            Aggregate = Aggregate.Sum,
+            Sort = new ChartSort { Descending = true },
+        });
+
+        Assert.Equal(["South", "North"], result!.Categories);
+    }
+
+    [Fact]
+    public async Task QueryForBarChart_sort_by_column_ranks_by_a_measure_not_plotted()
+    {
+        var categoryRef = Guid.NewGuid();
+        var revRef = Guid.NewGuid();
+        var priorityRef = Guid.NewGuid();
+        var dataset = NewDataset(
+            (categoryRef, "Region", DatasetColumnType.String),
+            (revRef, "Revenue", DatasetColumnType.Double),
+            (priorityRef, "Priority", DatasetColumnType.Double));
+        var cat = dataset.Columns[0].Id;
+        var rev = dataset.Columns[1].Id;
+        var priority = dataset.Columns[2].Id;
+
+        // Alphabetical/revenue order disagrees with priority order, so a match proves the
+        // category ranking really came from the (unplotted) priority column.
+        AddRow(dataset.Id, cat, "East", (rev, 1), (priority, 1));
+        AddRow(dataset.Id, cat, "North", (rev, 10), (priority, 5));
+        AddRow(dataset.Id, cat, "South", (rev, 5), (priority, 20));
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
+        {
+            CategoryColumnId = categoryRef,
+            ValueColumnIds = [revRef],
+            Aggregate = Aggregate.Sum,
+            Sort = new ChartSort { By = ChartSortBy.Column, ColumnId = priorityRef, Aggregate = SortAggregate.Sum, Descending = true },
+        });
+
+        Assert.Equal(["South", "North", "East"], result!.Categories);
+        // The plotted measure is unaffected — only the category order changed.
+        Assert.Equal([5d, 10d, 1d], Assert.Single(result.Series).Values);
+    }
+
     private Dataset NewDataset(params (Guid Ref, string Name, DatasetColumnType Type)[] columns)
     {
         var dataset = new Dataset { Name = "D", DatasetSourceId = 1, ReportRevisionId = 1 };

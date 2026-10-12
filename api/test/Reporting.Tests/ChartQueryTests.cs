@@ -135,6 +135,157 @@ public class ChartQueryTests : IDisposable
         Assert.Equal(expectedMillis, Convert.ToDouble(point.X));
     }
 
+    [Fact]
+    public async Task QueryForChart_column_sort_orders_points_by_a_column_not_plotted()
+    {
+        var xRef = Guid.NewGuid();
+        var yRef = Guid.NewGuid();
+        var sequenceRef = Guid.NewGuid();
+
+        var dataset = new Dataset
+        {
+            Name = "D",
+            DatasetSourceId = 1,
+            ReportRevisionId = 1,
+            Columns =
+            {
+                new DatasetColumn { RefId = xRef, Name = "X", Type = DatasetColumnType.Double, Order = 0 },
+                new DatasetColumn { RefId = yRef, Name = "Y", Type = DatasetColumnType.Double, Order = 1 },
+                new DatasetColumn { RefId = sequenceRef, Name = "Sequence", Type = DatasetColumnType.Double, Order = 2 },
+            },
+        };
+        _db.Datasets.Add(dataset);
+        await _db.SaveChangesAsync();
+
+        var xId = dataset.Columns[0].Id;
+        var yId = dataset.Columns[1].Id;
+        var sequenceId = dataset.Columns[2].Id;
+
+        // X-ascending (the default) would draw 1, 2, 3; the sequence column reverses that order,
+        // so the result only matches if the draw order really came from it, not from X.
+        void AddPoint(double x, double y, double sequence)
+        {
+            var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
+            row.Cells.Add(new DatasetCell { ColumnId = xId, NumberValue = x, StringValue = x.ToString() });
+            row.Cells.Add(new DatasetCell { ColumnId = yId, NumberValue = y, StringValue = y.ToString() });
+            row.Cells.Add(new DatasetCell { ColumnId = sequenceId, NumberValue = sequence, StringValue = sequence.ToString() });
+            _db.DatasetRows.Add(row);
+        }
+        AddPoint(1, 10, 3);
+        AddPoint(2, 20, 2);
+        AddPoint(3, 30, 1);
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForChartAsync(dataset.Id, new ChartQueryDto
+        {
+            XColumnId = xRef,
+            YColumnId = yRef,
+            Sort = new ChartSort { By = ChartSortBy.Column, ColumnId = sequenceRef },
+        });
+
+        var points = Assert.Single(result!.Series).Points;
+        Assert.Equal([3d, 2d, 1d], points.Select(p => Convert.ToDouble(p.X)));
+    }
+
+    [Fact]
+    public async Task QueryForChart_trend_line_fits_a_perfect_line_exactly()
+    {
+        var xRef = Guid.NewGuid();
+        var yRef = Guid.NewGuid();
+
+        var dataset = new Dataset
+        {
+            Name = "D",
+            DatasetSourceId = 1,
+            ReportRevisionId = 1,
+            Columns =
+            {
+                new DatasetColumn { RefId = xRef, Name = "X", Type = DatasetColumnType.Double, Order = 0 },
+                new DatasetColumn { RefId = yRef, Name = "Y", Type = DatasetColumnType.Double, Order = 1 },
+            },
+        };
+        _db.Datasets.Add(dataset);
+        await _db.SaveChangesAsync();
+
+        var xId = dataset.Columns[0].Id;
+        var yId = dataset.Columns[1].Id;
+
+        // y = 2x + 1, exactly — the fit should recover that precisely, with a perfect R².
+        void AddPoint(double x, double y)
+        {
+            var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
+            row.Cells.Add(new DatasetCell { ColumnId = xId, NumberValue = x, StringValue = x.ToString() });
+            row.Cells.Add(new DatasetCell { ColumnId = yId, NumberValue = y, StringValue = y.ToString() });
+            _db.DatasetRows.Add(row);
+        }
+        AddPoint(0, 1);
+        AddPoint(1, 3);
+        AddPoint(2, 5);
+        AddPoint(3, 7);
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForChartAsync(dataset.Id, new ChartQueryDto
+        {
+            XColumnId = xRef,
+            YColumnId = yRef,
+            ShowTrendLine = true,
+        });
+
+        var trend = Assert.Single(result!.Series).TrendLine;
+        Assert.NotNull(trend);
+        Assert.Equal(2d, trend!.Slope, precision: 9);
+        Assert.Equal(1d, trend.Intercept, precision: 9);
+        Assert.Equal(1d, trend.RSquared, precision: 9);
+        Assert.Equal(0d, trend.X1);
+        Assert.Equal(1d, trend.Y1, precision: 9);
+        Assert.Equal(3d, trend.X2);
+        Assert.Equal(7d, trend.Y2, precision: 9);
+    }
+
+    [Fact]
+    public async Task QueryForChart_trend_line_is_omitted_for_a_text_axis_even_when_requested()
+    {
+        var xRef = Guid.NewGuid();
+        var yRef = Guid.NewGuid();
+
+        var dataset = new Dataset
+        {
+            Name = "D",
+            DatasetSourceId = 1,
+            ReportRevisionId = 1,
+            Columns =
+            {
+                new DatasetColumn { RefId = xRef, Name = "Category", Type = DatasetColumnType.String, Order = 0 },
+                new DatasetColumn { RefId = yRef, Name = "Y", Type = DatasetColumnType.Double, Order = 1 },
+            },
+        };
+        _db.Datasets.Add(dataset);
+        await _db.SaveChangesAsync();
+
+        var xId = dataset.Columns[0].Id;
+        var yId = dataset.Columns[1].Id;
+
+        void AddPoint(string x, double y)
+        {
+            var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
+            row.Cells.Add(new DatasetCell { ColumnId = xId, StringValue = x });
+            row.Cells.Add(new DatasetCell { ColumnId = yId, NumberValue = y, StringValue = y.ToString() });
+            _db.DatasetRows.Add(row);
+        }
+        AddPoint("A", 1);
+        AddPoint("B", 2);
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForChartAsync(dataset.Id, new ChartQueryDto
+        {
+            XColumnId = xRef,
+            YColumnId = yRef,
+            ShowTrendLine = true,
+        });
+
+        Assert.Null(Assert.Single(result!.Series).TrendLine);
+    }
+
     private void AddRow(int datasetId, (int col, double val) x, (int col, double val) y, int noteCol, string note, int ignoredCol, string ignored)
     {
         var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = datasetId };

@@ -3,7 +3,9 @@ import {
   Aggregate,
   BarChartWidget,
   BarChartWidgetConfig,
+  ChartSort,
   DEFAULT_BAR_CHART_CONFIG,
+  DEFAULT_CHART_SORT,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
@@ -24,6 +26,8 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   public readonly stacked = signal(false);
   /** Draws bars horizontally (categories down the Y axis) rather than as vertical columns. */
   public readonly horizontal = signal(false);
+  /** How the bars are ordered along the category axis. */
+  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
 
   /**
    * Whether the chart can produce more than one series — from several overlaid datasets, a
@@ -41,6 +45,8 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     this.aggregate.set(widget.config.aggregate);
     this.stacked.set(widget.config.stacked);
     this.horizontal.set(widget.config.horizontal);
+    // Charts saved before this existed default to the chart's own natural order.
+    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
   }
 
   /** Count summarises row counts, so it needs no measure column. */
@@ -56,6 +62,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
       aggregate: this.aggregate(),
       stacked: this.stacked(),
       horizontal: this.horizontal(),
+      sort: this.sort(),
     };
     return { ...this.geometryDto(), type: 'barChart', config };
   }

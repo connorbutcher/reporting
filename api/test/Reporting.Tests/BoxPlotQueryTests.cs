@@ -288,7 +288,7 @@ public class BoxPlotQueryTests : IDisposable
             CategoryColumnId = categoryRef,
             ValueColumnId = valueRef,
             Whisker = BoxWhisker.MinMax,
-            Sort = BoxSort.MedianAsc,
+            Sort = new ChartSort { By = ChartSortBy.Column, ColumnId = valueRef, Aggregate = SortAggregate.Median },
         });
 
         Assert.Equal(["B", "C", "A"], result!.Categories);

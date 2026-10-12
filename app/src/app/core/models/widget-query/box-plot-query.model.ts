@@ -1,4 +1,4 @@
-import { BoxSort, BoxWhisker, ChartToleranceBand } from '../report';
+import { ChartSort, BoxWhisker, ChartToleranceBand } from '../report';
 import { FilterGroup } from '../filter';
 import { ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
@@ -12,7 +12,7 @@ export interface BoxPlotQueryRequest {
   whisker: BoxWhisker;
   /** The whisker length multiplier — of the IQR for `tukey`, of the standard deviation for `stdDev`. */
   whiskerFactor: number;
-  sort: BoxSort;
+  sort: ChartSort;
   /** Requests a capped sample of each box's raw values, for the jittered overlay. */
   includePoints: boolean;
   toleranceBands: ChartToleranceBand[];

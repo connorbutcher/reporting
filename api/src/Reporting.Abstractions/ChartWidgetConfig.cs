@@ -89,22 +89,6 @@ public enum BoxWhisker
     StdDev
 }
 
-/// <summary>How a box plot orders its categories along the axis.</summary>
-public enum BoxSort
-{
-    /// <summary>The category column's own order (numeric/chronological, else alphabetical).</summary>
-    Category,
-
-    /// <summary>By each category's pooled median, lowest first.</summary>
-    MedianAsc,
-
-    /// <summary>By each category's pooled median, highest first.</summary>
-    MedianDesc,
-
-    /// <summary>By each category's pooled spread (IQR), widest first — surfaces the least consistent groups.</summary>
-    SpreadDesc
-}
-
 /// <summary>
 /// Reference lines drawn on one axis, resolved against one row of a separate
 /// limits dataset — the chart equivalent of a table column's <see cref="ToleranceConfig"/>.
@@ -198,6 +182,14 @@ public class ChartSeriesBinding
 
     /// <summary>Rows this binding plots, narrowed server-side. Null means no per-series filter.</summary>
     public FilterGroupDto? Filter { get; set; }
+
+    /// <summary>
+    /// Draw order for a point chart's (scatter/line) own rows — each binding's points are queried
+    /// and ordered independently, since overlaid bindings don't share a merged axis the way bar's
+    /// categories do. Null keeps the default X-ascending order. Ignored by every grouping chart
+    /// (bar, combo, box plot, histogram), which order via their own chart-level <c>Sort</c> instead.
+    /// </summary>
+    public ChartSort? Sort { get; set; }
 }
 
 /// <summary>
@@ -247,6 +239,9 @@ public abstract class ChartWidgetConfig : WidgetConfig
     /// <summary>Colours point-chart marks by their Y value on a continuous scale (an echarts visualMap).</summary>
     public bool? ColorByValue { get; set; }
 
+    /// <summary>Fits and draws a least-squares trend line per series (point charts only; ignored by grouping charts).</summary>
+    public bool? ShowTrendLine { get; set; }
+
     public bool ShowLegend { get; set; } = true;
     public int PointSize { get; set; } = 8;
 
@@ -290,6 +285,9 @@ public class BarChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>Draws bars horizontally (categories down the Y axis) rather than as vertical columns.</summary>
     public bool Horizontal { get; set; }
+
+    /// <summary>How the bars are ordered along the category axis.</summary>
+    public ChartSort Sort { get; set; } = new();
 }
 
 /// <summary>
@@ -314,6 +312,9 @@ public class ComboChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>Shades the area under line series.</summary>
     public bool AreaFill { get; set; }
+
+    /// <summary>How the bars/lines are ordered along the category axis.</summary>
+    public ChartSort Sort { get; set; } = new();
 }
 
 /// <summary>
@@ -331,8 +332,8 @@ public class BoxPlotWidgetConfig : ChartWidgetConfig
     /// <summary>The whisker length multiplier — of the IQR for Tukey, of the standard deviation for StdDev. Ignored for MinMax.</summary>
     public double WhiskerFactor { get; set; } = 1.5;
 
-    /// <summary>How the categories are ordered along the axis.</summary>
-    public BoxSort Sort { get; set; } = BoxSort.Category;
+    /// <summary>How the boxes are ordered along the category axis.</summary>
+    public ChartSort Sort { get; set; } = new();
 
     /// <summary>Draws the mean as a marker inside each box, alongside the median line.</summary>
     public bool ShowMean { get; set; }

@@ -1,8 +1,13 @@
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
-import { ChartSeriesBinding, ChartWidgetConfig } from '../../../../../core/models/report';
-import { BarChartQueryResult, ChartRowCounts } from '../../../../../core/models/widget-query';
+import { ChartSeriesBinding, ChartWidgetConfig, HistogramBinMode } from '../../../../../core/models/report';
+import {
+  BarChartQueryResult,
+  ChartRowCounts,
+  HistogramBin,
+  HistogramQueryResult,
+} from '../../../../../core/models/widget-query';
 import { ChartQuery } from './chart-query';
 
 const binding = (id: string, datasetId: number): ChartSeriesBinding =>
@@ -18,6 +23,44 @@ const binding = (id: string, datasetId: number): ChartSeriesBinding =>
 
 const barConfig = (...bindings: ChartSeriesBinding[]): ChartWidgetConfig =>
   ({ type: 'barChart', aggregate: 'sum', bindings, toleranceBands: [] }) as unknown as ChartWidgetConfig;
+
+const histBinding = (id: string, datasetId: number, label = ''): ChartSeriesBinding =>
+  ({ id, datasetId, xColumnId: 'value', yColumnId: null, seriesColumnId: null, label }) as ChartSeriesBinding;
+
+const histogramConfig = (
+  binMode: HistogramBinMode,
+  rangeMin: number | null,
+  rangeMax: number | null,
+  ...bindings: ChartSeriesBinding[]
+): ChartWidgetConfig =>
+  ({
+    type: 'histogram',
+    binMode,
+    binCount: 10,
+    binWidth: 1,
+    rangeMin,
+    rangeMax,
+    normalize: 'count',
+    cumulative: false,
+    bindings,
+    toleranceBands: [],
+  }) as unknown as ChartWidgetConfig;
+
+/** Evenly spaced bins spanning [min, max]. */
+const binsFrom = (min: number, max: number, count: number): HistogramBin[] => {
+  const step = (max - min) / count;
+  return Array.from({ length: count }, (_, i) => ({
+    lower: min + i * step,
+    upper: min + (i + 1) * step,
+    label: `${min + i * step}`,
+  }));
+};
+
+const runHistogram = (api: DatasetApiService, config: ChartWidgetConfig) => {
+  const request = ChartQuery.build(api, config, null);
+  if (!request) throw new Error('expected a query');
+  return firstValueFrom(request) as Promise<HistogramQueryResult>;
+};
 
 /** A stub API answering each bar query from a per-dataset table of row counts. */
 const apiWith = (countsByDataset: Record<number, ChartRowCounts>): DatasetApiService =>
@@ -118,5 +161,160 @@ describe('ChartQuery row counts', () => {
     const api = apiWith({ 1: { totalRowCount: 52, matchedRowCount: 40 } });
 
     expect((await run(api, barConfig(binding('a', 1)))).failedBindingCount).toBe(0);
+  });
+});
+
+describe('ChartQuery histogram overlay', () => {
+  it('queries a single binding once, unaligned', async () => {
+    let calls = 0;
+    const api = {
+      queryHistogram: () => {
+        calls++;
+        return of({
+          id: '1',
+          name: 'D',
+          bins: binsFrom(0, 10, 2),
+          series: [{ label: '', values: [3, 4] }],
+          toleranceBands: [],
+          totalRowCount: 10,
+          matchedRowCount: 10,
+        } satisfies HistogramQueryResult);
+      },
+    } as unknown as DatasetApiService;
+
+    const result = await runHistogram(api, histogramConfig('auto', null, null, histBinding('a', 1)));
+
+    expect(calls).toBe(1);
+    expect(result.series).toEqual([{ label: '', values: [3, 4] }]);
+  });
+
+  it('queries each binding once when the range and bin count are already fixed', async () => {
+    let calls = 0;
+    const api = {
+      queryHistogram: (datasetId: number) => {
+        calls++;
+        return of({
+          id: String(datasetId),
+          name: `D${datasetId}`,
+          bins: binsFrom(0, 2, 2),
+          series: [{ label: '', values: datasetId === 1 ? [3, 4] : [5, 6] }],
+          toleranceBands: [],
+          totalRowCount: 10,
+          matchedRowCount: 10,
+        } satisfies HistogramQueryResult);
+      },
+    } as unknown as DatasetApiService;
+
+    const result = await runHistogram(
+      api,
+      histogramConfig('count', 0, 2, histBinding('a', 1, 'A'), histBinding('b', 2, 'B')),
+    );
+
+    // An explicit range and an explicit count need no probe round trip to agree.
+    expect(calls).toBe(2);
+    expect(result.bins.length).toBe(2);
+    expect(result.series).toEqual([
+      { label: 'A', values: [3, 4] },
+      { label: 'B', values: [5, 6] },
+    ]);
+  });
+
+  it('aligns bin edges across bindings when Auto mode would otherwise pick a count per dataset', async () => {
+    const seen: { datasetId: number; binMode: string; rangeMin: number | null; rangeMax: number | null; binCount: number }[] = [];
+    const api = {
+      queryHistogram: (datasetId: number, req: Record<string, unknown>) => {
+        seen.push({
+          datasetId,
+          binMode: req['binMode'] as string,
+          rangeMin: req['rangeMin'] as number | null,
+          rangeMax: req['rangeMax'] as number | null,
+          binCount: req['binCount'] as number,
+        });
+
+        // The probe pass: each binding reports its own natural range and Auto-derived bin count.
+        if (req['binMode'] === 'auto') {
+          return of(
+            datasetId === 1
+              ? ({
+                  id: '1',
+                  name: 'D1',
+                  bins: binsFrom(0, 10, 5),
+                  series: [{ label: '', values: [1, 1, 1, 1, 1] }],
+                  toleranceBands: [],
+                  totalRowCount: 10,
+                  matchedRowCount: 10,
+                } satisfies HistogramQueryResult)
+              : ({
+                  id: '2',
+                  name: 'D2',
+                  bins: binsFrom(5, 20, 3),
+                  series: [{ label: '', values: [2, 2, 2] }],
+                  toleranceBands: [],
+                  totalRowCount: 10,
+                  matchedRowCount: 10,
+                } satisfies HistogramQueryResult),
+          );
+        }
+
+        // The final pass: every binding queried with the same aligned range and bin count.
+        const binCount = req['binCount'] as number;
+        return of({
+          id: String(datasetId),
+          name: `D${datasetId}`,
+          bins: binsFrom(req['rangeMin'] as number, req['rangeMax'] as number, binCount),
+          series: [{ label: '', values: new Array(binCount).fill(datasetId) }],
+          toleranceBands: [],
+          totalRowCount: 10,
+          matchedRowCount: 10,
+        } satisfies HistogramQueryResult);
+      },
+    } as unknown as DatasetApiService;
+
+    const result = await runHistogram(
+      api,
+      histogramConfig('auto', null, null, histBinding('a', 1, 'A'), histBinding('b', 2, 'B')),
+    );
+
+    // Each binding is probed once, then re-queried once more with the aligned request.
+    expect(seen.filter((s) => s.binMode === 'auto').length).toBe(2);
+    const finals = seen.filter((s) => s.binMode === 'count');
+    expect(finals.length).toBe(2);
+    for (const final of finals) {
+      // The widest data extent across both probes, and the finer of their two Auto bin counts.
+      expect(final.rangeMin).toBe(0);
+      expect(final.rangeMax).toBe(20);
+      expect(final.binCount).toBe(5);
+    }
+
+    expect(result.bins.length).toBe(5);
+    expect(result.series).toEqual([
+      { label: 'A', values: [1, 1, 1, 1, 1] },
+      { label: 'B', values: [2, 2, 2, 2, 2] },
+    ]);
+  });
+
+  it('draws the bindings that loaded and counts the ones that failed', async () => {
+    const api = {
+      queryHistogram: (datasetId: number) =>
+        datasetId === 2
+          ? throwError(() => new Error('boom'))
+          : of({
+              id: '1',
+              name: 'D',
+              bins: binsFrom(0, 1, 1),
+              series: [{ label: '', values: [5] }],
+              toleranceBands: [],
+              totalRowCount: 10,
+              matchedRowCount: 10,
+            } satisfies HistogramQueryResult),
+    } as unknown as DatasetApiService;
+
+    const result = await runHistogram(
+      api,
+      histogramConfig('count', 0, 1, histBinding('a', 1), histBinding('b', 2)),
+    );
+
+    expect(result.failedBindingCount).toBe(1);
+    expect(result.series).toEqual([{ label: '', values: [5] }]);
   });
 });

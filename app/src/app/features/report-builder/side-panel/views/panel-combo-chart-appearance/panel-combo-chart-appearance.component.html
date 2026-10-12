@@ -8,6 +8,13 @@
   <label for="chart-value-labels">Show value labels</label>
 </div>
 
+<app-panel-chart-sort
+  [sort]="chart().sort()"
+  [columns]="chart().schema()?.columns ?? []"
+  defaultLabel="Category order"
+  (sortChange)="chart().sort.set($event)"
+/>
+
 <div class="panel-inline-field">
   <p-checkbox
     [binary]="true"

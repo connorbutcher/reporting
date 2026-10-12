@@ -932,8 +932,8 @@ public static class DbSeeder
         var overall = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 0, Y = 2, W = 28, H = 17, ConfigJson = "{}" };
         tab.Widgets.Add(overall);
         pendingCharts.Add(new PendingChart(overall, () =>
-            HistogramConfigJson("Bore diameter distribution", dataset, boreRef, null, xLabel, "Number of builds",
-                binMode: "count", binCount: 20, normalize: "count",
+            HistogramConfigJson("Bore diameter distribution", ChartBindingJson(dataset.Id, boreRef), xLabel, "Number of builds",
+                binMode: "count", binCount: 20, normalize: "count", showLegend: false,
                 bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
 
         // The same measure split per machine and shown as a relative frequency, so three differently
@@ -941,8 +941,8 @@ public static class DbSeeder
         var byMachine = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 28, Y = 2, W = 20, H = 17, ConfigJson = "{}" };
         tab.Widgets.Add(byMachine);
         pendingCharts.Add(new PendingChart(byMachine, () =>
-            HistogramConfigJson("By machine (relative)", dataset, boreRef, machineRef, xLabel, "Share of builds",
-                binMode: "count", binCount: 20, normalize: "frequency")));
+            HistogramConfigJson("By machine (relative)", ChartBindingJson(dataset.Id, boreRef, seriesRef: machineRef), xLabel, "Share of builds",
+                binMode: "count", binCount: 20, normalize: "frequency", showLegend: true)));
 
         // The rows behind the histograms, so the individual measurements are inspectable.
         var tableColumns = new[] { "Sample ID", "Machine", "Bore Diameter", "Measured At" };
@@ -1019,25 +1019,21 @@ public static class DbSeeder
     }
 
     /// <summary>
-    /// A histogram widget's config JSON, built once the dataset has a primary key. The dataset is
-    /// referenced by that int id; the binned column (and any split column) by their stable RefIds.
-    /// A null <paramref name="seriesRef"/> plots one distribution; otherwise each distinct value of
-    /// that column becomes an overlaid series. Bins are a fixed count over the data's own range.
+    /// A histogram widget's config JSON. Bindings are pre-built by the caller (see <see cref="ChartBindingJson"/>),
+    /// as for the point and combination charts, so one bound column plots a single distribution and several
+    /// overlay several — each on its own dataset/column/filter, sharing one set of bin edges once queried.
     /// </summary>
     private static string HistogramConfigJson(
-        string title, Dataset dataset, Guid valueRef, Guid? seriesRef,
-        string xAxisLabel, string yAxisLabel, string binMode, int binCount, string normalize,
-        bool cumulative = false, string bandsJson = "[]")
+        string title, string bindingsJson, string xAxisLabel, string yAxisLabel, string binMode, int binCount,
+        string normalize, bool showLegend, bool cumulative = false, string bandsJson = "[]")
     {
-        var bindingId = Guid.NewGuid();
-        var series = seriesRef is { } s ? $"\"{s}\"" : "null";
         static string B(bool value) => value ? "true" : "false";
         return $$"""
             {"type":"histogram","title":"{{title}}","showTitle":true,
-             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{valueRef}}","yColumnId":null,"seriesColumnId":{{series}},"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "bindings":[{{bindingsJson}}],
              "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
              "xAxisLabel":"{{xAxisLabel}}","yAxisLabel":"{{yAxisLabel}}",
-             "zoom":false,"showLegend":{{B(seriesRef is not null)}},"pointSize":8,
+             "zoom":false,"showLegend":{{B(showLegend)}},"pointSize":8,
              "showGridLines":true,"showValueLabels":false,
              "toleranceBands":{{bandsJson}},"tooltipColumns":[],
              "binMode":"{{binMode}}","binCount":{{binCount}},"binWidth":1,"rangeMin":null,"rangeMax":null,
@@ -1277,8 +1273,9 @@ public static class DbSeeder
     /// four tabs so every widget and option is on show. Tab 1 pairs a full data table with a
     /// widget-filtered table and a pivot; tab 2 the point charts (a series-split scatter with tooltip
     /// columns, a colour-by-value scatter, and a line with a spec band); tab 3 a grouped bar and the
-    /// combination chart (bars + a line on a second axis); tab 4 a box plot and a histogram, both against
-    /// the clearance spec. A report-level filter drops the R&D-bench builds from every widget.
+    /// combination chart (bars + a line on a second axis); tab 4 a box plot, a pooled histogram, and a
+    /// second histogram overlaying two engines' clearance as separate bound series on shared bins — all
+    /// three against the clearance spec. A report-level filter drops the R&D-bench builds from every widget.
     /// </summary>
     private static Report BuildFeatureShowcaseReport(
         List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
@@ -1451,8 +1448,24 @@ public static class DbSeeder
         var histogram = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 24, Y = 2, W = 24, H = 16, ConfigJson = "{}" };
         quality.Widgets.Add(histogram);
         pendingCharts.Add(new PendingChart(histogram, () =>
-            HistogramConfigJson("Bearing clearance distribution", dataset, clearanceRef, null, "Clearance (mm)", "Number of builds",
-                binMode: "count", binCount: 24, normalize: "count",
+            HistogramConfigJson("Bearing clearance distribution", ChartBindingJson(dataset.Id, clearanceRef), "Clearance (mm)", "Number of builds",
+                binMode: "count", binCount: 24, normalize: "count", showLegend: false,
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
+
+        // Multi-series histogram: the same clearance column bound twice, each series narrowed by its own
+        // filter to one engine — the loosest-toleranced V8 against the tightest V12 — overlaid on one
+        // shared set of bins so their spread is directly comparable, with the spec drawn across both.
+        var byEngine = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Histogram, X = 0, Y = 18, W = 48, H = 12, ConfigJson = "{}" };
+        quality.Widgets.Add(byEngine);
+        pendingCharts.Add(new PendingChart(byEngine, () =>
+            HistogramConfigJson("Bearing clearance: V8 vs V12",
+                string.Join(",",
+                    ChartBindingJson(dataset.Id, clearanceRef, label: "V8 5.0L",
+                        filterJson: FilterGroupJson("and", ConditionJson(engineRef, "equals", "V8 5.0L"))),
+                    ChartBindingJson(dataset.Id, clearanceRef, label: "V12 6.5L",
+                        filterJson: FilterGroupJson("and", ConditionJson(engineRef, "equals", "V12 6.5L")))),
+                "Clearance (mm)", "Number of builds",
+                binMode: "count", binCount: 24, normalize: "count", showLegend: true,
                 bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
 
         report.Revisions.Add(revision);

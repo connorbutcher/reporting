@@ -49,6 +49,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public readonly showGridLines = signal(true);
   public readonly showValueLabels = signal(false);
   public readonly colorByValue = signal(false);
+  /** Fits and draws a least-squares trend line per series. Point charts only. */
+  public readonly showTrendLine = signal(false);
   public readonly showLegend = signal(true);
   public readonly pointSize = signal(8);
 
@@ -82,6 +84,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.showGridLines.set(config.showGridLines ?? true);
     this.showValueLabels.set(config.showValueLabels ?? false);
     this.colorByValue.set(config.colorByValue ?? false);
+    this.showTrendLine.set(config.showTrendLine ?? false);
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
     this.toleranceBands.set(config.toleranceBands ?? []);
@@ -247,6 +250,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
       showGridLines: this.showGridLines(),
       showValueLabels: this.showValueLabels(),
       colorByValue: this.colorByValue(),
+      showTrendLine: this.showTrendLine(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
       // A band not yet pointed at a spec is left out — the server's Guid fields can't parse the

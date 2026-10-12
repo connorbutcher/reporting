@@ -1,8 +1,10 @@
 import { computed, signal } from '@angular/core';
 import {
   Aggregate,
+  ChartSort,
   ComboChartWidget,
   ComboChartWidgetConfig,
+  DEFAULT_CHART_SORT,
   DEFAULT_COMBO_CHART_CONFIG,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
@@ -28,6 +30,8 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   public readonly showPoints = signal(true);
   /** Shades the area under line series. */
   public readonly areaFill = signal(false);
+  /** How the bars/lines are ordered along the category axis. */
+  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
 
   /**
    * Whether the chart can produce more than one bar series to stack — from several overlaid
@@ -50,6 +54,8 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     this.smooth.set(widget.config.smooth);
     this.showPoints.set(widget.config.showPoints);
     this.areaFill.set(widget.config.areaFill);
+    // Charts saved before this existed default to the chart's own natural order.
+    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
   }
 
   /** Count summarises row counts, so it needs no measure column — matching the bar chart. */
@@ -67,6 +73,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
       smooth: this.smooth(),
       showPoints: this.showPoints(),
       areaFill: this.areaFill(),
+      sort: this.sort(),
     };
     return { ...this.geometryDto(), type: 'comboChart', config };
   }

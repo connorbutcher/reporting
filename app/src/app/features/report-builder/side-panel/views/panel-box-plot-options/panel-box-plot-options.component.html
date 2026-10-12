@@ -26,18 +26,12 @@
   </label>
 }
 
-<label class="panel-field">
-  <span class="panel-field-label">Order boxes by</span>
-  <p-select
-    [options]="sorts"
-    [ngModel]="chart().sort()"
-    optionLabel="label"
-    optionValue="value"
-    appendTo="body"
-    fluid
-    (onChange)="chart().sort.set($event.value)"
-  />
-</label>
+<app-panel-chart-sort
+  [sort]="chart().sort()"
+  [columns]="chart().schema()?.columns ?? []"
+  defaultLabel="Category order"
+  (sortChange)="chart().sort.set($event)"
+/>
 
 <div class="panel-inline-field">
   <p-checkbox

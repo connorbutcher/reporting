@@ -1,6 +1,6 @@
 import { ChartToleranceBand, HistogramBinMode, HistogramNormalize } from '../report';
 import { FilterGroup } from '../filter';
-import { ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
+import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 
 export interface HistogramQueryRequest {
   filter: FilterGroup | null;
@@ -38,7 +38,7 @@ export interface HistogramSeriesResult {
   values: number[];
 }
 
-export interface HistogramQueryResult extends ChartRowCounts {
+export interface HistogramQueryResult extends ChartRowCounts, PartialChartLoad {
   id: string;
   name: string;
   /** The bins, in ascending order — the shared category axis every series aligns to. */

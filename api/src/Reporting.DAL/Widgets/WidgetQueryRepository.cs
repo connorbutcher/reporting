@@ -43,6 +43,13 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     /// </summary>
     private const int MaxPivotScanRows = 200_000;
 
+    /// <summary>
+    /// Ceiling on rows scanned when a bar/box-plot chart sorts its categories by a column other
+    /// than the one it already pools for its own purpose — a separate, lightweight (category,
+    /// value) scan run purely to rank the categories.
+    /// </summary>
+    private const int MaxCategorySortScanRows = 200_000;
+
     /// <summary>Ceiling on the number of grouped rows a pivot returns, so a high-cardinality dimension
     /// can't fan out into an unbounded table. The grand total still reduces every scanned row.</summary>
     private const int MaxPivotRows = 2_000;
@@ -68,6 +75,23 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         DatasetColumnType.DateTime => (cell.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds,
         _ => cell.NumberValue!.Value
     };
+
+    /// <summary>
+    /// A row's value for a point chart's sort column — typed like an axis value, but (unlike one)
+    /// tolerating a missing cell, since a sort column isn't required to be bound on every row. A
+    /// missing value reads as null, which the caller sinks to the end of the draw order.
+    /// </summary>
+    private static IComparable? SortValue(DatasetCell? cell, DatasetColumnType? type)
+    {
+        if (cell is null) return null;
+        return type switch
+        {
+            DatasetColumnType.String => cell.StringValue?.Trim(),
+            DatasetColumnType.DateTime => cell.DateValue is { } d ? d : null,
+            DatasetColumnType.Bool => cell.BoolValue is { } b ? b : null,
+            _ => cell.NumberValue is { } n ? n : null
+        };
+    }
 
     /// <summary>
     /// A page of rows shaped for a table widget: filtered and sorted server-side,
@@ -521,7 +545,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         var yColumn = columnsByRef.GetValueOrDefault(dto.YColumnId);
         var xId = xColumn?.Id ?? 0;
         var yId = yColumn?.Id ?? 0;
-        var xText = xColumn?.Type == DatasetColumnType.String;
+
+        // A trend line needs two real numbers to fit — a text axis (category) has none.
+        var xNumeric = xColumn?.Type is DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime;
+        var yNumeric = yColumn?.Type is DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime;
 
         // Points need a real value on each axis; anything missing either is dropped. Narrowed per
         // axis kind so the predicate stays EF-translatable rather than branching per row.
@@ -534,11 +561,19 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .Where(p => p.Column is not null)
             .ToList();
 
-        // Only the cells the chart actually reads are loaded per row — the axes, the
-        // series key, and any tooltip columns — via a filtered include, rather than
-        // pulling every cell in the row across the wire.
+        // A column sort can name any column in the dataset — not necessarily one plotted — so
+        // it's resolved and pulled alongside the axes rather than assumed to already be loaded.
+        var sort = dto.Sort ?? new ChartSort();
+        var sortColumn = sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColId
+            ? columnsByRef.GetValueOrDefault(sortColId)
+            : null;
+
+        // Only the cells the chart actually reads are loaded per row — the axes, the series key,
+        // any tooltip columns, and the sort column — via a filtered include, rather than pulling
+        // every cell in the row across the wire.
         var neededIds = new HashSet<int> { xId, yId };
         if (seriesColumn is not null) neededIds.Add(seriesColumn.Id);
+        if (sortColumn is not null) neededIds.Add(sortColumn.Id);
         foreach (var (_, column) in tooltipColumns) neededIds.Add(column!.Id);
 
         // Cap the rows pulled back: a runaway dataset shouldn't ship hundreds of
@@ -553,7 +588,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             .AsNoTracking()
             .ToListAsync();
 
-        var groups = new Dictionary<string, List<ChartPointDto>>();
+        var groups = new Dictionary<string, List<(ChartPointDto Point, IComparable? SortKey)>>();
         foreach (var row in rows)
         {
             var xCell = row.Cells.First(c => c.ColumnId == xId);
@@ -580,23 +615,40 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 tooltipLines.Add($"{setting.Prefix}{value}{setting.Suffix}");
             }
 
+            // The default sort key is the point's own X — a line then draws left-to-right instead
+            // of zig-zagging (harmless for scatter); a text X sorts alphabetically. A column sort
+            // reads that column's own cell instead, tolerating a row with no value for it.
+            IComparable? sortKey = sortColumn is not null
+                ? SortValue(row.Cells.FirstOrDefault(c => c.ColumnId == sortColumn.Id), sortColumn.Type)
+                : (IComparable)x;
+
             var point = new ChartPointDto { X = x, Y = y, TooltipLines = tooltipLines };
-            if (groups.TryGetValue(key, out var points)) points.Add(point);
-            else groups[key] = [point];
+            if (groups.TryGetValue(key, out var points)) points.Add((point, sortKey));
+            else groups[key] = [(point, sortKey)];
+        }
+
+        // Rows with no value for the sort column sink to the end regardless of direction.
+        List<ChartPointDto> OrderPoints(List<(ChartPointDto Point, IComparable? SortKey)> points)
+        {
+            var ordered = points.OrderBy(p => p.SortKey is null ? 1 : 0);
+            return (sort.Descending
+                    ? ordered.ThenByDescending(p => p.SortKey)
+                    : ordered.ThenBy(p => p.SortKey))
+                .Select(p => p.Point)
+                .ToList();
         }
 
         return new ChartQueryResultDto
         {
             Id = dataset.Id,
             Name = dataset.Name,
-            // Sorted by X so a line series draws left-to-right instead of zig-zagging; harmless no-op
-            // for scatter. A text X orders alphabetically, matching the category axis the client builds.
             Series = groups.Select(g => new ChartSeriesDto
             {
                 Label = g.Key,
-                Points = (xText
-                    ? g.Value.OrderBy(p => (string)p.X)
-                    : g.Value.OrderBy(p => (double)p.X)).ToList()
+                Points = OrderPoints(g.Value),
+                TrendLine = dto.ShowTrendLine && xNumeric && yNumeric
+                    ? ComputeTrendLine(g.Value.Select(v => v.Point))
+                    : null
             }).ToList(),
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
             TotalRowCount = totalRowCount,
@@ -739,8 +791,8 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
         }
         var allGroups = perMeasure.SelectMany(m => m.Groups).ToList();
 
-        // Order categories once across every measure: numerically/chronologically for numeric and
-        // date columns (blanks, whose sort key is null, sink to the end), alphabetically otherwise.
+        // The category column's own order first: numerically/chronologically for numeric and date
+        // columns (blanks, whose sort key is null, sink to the end), alphabetically otherwise.
         var numeric = categoryColumn.Type is DatasetColumnType.Int or DatasetColumnType.Double;
         var date = categoryColumn.Type is DatasetColumnType.DateTime;
         var byCategory = allGroups
@@ -752,9 +804,25 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                     : date ? g.Min(x => x.SortDate)?.Ticks
                     : null
             });
-        var orderedCategoryKeys = (numeric || date)
+        var naturalOrder = (numeric || date)
             ? byCategory.OrderBy(c => c.Sort ?? double.MaxValue).Select(c => c.Category).ToList()
             : byCategory.Select(c => c.Category).OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // A column sort re-ranks by a chosen column's aggregate (possibly a column that isn't even
+        // plotted); an unresolvable column — a stale reference — falls back to the natural order
+        // rather than blanking the chart. Either way `Descending` can still reverse the result.
+        var sort = dto.Sort ?? new ChartSort();
+        List<string> orderedCategoryKeys;
+        if (sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColId
+            && columnsByRef.GetValueOrDefault(sortColId) is { } sortColumn)
+        {
+            var metrics = await CategorySortMetricsAsync(matching, categoryId, sortColumn.Id, sort.Aggregate);
+            orderedCategoryKeys = OrderByMetric(naturalOrder, metrics, sort.Descending);
+        }
+        else
+        {
+            orderedCategoryKeys = sort.Descending ? Enumerable.Reverse(naturalOrder).ToList() : naturalOrder;
+        }
 
         // With no series column every group's key is "" — one series carrying the empty label
         // the client reads as "no series". Otherwise a blank key shows as "(blank)".
@@ -878,16 +946,10 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             })
             .ToList();
 
-        // Values grouped by (category, series) to summarise one box at a time, and pooled per
-        // category (across series) so a median/spread sort has a single figure to rank each on.
+        // Values grouped by (category, series) to summarise one box at a time.
         var valuesByKey = projected
             .GroupBy(p => (p.Category, p.Series))
             .ToDictionary(g => g.Key, g => g.Select(x => x.Value).ToList());
-        // Only a median/spread sort needs the values pooled across series, so skip that second
-        // grouping (and its copy of every value) in the common category-order case.
-        var pooledByCategory = dto.Sort == BoxSort.Category
-            ? new Dictionary<string, List<double>>()
-            : projected.GroupBy(p => p.Category).ToDictionary(g => g.Key, g => g.Select(x => x.Value).ToList());
 
         // The category column's own order first: numerically/chronologically for numeric and date
         // columns (blanks, whose sort key is null, sink to the end), alphabetically otherwise.
@@ -908,8 +970,26 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 .ToList()
             : projected.Select(p => p.Category).Distinct().OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
 
-        // A median/spread sort re-ranks from that base order (kept as the stable tiebreak).
-        var orderedCategoryKeys = SortCategories(baseOrder, pooledByCategory, dto.Sort);
+        // A column sort re-ranks from that base order (kept as the stable tiebreak). Sorting by the
+        // bound measure itself (the common case — median/spread of what the boxes already show)
+        // reuses the values already pooled above rather than scanning the dataset again; any other
+        // column pays for one extra, purpose-built scan. An unresolvable column — a stale reference
+        // — falls back to the base order, same as the other charts.
+        var sort = dto.Sort ?? new ChartSort();
+        List<string> orderedCategoryKeys;
+        if (sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColId
+            && columnsByRef.GetValueOrDefault(sortColId) is { } sortColumn)
+        {
+            var metrics = sortColumn.Id == valueId
+                ? projected.GroupBy(p => p.Category).ToDictionary(
+                    g => g.Key, g => ReduceForSort(g.Select(x => x.Value).ToList(), sort.Aggregate))
+                : await CategorySortMetricsAsync(matching, categoryId, sortColumn.Id, sort.Aggregate);
+            orderedCategoryKeys = OrderByMetric(baseOrder, metrics, sort.Descending);
+        }
+        else
+        {
+            orderedCategoryKeys = sort.Descending ? Enumerable.Reverse(baseOrder).ToList() : baseOrder;
+        }
         var categoryIndex = orderedCategoryKeys
             .Select((key, i) => (key, i))
             .ToDictionary(x => x.key, x => x.i);
@@ -1246,29 +1326,106 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     }
 
     /// <summary>
-    /// Re-orders the categories by a computed statistic when asked, keeping <paramref name="baseOrder"/>
-    /// (the category column's own order) as the stable tiebreak. The statistic is pooled across every
-    /// series in a category: its median, or its spread (IQR) for the spread sort.
+    /// A series' ordinary-least-squares trend line, or null when there's nothing to fit — fewer
+    /// than two points, or every point sharing the same X (an undefined slope). The endpoints are
+    /// the fitted line's Y at the series' own X extremes, ready for the client to draw a segment
+    /// through; <see cref="TrendLineDto.RSquared"/> says how well it actually fits.
     /// </summary>
-    private static List<string> SortCategories(
-        List<string> baseOrder, IReadOnlyDictionary<string, List<double>> pooled, BoxSort sort)
+    private static TrendLineDto? ComputeTrendLine(IEnumerable<ChartPointDto> points)
     {
-        if (sort == BoxSort.Category) return baseOrder;
+        var pairs = points.Select(p => ((double)p.X, (double)p.Y)).ToList();
+        if (pairs.Count < 2) return null;
 
-        double Metric(string category)
+        var xMean = pairs.Average(p => p.Item1);
+        var yMean = pairs.Average(p => p.Item2);
+        var ssXY = pairs.Sum(p => (p.Item1 - xMean) * (p.Item2 - yMean));
+        var ssXX = pairs.Sum(p => (p.Item1 - xMean) * (p.Item1 - xMean));
+        if (ssXX == 0) return null;
+
+        var slope = ssXY / ssXX;
+        var intercept = yMean - slope * xMean;
+        var ssYY = pairs.Sum(p => (p.Item2 - yMean) * (p.Item2 - yMean));
+        // Every Y identical too: the (horizontal) line fits perfectly.
+        var rSquared = ssYY == 0 ? 1d : (ssXY * ssXY) / (ssXX * ssYY);
+
+        var xMin = pairs.Min(p => p.Item1);
+        var xMax = pairs.Max(p => p.Item1);
+        return new TrendLineDto
         {
-            var values = pooled[category];
-            values.Sort();
-            return sort == BoxSort.SpreadDesc
-                ? Quantile(values, 0.75) - Quantile(values, 0.25)
-                : Quantile(values, 0.5);
-        }
+            X1 = xMin, Y1 = slope * xMin + intercept,
+            X2 = xMax, Y2 = slope * xMax + intercept,
+            Slope = slope, Intercept = intercept, RSquared = rSquared
+        };
+    }
 
-        var indexed = baseOrder.Select((category, i) => (category, i)).ToList();
-        var ranked = sort == BoxSort.MedianAsc
-            ? indexed.OrderBy(x => Metric(x.category)).ThenBy(x => x.i)
-            : indexed.OrderByDescending(x => Metric(x.category)).ThenBy(x => x.i);
-        return ranked.Select(x => x.category).ToList();
+    /// <summary>Reduces one category's pooled values to the single number a column sort ranks it by.</summary>
+    private static double ReduceForSort(List<double> values, SortAggregate aggregate)
+    {
+        if (values.Count == 0) return 0;
+        switch (aggregate)
+        {
+            case SortAggregate.Count: return values.Count;
+            case SortAggregate.Sum: return values.Sum();
+            case SortAggregate.Average: return values.Average();
+            case SortAggregate.Min: return values.Min();
+            case SortAggregate.Max: return values.Max();
+            case SortAggregate.Median:
+                values.Sort();
+                return Quantile(values, 0.5);
+            case SortAggregate.Spread:
+                values.Sort();
+                return Quantile(values, 0.75) - Quantile(values, 0.25);
+            default: return 0;
+        }
+    }
+
+    /// <summary>
+    /// Per-category metric for a column sort that isn't already pooled in memory for some other
+    /// reason — a bar chart's SQL-only aggregation, or a box plot sorting by a column other than
+    /// its bound measure. Scans (capped) the matching rows' category and sort-column values and
+    /// reduces each category's values by the chosen aggregate; a category with no values for the
+    /// sort column is simply absent from the result, so the caller can sink it to the end.
+    /// </summary>
+    private static async Task<Dictionary<string, double>> CategorySortMetricsAsync(
+        IQueryable<DatasetRow> matching, int categoryId, int sortColumnId, SortAggregate aggregate)
+    {
+        var scanned = await matching
+            .OrderBy(r => r.Id)
+            .Take(MaxCategorySortScanRows)
+            .Select(r => new
+            {
+                Category = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "",
+                Value = r.Cells.Where(c => c.ColumnId == sortColumnId).Select(c => c.NumberValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var metrics = new Dictionary<string, double>();
+        foreach (var g in scanned.GroupBy(r => r.Category))
+        {
+            var values = g.Where(x => x.Value.HasValue).Select(x => x.Value!.Value).ToList();
+            if (values.Count == 0) continue;
+            metrics[g.Key] = ReduceForSort(values, aggregate);
+        }
+        return metrics;
+    }
+
+    /// <summary>
+    /// Re-orders a category list by a per-category metric, keeping <paramref name="naturalOrder"/>
+    /// (the category column's own order) as the stable tiebreak and as the fallback position for
+    /// any category the metric has no value for — sunk to the end regardless of direction.
+    /// </summary>
+    private static List<string> OrderByMetric(
+        List<string> naturalOrder, IReadOnlyDictionary<string, double> metrics, bool descending)
+    {
+        var indexed = naturalOrder.Select((category, i) => (category, i)).ToList();
+        var withMetric = indexed.Where(x => metrics.ContainsKey(x.category));
+        var without = indexed.Where(x => !metrics.ContainsKey(x.category));
+
+        var ranked = descending
+            ? withMetric.OrderByDescending(x => metrics[x.category]).ThenBy(x => x.i)
+            : withMetric.OrderBy(x => metrics[x.category]).ThenBy(x => x.i);
+
+        return ranked.Concat(without.OrderBy(x => x.i)).Select(x => x.category).ToList();
     }
 
     /// <summary>The p-quantile (0..1) of an already-sorted list, linearly interpolated between ranks.</summary>

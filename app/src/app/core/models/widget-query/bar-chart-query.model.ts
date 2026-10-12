@@ -1,4 +1,4 @@
-import { Aggregate, ChartToleranceBand } from '../report';
+import { Aggregate, ChartSort, ChartToleranceBand } from '../report';
 import { FilterGroup } from '../filter';
 import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 
@@ -11,6 +11,8 @@ export interface BarChartQueryRequest {
   aggregate: Aggregate;
   seriesColumnId: string | null;
   toleranceBands: ChartToleranceBand[];
+  /** How the bars are ordered along the category axis. */
+  sort: ChartSort;
 }
 
 export interface BarSeriesResult {

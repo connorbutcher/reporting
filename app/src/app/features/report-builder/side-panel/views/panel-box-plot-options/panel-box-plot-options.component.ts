@@ -3,13 +3,14 @@ import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
-import { BoxSort, BoxWhisker } from '../../../../../core/models/report';
+import { BoxWhisker } from '../../../../../core/models/report';
 import { BoxPlotWidgetModel } from '../../../models/widget.model';
+import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.component';
 
 /** The box-plot-only options: whiskers, ordering, the engineering overlays, and orientation. */
 @Component({
   selector: 'app-panel-box-plot-options',
-  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectModule],
+  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectModule, PanelChartSortComponent],
   templateUrl: './panel-box-plot-options.component.html',
 })
 export class PanelBoxPlotOptionsComponent {
@@ -20,14 +21,6 @@ export class PanelBoxPlotOptionsComponent {
     { label: 'Tukey (× IQR) + outliers', value: 'tukey' },
     { label: 'Std dev (× σ from mean) + outliers', value: 'stdDev' },
     { label: 'Min / max', value: 'minMax' },
-  ];
-
-  /** How the boxes can be ordered along the axis. */
-  public readonly sorts: { label: string; value: BoxSort }[] = [
-    { label: 'Category order', value: 'category' },
-    { label: 'Median (low → high)', value: 'medianAsc' },
-    { label: 'Median (high → low)', value: 'medianDesc' },
-    { label: 'Spread (widest first)', value: 'spreadDesc' },
   ];
 
   /** The whisker length multiplier only applies to the fence-based modes, not min/max. */

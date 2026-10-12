@@ -32,6 +32,17 @@
 <div class="panel-inline-field">
   <p-checkbox
     [binary]="true"
+    inputId="chart-trend-line"
+    [ngModel]="chart().showTrendLine()"
+    (onChange)="chart().showTrendLine.set($event.checked)"
+  />
+  <label for="chart-trend-line">Show trend line (per series)</label>
+</div>
+<span class="panel-hint">Needs a numeric or date X and Y axis; a text axis is skipped.</span>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
     inputId="chart-zoom"
     [ngModel]="chart().zoom()"
     (onChange)="chart().zoom.set($event.checked)"

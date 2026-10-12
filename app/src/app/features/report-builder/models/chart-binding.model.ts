@@ -3,6 +3,7 @@ import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   ChartSeriesRenderAs,
+  ChartSort,
   ChartSymbol,
   ChartToleranceBand,
   LineDashStyle,
@@ -54,6 +55,12 @@ export class ChartBindingModel extends EditorNode {
   public readonly dashStyle = signal<LineDashStyle | null>(null);
   /** Blank falls back to the dataset/column name in the legend. */
   public readonly label = signal('');
+  /**
+   * Draw order for a point chart's (scatter/line) own rows. Null keeps the default X-ascending
+   * order. Ignored by every grouping chart (bar, combo, box plot), which order via the chart's
+   * own `sort` instead.
+   */
+  public readonly sort = signal<ChartSort | null>(null);
   public readonly filter: FilterGroupModel;
 
   public readonly schema: Signal<DatasetSchema | null>;
@@ -87,6 +94,7 @@ export class ChartBindingModel extends EditorNode {
     this.symbol.set(binding.symbol ?? null);
     this.dashStyle.set(binding.dashStyle ?? null);
     this.label.set(binding.label);
+    this.sort.set(binding.sort ?? null);
 
     this.schema = computed(() => {
       const id = this.datasetId();
@@ -159,6 +167,7 @@ export class ChartBindingModel extends EditorNode {
       dashStyle: this.dashStyle(),
       label: this.label(),
       filter: this.filter.toDto(),
+      sort: this.sort(),
     };
   }
 
@@ -184,6 +193,8 @@ export class ChartBindingModel extends EditorNode {
     if (missing(this.yColumnId())) brokenFields.push('Y axis');
     if (missing(this.seriesColumnId())) brokenFields.push('split-by');
     if (this.valueColumnIds().some((id) => missing(id))) brokenFields.push('value');
+    const sort = this.sort();
+    if (sort?.by === 'column' && missing(sort.columnId)) brokenFields.push('sort');
 
     if (brokenFields.length === 0) return [];
 

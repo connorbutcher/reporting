@@ -242,7 +242,7 @@ export class PointOption {
         splitLine: { show: showGridLines && !xIsText },
       },
       yAxis: multiAxis ? yAxisDefs : yAxisDefs[0],
-      series: series.map((s, i) => {
+      series: series.flatMap((s, i) => {
         const color = seriesColors[i];
         const axisK = seriesAxisIndex[i];
         const onPrimary = axisK === 0;
@@ -251,7 +251,8 @@ export class PointOption {
         const outlineColor = colorByValue ? () => null : outlineFor(axisK);
         const formatY = onPrimary ? formatYPrimary : formatYOther;
         const hung = marksBySeries.get(i);
-        return {
+        const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
+        const main = {
           name: s.label || config.title || 'Series',
           ...PointSeries.kindOptions(config, color, seriesStyle[i]),
           ...(colorByValue ? {} : { itemStyle: { color } }),
@@ -266,12 +267,15 @@ export class PointOption {
                 },
               }
             : {}),
-          ...(multiAxis ? { yAxisIndex: Math.min(axisK, axes.length - 1) } : {}),
+          ...(yAxisIndex !== null ? { yAxisIndex } : {}),
           ...(hung && hung.marks.length > 0
             ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
             : {}),
           ...(hung && hung.areas.length > 0 ? { markArea: { silent: true, data: hung.areas } } : {}),
         };
+        // Not added to `names`/`legend.data`, so it draws without its own legend entry.
+        const trend = config.showTrendLine ? PointSeries.trendLine(s, color, yAxisIndex) : null;
+        return trend ? [main, trend] : [main];
       }),
     };
   }

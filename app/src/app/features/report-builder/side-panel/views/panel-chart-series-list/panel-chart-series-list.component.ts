@@ -5,6 +5,7 @@ import {
   ChartBindingModel,
   ChartWidgetModel,
   ComboChartWidgetModel,
+  HistogramWidgetModel,
 } from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ReportSession } from '../../../state/report-session';
@@ -57,6 +58,13 @@ export class PanelChartSeriesListComponent {
         .map((id) => nameOf(id))
         .filter((name): name is string => !!name);
       return values.length > 0 ? `${x} → ${values.join(', ')}` : x;
+    }
+
+    // A histogram series bins a single column; an optional split-by overlays several within it.
+    if (this.chart() instanceof HistogramWidgetModel) {
+      if (!x) return 'Choose a column';
+      const splitBy = nameOf(binding.seriesColumnId());
+      return splitBy ? `${x} · split by ${splitBy}` : x;
     }
 
     const y = nameOf(binding.yColumnId());
