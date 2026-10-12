@@ -9,6 +9,7 @@ import {
   DEFAULT_SCATTER_CHART_CONFIG,
   DEFAULT_TABLE_CONFIG,
   DEFAULT_TEXT_CONFIG,
+  DEFAULT_XBAR_R_CHART_CONFIG,
   Tab,
   Widget,
   WidgetType,
@@ -130,6 +131,12 @@ export class TabModel extends EditorNode {
           ...base,
           type: 'histogram',
           config: { type: 'histogram', ...DEFAULT_HISTOGRAM_CONFIG },
+        };
+      case 'xbarRChart':
+        return {
+          ...base,
+          type: 'xbarRChart',
+          config: { type: 'xbarRChart', ...DEFAULT_XBAR_R_CHART_CONFIG },
         };
       case 'staticText':
         return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };

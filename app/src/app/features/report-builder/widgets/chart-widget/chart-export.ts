@@ -5,6 +5,7 @@ import {
   BoxPlotQueryResult,
   ChartQueryResult,
   HistogramQueryResult,
+  XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
 import { csvCell } from '../csv.util';
 import { ChartColumns } from './options/chart-columns';
@@ -14,7 +15,12 @@ import { ChartFormat } from './options/chart-format';
 export class ChartExport {
   public static csv(
     config: ChartWidgetConfig,
-    data: ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult,
+    data:
+      | ChartQueryResult
+      | BarChartQueryResult
+      | BoxPlotQueryResult
+      | HistogramQueryResult
+      | XBarRChartQueryResult,
     columns: DatasetColumn[],
   ): string {
     if (config.type === 'barChart' || config.type === 'comboChart') {
@@ -24,6 +30,7 @@ export class ChartExport {
     }
     if (config.type === 'boxPlot') return ChartExport.boxCsv(data as BoxPlotQueryResult);
     if (config.type === 'histogram') return ChartExport.histogramCsv(data as HistogramQueryResult);
+    if (config.type === 'xbarRChart') return ChartExport.xBarRCsv(data as XBarRChartQueryResult);
 
     // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
     const primary = readChartBindings(config).find((b) => b.datasetId);
@@ -87,6 +94,41 @@ export class ChartExport {
         );
       });
     }
+    return rows.join('\n');
+  }
+
+  /** One row per subgroup: its mean and range, their control limits, and whether each breached them. */
+  private static xBarRCsv(data: XBarRChartQueryResult): string {
+    const header = [
+      'Subgroup',
+      'N',
+      'Mean',
+      'X-bar UCL',
+      'X-bar LCL',
+      'Mean out of control',
+      'Range',
+      'R UCL',
+      'R LCL',
+      'Range out of control',
+    ];
+    const rows = [header.map(csvCell).join(',')];
+    data.categories.forEach((category, i) => {
+      const s = data.subgroups[i];
+      rows.push(
+        [
+          csvCell(category),
+          s.count,
+          s.mean,
+          s.xBarUcl,
+          s.xBarLcl,
+          s.meanOutOfControl,
+          s.range,
+          s.rUcl,
+          s.rLcl,
+          s.rangeOutOfControl,
+        ].join(','),
+      );
+    });
     return rows.join('\n');
   }
 

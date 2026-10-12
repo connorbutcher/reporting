@@ -1,7 +1,12 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { ChartValueAxis, chartAxisDisplayName } from '../../../../../core/models/report';
-import { BarChartWidgetModel, BoxPlotWidgetModel, ChartWidgetModel } from '../../../models/widget.model';
+import {
+  BarChartWidgetModel,
+  BoxPlotWidgetModel,
+  ChartWidgetModel,
+  XBarRChartWidgetModel,
+} from '../../../models/widget.model';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
@@ -20,9 +25,12 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelChartAxisListComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
-  /** Bar and box plots have a single value axis, so they don't offer "Add axis". */
+  /** Bar, box plot, and Xbar-R charts have a single value axis, so they don't offer "Add axis". */
   public readonly isBar = computed(
-    () => this.chart() instanceof BarChartWidgetModel || this.chart() instanceof BoxPlotWidgetModel,
+    () =>
+      this.chart() instanceof BarChartWidgetModel ||
+      this.chart() instanceof BoxPlotWidgetModel ||
+      this.chart() instanceof XBarRChartWidgetModel,
   );
 
   private readonly navigation = inject(PanelNavigation);

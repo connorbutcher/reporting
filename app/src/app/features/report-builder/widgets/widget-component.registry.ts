@@ -21,4 +21,5 @@ export const WIDGET_COMPONENTS: Record<WidgetType, Type<unknown>> = {
   comboChart: ChartWidgetComponent,
   boxPlot: ChartWidgetComponent,
   histogram: ChartWidgetComponent,
+  xbarRChart: ChartWidgetComponent,
 };

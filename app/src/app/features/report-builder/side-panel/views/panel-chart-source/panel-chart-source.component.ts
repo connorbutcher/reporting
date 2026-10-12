@@ -6,6 +6,7 @@ import { PanelBoxPlotSourceComponent } from '../panel-box-plot-source/panel-box-
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 import { PanelComboChartSourceComponent } from '../panel-combo-chart-source/panel-combo-chart-source.component';
 import { PanelHistogramSourceComponent } from '../panel-histogram-source/panel-histogram-source.component';
+import { PanelXBarRSourceComponent } from '../panel-xbar-r-source/panel-xbar-r-source.component';
 
 /**
  * The data-source section of the chart detail panel, dispatched by chart type. A point
@@ -28,5 +29,6 @@ export class PanelChartSourceComponent {
     comboChart: PanelComboChartSourceComponent,
     boxPlot: PanelBoxPlotSourceComponent,
     histogram: PanelHistogramSourceComponent,
+    xbarRChart: PanelXBarRSourceComponent,
   };
 }

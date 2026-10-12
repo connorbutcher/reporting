@@ -9,6 +9,7 @@ import {
   BoxPlotQueryResult,
   ChartQueryResult,
   HistogramQueryResult,
+  XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
@@ -24,6 +25,7 @@ import { ECOption } from './options/chart-option.types';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
 import { SeriesPalette } from './options/series-colors';
+import { XBarROption } from './options/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
 
 /**
@@ -72,6 +74,8 @@ export class ChartWidgetComponent extends DataWidgetBase {
         return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
       case 'histogram':
         return HistogramOption.build(config, data as HistogramQueryResult | null, columns, colors);
+      case 'xbarRChart':
+        return XBarROption.build(config, data as XBarRChartQueryResult | null, columns);
       default:
         return PointOption.build(config, data as ChartQueryResult | null, columns, colors);
     }
@@ -101,6 +105,8 @@ export class ChartWidgetComponent extends DataWidgetBase {
         return 'Pick a category and a value column in the side panel.';
       case 'histogram':
         return 'Pick a numeric column in the side panel.';
+      case 'xbarRChart':
+        return 'Pick a subgroup and a value column in the side panel.';
       default:
         return 'Pick an X and a Y column in the side panel.';
     }
@@ -130,7 +136,13 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar, box, or histogram. */
   private readonly isPointChart = computed(() => {
     const type = this.config().type;
-    return type !== 'barChart' && type !== 'comboChart' && type !== 'boxPlot' && type !== 'histogram';
+    return (
+      type !== 'barChart' &&
+      type !== 'comboChart' &&
+      type !== 'boxPlot' &&
+      type !== 'histogram' &&
+      type !== 'xbarRChart'
+    );
   });
 
   /**
@@ -208,7 +220,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
   private readonly queryCache = new Map<string, ChartQueryResult>();
 
   private readonly source = new WidgetDataSource<
-    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult
+    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult
   >({
     datasetId: this.datasetId,
     version: this.datasetVersion,
@@ -245,7 +257,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
           (config.aggregate === 'count' || barValueColumnIds(b).length > 0),
       );
     }
-    if (config.type === 'boxPlot') {
+    if (config.type === 'boxPlot' || config.type === 'xbarRChart') {
       const b = bindings[0];
       return !!(b?.datasetId && b.xColumnId && b.yColumnId);
     }
@@ -263,8 +275,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
     const type = this.config().type;
     // Bar and box both report emptiness by their category axis; a histogram by its bins; point
     // charts by their series.
-    if (type === 'barChart' || type === 'comboChart' || type === 'boxPlot') {
-      return ((data as BarChartQueryResult | BoxPlotQueryResult).categories?.length ?? 0) === 0;
+    if (type === 'barChart' || type === 'comboChart' || type === 'boxPlot' || type === 'xbarRChart') {
+      return (
+        (data as BarChartQueryResult | BoxPlotQueryResult | XBarRChartQueryResult).categories?.length ?? 0
+      ) === 0;
     }
     if (type === 'histogram') {
       return ((data as HistogramQueryResult).bins?.length ?? 0) === 0;
@@ -285,7 +299,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
     // renders — mutating it is a side effect, which belongs here. Runs before the
     // view reads chartOption, so the option always builds with fresh colours.
     effect(() => {
-      const labels = (this.source.result()?.series ?? []).map((s) => s.label);
+      // An Xbar-R result has no `series` — it's a single fixed-colour process line, not a
+      // palette-coloured overlay — so it simply resolves no labels.
+      const result = this.source.result();
+      const labels = result && 'series' in result ? result.series.map((s) => s.label) : [];
       untracked(() => this.seriesColors.set(this.palette.resolve(labels)));
     });
 

@@ -1,0 +1,71 @@
+<app-panel-group label="Data source" icon="⛁">
+  <label class="panel-field">
+    <span class="panel-field-label">Dataset</span>
+    <p-select
+      [options]="datasets()"
+      [ngModel]="chart().datasetId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Select a dataset"
+      appendTo="body"
+      [showClear]="true"
+      fluid
+      (onChange)="chart().setDataset($event.value ?? null)"
+    />
+  </label>
+</app-panel-group>
+
+<app-panel-group label="Subgroups" icon="＋">
+  <label class="panel-field">
+    <span class="panel-field-label">Subgroup</span>
+    <p-select
+      [options]="chart().schema()?.columns ?? []"
+      [ngModel]="chart().xColumnId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Group rows into samples by"
+      appendTo="body"
+      [disabled]="!chart().datasetId()"
+      fluid
+      (onChange)="chart().xColumnId.set($event.value ?? null)"
+    />
+  </label>
+  <span class="panel-hint">Each distinct value becomes one plotted sample — e.g. a batch id, or a build date with several builds per day.</span>
+  <label class="panel-field">
+    <span class="panel-field-label">Value</span>
+    <p-select
+      [options]="chart().numericColumns()"
+      [ngModel]="chart().yColumnId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Measurement to monitor"
+      appendTo="body"
+      [showClear]="true"
+      [disabled]="!chart().datasetId()"
+      fluid
+      (onChange)="chart().yColumnId.set($event.value ?? null)"
+    />
+  </label>
+</app-panel-group>
+
+<button
+  type="button"
+  class="panel-menu-item"
+  [disabled]="!chart().datasetId()"
+  (click)="navigate({ kind: 'widgetFilters', widgetId: chart().id })"
+>
+  <i class="pi pi-filter" aria-hidden="true"></i>
+  <span class="panel-menu-text">
+    <span class="panel-menu-label">Filters</span>
+    <span class="panel-menu-hint">
+      {{
+        !chart().datasetId()
+          ? 'Pick a dataset first'
+          : chart().filter.count() === 0
+            ? 'Showing every row'
+            : chart().filter.count() + ' condition' + (chart().filter.count() > 1 ? 's' : '')
+      }}
+    </span>
+  </span>
+  <i class="pi pi-angle-right" aria-hidden="true"></i>
+</button>

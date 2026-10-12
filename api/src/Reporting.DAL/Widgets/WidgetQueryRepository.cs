@@ -27,6 +27,12 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
     private const int MaxBoxPointsPerGroup = 300;
 
     /// <summary>
+    /// Ceiling on rows scanned for one Xbar-R query. Like a box plot every value must be pulled to
+    /// compute each subgroup's mean and range in memory, so a runaway dataset is capped here.
+    /// </summary>
+    private const int MaxXBarRScanRows = 200_000;
+
+    /// <summary>
     /// Ceiling on rows scanned for one histogram query. Like a box plot every value must be pulled
     /// to be binned, so a runaway dataset is capped here — far past any sample size where the shape
     /// of the distribution would meaningfully shift.
@@ -979,6 +985,21 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
                 .ToList()
             : projected.Select(p => p.Category).Distinct().OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
 
+        // A date category's grouping key is its raw (ISO round-trip) input text — fine to group by,
+        // but not to show — so the first parsed date per category is kept here to format the
+        // displayed label from, instead of the raw key.
+        var categoryDates = date
+            ? projected.GroupBy(p => p.Category).ToDictionary(g => g.Key, g => g.Min(x => x.SortDate))
+            : null;
+        var categoryDateConfig = date ? categoryColumn.GetConfig() as DateColumnConfig : null;
+        string CategoryLabel(string key)
+        {
+            if (key.Length == 0) return "(blank)";
+            return categoryDates is not null && categoryDates.TryGetValue(key, out var d) && d is { } value
+                ? CellFormatter.Date(value, categoryDateConfig)
+                : key;
+        }
+
         // A column sort re-ranks from that base order (kept as the stable tiebreak). Sorting by the
         // bound measure itself (the common case — median/spread of what the boxes already show)
         // reuses the values already pooled above rather than scanning the dataset again; any other
@@ -1030,9 +1051,7 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             return new BoxPlotSeriesDto { Label = SeriesLabel(seriesKey), Boxes = boxes, Outliers = outliers };
         }).ToList();
 
-        var orderedCategories = orderedCategoryKeys
-            .Select(key => key.Length == 0 ? "(blank)" : key)
-            .ToList();
+        var orderedCategories = orderedCategoryKeys.Select(CategoryLabel).ToList();
 
         return new BoxPlotQueryResultDto
         {
@@ -1040,6 +1059,184 @@ public class WidgetQueryRepository(ReportingDbContext db, ToleranceResolver tole
             Name = dataset.Name,
             Categories = orderedCategories,
             Series = series,
+            ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount,
+            Truncated = truncated,
+            ScannedRowCount = scanned.Count
+        };
+    }
+
+    /// <summary>
+    /// Rows shaped for an Xbar-R control chart: filtered, grouped by the subgroup column, and each
+    /// subgroup's measure values reduced to a mean and a range. The grand mean of the subgroup means
+    /// and the average subgroup range (pooled only from subgroups of two or more — a lone value has
+    /// no meaningful range) become the two charts' centre lines; each subgroup's own control limits
+    /// are then derived from those via the Shewhart constants for its own size, so unequal subgroup
+    /// sizes still produce statistically correct (if stepped) limits.
+    /// </summary>
+    public async Task<XBarRChartQueryResultDto?> QueryForXBarRChartAsync(int id, XBarRChartQueryDto dto)
+    {
+        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        if (dataset is null) return null;
+
+        var empty = new XBarRChartQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+
+        var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+
+        // The band sits on the X-bar (measure) axis; a tolerance filter reuses it to narrow rows
+        // by the measure column before they're pooled into subgroups.
+        var bounds = await ResolveBandsAsync(dto.ToleranceBands);
+        var toleranceByColumn = ToleranceByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
+        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
+        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
+        var (totalRowCount, matchedRowCount) = await CountRowsAsync(all, matching);
+        empty.TotalRowCount = totalRowCount;
+        empty.MatchedRowCount = matchedRowCount;
+
+        var categoryColumn = columnsByRef.GetValueOrDefault(dto.CategoryColumnId);
+        if (categoryColumn is null) return empty;
+        var categoryId = categoryColumn.Id;
+
+        var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
+        if (valueColumn is null) return empty;
+        var valueId = valueColumn.Id;
+
+        // Only rows carrying a numeric measure can feed a subgroup; a subgroup with none simply
+        // doesn't appear, matching box plot's behaviour.
+        var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
+
+        var scanned = await rowsQuery
+            .OrderBy(r => r.Id)
+            .Take(MaxXBarRScanRows + 1)
+            .Select(r => new
+            {
+                Category = r.Cells
+                    .Where(c => c.ColumnId == categoryId)
+                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
+                    .FirstOrDefault(),
+                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var truncated = TrimToScanCap(scanned, MaxXBarRScanRows);
+
+        var projected = scanned
+            .Select(r => new BoxProjection
+            {
+                Category = r.Category?.StringValue ?? "",
+                SortNumber = r.Category?.NumberValue,
+                SortDate = r.Category?.DateValue,
+                Value = r.Value ?? 0d
+            })
+            .ToList();
+
+        if (projected.Count == 0) return empty;
+
+        var valuesByCategory = projected
+            .GroupBy(p => p.Category)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Value).ToList());
+
+        // The category column's own order first: numerically/chronologically for numeric and date
+        // columns (blanks, whose sort key is null, sink to the end), alphabetically otherwise —
+        // the same rule a box plot's categories follow.
+        var numeric = categoryColumn.Type is DatasetColumnType.Int or DatasetColumnType.Double;
+        var date = categoryColumn.Type is DatasetColumnType.DateTime;
+        var baseOrder = (numeric || date)
+            ? projected
+                .GroupBy(p => p.Category)
+                .Select(g => new
+                {
+                    Category = g.Key,
+                    Sort = numeric ? g.Min(x => x.SortNumber)
+                        : date ? g.Min(x => x.SortDate)?.Ticks
+                        : (double?)null
+                })
+                .OrderBy(c => c.Sort ?? double.MaxValue)
+                .Select(c => c.Category)
+                .ToList()
+            : projected.Select(p => p.Category).Distinct().OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // A date category's grouping key is its raw (ISO round-trip) input text — fine to group by,
+        // but not to show — so the first parsed date per category is kept here to format the
+        // displayed label from, instead of the raw key.
+        var categoryDates = date
+            ? projected.GroupBy(p => p.Category).ToDictionary(g => g.Key, g => g.Min(x => x.SortDate))
+            : null;
+        var categoryDateConfig = date ? categoryColumn.GetConfig() as DateColumnConfig : null;
+        string CategoryLabel(string key)
+        {
+            if (key.Length == 0) return "(blank)";
+            return categoryDates is not null && categoryDates.TryGetValue(key, out var d) && d is { } value
+                ? CellFormatter.Date(value, categoryDateConfig)
+                : key;
+        }
+
+        var sort = dto.Sort ?? new ChartSort();
+        List<string> orderedCategoryKeys;
+        if (sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColId
+            && columnsByRef.GetValueOrDefault(sortColId) is { } sortColumn)
+        {
+            var metrics = sortColumn.Id == valueId
+                ? projected.GroupBy(p => p.Category).ToDictionary(
+                    g => g.Key, g => ReduceForSort(g.Select(x => x.Value).ToList(), sort.Aggregate))
+                : await CategorySortMetricsAsync(matching, categoryId, sortColumn.Id, sort.Aggregate);
+            orderedCategoryKeys = OrderByMetric(baseOrder, metrics, sort.Descending);
+        }
+        else
+        {
+            orderedCategoryKeys = sort.Descending ? Enumerable.Reverse(baseOrder).ToList() : baseOrder;
+        }
+
+        // Each subgroup's own mean and range, before the control limits (which need the grand mean
+        // and average range across all of them first) can be computed.
+        var stats = orderedCategoryKeys
+            .Select(key =>
+            {
+                var values = valuesByCategory[key];
+                return (Mean: values.Average(), Range: values.Max() - values.Min(), Count: values.Count);
+            })
+            .ToList();
+
+        var xBarBar = stats.Average(s => s.Mean);
+        // A subgroup of one has a range of zero by construction, not because the process is
+        // perfectly consistent — including it would bias the average range low, so only subgroups
+        // of two or more contribute to it.
+        var ranged = stats.Where(s => s.Count >= 2).ToList();
+        var rBar = ranged.Count > 0 ? ranged.Average(s => s.Range) : 0d;
+
+        var subgroups = stats.Select(s =>
+        {
+            var (a2, d3, d4) = ControlChartConstants.Lookup(s.Count);
+            var xUcl = xBarBar + a2 * rBar;
+            var xLcl = xBarBar - a2 * rBar;
+            var rUcl = d4 * rBar;
+            var rLcl = d3 * rBar;
+            return new XBarRSubgroupDto
+            {
+                Mean = s.Mean,
+                Range = s.Range,
+                Count = s.Count,
+                XBarUcl = xUcl,
+                XBarLcl = xLcl,
+                RUcl = rUcl,
+                RLcl = rLcl,
+                MeanOutOfControl = s.Mean > xUcl || s.Mean < xLcl,
+                RangeOutOfControl = s.Count >= 2 && (s.Range > rUcl || s.Range < rLcl)
+            };
+        }).ToList();
+
+        var orderedCategories = orderedCategoryKeys.Select(CategoryLabel).ToList();
+
+        return new XBarRChartQueryResultDto
+        {
+            Id = dataset.Id,
+            Name = dataset.Name,
+            Categories = orderedCategories,
+            Subgroups = subgroups,
+            XBarCenterLine = xBarBar,
+            RCenterLine = rBar,
             ToleranceBands = ResolvedBands(dto.ToleranceBands, bounds),
             TotalRowCount = totalRowCount,
             MatchedRowCount = matchedRowCount,

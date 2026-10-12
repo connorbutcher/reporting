@@ -30,6 +30,13 @@ public static class CellFormatter
     /// </summary>
     public static string Number(double value, NumericColumnConfig? config) => FormatNumber(value, config);
 
+    /// <summary>
+    /// Formats a raw date value with a column's date configuration — for values that never existed
+    /// as a cell, such as a chart's grouping key (its grouping string is the cell's raw input text,
+    /// not a display string — e.g. a date column's rows group by their ISO round-trip text).
+    /// </summary>
+    public static string Date(DateTime value, DateColumnConfig? config) => FormatDate(value, config);
+
     private static string FormatNumber(double value, NumericColumnConfig? config)
     {
         config ??= new NumericColumnConfig();

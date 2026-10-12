@@ -4,6 +4,7 @@ import {
   ChartQueryResult,
   HistogramQueryResult,
   PartialChartLoad,
+  XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
 
 /** What the count bar under a chart shows. */
@@ -15,7 +16,12 @@ export interface ChartCountBarContent {
   warning: boolean;
 }
 
-type AnyChartResult = ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult;
+type AnyChartResult =
+  | ChartQueryResult
+  | BarChartQueryResult
+  | BoxPlotQueryResult
+  | HistogramQueryResult
+  | XBarRChartQueryResult;
 
 /** Words the count bar under a chart: the table's "N of M rows", plus the ways a chart can fall short of it. */
 export class ChartCountBar {

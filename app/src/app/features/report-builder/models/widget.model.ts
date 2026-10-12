@@ -8,6 +8,7 @@ import { LineChartWidgetModel } from './line-chart-widget.model';
 import { PivotTableWidgetModel } from './pivot-table-widget.model';
 import { ScatterChartWidgetModel } from './scatter-chart-widget.model';
 import { StaticTextWidgetModel } from './static-text-widget.model';
+import { XBarRChartWidgetModel } from './xbar-r-chart-widget.model';
 import { ModelSources, WidgetModel } from './widget-model-base';
 
 export * from './widget-model-base';
@@ -20,6 +21,7 @@ export * from './bar-chart-widget.model';
 export * from './combo-chart-widget.model';
 export * from './box-plot-widget.model';
 export * from './histogram-widget.model';
+export * from './xbar-r-chart-widget.model';
 export * from './pivot-table-widget.model';
 export * from './static-text-widget.model';
 
@@ -42,6 +44,8 @@ export function widgetModelFromDto(widget: Widget, sources: ModelSources): Widge
       return new BoxPlotWidgetModel(widget, sources);
     case 'histogram':
       return new HistogramWidgetModel(widget, sources);
+    case 'xbarRChart':
+      return new XBarRChartWidgetModel(widget, sources);
     default:
       return new StaticTextWidgetModel(widget);
   }

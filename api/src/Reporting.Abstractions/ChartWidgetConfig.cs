@@ -391,3 +391,23 @@ public class HistogramWidgetConfig : ChartWidgetConfig
     /// <summary>Draws bars horizontally (bins down the Y axis) rather than as vertical columns.</summary>
     public bool Horizontal { get; set; }
 }
+
+/// <summary>
+/// An Xbar-R control chart: a Shewhart pair monitoring a process over time. Like a box plot it
+/// groups rows by its binding's category column (<see cref="ChartSeriesBinding.XColumnId"/>) —
+/// here the subgroup/sample each row belongs to — but instead of a five-number summary it reduces
+/// each subgroup's values in the measure column (<see cref="ChartSeriesBinding.YColumnId"/>) to a
+/// mean and a range, plotted on two stacked charts against control limits derived from the data
+/// itself (not a spec): the subgroup means' own grand average and the average range, scaled by the
+/// standard Shewhart constants for that subgroup's size. No series split — a control chart watches
+/// one process stream.
+/// </summary>
+public class XBarRChartWidgetConfig : ChartWidgetConfig
+{
+    /// <summary>How the subgroups are ordered along the shared axis — critical here, since a control
+    /// chart reads left-to-right as a time/sequence order, not an arbitrary category ranking.</summary>
+    public ChartSort Sort { get; set; } = new();
+
+    /// <summary>Colours a subgroup's mean or range red when it falls outside its control limits.</summary>
+    public bool HighlightOutOfControl { get; set; } = true;
+}

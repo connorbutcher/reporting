@@ -1255,6 +1255,30 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// An Xbar-R control chart's config JSON, built once the dataset has a primary key. Unlike a box
+    /// plot it has no series split (a control chart watches one process stream) and no per-widget
+    /// sort override — omitting <c>sort</c> reads as the column's own natural order, which is what a
+    /// control chart needs since its axis is a sequence, not an arbitrary ranking.
+    /// </summary>
+    private static string XBarRChartConfigJson(
+        string title, Dataset dataset, Guid categoryRef, Guid valueRef, string yAxisLabel,
+        bool highlightOutOfControl = true, string bandsJson = "[]")
+    {
+        var bindingId = Guid.NewGuid();
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"xbarRChart","title":"{{title}}","showTitle":true,
+             "bindings":[{"id":"{{bindingId}}","datasetId":{{dataset.Id}},"xColumnId":"{{categoryRef}}","yColumnId":"{{valueRef}}","seriesColumnId":null,"yAxisId":null,"label":"","color":null,"symbol":null,"dashStyle":null,"filter":null}],
+             "yAxes":[{"id":"primary","label":"{{yAxisLabel}}","side":"left"}],
+             "xAxisLabel":"","yAxisLabel":"{{yAxisLabel}}",
+             "zoom":false,"showLegend":true,"pointSize":8,
+             "showGridLines":true,"showValueLabels":false,
+             "toleranceBands":{{bandsJson}},"tooltipColumns":[],
+             "highlightOutOfControl":{{B(highlightOutOfControl)}}}
+            """;
+    }
+
+    /// <summary>
     /// A single tolerance band pointing at the spec row's LSL/USL columns, shaded and set to outline
     /// out-of-spec marks. Built once the limits dataset has its <paramref name="specDatasetId"/>. The
     /// band sits on the value axis for a box plot (<paramref name="axis"/> "y"); a histogram passes
@@ -1273,9 +1297,10 @@ public static class DbSeeder
     /// four tabs so every widget and option is on show. Tab 1 pairs a full data table with a
     /// widget-filtered table and a pivot; tab 2 the point charts (a series-split scatter with tooltip
     /// columns, a colour-by-value scatter, and a line with a spec band); tab 3 a grouped bar and the
-    /// combination chart (bars + a line on a second axis); tab 4 a box plot, a pooled histogram, and a
-    /// second histogram overlaying two engines' clearance as separate bound series on shared bins — all
-    /// three against the clearance spec. A report-level filter drops the R&D-bench builds from every widget.
+    /// combination chart (bars + a line on a second axis); tab 4 a box plot, a pooled histogram, a
+    /// second histogram overlaying two engines' clearance as separate bound series on shared bins, and
+    /// an Xbar-R control chart subgrouped by inspector — all four against the clearance spec. A
+    /// report-level filter drops the R&D-bench builds from every widget.
     /// </summary>
     private static Report BuildFeatureShowcaseReport(
         List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
@@ -1432,7 +1457,9 @@ public static class DbSeeder
                 xAxisLabel: "", aggregate: "average", stacked: false, smooth: true, showPoints: true, areaFill: false)));
 
         // ---- Tab 4: the distribution charts ----
-        var quality = new Tab { RefId = Guid.NewGuid(), Name = "Quality", Order = 3 };
+        // Taller than the default 30 rows so the control chart (two stacked grids) has room below
+        // the pooled/split histograms.
+        var quality = new Tab { RefId = Guid.NewGuid(), Name = "Quality", Order = 3, Rows = 50 };
         revision.Tabs.Add(quality);
         quality.Widgets.Add(TitleWidget("Quality & capability", 0, 0, 48, 2));
 
@@ -1467,6 +1494,16 @@ public static class DbSeeder
                 "Clearance (mm)", "Number of builds",
                 binMode: "count", binCount: 24, normalize: "count", showLegend: true,
                 bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId, axis: "x"))));
+
+        // Xbar-R control chart: clearance subgrouped by inspector (each a dozen-odd builds) — are
+        // their means and spreads statistically stable, against the same spec band the box plot and
+        // histograms above read. A different analytical angle on the same measurement: this asks
+        // "is the process in control", where the box plot above asks "how is it distributed".
+        var xbarR = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.XBarRChart, X = 0, Y = 30, W = 48, H = 20, ConfigJson = "{}" };
+        quality.Widgets.Add(xbarR);
+        pendingCharts.Add(new PendingChart(xbarR, () =>
+            XBarRChartConfigJson("Bearing clearance control (by inspector)", dataset, inspectorRef, clearanceRef, "Clearance (mm)",
+                bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId))));
 
         report.Revisions.Add(revision);
         return report;

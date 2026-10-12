@@ -116,7 +116,7 @@ public static class ColumnReferenceScanner
         return last switch
         {
             "valuecolumnids" => barLike && !counting,
-            "ycolumnid" => context.WidgetType == WidgetType.BoxPlot || (barLike && !counting),
+            "ycolumnid" => context.WidgetType is WidgetType.BoxPlot or WidgetType.XBarRChart || (barLike && !counting),
             "xcolumnid" => context.WidgetType == WidgetType.Histogram,
             // A table column that carries tolerance banding is compared to numeric limits.
             "columnid" when parent == "columns" => owner is { } o && o.TryGetProperty("tolerance", out var t) && t.ValueKind == JsonValueKind.Object,

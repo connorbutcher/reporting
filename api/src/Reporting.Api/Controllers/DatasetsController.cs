@@ -181,6 +181,19 @@ public class DatasetsController(
     }
 
     /// <summary>
+    /// Rows shaped for an Xbar-R control chart: filtered, grouped by the subgroup column, and each
+    /// subgroup's measure values reduced to a mean and a range against control limits derived from
+    /// the data.
+    /// </summary>
+    [HttpPost("{id:int}/xbar-r-chart-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<XBarRChartQueryResultDto>> XBarRChartQuery(int id, XBarRChartQueryDto dto)
+    {
+        var result = await widgetQueries.QueryForXBarRChartAsync(id, dto);
+        return result is null ? NotFound() : result;
+    }
+
+    /// <summary>
     /// Rows shaped for a pivot / aggregation table: filtered, grouped by the row-dimension columns,
     /// and each group reduced to one value per measure by that measure's aggregate.
     /// </summary>

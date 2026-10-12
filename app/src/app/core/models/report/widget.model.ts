@@ -5,6 +5,7 @@ import {
   HistogramWidgetConfig,
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
+  XBarRChartWidgetConfig,
 } from './chart-config.model';
 import { PivotTableWidgetConfig } from './pivot-config.model';
 import { DataTableWidgetConfig } from './table-config.model';
@@ -20,7 +21,8 @@ export type WidgetConfig =
   | ComboChartWidgetConfig
   | BoxPlotWidgetConfig
   | HistogramWidgetConfig
-  | PivotTableWidgetConfig;
+  | PivotTableWidgetConfig
+  | XBarRChartWidgetConfig;
 
 /**
  * A discriminated union on `type`, so narrowing `type` also narrows `config`
@@ -67,6 +69,11 @@ export interface HistogramWidget extends WidgetBase {
   config: HistogramWidgetConfig;
 }
 
+export interface XBarRChartWidget extends WidgetBase {
+  type: 'xbarRChart';
+  config: XBarRChartWidgetConfig;
+}
+
 export interface PivotTableWidget extends WidgetBase {
   type: 'pivotTable';
   config: PivotTableWidgetConfig;
@@ -79,7 +86,8 @@ export type ChartWidget =
   | BarChartWidget
   | ComboChartWidget
   | BoxPlotWidget
-  | HistogramWidget;
+  | HistogramWidget
+  | XBarRChartWidget;
 
 export type Widget =
   | DataTableWidget
@@ -90,4 +98,5 @@ export type Widget =
   | ComboChartWidget
   | BoxPlotWidget
   | HistogramWidget
-  | PivotTableWidget;
+  | PivotTableWidget
+  | XBarRChartWidget;

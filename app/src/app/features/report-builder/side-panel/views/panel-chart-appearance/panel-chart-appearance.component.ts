@@ -9,6 +9,7 @@ import { PanelBoxPlotAppearanceComponent } from '../panel-box-plot-appearance/pa
 import { PanelComboChartAppearanceComponent } from '../panel-combo-chart-appearance/panel-combo-chart-appearance.component';
 import { PanelHistogramAppearanceComponent } from '../panel-histogram-appearance/panel-histogram-appearance.component';
 import { PanelPointChartAppearanceComponent } from '../panel-point-chart-appearance/panel-point-chart-appearance.component';
+import { PanelXBarRAppearanceComponent } from '../panel-xbar-r-appearance/panel-xbar-r-appearance.component';
 
 /**
  * The "Appearance" group of the chart detail panel: the legend and gridline toggles that
@@ -30,5 +31,6 @@ export class PanelChartAppearanceComponent {
     comboChart: PanelComboChartAppearanceComponent,
     boxPlot: PanelBoxPlotAppearanceComponent,
     histogram: PanelHistogramAppearanceComponent,
+    xbarRChart: PanelXBarRAppearanceComponent,
   };
 }

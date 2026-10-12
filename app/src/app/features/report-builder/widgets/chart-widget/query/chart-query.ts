@@ -17,6 +17,7 @@ import {
   HistogramQueryRequest,
   HistogramQueryResult,
   HistogramSeriesResult,
+  XBarRChartQueryResult,
 } from '../../../../../core/models/widget-query';
 
 /** One binding's point-chart response, tagged with the binding it came from. */
@@ -56,7 +57,7 @@ export class ChartQuery {
     bindingFilters: Record<string, FilterGroup | null> | null,
     cache?: Map<string, ChartQueryResult>,
   ): Observable<
-    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult
+    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult
   > | null {
     const bindings = readChartBindings(config);
 
@@ -115,6 +116,19 @@ export class ChartQuery {
         whiskerFactor: config.whiskerFactor,
         sort: config.sort,
         includePoints: config.showPoints,
+        toleranceBands: config.toleranceBands,
+      });
+    }
+
+    if (config.type === 'xbarRChart') {
+      const primary = bindings[0];
+      if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+
+      return api.queryXBarRChart(primary.datasetId, {
+        filter: bindingFilters?.[primary.id] ?? null,
+        categoryColumnId: primary.xColumnId,
+        valueColumnId: primary.yColumnId,
+        sort: config.sort,
         toleranceBands: config.toleranceBands,
       });
     }

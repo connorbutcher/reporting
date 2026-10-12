@@ -4,6 +4,7 @@ import {
   BoxPlotWidgetModel,
   ChartWidgetModel,
   HistogramWidgetModel,
+  XBarRChartWidgetModel,
 } from '../../../models/widget.model';
 import { PanelChartAppearanceComponent } from '../panel-chart-appearance/panel-chart-appearance.component';
 import { PanelChartAxisListComponent } from '../panel-chart-axis-list/panel-chart-axis-list.component';
@@ -37,7 +38,8 @@ export class PanelWidgetDetailChartComponent {
     return !(
       chart instanceof BarChartWidgetModel ||
       chart instanceof BoxPlotWidgetModel ||
-      chart instanceof HistogramWidgetModel
+      chart instanceof HistogramWidgetModel ||
+      chart instanceof XBarRChartWidgetModel
     );
   });
 }

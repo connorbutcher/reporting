@@ -324,6 +324,53 @@ public class BoxPlotQueryTests : IDisposable
         Assert.Empty(Assert.Single(Assert.Single(without!.Series).Boxes)!.Points);
     }
 
+    [Fact]
+    public async Task QueryForBoxPlot_formats_a_date_category_label_instead_of_the_raw_stored_text()
+    {
+        var categoryRef = Guid.NewGuid();
+        var valueRef = Guid.NewGuid();
+
+        var dataset = new Dataset
+        {
+            Name = "D",
+            DatasetSourceId = 1,
+            ReportRevisionId = 1,
+            Columns =
+            {
+                new DatasetColumn { RefId = categoryRef, Name = "Build Date", Type = DatasetColumnType.DateTime, Order = 0 },
+                new DatasetColumn { RefId = valueRef, Name = "Value", Type = DatasetColumnType.Double, Order = 1 },
+            },
+        };
+        _db.Datasets.Add(dataset);
+        await _db.SaveChangesAsync();
+
+        var categoryId = dataset.Columns[0].Id;
+        var valueId = dataset.Columns[1].Id;
+
+        // The raw stored text is the ISO round-trip string, exactly what a real import/seed stores —
+        // never a display-formatted date.
+        var when = new DateTime(2026, 1, 6, 0, 0, 0, DateTimeKind.Utc);
+        foreach (var v in new[] { 1d, 2d })
+        {
+            var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
+            row.Cells.Add(new DatasetCell { ColumnId = categoryId, DateValue = when, StringValue = when.ToString("O") });
+            row.Cells.Add(new DatasetCell { ColumnId = valueId, NumberValue = v, StringValue = v.ToString() });
+            _db.DatasetRows.Add(row);
+        }
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
+        {
+            CategoryColumnId = categoryRef,
+            ValueColumnId = valueRef,
+        });
+
+        Assert.NotNull(result);
+        var category = Assert.Single(result!.Categories);
+        // The default date format (no column config set), not the raw "2026-01-06T00:00:00..." text.
+        Assert.Equal("06/01/2026", category);
+    }
+
     private (Dataset dataset, Guid categoryRef, Guid valueRef) NewStudy()
     {
         var categoryRef = Guid.NewGuid();

@@ -1,0 +1,16 @@
+<app-panel-chart-sort
+  [sort]="chart().sort()"
+  [columns]="chart().schema()?.columns ?? []"
+  defaultLabel="Subgroup order"
+  (sortChange)="chart().sort.set($event)"
+/>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="xbar-r-highlight"
+    [ngModel]="chart().highlightOutOfControl()"
+    (onChange)="chart().highlightOutOfControl.set($event.checked)"
+  />
+  <label for="xbar-r-highlight">Highlight out-of-control subgroups</label>
+</div>

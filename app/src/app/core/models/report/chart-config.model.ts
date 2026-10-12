@@ -376,13 +376,32 @@ export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
 }
 
+/**
+ * An Xbar-R control chart: a Shewhart pair monitoring a process over time. Like a box plot it
+ * groups rows by its binding's category column (`xColumnId`) — here the subgroup/sample each row
+ * belongs to — but instead of a five-number summary it reduces each subgroup's values in the
+ * measure column (`yColumnId`) to a mean and a range, plotted on two stacked charts against
+ * control limits derived from the data itself. No series split — a control chart watches one
+ * process stream.
+ */
+export interface XBarRChartWidgetConfig extends ChartWidgetConfigBase {
+  type: 'xbarRChart';
+
+  /** How the subgroups are ordered along the shared axis — critical here, since the chart reads
+   * left-to-right as a time/sequence order, not an arbitrary category ranking. */
+  sort: ChartSort;
+  /** Colours a subgroup's mean or range red when it falls outside its control limits. */
+  highlightOutOfControl: boolean;
+}
+
 export type ChartWidgetConfig =
   | ScatterChartWidgetConfig
   | LineChartWidgetConfig
   | BarChartWidgetConfig
   | ComboChartWidgetConfig
   | BoxPlotWidgetConfig
-  | HistogramWidgetConfig;
+  | HistogramWidgetConfig
+  | XBarRChartWidgetConfig;
 
 const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> = {
   showTitle: true,
@@ -444,6 +463,13 @@ export const DEFAULT_BOX_PLOT_CONFIG: Omit<BoxPlotWidgetConfig, 'type'> = {
   showPoints: false,
   showCapability: false,
   horizontal: false,
+};
+
+export const DEFAULT_XBAR_R_CHART_CONFIG: Omit<XBarRChartWidgetConfig, 'type'> = {
+  ...DEFAULT_CHART_CONFIG_BASE,
+  title: 'Xbar-R chart',
+  sort: DEFAULT_CHART_SORT,
+  highlightOutOfControl: true,
 };
 
 export const DEFAULT_HISTOGRAM_CONFIG: Omit<HistogramWidgetConfig, 'type'> = {

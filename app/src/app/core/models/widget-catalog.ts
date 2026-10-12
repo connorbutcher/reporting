@@ -91,6 +91,13 @@ export const WIDGET_TYPES: readonly WidgetTypeDescriptor[] = [
     group: 'chart',
   },
   {
+    type: 'xbarRChart',
+    label: 'Xbar-R chart',
+    hint: 'Monitor a process’s mean and spread over time against control limits',
+    icon: 'pi pi-wave-pulse',
+    group: 'chart',
+  },
+  {
     type: 'staticText',
     label: 'Text',
     hint: 'A styled heading or block of text',

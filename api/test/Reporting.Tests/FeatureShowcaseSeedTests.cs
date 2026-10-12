@@ -74,7 +74,7 @@ public class FeatureShowcaseSeedTests : IDisposable
                  {
                      WidgetType.StaticText, WidgetType.DataTable, WidgetType.PivotTable, WidgetType.ScatterChart,
                      WidgetType.LineChart, WidgetType.BarChart, WidgetType.ComboChart, WidgetType.BoxPlot,
-                     WidgetType.Histogram,
+                     WidgetType.Histogram, WidgetType.XBarRChart,
                  })
         {
             Assert.Contains(expected, types);
@@ -137,6 +137,36 @@ public class FeatureShowcaseSeedTests : IDisposable
         // Four engine types across the seeded builds (the R&D bench rows are also V8, so still four).
         Assert.Equal(4, result!.Categories.Count);
         Assert.All(result.Series.Single().Values, v => Assert.NotNull(v));
+    }
+
+    [Fact]
+    public async Task XBarR_chart_subgroups_clearance_by_inspector_with_a_spec_band()
+    {
+        DbSeeder.SeedFeatureShowcase(_db);
+
+        var revision = LoadRevision();
+        var xbarR = revision.Tabs.SelectMany(t => t.Widgets).Single(w => w.Type == WidgetType.XBarRChart);
+        using (var doc = JsonDocument.Parse(xbarR.ConfigJson))
+        {
+            Assert.Single(doc.RootElement.GetProperty("toleranceBands").EnumerateArray());
+        }
+
+        var dataset = revision.Datasets.Single(d => d.Name == "Engine Build Log");
+        Guid Ref(string name) => dataset.Columns.First(c => c.Name == name).RefId;
+
+        // The control chart's own binding runs through the real Xbar-R query — the same path the
+        // client uses — and should subgroup cleanly into the four seeded inspectors.
+        var result = await new WidgetQueryRepository(_db, new ToleranceResolver(_db))
+            .QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
+            {
+                CategoryColumnId = Ref("Inspector"),
+                ValueColumnId = Ref("Main Bearing Clearance"),
+            });
+
+        Assert.Equal(4, result!.Categories.Count);
+        Assert.All(result.Subgroups, s => Assert.True(s.Count > 1));
+        // Every build is bound to an inspector, so nothing should be lost into a missing group.
+        Assert.Equal(result.MatchedRowCount, result.Subgroups.Sum(s => s.Count));
     }
 
     private ReportRevision LoadRevision() =>

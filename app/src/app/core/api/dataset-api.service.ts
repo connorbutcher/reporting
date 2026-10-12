@@ -29,6 +29,8 @@ import {
   PivotQueryResult,
   TableQueryRequest,
   TableQueryResult,
+  XBarRChartQueryRequest,
+  XBarRChartQueryResult,
 } from '../models/widget-query';
 
 @Service()
@@ -111,6 +113,15 @@ export class DatasetApiService {
    */
   queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
     return this.http.post<BoxPlotQueryResult>(`/api/datasets/${id}/box-plot-query`, request);
+  }
+
+  /**
+   * Rows shaped for an Xbar-R control chart: filtered, grouped by the subgroup column, and each
+   * subgroup's measure values reduced to a mean and a range against control limits derived from
+   * the data.
+   */
+  queryXBarRChart(id: number, request: XBarRChartQueryRequest): Observable<XBarRChartQueryResult> {
+    return this.http.post<XBarRChartQueryResult>(`/api/datasets/${id}/xbar-r-chart-query`, request);
   }
 
   /**
