@@ -81,13 +81,19 @@ export class PointAxes {
     });
   }
 
-  /** The distinct category labels a text axis carries, alphabetical — the axis's `data`. */
+  /**
+   * The distinct category labels a text axis carries — the axis's `data`. Order follows each
+   * category's first appearance across the series' points, which the server has already arranged
+   * by the binding's sort (X ascending by default, so this reads alphabetical with no sort chosen
+   * — or by whatever column the user picked instead, e.g. a date, to make the axis read like a
+   * timeline).
+   */
   public static categories(series: ChartSeriesResult[], axis: 'x' | 'y'): string[] {
     const values = new Set<string>();
     for (const s of series) {
       for (const point of s.points) values.add(String(axis === 'x' ? point.x : point.y));
     }
-    return [...values].sort((a, b) => a.localeCompare(b));
+    return [...values];
   }
 
   /**

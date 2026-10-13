@@ -30,7 +30,7 @@
     <label class="panel-field">
       <span class="panel-field-label">Reduce each category by</span>
       <p-select
-        [options]="aggregateOptions"
+        [options]="aggregateOptions()"
         [ngModel]="resolved().aggregate"
         optionLabel="label"
         optionValue="value"
@@ -39,6 +39,11 @@
         (onChange)="setAggregate($event.value)"
       />
     </label>
+    @if (showAggregateHint()) {
+      <p class="panel-hint">
+        Only matters if a category has more than one different value here — otherwise Direction alone decides the order.
+      </p>
+    }
   }
 }
 

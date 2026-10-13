@@ -297,6 +297,47 @@ public class BarChartQueryTests : IDisposable
         Assert.Equal([5d, 10d, 1d], Assert.Single(result.Series).Values);
     }
 
+    [Fact]
+    public async Task QueryForBarChart_sort_by_column_ranks_alphabetically_by_a_text_column()
+    {
+        var categoryRef = Guid.NewGuid();
+        var revRef = Guid.NewGuid();
+        var inspectorRef = Guid.NewGuid();
+        var dataset = NewDataset(
+            (categoryRef, "Region", DatasetColumnType.String),
+            (revRef, "Revenue", DatasetColumnType.Double),
+            (inspectorRef, "Inspector", DatasetColumnType.String));
+        var cat = dataset.Columns[0].Id;
+        var rev = dataset.Columns[1].Id;
+        var inspector = dataset.Columns[2].Id;
+
+        // Region's own alphabetical order is East, North, South; Inspector disagrees (Amy <
+        // Mia < Zara), so a match proves the ranking really came from the text sort column.
+        AddRowWithText(dataset.Id, cat, "East", rev, 1, inspector, "Zara");
+        AddRowWithText(dataset.Id, cat, "North", rev, 10, inspector, "Amy");
+        AddRowWithText(dataset.Id, cat, "South", rev, 5, inspector, "Mia");
+        await _db.SaveChangesAsync();
+
+        var result = await Repo().QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
+        {
+            CategoryColumnId = categoryRef,
+            ValueColumnIds = [revRef],
+            Aggregate = Aggregate.Sum,
+            Sort = new ChartSort { By = ChartSortBy.Column, ColumnId = inspectorRef, Aggregate = SortAggregate.Min },
+        });
+
+        Assert.Equal(["North", "South", "East"], result!.Categories);
+    }
+
+    private void AddRowWithText(int datasetId, int categoryCol, string category, int valueCol, double value, int textCol, string text)
+    {
+        var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = datasetId };
+        row.Cells.Add(new DatasetCell { ColumnId = categoryCol, StringValue = category });
+        row.Cells.Add(new DatasetCell { ColumnId = valueCol, NumberValue = value, StringValue = value.ToString() });
+        row.Cells.Add(new DatasetCell { ColumnId = textCol, StringValue = text });
+        _db.DatasetRows.Add(row);
+    }
+
     private Dataset NewDataset(params (Guid Ref, string Name, DatasetColumnType Type)[] columns)
     {
         var dataset = new Dataset { Name = "D", DatasetSourceId = 1, ReportRevisionId = 1 };

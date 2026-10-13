@@ -1,13 +1,44 @@
 import { Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { DatasetColumn, DatasetColumnType } from '../../../../../core/models/dataset';
 import {
   ChartSort,
   ChartSortBy,
   DEFAULT_CHART_SORT,
   SortAggregate,
 } from '../../../../../core/models/report';
+
+/** The aggregates a column type can be reduced by — text has no sum/average/median/spread, and
+ * summing dates has no meaning either. */
+function aggregateOptionsFor(type: DatasetColumnType | null): { label: string; value: SortAggregate }[] {
+  if (type === 'string') {
+    return [
+      { label: 'First (A–Z)', value: 'min' },
+      { label: 'Last (A–Z)', value: 'max' },
+      { label: 'Count', value: 'count' },
+    ];
+  }
+  if (type === 'dateTime') {
+    return [
+      { label: 'Earliest', value: 'min' },
+      { label: 'Latest', value: 'max' },
+      { label: 'Average', value: 'average' },
+      { label: 'Median', value: 'median' },
+      { label: 'Spread (IQR)', value: 'spread' },
+      { label: 'Count', value: 'count' },
+    ];
+  }
+  return [
+    { label: 'Sum', value: 'sum' },
+    { label: 'Average', value: 'average' },
+    { label: 'Count', value: 'count' },
+    { label: 'Minimum', value: 'min' },
+    { label: 'Maximum', value: 'max' },
+    { label: 'Median', value: 'median' },
+    { label: 'Spread (IQR)', value: 'spread' },
+  ];
+}
 
 /**
  * A chart's order control, shared by every chart kind that can be sorted: category-grouping
@@ -43,15 +74,24 @@ export class PanelChartSortComponent {
     { label: 'Column…', value: 'column' },
   ]);
 
-  public readonly aggregateOptions: { label: string; value: SortAggregate }[] = [
-    { label: 'Sum', value: 'sum' },
-    { label: 'Average', value: 'average' },
-    { label: 'Count', value: 'count' },
-    { label: 'Minimum', value: 'min' },
-    { label: 'Maximum', value: 'max' },
-    { label: 'Median', value: 'median' },
-    { label: 'Spread (IQR)', value: 'spread' },
-  ];
+  /** The sort column's own type, so the aggregate list can drop options that don't apply to it. */
+  private readonly selectedColumnType = computed(() => {
+    const columnId = this.resolved().columnId;
+    return columnId ? (this.columns().find((c) => c.id === columnId)?.type ?? null) : null;
+  });
+
+  public readonly aggregateOptions = computed(() => aggregateOptionsFor(this.selectedColumnType()));
+
+  /**
+   * Shown next to the aggregate picker for text/date columns, where "first"/"last" (earliest/
+   * latest) only has a visible effect if a category actually holds more than one distinct value
+   * for the column — otherwise it's the same single value either way, and Direction alone decides
+   * the order.
+   */
+  public readonly showAggregateHint = computed(() => {
+    const type = this.selectedColumnType();
+    return type === 'string' || type === 'dateTime';
+  });
 
   public readonly directionOptions: { label: string; value: boolean }[] = [
     { label: 'Ascending', value: false },
@@ -63,7 +103,14 @@ export class PanelChartSortComponent {
   }
 
   public setColumn(columnId: string | null): void {
-    this.sortChange.emit({ ...this.resolved(), columnId });
+    const resolved = this.resolved();
+    const type = columnId ? (this.columns().find((c) => c.id === columnId)?.type ?? null) : null;
+    // The new column may not support the previously-picked aggregate (e.g. switching from a
+    // numeric column's "Sum" to a text one) — fall back to its first valid aggregate instead of
+    // carrying over a now-meaningless choice.
+    const validValues = aggregateOptionsFor(type).map((o) => o.value);
+    const aggregate = validValues.includes(resolved.aggregate) ? resolved.aggregate : validValues[0];
+    this.sortChange.emit({ ...resolved, columnId, aggregate });
   }
 
   public setAggregate(aggregate: SortAggregate): void {
