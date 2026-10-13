@@ -9,6 +9,7 @@ import { PanelColumnListComponent } from './views/panel-column-list/panel-column
 import { PanelColumnSettingsComponent } from './views/panel-column-settings/panel-column-settings.component';
 import { PanelColumnToleranceComponent } from './views/panel-column-tolerance/panel-column-tolerance.component';
 import { PanelIssuesComponent } from './views/panel-issues/panel-issues.component';
+import { PanelWidgetDetailKpiToleranceComponent } from './views/panel-widget-detail-kpi-tolerance/panel-widget-detail-kpi-tolerance.component';
 import { PanelReportFiltersComponent } from './views/panel-report-filters/panel-report-filters.component';
 import { PanelReportSettingsComponent } from './views/panel-report-settings/panel-report-settings.component';
 import { PanelRootComponent } from './views/panel-root/panel-root.component';
@@ -107,6 +108,10 @@ export const PANEL_VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K
   columnTolerance: {
     component: PanelColumnToleranceComponent,
     parent: (view) => ({ kind: 'columnSettings', widgetId: view.widgetId, columnId: view.columnId }),
+  },
+  kpiTolerance: {
+    component: PanelWidgetDetailKpiToleranceComponent,
+    parent: (view) => ({ kind: 'widget', widgetId: view.widgetId }),
   },
 };
 

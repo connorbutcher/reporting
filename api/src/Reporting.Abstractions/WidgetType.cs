@@ -13,6 +13,7 @@ public enum WidgetType
     BoxPlot,
     Histogram,
     PivotTable,
+    Kpi,
 
     // The default camelCase JSON naming policy would lower only the first letter, giving
     // "xBarRChart" — mismatched with the widget config's own "xbarRChart" discriminator

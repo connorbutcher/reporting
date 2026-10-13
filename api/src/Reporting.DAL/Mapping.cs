@@ -172,6 +172,10 @@ public static class Mapping
             case PivotTableWidgetConfig pivot:
                 pivot.DatasetId = Remap(pivot.DatasetId);
                 break;
+            case KpiWidgetConfig kpi:
+                kpi.DatasetId = Remap(kpi.DatasetId);
+                if (kpi.Tolerance is { } kpiTolerance) kpiTolerance.SourceDatasetId = Remap0(kpiTolerance.SourceDatasetId);
+                break;
         }
 
         return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);

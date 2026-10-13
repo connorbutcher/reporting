@@ -25,6 +25,8 @@ import {
   ChartQueryResult,
   HistogramQueryRequest,
   HistogramQueryResult,
+  KpiQueryRequest,
+  KpiQueryResult,
   PivotQueryRequest,
   PivotQueryResult,
   TableQueryRequest,
@@ -138,6 +140,14 @@ export class DatasetApiService {
    */
   queryPivot(id: number, request: PivotQueryRequest): Observable<PivotQueryResult> {
     return this.http.post<PivotQueryResult>(`/api/datasets/${id}/pivot-query`, request);
+  }
+
+  /**
+   * A single headline number reduced from the dataset: a plain aggregate, or the count/percent of
+   * rows failing a tolerance band, optionally compared against a fixed target or the previous period.
+   */
+  queryKpi(id: number, request: KpiQueryRequest): Observable<KpiQueryResult> {
+    return this.http.post<KpiQueryResult>(`/api/datasets/${id}/kpi-query`, request);
   }
 
   /**

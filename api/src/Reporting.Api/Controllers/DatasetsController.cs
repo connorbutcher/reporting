@@ -26,6 +26,7 @@ public class DatasetsController(
     XBarRChartQueryService xBarRChartQueries,
     PivotQueryService pivotQueries,
     HistogramQueryService histogramQueries,
+    KpiQueryService kpiQueries,
     DatasetColumnUsageService columnUsage) : ControllerBase
 {
     // --- source reference data ------------------------------------------------
@@ -220,6 +221,18 @@ public class DatasetsController(
     public async Task<ActionResult<HistogramQueryResultDto>> HistogramQuery(int id, HistogramQueryDto dto)
     {
         var result = await histogramQueries.QueryForHistogramAsync(id, dto);
+        return result is null ? NotFound() : result;
+    }
+
+    /// <summary>
+    /// A single headline number reduced from the dataset: a plain aggregate, or the count/percent of
+    /// rows failing a tolerance band, optionally compared against a fixed target or the previous period.
+    /// </summary>
+    [HttpPost("{id:int}/kpi-query")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<KpiQueryResultDto>> KpiQuery(int id, KpiQueryDto dto)
+    {
+        var result = await kpiQueries.QueryForKpiAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 

@@ -4,4 +4,5 @@ export * from './bar-chart-query.model';
 export * from './box-plot-query.model';
 export * from './histogram-query.model';
 export * from './pivot-query.model';
+export * from './kpi-query.model';
 export * from './xbar-r-chart-query.model';

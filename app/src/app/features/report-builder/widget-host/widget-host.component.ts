@@ -7,6 +7,7 @@ import { GridPreview } from '../grid.util';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
+  KpiWidgetModel,
   PivotTableWidgetModel,
   WidgetModel,
 } from '../models/widget.model';
@@ -86,10 +87,12 @@ export class WidgetHostComponent {
     const widget = this.widget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
-  /** The table and pivot both carry a single dataset + own filter, wired identically. */
+  /** The table, pivot, and KPI all carry a single dataset + own filter, wired identically. */
   private readonly filterableModel = computed(() => {
     const widget = this.widget();
-    return widget instanceof DataTableWidgetModel || widget instanceof PivotTableWidgetModel
+    return widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel
       ? widget
       : null;
   });

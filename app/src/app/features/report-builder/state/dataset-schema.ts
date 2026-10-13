@@ -1,7 +1,12 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { DatasetColumnConfiguration } from '../../../core/models/dataset';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
-import { ChartWidgetModel, DataTableWidgetModel, PivotTableWidgetModel } from '../models/widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  KpiWidgetModel,
+  PivotTableWidgetModel,
+} from '../models/widget.model';
 import { ReportSession } from './report-session';
 
 /**
@@ -58,6 +63,11 @@ export class DatasetSchema {
           // happened to already be using the same dataset.
           const datasetId = widget.datasetId();
           if (datasetId) this.schemaCache.ensure(datasetId);
+        } else if (widget instanceof KpiWidgetModel) {
+          const datasetId = widget.datasetId();
+          if (datasetId) this.schemaCache.ensure(datasetId);
+          const toleranceSourceId = widget.tolerance()?.sourceDatasetId;
+          if (toleranceSourceId) this.schemaCache.ensure(toleranceSourceId);
         }
       }
     });

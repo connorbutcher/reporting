@@ -1201,6 +1201,37 @@ public static class DbSeeder
     }
 
     /// <summary>
+    /// A KPI widget's config JSON, built once the dataset (and, for the tolerance value source, the
+    /// limits dataset <paramref name="toleranceJson"/> points at) has its primary key.
+    /// <paramref name="toleranceJson"/> is "null" for the aggregate value source, or a pre-built
+    /// <see cref="KpiToleranceJson"/> object for the tolerance-out-of-limits one.
+    /// </summary>
+    private static string KpiConfigJson(
+        string title, Dataset dataset, string valueSource, string aggregate, Guid? valueColumnRef,
+        string toleranceJson, string toleranceStatusMode, bool showAsPercent,
+        string comparisonMode, double? targetValue, Guid? dateColumnRef, int periodDays,
+        string direction, string unit, int decimalPlaces)
+    {
+        var valueColumn = valueColumnRef is { } v ? $"\"{v}\"" : "null";
+        var target = targetValue is { } t ? t.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null";
+        var dateColumn = dateColumnRef is { } d ? $"\"{d}\"" : "null";
+        static string B(bool value) => value ? "true" : "false";
+        return $$"""
+            {"type":"kpi","title":"{{title}}","showTitle":true,
+             "datasetId":{{dataset.Id}},
+             "valueSource":"{{valueSource}}","aggregate":"{{aggregate}}","valueColumnId":{{valueColumn}},
+             "tolerance":{{toleranceJson}},"toleranceStatusMode":"{{toleranceStatusMode}}","showAsPercent":{{B(showAsPercent)}},
+             "comparisonMode":"{{comparisonMode}}","targetValue":{{target}},"dateColumnId":{{dateColumn}},"periodDays":{{periodDays}},
+             "direction":"{{direction}}","unit":"{{unit}}","decimalPlaces":{{decimalPlaces}},
+             "filter":null}
+            """;
+    }
+
+    /// <summary>A KPI's tolerance pointer: a fixed limits row, the same shape <see cref="SpecBandJson"/> points a chart band at.</summary>
+    private static string KpiToleranceJson(int specDatasetId, Guid rowRef, Guid minRef, Guid maxRef) =>
+        $$"""{"sourceDatasetId":{{specDatasetId}},"sourceRowId":"{{rowRef}}","minColumnId":"{{minRef}}","maxColumnId":"{{maxRef}}"}""";
+
+    /// <summary>
     /// A bar-chart widget's config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; the category and each measure by their stable RefIds.
     /// <paramref name="valueRefs"/> becomes the binding's <c>valueColumnIds</c> — one series per
@@ -1358,7 +1389,8 @@ public static class DbSeeder
             ReportFiltersJson((dataset.Id, FilterGroupJson("and", ConditionJson(lineRef, "notEquals", "R&D Bench")))));
 
         // ---- Tab 1: the data, as a table, a filtered table, and a pivot ----
-        var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0 };
+        // Taller than the default 30 rows so the two KPI tiles fit below the pivot/rework-table row.
+        var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0, Rows = 38 };
         revision.Tabs.Add(overview);
         overview.Widgets.Add(TitleWidget("Engine Build — Feature Tour", 0, 0, 48, 2));
         overview.Widgets.Add(ParagraphWidget(
@@ -1394,6 +1426,22 @@ public static class DbSeeder
         overview.Widgets.Add(pivot);
         pendingCharts.Add(new PendingChart(pivot, () =>
             PivotConfigJson("Builds by engine & line", dataset, [engineRef, lineRef], measures)));
+
+        // Two KPI tiles: a plain aggregate against a fixed target, and the "% out of limits" case
+        // against the very spec band the box plot, histogram, and line above read — reusing the
+        // same tolerance pointer rather than a separate one.
+        var avgCost = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 0, Y = 29, W = 24, H = 8, ConfigJson = "{}" };
+        overview.Widgets.Add(avgCost);
+        pendingCharts.Add(new PendingChart(avgCost, () =>
+            KpiConfigJson("Average build cost", dataset, "aggregate", "average", costRef, "null", "fail", true,
+                "fixedTarget", 7000, null, 7, "lowerIsBetter", "£", 0)));
+
+        var outOfSpec = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 24, Y = 29, W = 24, H = 8, ConfigJson = "{}" };
+        overview.Widgets.Add(outOfSpec);
+        pendingCharts.Add(new PendingChart(outOfSpec, () =>
+            KpiConfigJson("Bearing clearance out of spec", dataset, "toleranceOutOfLimits", "sum", clearanceRef,
+                KpiToleranceJson(spec.Id, specRowRef, lsl.RefId, usl.RefId), "fail", true,
+                "fixedTarget", 5, null, 7, "lowerIsBetter", "%", 1)));
 
         // ---- Tab 2: the point charts ----
         var trends = new Tab { RefId = Guid.NewGuid(), Name = "Trends", Order = 1 };

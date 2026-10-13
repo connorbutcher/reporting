@@ -19,6 +19,7 @@ import { ValidationIssue } from '../models/validation-issue';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
+  KpiWidgetModel,
   ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
@@ -203,13 +204,20 @@ export class ReportSession {
     return widget instanceof ChartWidgetModel ? widget : null;
   });
 
+  /** The selected widget, narrowed to a KPI — null for every other type. */
+  readonly selectedKpiWidget = computed<KpiWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof KpiWidgetModel ? widget : null;
+  });
+
   /** The selected widget, when it's a kind that carries its own filter. */
   readonly selectedFilterableWidget = computed<
-    DataTableWidgetModel | PivotTableWidgetModel | ChartWidgetModel | null
+    DataTableWidgetModel | PivotTableWidgetModel | KpiWidgetModel | ChartWidgetModel | null
   >(() => {
     const widget = this.selectedWidget();
     return widget instanceof DataTableWidgetModel ||
       widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel ||
       widget instanceof ChartWidgetModel
       ? widget
       : null;

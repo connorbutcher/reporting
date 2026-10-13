@@ -1,6 +1,6 @@
 import { FilterGroupModel } from './filter';
 import { ReportModel } from './report.model';
-import { ChartWidgetModel, DataTableWidgetModel, PivotTableWidgetModel } from './widget.model';
+import { ChartWidgetModel, DataTableWidgetModel, KpiWidgetModel, PivotTableWidgetModel } from './widget.model';
 
 /** A filter elsewhere on the report that could be copied into the one being edited. */
 export interface ReusableFilter {
@@ -26,7 +26,11 @@ export function reusableFiltersFor(
 
   for (const tab of model.tabs()) {
     for (const widget of tab.widgets()) {
-      if (widget instanceof DataTableWidgetModel || widget instanceof PivotTableWidgetModel) {
+      if (
+        widget instanceof DataTableWidgetModel ||
+        widget instanceof PivotTableWidgetModel ||
+        widget instanceof KpiWidgetModel
+      ) {
         if (widget.datasetId() === datasetId) add(widget.label(), widget.filter);
       } else if (widget instanceof ChartWidgetModel) {
         // A chart overlays a dataset per binding, so name the series when there's more than one.

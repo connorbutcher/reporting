@@ -57,6 +57,7 @@ builder.Services.AddScoped<BarChartQueryService>();
 builder.Services.AddScoped<BoxPlotQueryService>();
 builder.Services.AddScoped<XBarRChartQueryService>();
 builder.Services.AddScoped<HistogramQueryService>();
+builder.Services.AddScoped<KpiQueryService>();
 builder.Services.AddScoped<PermissionService>();
 builder.Services.AddScoped<ResourceAuthorizer>();
 builder.Services.AddScoped<PermissionAdminService>();

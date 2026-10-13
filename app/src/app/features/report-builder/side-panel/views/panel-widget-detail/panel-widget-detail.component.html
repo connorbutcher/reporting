@@ -62,6 +62,9 @@
     @if (pivot(); as pivot) {
       <app-panel-widget-detail-pivot [pivot]="pivot" />
     }
+    @if (kpi(); as kpi) {
+      <app-panel-widget-detail-kpi [kpi]="kpi" />
+    }
     @if (text(); as text) {
       <app-panel-widget-detail-text [text]="text" />
     }

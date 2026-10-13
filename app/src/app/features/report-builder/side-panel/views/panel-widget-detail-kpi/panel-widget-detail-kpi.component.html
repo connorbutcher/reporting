@@ -1,0 +1,229 @@
+<app-panel-group label="Data source" icon="⛁">
+  <label class="panel-field">
+    <span class="panel-field-label">Dataset</span>
+    <p-select
+      [options]="datasets()"
+      [ngModel]="kpi().datasetId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Select a dataset"
+      appendTo="body"
+      [showClear]="true"
+      fluid
+      (onChange)="kpi().setDataset($event.value ?? null)"
+    />
+  </label>
+</app-panel-group>
+
+<app-panel-group label="Value" icon="∑">
+  <label class="panel-field">
+    <span class="panel-field-label">Shows</span>
+    <p-select
+      [options]="valueSources"
+      [ngModel]="kpi().valueSource()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="kpi().setValueSource($event.value)"
+    />
+  </label>
+
+  @if (kpi().valueSource() === 'aggregate') {
+    <label class="panel-field">
+      <span class="panel-field-label">Aggregate</span>
+      <p-select
+        [options]="aggregates"
+        [ngModel]="kpi().aggregate()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="kpi().setAggregate($event.value)"
+      />
+    </label>
+
+    @if (kpi().aggregate() !== 'count') {
+      <label class="panel-field">
+        <span class="panel-field-label">Column</span>
+        <p-select
+          [options]="kpi().numericColumns()"
+          [ngModel]="kpi().valueColumnId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Column to summarise"
+          appendTo="body"
+          [showClear]="true"
+          [disabled]="!kpi().datasetId()"
+          fluid
+          (onChange)="kpi().valueColumnId.set($event.value ?? null)"
+        />
+      </label>
+    }
+  } @else {
+    <label class="panel-field">
+      <span class="panel-field-label">Column checked</span>
+      <p-select
+        [options]="kpi().numericColumns()"
+        [ngModel]="kpi().valueColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Column to check"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!kpi().datasetId()"
+        fluid
+        (onChange)="kpi().valueColumnId.set($event.value ?? null)"
+      />
+    </label>
+
+    <button
+      type="button"
+      class="panel-menu-item"
+      [disabled]="!kpi().datasetId()"
+      (click)="navigate({ kind: 'kpiTolerance', widgetId: kpi().id })"
+    >
+      <i class="pi pi-sliders-h" aria-hidden="true"></i>
+      <span class="panel-menu-text">
+        <span class="panel-menu-label">Tolerance limits</span>
+        <span class="panel-menu-hint">{{ kpi().tolerance() ? 'Configured' : 'Not configured' }}</span>
+      </span>
+      <i class="pi pi-angle-right" aria-hidden="true"></i>
+    </button>
+
+    <label class="panel-field">
+      <span class="panel-field-label">Counts</span>
+      <p-select
+        [options]="toleranceStatusModes"
+        [ngModel]="kpi().toleranceStatusMode()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="kpi().toleranceStatusMode.set($event.value)"
+      />
+    </label>
+
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="kpi-show-percent"
+        [ngModel]="kpi().showAsPercent()"
+        (onChange)="kpi().showAsPercent.set($event.checked)"
+      />
+      <label for="kpi-show-percent">Show as a percent of matched rows</label>
+    </div>
+  }
+</app-panel-group>
+
+<app-panel-group label="Comparison" icon="⇄">
+  <label class="panel-field">
+    <span class="panel-field-label">Compare against</span>
+    <p-select
+      [options]="comparisonModes"
+      [ngModel]="kpi().comparisonMode()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="kpi().setComparisonMode($event.value)"
+    />
+  </label>
+
+  @if (kpi().comparisonMode() === 'fixedTarget') {
+    <label class="panel-field">
+      <span class="panel-field-label">Target value</span>
+      <p-inputnumber
+        [ngModel]="kpi().targetValue()"
+        (ngModelChange)="kpi().targetValue.set($event ?? null)"
+        fluid
+      />
+    </label>
+  }
+
+  @if (kpi().comparisonMode() === 'previousPeriod') {
+    <label class="panel-field">
+      <span class="panel-field-label">Date column</span>
+      <p-select
+        [options]="kpi().dateColumns()"
+        [ngModel]="kpi().dateColumnId()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Date column"
+        appendTo="body"
+        [showClear]="true"
+        [disabled]="!kpi().datasetId()"
+        fluid
+        (onChange)="kpi().dateColumnId.set($event.value ?? null)"
+      />
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">Period length (days)</span>
+      <p-inputnumber
+        [ngModel]="kpi().periodDays()"
+        (ngModelChange)="kpi().periodDays.set($event ?? 7)"
+        [min]="1"
+        fluid
+      />
+    </label>
+  }
+
+  @if (kpi().comparisonMode() !== 'none') {
+    <label class="panel-field">
+      <span class="panel-field-label">Direction</span>
+      <p-select
+        [options]="directions"
+        [ngModel]="kpi().direction()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="kpi().direction.set($event.value)"
+      />
+    </label>
+  }
+</app-panel-group>
+
+<app-panel-group label="Appearance" icon="▤">
+  <label class="panel-field">
+    <span class="panel-field-label">Unit (optional)</span>
+    <input
+      pInputText
+      [ngModel]="kpi().unit()"
+      (ngModelChange)="kpi().unit.set($event)"
+      placeholder="%, s, pts…"
+    />
+  </label>
+  <label class="panel-field">
+    <span class="panel-field-label">Decimal places</span>
+    <p-inputnumber
+      [ngModel]="kpi().decimalPlaces()"
+      (ngModelChange)="kpi().decimalPlaces.set($event ?? 0)"
+      [min]="0"
+      [max]="6"
+      fluid
+    />
+  </label>
+</app-panel-group>
+
+<button
+  type="button"
+  class="panel-menu-item"
+  [disabled]="!kpi().datasetId()"
+  (click)="navigate({ kind: 'widgetFilters', widgetId: kpi().id })"
+>
+  <i class="pi pi-filter" aria-hidden="true"></i>
+  <span class="panel-menu-text">
+    <span class="panel-menu-label">Filters</span>
+    <span class="panel-menu-hint">
+      {{
+        !kpi().datasetId()
+          ? 'Pick a dataset first'
+          : kpi().filter.count() === 0
+            ? 'Summarising every row'
+            : kpi().filter.count() + ' condition' + (kpi().filter.count() > 1 ? 's' : '')
+      }}
+    </span>
+  </span>
+  <i class="pi pi-angle-right" aria-hidden="true"></i>
+</button>

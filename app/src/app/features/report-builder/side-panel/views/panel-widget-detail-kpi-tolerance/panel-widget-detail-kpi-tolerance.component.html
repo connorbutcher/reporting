@@ -1,0 +1,171 @@
+@if (kpi(); as kpi) {
+  <div class="panel-section">
+    <p class="panel-hint">
+      The checked column's values are compared against a row of a limits dataset. Below the
+      concession-lower or above the concession-upper bound counts as a fail; between a concession
+      bound and min/max counts as a concession; inside min/max passes.
+    </p>
+
+    <app-panel-group label="Limits" icon="⛁">
+      <label class="panel-field">
+        <span class="panel-field-label">Limits dataset</span>
+        <p-select
+          [options]="datasets()"
+          [ngModel]="picker.sourceDatasetId()"
+          optionLabel="name"
+          optionValue="id"
+          placeholder="Choose a dataset"
+          appendTo="body"
+          fluid
+          showClear
+          (onChange)="picker.selectDataset($event.value ?? null)"
+        />
+      </label>
+
+      @if (picker.sourceDatasetId()) {
+        @if (picker.loadingSource()) {
+          <p class="panel-empty">Loading…</p>
+        } @else {
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              inputId="kpi-tolerance-match"
+              [ngModel]="picker.matchEnabled()"
+              (onChange)="picker.matchEnabled.set($event.checked)"
+            />
+            <label for="kpi-tolerance-match">Choose the limits row from each row's value</label>
+          </div>
+
+          @if (picker.matchEnabled()) {
+            <p class="panel-hint">
+              Each row is checked against the limits row where the two columns hold the same value —
+              text ignoring case and spaces, numbers by value. Rows with no matching limits row aren't
+              counted.
+            </p>
+            <div class="panel-grid-fields">
+              <label class="panel-field">
+                <span class="panel-field-label">This dataset's column</span>
+                <p-select
+                  [options]="kpiColumns()"
+                  [ngModel]="picker.matchColumnId()"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Column"
+                  appendTo="body"
+                  fluid
+                  (onChange)="picker.matchColumnId.set($event.value ?? null)"
+                />
+              </label>
+              <label class="panel-field">
+                <span class="panel-field-label">Limits dataset's column</span>
+                <p-select
+                  [options]="picker.sourceColumns()"
+                  [ngModel]="picker.sourceMatchColumnId()"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Column"
+                  appendTo="body"
+                  fluid
+                  (onChange)="picker.sourceMatchColumnId.set($event.value ?? null)"
+                />
+              </label>
+            </div>
+          } @else {
+            <label class="panel-field">
+              <span class="panel-field-label">Spec row</span>
+              <p-select
+                [options]="picker.rowOptions()"
+                [ngModel]="picker.sourceRowId()"
+                optionLabel="label"
+                optionValue="id"
+                placeholder="Choose a row"
+                appendTo="body"
+                fluid
+                (onChange)="picker.sourceRowId.set($event.value ?? null)"
+              />
+            </label>
+          }
+
+          <div class="panel-grid-fields">
+            <label class="panel-field">
+              <span class="panel-field-label">Min</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.minColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                fluid
+                (onChange)="picker.minColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Max</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.maxColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Column"
+                appendTo="body"
+                fluid
+                (onChange)="picker.maxColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Concession lower</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.concessionLowerColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="None"
+                appendTo="body"
+                fluid
+                showClear
+                (onChange)="picker.concessionLowerColumnId.set($event.value ?? null)"
+              />
+            </label>
+            <label class="panel-field">
+              <span class="panel-field-label">Concession upper</span>
+              <p-select
+                [options]="picker.numericColumns()"
+                [ngModel]="picker.concessionUpperColumnId()"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="None"
+                appendTo="body"
+                fluid
+                showClear
+                (onChange)="picker.concessionUpperColumnId.set($event.value ?? null)"
+              />
+            </label>
+          </div>
+
+          @if (!picker.isComplete()) {
+            <p class="panel-hint">
+              {{
+                picker.matchEnabled()
+                  ? 'Pick the two columns to match on, plus min and max columns, to turn on the check.'
+                  : 'Pick a spec row plus min and max columns to turn on the check.'
+              }}
+            </p>
+          }
+        }
+      }
+    </app-panel-group>
+
+    <p-button
+      label="Remove tolerance"
+      icon="pi pi-times"
+      severity="danger"
+      outlined
+      fluid
+      [disabled]="!kpi.tolerance()"
+      (onClick)="clear()"
+    />
+  </div>
+} @else {
+  <p class="panel-empty">This widget is no longer on the canvas.</p>
+}

@@ -8,7 +8,8 @@ export type WidgetType =
   | 'boxPlot'
   | 'histogram'
   | 'pivotTable'
-  | 'xbarRChart';
+  | 'xbarRChart'
+  | 'kpi';
 
 /** Fields every widget config carries, regardless of type. */
 export interface WidgetConfigBase {

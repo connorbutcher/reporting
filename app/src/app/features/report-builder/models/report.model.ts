@@ -11,6 +11,7 @@ import {
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
+  KpiWidgetModel,
   ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
@@ -203,7 +204,8 @@ export class ReportModel extends EditorNode {
           for (const binding of widget.bindings()) add(binding.datasetId());
         } else if (
           widget instanceof DataTableWidgetModel ||
-          widget instanceof PivotTableWidgetModel
+          widget instanceof PivotTableWidgetModel ||
+          widget instanceof KpiWidgetModel
         ) {
           add(widget.datasetId());
         }

@@ -1,5 +1,6 @@
 import { ChartWidgetModel } from './chart-widget.model';
 import { DataTableWidgetModel } from './data-table-widget.model';
+import { KpiWidgetModel } from './kpi-widget.model';
 import { PivotTableWidgetModel } from './pivot-table-widget.model';
 import { WidgetModel } from './widget-model-base';
 
@@ -9,7 +10,11 @@ import { WidgetModel } from './widget-model-base';
  * the report-level filter, which is shown separately per dataset in the report filters view.
  */
 export function widgetFilterCount(widget: WidgetModel): number {
-  if (widget instanceof DataTableWidgetModel || widget instanceof PivotTableWidgetModel) {
+  if (
+    widget instanceof DataTableWidgetModel ||
+    widget instanceof PivotTableWidgetModel ||
+    widget instanceof KpiWidgetModel
+  ) {
     return widget.filter.enabledCount();
   }
   if (widget instanceof ChartWidgetModel) {
