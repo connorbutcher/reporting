@@ -21,7 +21,7 @@ public class ToleranceMatchTests : SqliteDbTestBase
 
     public ToleranceMatchTests() : base(foreignKeys: false) { }
 
-    private WidgetQueryRepository Repo() => new(Db, new ToleranceResolver(Db));
+    private TableQueryService Repo() => new(Db, new ToleranceResolver(Db));
 
     private static DatasetColumn Col(Guid refId, string name, DatasetColumnType type, int order) =>
         new() { RefId = refId, Name = name, Type = type, Order = order };

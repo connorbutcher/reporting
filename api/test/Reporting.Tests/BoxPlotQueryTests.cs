@@ -7,7 +7,7 @@ using Reporting.Database;
 namespace Reporting.Tests;
 
 /// <summary>
-/// Exercises <see cref="WidgetQueryRepository.QueryForBoxPlotAsync"/> against a real (SQLite)
+/// Exercises <see cref="BoxPlotQueryService.QueryForBoxPlotAsync"/> against a real (SQLite)
 /// relational provider, so the projection it builds is proven to translate to SQL and the
 /// in-memory five-number summary (with Tukey outliers and series splits) is proven correct.
 /// </summary>
@@ -39,7 +39,7 @@ public class BoxPlotQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private WidgetQueryRepository Repo() => new(_db, new ToleranceResolver(_db));
+    private BoxPlotQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
 
     [Fact]
     public async Task QueryForBoxPlot_minMax_returns_five_number_summary_per_category()

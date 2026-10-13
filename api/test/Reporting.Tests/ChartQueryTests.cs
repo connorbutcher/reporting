@@ -8,7 +8,7 @@ using Reporting.Database;
 namespace Reporting.Tests;
 
 /// <summary>
-/// Exercises <see cref="WidgetQueryRepository.QueryForChartAsync"/> against a real (SQLite)
+/// Exercises <see cref="ChartQueryService.QueryForChartAsync"/> against a real (SQLite)
 /// relational provider, so the LINQ it builds is proven to translate to SQL — in particular
 /// the filtered <c>Include(r =&gt; r.Cells.Where(...))</c> layered over <c>OrderBy().Take()</c>,
 /// and the date-axis branch that emits epoch-millisecond values.
@@ -43,7 +43,7 @@ public class ChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private WidgetQueryRepository Repo() => new(_db, new ToleranceResolver(_db));
+    private ChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
 
     [Fact]
     public async Task QueryForChart_numeric_axes_returns_points_and_only_needed_tooltip_cell()

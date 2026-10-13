@@ -126,7 +126,7 @@ public class FeatureShowcaseSeedTests : IDisposable
         Guid Ref(string name) => dataset.Columns.First(c => c.Name == name).RefId;
 
         // The combo's bar binding runs through the bar-chart query — the same path the client uses.
-        var result = await new WidgetQueryRepository(_db, new ToleranceResolver(_db))
+        var result = await new BarChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)))
             .QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
             {
                 CategoryColumnId = Ref("Engine Type"),
@@ -156,7 +156,7 @@ public class FeatureShowcaseSeedTests : IDisposable
 
         // The control chart's own binding runs through the real Xbar-R query — the same path the
         // client uses — and should subgroup cleanly into the four seeded inspectors.
-        var result = await new WidgetQueryRepository(_db, new ToleranceResolver(_db))
+        var result = await new XBarRChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)))
             .QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
             {
                 CategoryColumnId = Ref("Inspector"),

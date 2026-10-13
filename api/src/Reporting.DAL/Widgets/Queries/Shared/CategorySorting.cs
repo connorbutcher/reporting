@@ -1,0 +1,186 @@
+using Microsoft.EntityFrameworkCore;
+using Reporting.Abstractions;
+using Reporting.Database;
+
+namespace Reporting.DAL.Widgets;
+
+/// <summary>
+/// Re-ranks a chart's categories by a column other than the one it already pools for its own
+/// purpose — shared by bar, box-plot and Xbar-R, whose categories are otherwise ordered by the
+/// category column's own natural order.
+/// </summary>
+public static class CategorySorting
+{
+    /// <summary>
+    /// Ceiling on rows scanned when a chart sorts its categories by a column other than the one
+    /// it already pools for its own purpose — a separate, lightweight (category, value) scan run
+    /// purely to rank the categories.
+    /// </summary>
+    private const int MaxCategorySortScanRows = 200_000;
+
+    /// <summary>
+    /// A column sort re-ranks <paramref name="naturalOrder"/> by a chosen column's aggregate —
+    /// shared by box-plot and Xbar-R. Sorting by the already-bound measure column reuses the
+    /// values <paramref name="projected"/> already pooled in memory rather than scanning the
+    /// dataset again; any other column pays for one extra, purpose-built scan. An unresolvable
+    /// column — a stale reference — falls back to the natural order, same as bar's own column sort.
+    /// </summary>
+    public static async Task<List<string>> OrderedCategoryKeysAsync(
+        IQueryable<DatasetRow> matching,
+        int categoryId,
+        int valueId,
+        List<GroupedValueProjection> projected,
+        List<string> naturalOrder,
+        ChartSort sort,
+        Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        if (sort.By != ChartSortBy.Column || sort.ColumnId is not { } sortColumnRef
+            || columnsByRef.GetValueOrDefault(sortColumnRef) is not { } sortColumn)
+        {
+            return sort.Descending ? Enumerable.Reverse(naturalOrder).ToList() : naturalOrder;
+        }
+
+        var metrics = sortColumn.Id == valueId
+            ? PooledMetrics(projected, sort.Aggregate)
+            : await CategorySortMetricsAsync(matching, categoryId, sortColumn, sort.Aggregate);
+        return OrderByMetric(naturalOrder, metrics, sort.Descending);
+    }
+
+    /// <summary>Reduces the already-pooled values for each category, when the sort column is the chart's own bound measure.</summary>
+    private static Dictionary<string, IComparable> PooledMetrics(List<GroupedValueProjection> projected, SortAggregate aggregate) =>
+        projected
+            .GroupBy(p => p.Category)
+            .ToDictionary(group => group.Key, group => ReduceForSort(group.Select(item => item.Value).ToList(), aggregate));
+
+    /// <summary>
+    /// Per-category metric for a column sort that isn't already pooled in memory for some other
+    /// reason — a bar chart's SQL-only aggregation, or a box plot/Xbar-R sorting by a column other
+    /// than its bound measure. Scans (capped) the matching rows' category and sort-column values and
+    /// reduces each category's values by the chosen aggregate; a category with no values for the
+    /// sort column is simply absent from the result, so the caller can sink it to the end. A text
+    /// sort column ranks alphabetically (Min/Max) or by row count — reduced in C# since there's no
+    /// SQL aggregate for "alphabetically first"; a date column reduces as its epoch-ms number.
+    /// </summary>
+    public static async Task<Dictionary<string, IComparable>> CategorySortMetricsAsync(
+        IQueryable<DatasetRow> matching, int categoryId, DatasetColumn sortColumn, SortAggregate aggregate)
+    {
+        if (sortColumn.Type == DatasetColumnType.String)
+        {
+            return await TextCategorySortMetricsAsync(matching, categoryId, sortColumn.Id, aggregate);
+        }
+
+        return await NumericCategorySortMetricsAsync(matching, categoryId, sortColumn, aggregate);
+    }
+
+    private static async Task<Dictionary<string, IComparable>> TextCategorySortMetricsAsync(
+        IQueryable<DatasetRow> matching, int categoryId, int sortColumnId, SortAggregate aggregate)
+    {
+        var scanned = await matching
+            .OrderBy(r => r.Id)
+            .Take(MaxCategorySortScanRows)
+            .Select(r => new
+            {
+                Category = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "",
+                Value = r.Cells.Where(c => c.ColumnId == sortColumnId).Select(c => c.StringValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var metrics = new Dictionary<string, IComparable>();
+        foreach (var group in scanned.GroupBy(row => row.Category))
+        {
+            var values = group.Where(row => !string.IsNullOrWhiteSpace(row.Value)).Select(row => row.Value!.Trim()).ToList();
+            if (values.Count == 0)
+            {
+                continue;
+            }
+            metrics[group.Key] = ReduceTextForSort(values, aggregate);
+        }
+        return metrics;
+    }
+
+    private static async Task<Dictionary<string, IComparable>> NumericCategorySortMetricsAsync(
+        IQueryable<DatasetRow> matching, int categoryId, DatasetColumn sortColumn, SortAggregate aggregate)
+    {
+        var isDate = sortColumn.Type == DatasetColumnType.DateTime;
+        var scanned = await matching
+            .OrderBy(r => r.Id)
+            .Take(MaxCategorySortScanRows)
+            .Select(r => new
+            {
+                Category = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "",
+                Number = r.Cells.Where(c => c.ColumnId == sortColumn.Id).Select(c => c.NumberValue).FirstOrDefault(),
+                Date = r.Cells.Where(c => c.ColumnId == sortColumn.Id).Select(c => c.DateValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var metrics = new Dictionary<string, IComparable>();
+        foreach (var group in scanned.GroupBy(row => row.Category))
+        {
+            var values = isDate
+                ? group.Where(row => row.Date.HasValue).Select(row => (row.Date!.Value - DateTime.UnixEpoch).TotalMilliseconds).ToList()
+                : group.Where(row => row.Number.HasValue).Select(row => row.Number!.Value).ToList();
+            if (values.Count == 0)
+            {
+                continue;
+            }
+            metrics[group.Key] = ReduceForSort(values, aggregate);
+        }
+        return metrics;
+    }
+
+    /// <summary>Reduces one category's pooled values to the single number a column sort ranks it by.</summary>
+    private static IComparable ReduceForSort(List<double> values, SortAggregate aggregate)
+    {
+        if (values.Count == 0)
+        {
+            return 0d;
+        }
+
+        switch (aggregate)
+        {
+            case SortAggregate.Count: return (double)values.Count;
+            case SortAggregate.Sum: return values.Sum();
+            case SortAggregate.Average: return values.Average();
+            case SortAggregate.Min: return values.Min();
+            case SortAggregate.Max: return values.Max();
+            case SortAggregate.Median:
+                values.Sort();
+                return Statistics.Quantile(values, 0.5);
+            case SortAggregate.Spread:
+                values.Sort();
+                return Statistics.Quantile(values, 0.75) - Statistics.Quantile(values, 0.25);
+            default: return 0d;
+        }
+    }
+
+    /// <summary>
+    /// Reduces one category's pooled text values to the single value a text column sort ranks it
+    /// by: alphabetically first/last, or how many rows had one. Sum/Average/Median/Spread have no
+    /// meaning for text and fall back to the alphabetically-first value.
+    /// </summary>
+    private static IComparable ReduceTextForSort(List<string> values, SortAggregate aggregate) => aggregate switch
+    {
+        SortAggregate.Count => (double)values.Count,
+        SortAggregate.Max => values.Max(StringComparer.OrdinalIgnoreCase)!,
+        _ => values.Min(StringComparer.OrdinalIgnoreCase)!
+    };
+
+    /// <summary>
+    /// Re-orders a category list by a per-category metric, keeping <paramref name="naturalOrder"/>
+    /// (the category column's own order) as the stable tiebreak and as the fallback position for
+    /// any category the metric has no value for — sunk to the end regardless of direction.
+    /// </summary>
+    public static List<string> OrderByMetric(
+        List<string> naturalOrder, IReadOnlyDictionary<string, IComparable> metrics, bool descending)
+    {
+        var indexed = naturalOrder.Select((category, position) => (category, position)).ToList();
+        var withMetric = indexed.Where(entry => metrics.ContainsKey(entry.category));
+        var without = indexed.Where(entry => !metrics.ContainsKey(entry.category));
+
+        var ranked = descending
+            ? withMetric.OrderByDescending(entry => metrics[entry.category]).ThenBy(entry => entry.position)
+            : withMetric.OrderBy(entry => metrics[entry.category]).ThenBy(entry => entry.position);
+
+        return ranked.Concat(without.OrderBy(entry => entry.position)).Select(entry => entry.category).ToList();
+    }
+}

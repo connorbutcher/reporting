@@ -7,7 +7,7 @@ using Reporting.Database;
 namespace Reporting.Tests;
 
 /// <summary>
-/// Exercises <see cref="WidgetQueryRepository.QueryForBarChartAsync"/> against a real (SQLite)
+/// Exercises <see cref="BarChartQueryService.QueryForBarChartAsync"/> against a real (SQLite)
 /// relational provider, so the per-measure GROUP BY it builds is proven to translate to SQL and
 /// the multi-measure / split fan-out (a series per measure × colour-by key, aligned to a shared
 /// category axis) is proven correct.
@@ -40,7 +40,7 @@ public class BarChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private WidgetQueryRepository Repo() => new(_db, new ToleranceResolver(_db));
+    private BarChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
 
     [Fact]
     public async Task QueryForBarChart_sums_a_single_measure_per_category()

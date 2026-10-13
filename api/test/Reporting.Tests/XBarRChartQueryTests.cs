@@ -7,7 +7,7 @@ using Reporting.Database;
 namespace Reporting.Tests;
 
 /// <summary>
-/// Exercises <see cref="WidgetQueryRepository.QueryForXBarRChartAsync"/> against a real (SQLite)
+/// Exercises <see cref="XBarRChartQueryService.QueryForXBarRChartAsync"/> against a real (SQLite)
 /// relational provider: the subgroup projection translates to SQL, and the in-memory mean/range
 /// reduction plus the Shewhart control-limit constants are proven correct against hand-worked
 /// numbers.
@@ -40,7 +40,7 @@ public class XBarRChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private WidgetQueryRepository Repo() => new(_db, new ToleranceResolver(_db));
+    private XBarRChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
 
     [Fact]
     public async Task QueryForXBarR_computes_means_ranges_and_control_limits_for_equal_subgroups()

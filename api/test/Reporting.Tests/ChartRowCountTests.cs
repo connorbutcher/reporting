@@ -16,7 +16,11 @@ public class ChartRowCountTests : SqliteDbTestBase
 
     public ChartRowCountTests() : base(foreignKeys: false) { }
 
-    private WidgetQueryRepository Repo() => new(Db, new ToleranceResolver(Db));
+    private ChartToleranceBands Bands() => new(new ToleranceResolver(Db));
+    private ChartQueryService ChartRepo() => new(Db, Bands());
+    private BarChartQueryService BarRepo() => new(Db, Bands());
+    private BoxPlotQueryService BoxPlotRepo() => new(Db, Bands());
+    private HistogramQueryService HistogramRepo() => new(Db, Bands());
 
     /// <summary>Five rows: three in "North", two in "South".</summary>
     private async Task<int> SeedAsync()
@@ -57,7 +61,7 @@ public class ChartRowCountTests : SqliteDbTestBase
     public async Task Point_chart_reports_total_and_matched_rows()
     {
         var id = await SeedAsync();
-        var repo = Repo();
+        var repo = ChartRepo();
         var request = new ChartQueryDto { XColumnId = _valueRef, YColumnId = _valueRef };
 
         var unfiltered = await repo.QueryForChartAsync(id, request);
@@ -74,7 +78,7 @@ public class ChartRowCountTests : SqliteDbTestBase
     public async Task Bar_chart_reports_total_and_matched_rows()
     {
         var id = await SeedAsync();
-        var repo = Repo();
+        var repo = BarRepo();
         var request = new BarChartQueryDto
         {
             CategoryColumnId = _regionRef,
@@ -96,7 +100,7 @@ public class ChartRowCountTests : SqliteDbTestBase
     public async Task Box_plot_reports_total_and_matched_rows()
     {
         var id = await SeedAsync();
-        var repo = Repo();
+        var repo = BoxPlotRepo();
         var request = new BoxPlotQueryDto { CategoryColumnId = _regionRef, ValueColumnId = _valueRef };
 
         var unfiltered = await repo.QueryForBoxPlotAsync(id, request);
@@ -113,7 +117,7 @@ public class ChartRowCountTests : SqliteDbTestBase
     public async Task Histogram_reports_total_and_matched_rows()
     {
         var id = await SeedAsync();
-        var repo = Repo();
+        var repo = HistogramRepo();
         var request = new HistogramQueryDto { ValueColumnId = _valueRef };
 
         var unfiltered = await repo.QueryForHistogramAsync(id, request);
@@ -133,7 +137,7 @@ public class ChartRowCountTests : SqliteDbTestBase
 
         // A region that doesn't exist leaves nothing to bin, which returns the early "empty"
         // result — that path must carry the counts too, so the widget can say "0 of 5 rows".
-        var result = await Repo().QueryForHistogramAsync(id, new HistogramQueryDto
+        var result = await HistogramRepo().QueryForHistogramAsync(id, new HistogramQueryDto
         {
             ValueColumnId = _valueRef,
             Filter = RegionEquals("West"),
@@ -148,10 +152,9 @@ public class ChartRowCountTests : SqliteDbTestBase
     public async Task Box_plot_and_histogram_report_the_rows_they_scanned_and_are_not_truncated_under_the_cap()
     {
         var id = await SeedAsync();
-        var repo = Repo();
 
-        var box = await repo.QueryForBoxPlotAsync(id, new BoxPlotQueryDto { CategoryColumnId = _regionRef, ValueColumnId = _valueRef });
-        var histogram = await repo.QueryForHistogramAsync(id, new HistogramQueryDto { ValueColumnId = _valueRef, Filter = RegionEquals("North") });
+        var box = await BoxPlotRepo().QueryForBoxPlotAsync(id, new BoxPlotQueryDto { CategoryColumnId = _regionRef, ValueColumnId = _valueRef });
+        var histogram = await HistogramRepo().QueryForHistogramAsync(id, new HistogramQueryDto { ValueColumnId = _valueRef, Filter = RegionEquals("North") });
 
         Assert.False(box!.Truncated);
         Assert.Equal(5, box.ScannedRowCount);
@@ -163,16 +166,16 @@ public class ChartRowCountTests : SqliteDbTestBase
     public void TrimToScanCap_drops_the_probe_row_and_reports_truncation_only_when_the_cap_was_exceeded()
     {
         var overCap = new List<int> { 1, 2, 3 };
-        Assert.True(WidgetQueryRepository.TrimToScanCap(overCap, 2));
+        Assert.True(ScanCapping.TrimToScanCap(overCap, 2));
         Assert.Equal([1, 2], overCap);
 
         // Exactly at the cap is a complete scan, not a truncated one.
         var atCap = new List<int> { 1, 2 };
-        Assert.False(WidgetQueryRepository.TrimToScanCap(atCap, 2));
+        Assert.False(ScanCapping.TrimToScanCap(atCap, 2));
         Assert.Equal([1, 2], atCap);
 
         var underCap = new List<int> { 1 };
-        Assert.False(WidgetQueryRepository.TrimToScanCap(underCap, 2));
+        Assert.False(ScanCapping.TrimToScanCap(underCap, 2));
         Assert.Equal([1], underCap);
     }
 }

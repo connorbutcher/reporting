@@ -19,7 +19,13 @@ public class DatasetsController(
     DatasetRepository datasets,
     DatasetRowRepository rows,
     DatasetFormulaRepository formulaColumns,
-    WidgetQueryRepository widgetQueries,
+    TableQueryService tableQueries,
+    ChartQueryService chartQueries,
+    BarChartQueryService barChartQueries,
+    BoxPlotQueryService boxPlotQueries,
+    XBarRChartQueryService xBarRChartQueries,
+    PivotQueryService pivotQueries,
+    HistogramQueryService histogramQueries,
     DatasetColumnUsageService columnUsage) : ControllerBase
 {
     // --- source reference data ------------------------------------------------
@@ -140,7 +146,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<TableQueryResultDto>> TableQuery(int id, TableQueryDto dto)
     {
-        var result = await widgetQueries.QueryForTableAsync(id, dto);
+        var result = await tableQueries.QueryForTableAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -152,7 +158,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<ChartQueryResultDto>> ChartQuery(int id, ChartQueryDto dto)
     {
-        var result = await widgetQueries.QueryForChartAsync(id, dto);
+        var result = await chartQueries.QueryForChartAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -164,7 +170,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BarChartQueryResultDto>> BarChartQuery(int id, BarChartQueryDto dto)
     {
-        var result = await widgetQueries.QueryForBarChartAsync(id, dto);
+        var result = await barChartQueries.QueryForBarChartAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -176,7 +182,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<BoxPlotQueryResultDto>> BoxPlotQuery(int id, BoxPlotQueryDto dto)
     {
-        var result = await widgetQueries.QueryForBoxPlotAsync(id, dto);
+        var result = await boxPlotQueries.QueryForBoxPlotAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -189,7 +195,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<XBarRChartQueryResultDto>> XBarRChartQuery(int id, XBarRChartQueryDto dto)
     {
-        var result = await widgetQueries.QueryForXBarRChartAsync(id, dto);
+        var result = await xBarRChartQueries.QueryForXBarRChartAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -201,7 +207,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<PivotQueryResultDto>> PivotQuery(int id, PivotQueryDto dto)
     {
-        var result = await widgetQueries.QueryForPivotAsync(id, dto);
+        var result = await pivotQueries.QueryForPivotAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
@@ -213,7 +219,7 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Viewer)]
     public async Task<ActionResult<HistogramQueryResultDto>> HistogramQuery(int id, HistogramQueryDto dto)
     {
-        var result = await widgetQueries.QueryForHistogramAsync(id, dto);
+        var result = await histogramQueries.QueryForHistogramAsync(id, dto);
         return result is null ? NotFound() : result;
     }
 
