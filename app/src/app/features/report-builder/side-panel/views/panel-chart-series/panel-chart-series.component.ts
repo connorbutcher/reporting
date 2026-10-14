@@ -169,6 +169,18 @@ export class PanelChartSeriesComponent {
     binding.setValueColumnIds(next);
   }
 
+  /**
+   * Adds or removes one column from a histogram series. Checking appends (so the series order
+   * follows the order the user picked); unchecking drops it.
+   */
+  public toggleHistogramValueColumn(binding: ChartBindingModel, columnId: string, checked: boolean): void {
+    const current = binding.histogramValueColumnIds();
+    const next = checked
+      ? [...current, columnId]
+      : current.filter((id) => id !== columnId);
+    binding.setHistogramValueColumnIds(next);
+  }
+
   /** Removes this series and steps back to the list. */
   public removeSeries(): void {
     const chart = this.chart();

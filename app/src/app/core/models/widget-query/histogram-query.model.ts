@@ -4,9 +4,9 @@ import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart
 
 export interface HistogramQueryRequest {
   filter: FilterGroup | null;
-  /** The numeric column whose values are binned into the distribution. */
-  valueColumnId: string;
-  /** Splits the distribution into an overlaid series per distinct value. Null yields one series. */
+  /** The numeric columns whose values are binned, each its own distribution sharing one set of bin edges. */
+  valueColumnIds: string[];
+  /** Splits each distribution into an overlaid series per distinct value. Null yields one series per column. */
   seriesColumnId: string | null;
   binMode: HistogramBinMode;
   /** The number of bins for `count` mode; ignored otherwise. */
@@ -33,7 +33,15 @@ export interface HistogramBin {
 }
 
 export interface HistogramSeriesResult {
+  /**
+   * The series' display label. From the server it's the split (colour-by) key ("" when no split);
+   * {@link ChartQuery} rewrites it to the composed legend label (binding · measure · split).
+   */
   label: string;
+  /** Which column this series distributes, when several value columns are plotted. */
+  valueColumnId?: string | null;
+  /** The measure column's display name, for composing a multi-measure legend label. */
+  valueColumnLabel?: string;
   /** One value per bin in {@link HistogramQueryResult.bins} order — a count, frequency, or density. */
   values: number[];
 }

@@ -5,6 +5,7 @@ import {
   ChartSeriesBinding,
   ChartWidgetConfig,
   barValueColumnIds,
+  histogramValueColumnIds,
   readChartBindings,
 } from '../../../../../core/models/report';
 import {
@@ -142,7 +143,7 @@ export class ChartQuery {
 
       const request = (b: ChartSeriesBinding, overrides?: Partial<HistogramQueryRequest>): HistogramQueryRequest => ({
         filter: bindingFilters?.[b.id] ?? null,
-        valueColumnId: b.xColumnId!,
+        valueColumnIds: histogramValueColumnIds(b),
         seriesColumnId: b.seriesColumnId,
         binMode: config.binMode,
         binCount: config.binCount,
@@ -395,38 +396,48 @@ export class ChartQuery {
   }
 
   /**
-   * Flattens each binding's distribution into one result. A single binding keeps its series and
-   * bins untouched. With several, their bins are assumed identical (the caller aligns them onto a
-   * shared range and bin count before querying) — the first binding with any data stands in for
-   * the shared axis. Each series is named for its binding (label, else dataset name), with a
-   * binding's own split-by key appended when it has one; colliding names are suffixed.
+   * Flattens each binding's distribution into one result: their bins are assumed identical (the
+   * caller aligns them onto a shared range and bin count before querying, needed only when more
+   * than one binding is in play) — the first binding with any data stands in for the shared axis.
+   * Each series is given a composed legend label — binding · measure · split — carrying only the
+   * parts that actually vary, mirroring how a bar chart's overlay composes its own legend.
+   * Colliding labels are suffixed so the legend and colour palette can still tell them apart.
    */
   private static mergeHistogram(parts: HistogramPart[]): HistogramQueryResult {
     const first = parts[0].result;
-    if (parts.length === 1) return first;
+    const multiBinding = parts.length > 1;
 
     const basis = parts.find((p) => p.result.bins.length > 0) ?? parts[0];
 
-    const bases = parts.map(({ binding, result }) => binding.label.trim() || result.name);
-    const counts = new Map<string, number>();
-    for (const base of bases) counts.set(base, (counts.get(base) ?? 0) + 1);
-    const seen = new Map<string, number>();
-    const uniqueBases = bases.map((base) => {
-      if ((counts.get(base) ?? 0) <= 1) return base;
-      const n = (seen.get(base) ?? 0) + 1;
-      seen.set(base, n);
-      return `${base} (${n})`;
+    const series: HistogramSeriesResult[] = parts.flatMap(({ binding, result }) => {
+      const base = binding.label.trim() || result.name;
+      // Which naming parts vary within this binding: several value columns, or a colour-by split.
+      const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
+      const multiMeasure = measureIds.size > 1;
+      const hasSplit = result.series.some((s) => s.label !== '');
+
+      return result.series.map((s): HistogramSeriesResult => {
+        const labelParts: string[] = [];
+        if (multiBinding) labelParts.push(base);
+        if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
+        if (hasSplit) labelParts.push(s.label || '(blank)');
+        // Nothing varies (one binding, one column, no split): fall back to a sensible single name.
+        const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
+
+        return { values: s.values, label };
+      });
     });
 
-    const series: HistogramSeriesResult[] = parts.flatMap((part, i) => {
-      const { result } = part;
-      const base = uniqueBases[i];
-      const split = result.series.length > 1;
-      return result.series.map((s): HistogramSeriesResult => ({
-        values: s.values,
-        label: split && s.label ? `${base} · ${s.label}` : base,
-      }));
-    });
+    // Suffix only labels that actually repeat, so the palette keys stay distinct.
+    const counts = new Map<string, number>();
+    for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
+    const seen = new Map<string, number>();
+    for (const s of series) {
+      if ((counts.get(s.label) ?? 0) <= 1) continue;
+      const n = (seen.get(s.label) ?? 0) + 1;
+      seen.set(s.label, n);
+      s.label = `${s.label} (${n})`;
+    }
 
     return {
       id: first.id,

@@ -4,8 +4,18 @@ public class HistogramQueryDto
 {
     public FilterGroupDto? Filter { get; set; }
 
-    /// <summary>The numeric column whose values are binned into the distribution.</summary>
+    /// <summary>
+    /// Deprecated single column — kept so an older caller still resolves. Prefer
+    /// <see cref="ValueColumnIds"/>; when that is empty this is folded into it.
+    /// </summary>
     public Guid ValueColumnId { get; set; }
+
+    /// <summary>
+    /// The numeric columns whose values are binned, each plotted as its own distribution sharing
+    /// one set of bin edges. When empty the deprecated <see cref="ValueColumnId"/> is folded in as
+    /// the single measure.
+    /// </summary>
+    public List<Guid> ValueColumnIds { get; set; } = new();
 
     /// <summary>Splits the distribution into an overlaid series per distinct value. Null yields one series.</summary>
     public Guid? SeriesColumnId { get; set; }
@@ -51,6 +61,12 @@ public class HistogramSeriesDto
 {
     /// <summary>Resolved series key, "(blank)" already applied. Empty when there's no series column.</summary>
     public string Label { get; set; } = string.Empty;
+
+    /// <summary>Which column this series distributes, when several value columns are plotted. Lets the client label a measure's series.</summary>
+    public Guid? ValueColumnId { get; set; }
+
+    /// <summary>The measure column's display name, so the client can label multi-measure series without its schema.</summary>
+    public string ValueColumnLabel { get; set; } = string.Empty;
 
     /// <summary>One value per bin in <see cref="HistogramQueryResultDto.Bins"/> order — a count, frequency, or density per <see cref="HistogramQueryDto.Normalize"/>.</summary>
     public List<double> Values { get; set; } = new();

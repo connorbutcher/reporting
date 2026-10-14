@@ -51,6 +51,17 @@ export function barValueColumnIds(binding: ChartSeriesBinding): string[] {
 }
 
 /**
+ * A histogram binding's distributed columns, in order: prefers {@link ChartSeriesBinding.valueColumnIds},
+ * and folds a legacy single-column binding (saved before multiple columns existed) from its
+ * {@link ChartSeriesBinding.xColumnId}. Blanks are dropped; may be empty when nothing is bound.
+ */
+export function histogramValueColumnIds(binding: ChartSeriesBinding): string[] {
+  const ids = binding.valueColumnIds?.filter((id): id is string => !!id);
+  if (ids?.length) return ids;
+  return binding.xColumnId ? [binding.xColumnId] : [];
+}
+
+/**
  * The chart's value (Y) axes, normalised: prefers {@link ChartWidgetConfigBase.yAxes}, and for
  * charts saved before multiple axes existed synthesises a single primary axis from the deprecated
  * flat {@link ChartWidgetConfigBase.yAxisLabel}. Always returns at least one axis (id

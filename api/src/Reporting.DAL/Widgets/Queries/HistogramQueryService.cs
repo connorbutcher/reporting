@@ -6,11 +6,12 @@ using Reporting.Database;
 namespace Reporting.DAL.Widgets;
 
 /// <summary>
-/// Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
+/// Values shaped for a histogram: filtered, then each bound numeric column's values binned into
 /// equal ranges with each bin's frequency returned as a bar height. Like a box plot every value
 /// must be pulled to be binned, so the lightweight (series, value) scalars are scanned back
 /// (capped) and binned in memory. A series column, if set, overlays a distribution per series;
-/// the bins are shared across every series so they line up on one axis.
+/// several value columns overlay a distribution per measure too — either way every series shares
+/// one set of bin edges, pooled across whatever is plotted, so they line up on one axis.
 /// </summary>
 public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands)
 {
@@ -37,10 +38,20 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
+        // The measures to distribute, in request order — several become several distributions
+        // sharing one set of bin edges. The deprecated single ValueColumnId folds in when the list is empty.
+        var valueColumnIds = dto.ValueColumnIds.Count > 0 ? dto.ValueColumnIds : new List<Guid> { dto.ValueColumnId };
+        var measures = valueColumnIds
+            .Select(valueColumnId => columnsByRef.GetValueOrDefault(valueColumnId))
+            .Where(c => c is not null)
+            .Select(c => c!)
+            .ToList();
+
         // Bands sit on the value (X) axis — the binned variable — so a tolerance filter reuses that
-        // band to narrow rows by the value column before they're binned.
+        // band to narrow rows by the value column before they're binned. With several measures the
+        // first stands in — a per-measure tolerance filter isn't expressible here.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
-        var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.ValueColumnId, null);
+        var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, measures.FirstOrDefault()?.RefId ?? Guid.Empty, null);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
         var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
@@ -49,23 +60,35 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         empty.MatchedRowCount = matchedRowCount;
 
         // Nothing bound yet yields an empty chart, the same graceful no-op the other charts give.
-        var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
-        if (valueColumn is null)
+        if (measures.Count == 0)
         {
             return empty;
         }
-        var valueId = valueColumn.Id;
 
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
 
-        var (projected, truncated, scannedCount) = await ScanAndProjectAsync(matching, seriesId, valueId);
-        if (projected.Count == 0)
+        // Each measure is scanned on its own — different measures can have different null patterns,
+        // so they can't share one scan — but every measure's values are pooled before the bin edges
+        // are picked, so the shared axis spans whatever is plotted (the histogram counterpart of a
+        // bar chart sharing one category axis across its measures).
+        var perMeasure = new List<(DatasetColumn Column, List<(string Series, double Value)> Projected)>();
+        var truncated = false;
+        var scannedCount = 0;
+        foreach (var measure in measures)
+        {
+            var (projected, measureTruncated, measureScanned) = await ScanAndProjectAsync(matching, seriesId, measure.Id);
+            perMeasure.Add((measure, projected));
+            truncated |= measureTruncated;
+            scannedCount += measureScanned;
+        }
+
+        var allValues = perMeasure.SelectMany(m => m.Projected.Select(p => p.Value)).ToList();
+        if (allValues.Count == 0)
         {
             return empty;
         }
 
-        var allValues = projected.Select(p => p.Value).ToList();
         var dataMin = allValues.Min();
         var dataMax = allValues.Max();
 
@@ -83,14 +106,10 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         var bins = BuildBins(edges);
         var binWidth = edges[1] - edges[0];
 
-        var orderedSeriesKeys = projected
-            .Select(p => p.Series)
-            .Distinct()
-            .OrderBy(series => series, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var series = orderedSeriesKeys
-            .Select(seriesKey => BuildHistogramSeries(seriesKey, projected, edges, bins.Count, binWidth, dto, seriesColumn))
+        // One set of series per measure, measure-major so a measure's split series sit together —
+        // mirrors a bar chart's measure-major series ordering.
+        var series = perMeasure
+            .SelectMany(measure => SeriesForMeasure(measure.Column, measure.Projected, edges, bins.Count, binWidth, dto, seriesColumn))
             .ToList();
 
         return new HistogramQueryResultDto
@@ -105,6 +124,32 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             Truncated = truncated,
             ScannedRowCount = scannedCount
         };
+    }
+
+    /// <summary>One measure's series — one per distinct series key its scan produced, each binned
+    /// into the shared edges.</summary>
+    private static IEnumerable<HistogramSeriesDto> SeriesForMeasure(
+        DatasetColumn measureColumn,
+        List<(string Series, double Value)> projected,
+        List<double> edges,
+        int binCount,
+        double binWidth,
+        HistogramQueryDto dto,
+        DatasetColumn? seriesColumn)
+    {
+        var orderedSeriesKeys = projected
+            .Select(p => p.Series)
+            .Distinct()
+            .OrderBy(series => series, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return orderedSeriesKeys.Select(seriesKey =>
+        {
+            var seriesDto = BuildHistogramSeries(seriesKey, projected, edges, binCount, binWidth, dto, seriesColumn);
+            seriesDto.ValueColumnId = measureColumn.RefId;
+            seriesDto.ValueColumnLabel = measureColumn.Name;
+            return seriesDto;
+        });
     }
 
     /// <summary>

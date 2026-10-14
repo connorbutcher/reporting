@@ -24,8 +24,16 @@ const binding = (id: string, datasetId: number): ChartSeriesBinding =>
 const barConfig = (...bindings: ChartSeriesBinding[]): ChartWidgetConfig =>
   ({ type: 'barChart', aggregate: 'sum', bindings, toleranceBands: [] }) as unknown as ChartWidgetConfig;
 
-const histBinding = (id: string, datasetId: number, label = ''): ChartSeriesBinding =>
-  ({ id, datasetId, xColumnId: 'value', yColumnId: null, seriesColumnId: null, label }) as ChartSeriesBinding;
+const histBinding = (id: string, datasetId: number, label = '', valueColumnIds = ['value']): ChartSeriesBinding =>
+  ({
+    id,
+    datasetId,
+    xColumnId: 'value',
+    yColumnId: null,
+    valueColumnIds,
+    seriesColumnId: null,
+    label,
+  }) as ChartSeriesBinding;
 
 const histogramConfig = (
   binMode: HistogramBinMode,
@@ -185,7 +193,44 @@ describe('ChartQuery histogram overlay', () => {
     const result = await runHistogram(api, histogramConfig('auto', null, null, histBinding('a', 1)));
 
     expect(calls).toBe(1);
-    expect(result.series).toEqual([{ label: '', values: [3, 4] }]);
+    // No binding label and no split: the single series falls back to the dataset's own name.
+    expect(result.series).toEqual([{ label: 'D', values: [3, 4] }]);
+  });
+
+  it('queries a single binding with several value columns exactly once, with no probe pass', async () => {
+    let calls = 0;
+    let seenValueColumnIds: string[] = [];
+    const api = {
+      queryHistogram: (_datasetId: number, req: Record<string, unknown>) => {
+        calls++;
+        seenValueColumnIds = req['valueColumnIds'] as string[];
+        return of({
+          id: '1',
+          name: 'D',
+          bins: binsFrom(0, 10, 2),
+          series: [
+            { label: '', valueColumnId: 'a', valueColumnLabel: 'A', values: [3, 4] },
+            { label: '', valueColumnId: 'b', valueColumnLabel: 'B', values: [1, 2] },
+          ],
+          toleranceBands: [],
+          totalRowCount: 10,
+          matchedRowCount: 10,
+        } satisfies HistogramQueryResult);
+      },
+    } as unknown as DatasetApiService;
+
+    const result = await runHistogram(
+      api,
+      histogramConfig('auto', null, null, histBinding('x', 1, '', ['a', 'b'])),
+    );
+
+    // One binding, several value columns: a single request carries both, no shared-edges probe.
+    expect(calls).toBe(1);
+    expect(seenValueColumnIds).toEqual(['a', 'b']);
+    expect(result.series).toEqual([
+      { label: 'A', values: [3, 4] },
+      { label: 'B', values: [1, 2] },
+    ]);
   });
 
   it('queries each binding once when the range and bin count are already fixed', async () => {
@@ -315,6 +360,7 @@ describe('ChartQuery histogram overlay', () => {
     );
 
     expect(result.failedBindingCount).toBe(1);
-    expect(result.series).toEqual([{ label: '', values: [5] }]);
+    // Only one binding survives: no binding label and no split, so it falls back to the dataset name.
+    expect(result.series).toEqual([{ label: 'D', values: [5] }]);
   });
 });

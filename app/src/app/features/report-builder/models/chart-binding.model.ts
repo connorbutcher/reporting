@@ -28,9 +28,11 @@ export class ChartBindingModel extends EditorNode {
   /** Scales each point's marker by this numeric column's value — a scatter bubble chart. Ignored by every other chart kind. */
   public readonly sizeColumnId = signal<string | null>(null);
   /**
-   * A bar chart's measures, each a series (grouped or stacked). Empty on point/box charts, which
-   * use {@link yColumnId}. Edit through {@link setValueColumnIds}, which mirrors the first into
-   * {@link yColumnId} so single-measure readers (validation, tolerance, CSV) still resolve one.
+   * A bar chart's measures, each a series (grouped or stacked), or a histogram's distributed
+   * columns, each its own binned series. Empty on point/box charts, which use {@link yColumnId}.
+   * Edit through {@link setValueColumnIds} (bar, mirrors the first into {@link yColumnId}) or
+   * {@link setHistogramValueColumnIds} (histogram, mirrors the first into {@link xColumnId}) so
+   * single-measure readers (validation, tolerance, CSV) still resolve one.
    */
   public readonly valueColumnIds = signal<readonly string[]>([]);
   /**
@@ -42,6 +44,16 @@ export class ChartBindingModel extends EditorNode {
     if (list.length) return [...list];
     const y = this.yColumnId();
     return y ? [y] : [];
+  });
+  /**
+   * The columns the histogram editor shows: the explicit list, else a legacy single {@link xColumnId}
+   * folded in. Histograms read this; other chart kinds ignore it.
+   */
+  public readonly histogramValueColumnIds = computed<string[]>(() => {
+    const list = this.valueColumnIds();
+    if (list.length) return [...list];
+    const x = this.xColumnId();
+    return x ? [x] : [];
   });
   /** Splits this binding into a coloured series per distinct value; null plots one. */
   public readonly seriesColumnId = signal<string | null>(null);
@@ -141,6 +153,13 @@ export class ChartBindingModel extends EditorNode {
     this.yColumnId.set(clean[0] ?? null);
   }
 
+  /** Sets the histogram's distributed columns and mirrors the first into {@link xColumnId} for single-column readers. */
+  public setHistogramValueColumnIds(ids: readonly string[]): void {
+    const clean = ids.filter((id) => !!id);
+    this.valueColumnIds.set(clean);
+    this.xColumnId.set(clean[0] ?? null);
+  }
+
   /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
@@ -161,7 +180,7 @@ export class ChartBindingModel extends EditorNode {
       xColumnId: this.xColumnId(),
       yColumnId: this.yColumnId(),
       sizeColumnId: this.sizeColumnId(),
-      // Only bar charts populate this; empty stays null so point/box configs are unchanged.
+      // Only bar and histogram charts populate this; empty stays null so point/box configs are unchanged.
       valueColumnIds: values.length ? [...values] : null,
       seriesColumnId: this.seriesColumnId(),
       // Only combo charts vary this; 'bar' (the default) stays null so other configs are unchanged.

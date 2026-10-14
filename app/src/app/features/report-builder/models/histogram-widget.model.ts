@@ -90,7 +90,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
           widgetId: this.id,
           view: { kind: 'widget', widgetId: this.id },
         });
-      } else if (!binding.xColumnId()) {
+      } else if (binding.histogramValueColumnIds().length === 0) {
         issues.push({
           id: `${this.id}:noValue:${binding.id}`,
           severity: 'warning',

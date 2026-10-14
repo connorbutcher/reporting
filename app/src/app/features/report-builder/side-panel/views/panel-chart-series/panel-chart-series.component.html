@@ -49,20 +49,22 @@
         </div>
       }
     } @else if (isHistogram()) {
-      <label class="panel-field">
-        <span class="panel-field-label">Column</span>
-        <p-select
-          [options]="binding.numericColumns()"
-          [ngModel]="binding.xColumnId()"
-          optionLabel="name"
-          optionValue="id"
-          placeholder="Column to distribute"
-          appendTo="body"
-          [disabled]="!binding.datasetId()"
-          fluid
-          (onChange)="binding.xColumnId.set($event.value ?? null)"
-        />
-      </label>
+      <div class="panel-field">
+        <span class="panel-field-label">Columns</span>
+        @for (col of binding.numericColumns(); track col.id) {
+          <div class="panel-inline-field">
+            <p-checkbox
+              [binary]="true"
+              [inputId]="'hist-value-' + binding.id + '-' + col.id"
+              [ngModel]="binding.histogramValueColumnIds().includes(col.id)"
+              (onChange)="toggleHistogramValueColumn(binding, col.id, $event.checked)"
+            />
+            <label [for]="'hist-value-' + binding.id + '-' + col.id">{{ col.name }}</label>
+          </div>
+        } @empty {
+          <p class="panel-hint">This dataset has no numeric columns to distribute.</p>
+        }
+      </div>
     } @else {
       <div class="panel-grid-fields">
         <label class="panel-field">
