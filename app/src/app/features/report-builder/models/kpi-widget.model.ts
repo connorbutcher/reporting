@@ -49,8 +49,25 @@ export class KpiWidgetModel extends WidgetModel {
   public readonly periodDays = signal(7);
 
   public readonly direction = signal<KpiDirection>('higherIsBetter');
-  public readonly unit = signal('');
+  public readonly unitPrefix = signal('');
+  public readonly unitSuffix = signal('');
   public readonly decimalPlaces = signal(1);
+
+  /** Absolute status bands, independent of the trend/comparison. */
+  public readonly thresholdsEnabled = signal(false);
+  public readonly warningThreshold = signal<number | null>(null);
+  public readonly criticalThreshold = signal<number | null>(null);
+
+  /** A trend line of the value's trailing history, reusing {@link dateColumnId}/{@link periodDays}. */
+  public readonly showSparkline = signal(false);
+  public readonly sparklinePeriods = signal(8);
+
+  /** Fixed-target mode only: a progress bar toward the target instead of the trend arrow. */
+  public readonly showAsMeter = signal(false);
+
+  /** Set, the widget becomes a row of mini-tiles — one value per distinct value of this column. */
+  public readonly groupByColumnId = signal<string | null>(null);
+  public readonly maxGroups = signal(8);
 
   /** Rows this widget summarises, narrowed server-side. */
   public readonly filter: FilterGroupModel;
@@ -83,8 +100,17 @@ export class KpiWidgetModel extends WidgetModel {
     this.dateColumnId.set(config.dateColumnId);
     this.periodDays.set(config.periodDays);
     this.direction.set(config.direction);
-    this.unit.set(config.unit);
+    this.unitPrefix.set(config.unitPrefix);
+    this.unitSuffix.set(config.unitSuffix);
     this.decimalPlaces.set(config.decimalPlaces);
+    this.thresholdsEnabled.set(config.thresholdsEnabled);
+    this.warningThreshold.set(config.warningThreshold);
+    this.criticalThreshold.set(config.criticalThreshold);
+    this.showSparkline.set(config.showSparkline);
+    this.sparklinePeriods.set(config.sparklinePeriods);
+    this.showAsMeter.set(config.showAsMeter);
+    this.groupByColumnId.set(config.groupByColumnId);
+    this.maxGroups.set(config.maxGroups);
 
     this.schema = computed(() => {
       const id = this.datasetId();
@@ -115,6 +141,7 @@ export class KpiWidgetModel extends WidgetModel {
     this.valueColumnId.set(null);
     this.tolerance.set(null);
     this.dateColumnId.set(null);
+    this.groupByColumnId.set(null);
     this.filter.clear();
   }
 
@@ -133,11 +160,20 @@ export class KpiWidgetModel extends WidgetModel {
     this.tolerance.set(tolerance);
   }
 
-  /** Switching comparison mode drops fields the new mode doesn't use. */
+  /**
+   * Switching comparison mode drops fields the new mode doesn't use. The date column is shared with
+   * the sparkline, so it's only cleared when neither feature needs it any more.
+   */
   public setComparisonMode(mode: KpiComparisonMode): void {
     this.comparisonMode.set(mode);
     if (mode !== 'fixedTarget') this.targetValue.set(null);
-    if (mode !== 'previousPeriod') this.dateColumnId.set(null);
+    if (mode !== 'previousPeriod' && !this.showSparkline()) this.dateColumnId.set(null);
+  }
+
+  /** Turning the sparkline off drops the date column only if the comparison isn't using it too. */
+  public setShowSparkline(show: boolean): void {
+    this.showSparkline.set(show);
+    if (!show && this.comparisonMode() !== 'previousPeriod') this.dateColumnId.set(null);
   }
 
   public override toDto(): KpiWidget {
@@ -157,8 +193,17 @@ export class KpiWidgetModel extends WidgetModel {
       dateColumnId: this.dateColumnId(),
       periodDays: this.periodDays(),
       direction: this.direction(),
-      unit: this.unit(),
+      unitPrefix: this.unitPrefix(),
+      unitSuffix: this.unitSuffix(),
       decimalPlaces: this.decimalPlaces(),
+      thresholdsEnabled: this.thresholdsEnabled(),
+      warningThreshold: this.warningThreshold(),
+      criticalThreshold: this.criticalThreshold(),
+      showSparkline: this.showSparkline(),
+      sparklinePeriods: this.sparklinePeriods(),
+      showAsMeter: this.showAsMeter(),
+      groupByColumnId: this.groupByColumnId(),
+      maxGroups: this.maxGroups(),
       filter: this.filter.toDto(),
     };
     return { ...this.geometryDto(), type: 'kpi', config };
@@ -222,12 +267,12 @@ export class KpiWidgetModel extends WidgetModel {
       });
     }
 
-    if (this.comparisonMode() === 'previousPeriod' && !this.dateColumnId()) {
+    if ((this.comparisonMode() === 'previousPeriod' || this.showSparkline()) && !this.dateColumnId()) {
       issues.push({
         id: `${this.id}:noDateColumn`,
         severity: 'warning',
         title: `${name} has no date column`,
-        detail: 'Pick the date column the previous-period comparison windows on.',
+        detail: 'Pick the date column the previous-period comparison or sparkline windows on.',
         widgetId: this.id,
         view,
       });
@@ -256,6 +301,17 @@ export class KpiWidgetModel extends WidgetModel {
           severity: 'error',
           title: `${name}'s date column no longer exists`,
           detail: 'The column the previous-period comparison windows on was removed. Pick a new one.',
+          widgetId: this.id,
+          view,
+        });
+      }
+
+      if (this.groupByColumnId() && !columnIds.has(this.groupByColumnId()!)) {
+        issues.push({
+          id: `${this.id}:missingGroupColumn`,
+          severity: 'error',
+          title: `${name}'s group-by column no longer exists`,
+          detail: 'The column it grouped tiles by was removed from the dataset. Pick a new one.',
           widgetId: this.id,
           view,
         });

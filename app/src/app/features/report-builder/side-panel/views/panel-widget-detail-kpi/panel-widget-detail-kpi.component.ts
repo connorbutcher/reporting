@@ -1,4 +1,4 @@
-import { Component, Signal, inject, input } from '@angular/core';
+import { Component, Signal, computed, inject, input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
@@ -64,6 +64,18 @@ export class PanelWidgetDetailKpiComponent {
     { label: 'Higher is better', value: 'higherIsBetter' },
     { label: 'Lower is better', value: 'lowerIsBetter' },
   ];
+
+  /** The date-column + period-length fields are shared by the previous-period comparison and the sparkline, so they show whenever either needs them. */
+  public readonly needsDateColumn = computed(() => {
+    const kpi = this.kpi();
+    return kpi.comparisonMode() === 'previousPeriod' || kpi.showSparkline();
+  });
+
+  /** Direction drives both the trend's sentiment and the threshold bands, so it shows whenever either is in play. */
+  public readonly needsDirection = computed(() => {
+    const kpi = this.kpi();
+    return kpi.comparisonMode() !== 'none' || kpi.thresholdsEnabled();
+  });
 
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);

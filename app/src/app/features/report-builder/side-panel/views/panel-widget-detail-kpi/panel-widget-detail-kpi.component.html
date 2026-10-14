@@ -116,7 +116,43 @@
   }
 </app-panel-group>
 
-<app-panel-group label="Comparison" icon="⇄">
+<app-panel-group label="Status" icon="●">
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="kpi-thresholds-enabled"
+      [ngModel]="kpi().thresholdsEnabled()"
+      (onChange)="kpi().thresholdsEnabled.set($event.checked)"
+    />
+    <label for="kpi-thresholds-enabled">Tint the card by absolute thresholds</label>
+  </div>
+
+  @if (kpi().thresholdsEnabled()) {
+    <p class="panel-hint">
+      Independent of the trend — e.g. a scrap rate that's red above 5% whether or not it improved.
+    </p>
+    <div class="panel-grid-fields">
+      <label class="panel-field">
+        <span class="panel-field-label">Warning at</span>
+        <p-inputnumber
+          [ngModel]="kpi().warningThreshold()"
+          (ngModelChange)="kpi().warningThreshold.set($event ?? null)"
+          fluid
+        />
+      </label>
+      <label class="panel-field">
+        <span class="panel-field-label">Critical at</span>
+        <p-inputnumber
+          [ngModel]="kpi().criticalThreshold()"
+          (ngModelChange)="kpi().criticalThreshold.set($event ?? null)"
+          fluid
+        />
+      </label>
+    </div>
+  }
+</app-panel-group>
+
+<app-panel-group label="Comparison & trend" icon="⇄">
   <label class="panel-field">
     <span class="panel-field-label">Compare against</span>
     <p-select
@@ -139,9 +175,44 @@
         fluid
       />
     </label>
+
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="kpi-show-meter"
+        [ngModel]="kpi().showAsMeter()"
+        (onChange)="kpi().showAsMeter.set($event.checked)"
+      />
+      <label for="kpi-show-meter">Show as a progress bar toward the target</label>
+    </div>
   }
 
-  @if (kpi().comparisonMode() === 'previousPeriod') {
+  @if (needsDirection()) {
+    <label class="panel-field">
+      <span class="panel-field-label">Direction</span>
+      <p-select
+        [options]="directions"
+        [ngModel]="kpi().direction()"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="kpi().direction.set($event.value)"
+      />
+    </label>
+  }
+
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="kpi-show-sparkline"
+      [ngModel]="kpi().showSparkline()"
+      (onChange)="kpi().setShowSparkline($event.checked)"
+    />
+    <label for="kpi-show-sparkline">Show a trailing-history sparkline</label>
+  </div>
+
+  @if (needsDateColumn()) {
     <label class="panel-field">
       <span class="panel-field-label">Date column</span>
       <p-select
@@ -168,32 +239,41 @@
     </label>
   }
 
-  @if (kpi().comparisonMode() !== 'none') {
+  @if (kpi().showSparkline()) {
     <label class="panel-field">
-      <span class="panel-field-label">Direction</span>
-      <p-select
-        [options]="directions"
-        [ngModel]="kpi().direction()"
-        optionLabel="label"
-        optionValue="value"
-        appendTo="body"
+      <span class="panel-field-label">Periods shown</span>
+      <p-inputnumber
+        [ngModel]="kpi().sparklinePeriods()"
+        (ngModelChange)="kpi().sparklinePeriods.set($event ?? 8)"
+        [min]="2"
+        [max]="52"
         fluid
-        (onChange)="kpi().direction.set($event.value)"
       />
     </label>
   }
 </app-panel-group>
 
 <app-panel-group label="Appearance" icon="▤">
-  <label class="panel-field">
-    <span class="panel-field-label">Unit (optional)</span>
-    <input
-      pInputText
-      [ngModel]="kpi().unit()"
-      (ngModelChange)="kpi().unit.set($event)"
-      placeholder="%, s, pts…"
-    />
-  </label>
+  <div class="panel-grid-fields">
+    <label class="panel-field">
+      <span class="panel-field-label">Prefix (optional)</span>
+      <input
+        pInputText
+        [ngModel]="kpi().unitPrefix()"
+        (ngModelChange)="kpi().unitPrefix.set($event)"
+        placeholder="£, $…"
+      />
+    </label>
+    <label class="panel-field">
+      <span class="panel-field-label">Suffix (optional)</span>
+      <input
+        pInputText
+        [ngModel]="kpi().unitSuffix()"
+        (ngModelChange)="kpi().unitSuffix.set($event)"
+        placeholder="%, s, pts…"
+      />
+    </label>
+  </div>
   <label class="panel-field">
     <span class="panel-field-label">Decimal places</span>
     <p-inputnumber
@@ -204,6 +284,37 @@
       fluid
     />
   </label>
+</app-panel-group>
+
+<app-panel-group label="Grouping" icon="▦">
+  <p class="panel-hint">Optional: instead of one figure, show a capped row of mini-tiles — one per distinct value of a column.</p>
+  <label class="panel-field">
+    <span class="panel-field-label">Group by</span>
+    <p-select
+      [options]="kpi().columns()"
+      [ngModel]="kpi().groupByColumnId()"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="None"
+      appendTo="body"
+      [showClear]="true"
+      [disabled]="!kpi().datasetId()"
+      fluid
+      (onChange)="kpi().groupByColumnId.set($event.value ?? null)"
+    />
+  </label>
+  @if (kpi().groupByColumnId()) {
+    <label class="panel-field">
+      <span class="panel-field-label">Max tiles</span>
+      <p-inputnumber
+        [ngModel]="kpi().maxGroups()"
+        (ngModelChange)="kpi().maxGroups.set($event ?? 8)"
+        [min]="1"
+        [max]="50"
+        fluid
+      />
+    </label>
+  }
 </app-panel-group>
 
 <button

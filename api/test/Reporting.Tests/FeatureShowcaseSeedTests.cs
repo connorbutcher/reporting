@@ -51,13 +51,13 @@ public class FeatureShowcaseSeedTests : IDisposable
     }
 
     [Fact]
-    public void Seeds_a_four_tab_report_whose_every_widget_config_is_valid_json()
+    public void Seeds_a_five_tab_report_whose_every_widget_config_is_valid_json()
     {
         DbSeeder.SeedFeatureShowcase(_db);
 
         var revision = LoadRevision();
         var tabs = revision.Tabs.OrderBy(t => t.Order).ToList();
-        Assert.Equal(4, tabs.Count);
+        Assert.Equal(5, tabs.Count);
 
         var widgets = tabs.SelectMany(t => t.Widgets).ToList();
 
@@ -74,11 +74,33 @@ public class FeatureShowcaseSeedTests : IDisposable
                  {
                      WidgetType.StaticText, WidgetType.DataTable, WidgetType.PivotTable, WidgetType.ScatterChart,
                      WidgetType.LineChart, WidgetType.BarChart, WidgetType.ComboChart, WidgetType.BoxPlot,
-                     WidgetType.Histogram, WidgetType.XBarRChart,
+                     WidgetType.Histogram, WidgetType.XBarRChart, WidgetType.Kpi,
                  })
         {
             Assert.Contains(expected, types);
         }
+    }
+
+    [Fact]
+    public void Kpi_tab_demonstrates_every_value_source_comparison_and_display_combination()
+    {
+        DbSeeder.SeedFeatureShowcase(_db);
+
+        var revision = LoadRevision();
+        var kpiTab = revision.Tabs.Single(t => t.Name == "KPIs");
+        var kpis = kpiTab.Widgets.Where(w => w.Type == WidgetType.Kpi)
+            .Select(w => JsonDocument.Parse(w.ConfigJson).RootElement)
+            .ToList();
+
+        Assert.Equal(8, kpis.Count);
+        Assert.Contains(kpis, k => k.GetProperty("valueSource").GetString() == "aggregate");
+        Assert.Contains(kpis, k => k.GetProperty("valueSource").GetString() == "toleranceOutOfLimits");
+        Assert.Contains(kpis, k => k.GetProperty("comparisonMode").GetString() == "fixedTarget");
+        Assert.Contains(kpis, k => k.GetProperty("comparisonMode").GetString() == "previousPeriod");
+        Assert.Contains(kpis, k => k.GetProperty("thresholdsEnabled").GetBoolean());
+        Assert.Contains(kpis, k => k.GetProperty("showSparkline").GetBoolean());
+        Assert.Contains(kpis, k => k.GetProperty("showAsMeter").GetBoolean());
+        Assert.Contains(kpis, k => k.GetProperty("groupByColumnId").ValueKind != JsonValueKind.Null);
     }
 
     [Fact]

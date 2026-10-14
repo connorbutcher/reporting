@@ -6,15 +6,51 @@
   </app-widget-status>
 } @else if (!configured() && !loading()) {
   <app-widget-status icon="pi-calculator">Pick a value to summarise in the side panel.</app-widget-status>
-} @else {
-  <div class="kpi-body">
-    <div class="value">{{ displayValue() }}</div>
-    @if (comparisonLabel(); as comparison) {
+} @else if (groups(); as groups) {
+  <div class="kpi-groups">
+    @for (group of groups; track group.label) {
       <div
-        class="trend"
-        [class.good]="sentiment() === 'good'"
-        [class.bad]="sentiment() === 'bad'"
+        class="kpi-tile"
+        [class.status-good]="group.status === 'good'"
+        [class.status-warning]="group.status === 'warning'"
+        [class.status-critical]="group.status === 'critical'"
       >
+        <span class="tile-label">{{ group.label }}</span>
+        <span class="tile-value">{{ group.displayValue ?? '—' }}</span>
+      </div>
+    }
+  </div>
+
+  <app-widget-count-bar
+    icon="pi-gauge"
+    [label]="countLabel()"
+    [warning]="isTruncated()"
+    [filters]="filterLines()"
+    [actionable]="filterable()"
+    (activate)="filterRequest.emit()"
+  />
+} @else {
+  <div
+    class="kpi-body"
+    [class.status-good]="status() === 'good'"
+    [class.status-warning]="status() === 'warning'"
+    [class.status-critical]="status() === 'critical'"
+  >
+    <div class="value">{{ displayValue() }}</div>
+
+    @if (showMeter()) {
+      <div class="meter">
+        <div class="meter-track">
+          <div
+            class="meter-fill"
+            [class.good]="sentiment() === 'good'"
+            [class.bad]="sentiment() === 'bad'"
+            [style.width.%]="meterPercent()"
+          ></div>
+        </div>
+      </div>
+    } @else if (comparisonLabel(); as comparison) {
+      <div class="trend" [class.good]="sentiment() === 'good'" [class.bad]="sentiment() === 'bad'">
         <i
           class="pi"
           [class.pi-arrow-up]="trend() === 'up'"
@@ -24,6 +60,19 @@
         ></i>
         <span>{{ comparison }}</span>
       </div>
+    }
+
+    @if (sparklinePath(); as path) {
+      <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+        <polyline
+          [attr.points]="path"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linejoin="round"
+          stroke-linecap="round"
+        />
+      </svg>
     }
   </div>
 

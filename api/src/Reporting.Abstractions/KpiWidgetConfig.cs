@@ -67,8 +67,29 @@ public class KpiWidgetConfig : WidgetConfig
     /// <summary>Whether a rising value is good or bad news — drives the trend's color, not the arithmetic.</summary>
     public KpiDirection Direction { get; set; } = KpiDirection.HigherIsBetter;
 
-    public string Unit { get; set; } = string.Empty;
+    /// <summary>Goes before the number — a currency symbol ("£"), say.</summary>
+    public string UnitPrefix { get; set; } = string.Empty;
+    /// <summary>Goes after the number — "%", " kW", and the like.</summary>
+    public string UnitSuffix { get; set; } = string.Empty;
     public int DecimalPlaces { get; set; } = 1;
+
+    /// <summary>Absolute status bands, independent of the trend/comparison — e.g. a scrap rate that's red above 5% regardless of whether it improved.</summary>
+    public bool ThresholdsEnabled { get; set; }
+
+    /// <summary>With <see cref="Direction"/> HigherIsBetter these are lower bounds; with LowerIsBetter, upper bounds.</summary>
+    public double? WarningThreshold { get; set; }
+    public double? CriticalThreshold { get; set; }
+
+    /// <summary>Shows a small trend line of the value over its trailing history, bucketed into <see cref="PeriodDays"/>-wide windows.</summary>
+    public bool ShowSparkline { get; set; }
+    public int SparklinePeriods { get; set; } = 8;
+
+    /// <summary>FixedTarget comparison mode: shows a progress bar toward the target instead of the trend arrow.</summary>
+    public bool ShowAsMeter { get; set; }
+
+    /// <summary>Set, the widget becomes a capped row of mini-tiles — one reduced value per distinct value of this column — instead of one figure.</summary>
+    public Guid? GroupByColumnId { get; set; }
+    public int MaxGroups { get; set; } = 8;
 
     /// <summary>Rows this widget summarises, narrowed server-side. Null means no widget-level filter.</summary>
     public FilterGroupDto? Filter { get; set; }

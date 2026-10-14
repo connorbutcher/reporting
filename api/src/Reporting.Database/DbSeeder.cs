@@ -273,8 +273,8 @@ public static class DbSeeder
     /// Adds the grand feature-tour report ("Engine Build — Feature Tour") if it isn't already present.
     /// Idempotent and independent of the other seeds (same pattern as <see cref="SeedBoxPlotShowcase"/>).
     /// One engine-build dataset shown through every widget and option the builder offers — a data table,
-    /// a widget-filtered table, a pivot, scatter/line/bar/combination/box/histogram charts, tolerance
-    /// bands, tooltip columns, dual value axes, a report-level filter, and four tabs.
+    /// a widget-filtered table, a pivot, scatter/line/bar/combination/box/histogram charts, KPI tiles,
+    /// tolerance bands, tooltip columns, dual value axes, a report-level filter, and five tabs.
     /// </summary>
     public static void SeedFeatureShowcase(ReportingDbContext db)
     {
@@ -1204,17 +1204,26 @@ public static class DbSeeder
     /// A KPI widget's config JSON, built once the dataset (and, for the tolerance value source, the
     /// limits dataset <paramref name="toleranceJson"/> points at) has its primary key.
     /// <paramref name="toleranceJson"/> is "null" for the aggregate value source, or a pre-built
-    /// <see cref="KpiToleranceJson"/> object for the tolerance-out-of-limits one.
+    /// <see cref="KpiToleranceJson"/> object for the tolerance-out-of-limits one. The trailing
+    /// threshold/sparkline/grouping parameters default off, so most call sites only need the fields
+    /// their example actually demonstrates.
     /// </summary>
     private static string KpiConfigJson(
         string title, Dataset dataset, string valueSource, string aggregate, Guid? valueColumnRef,
         string toleranceJson, string toleranceStatusMode, bool showAsPercent,
         string comparisonMode, double? targetValue, Guid? dateColumnRef, int periodDays,
-        string direction, string unit, int decimalPlaces)
+        string direction, string unitPrefix, string unitSuffix, int decimalPlaces,
+        bool thresholdsEnabled = false, double? warningThreshold = null, double? criticalThreshold = null,
+        bool showSparkline = false, int sparklinePeriods = 8,
+        bool showAsMeter = false,
+        Guid? groupByColumnRef = null, int maxGroups = 8)
     {
         var valueColumn = valueColumnRef is { } v ? $"\"{v}\"" : "null";
-        var target = targetValue is { } t ? t.ToString(System.Globalization.CultureInfo.InvariantCulture) : "null";
+        var target = targetValue is { } t ? t.ToString(CultureInfo.InvariantCulture) : "null";
         var dateColumn = dateColumnRef is { } d ? $"\"{d}\"" : "null";
+        var warning = warningThreshold is { } w ? w.ToString(CultureInfo.InvariantCulture) : "null";
+        var critical = criticalThreshold is { } c ? c.ToString(CultureInfo.InvariantCulture) : "null";
+        var groupBy = groupByColumnRef is { } g ? $"\"{g}\"" : "null";
         static string B(bool value) => value ? "true" : "false";
         return $$"""
             {"type":"kpi","title":"{{title}}","showTitle":true,
@@ -1222,7 +1231,10 @@ public static class DbSeeder
              "valueSource":"{{valueSource}}","aggregate":"{{aggregate}}","valueColumnId":{{valueColumn}},
              "tolerance":{{toleranceJson}},"toleranceStatusMode":"{{toleranceStatusMode}}","showAsPercent":{{B(showAsPercent)}},
              "comparisonMode":"{{comparisonMode}}","targetValue":{{target}},"dateColumnId":{{dateColumn}},"periodDays":{{periodDays}},
-             "direction":"{{direction}}","unit":"{{unit}}","decimalPlaces":{{decimalPlaces}},
+             "direction":"{{direction}}","unitPrefix":"{{unitPrefix}}","unitSuffix":"{{unitSuffix}}","decimalPlaces":{{decimalPlaces}},
+             "thresholdsEnabled":{{B(thresholdsEnabled)}},"warningThreshold":{{warning}},"criticalThreshold":{{critical}},
+             "showSparkline":{{B(showSparkline)}},"sparklinePeriods":{{sparklinePeriods}},"showAsMeter":{{B(showAsMeter)}},
+             "groupByColumnId":{{groupBy}},"maxGroups":{{maxGroups}},
              "filter":null}
             """;
     }
@@ -1325,13 +1337,14 @@ public static class DbSeeder
 
     /// <summary>
     /// The feature-tour report: one engine-build dataset (plus a one-row clearance spec) laid out across
-    /// four tabs so every widget and option is on show. Tab 1 pairs a full data table with a
+    /// five tabs so every widget and option is on show. Tab 1 pairs a full data table with a
     /// widget-filtered table and a pivot; tab 2 the point charts (a series-split scatter with tooltip
     /// columns, a colour-by-value scatter, and a line with a spec band); tab 3 a grouped bar and the
     /// combination chart (bars + a line on a second axis); tab 4 a box plot, a pooled histogram, a
     /// second histogram overlaying two engines' clearance as separate bound series on shared bins, and
-    /// an Xbar-R control chart subgrouped by inspector — all four against the clearance spec. A
-    /// report-level filter drops the R&D-bench builds from every widget.
+    /// an Xbar-R control chart subgrouped by inspector — all four against the clearance spec; tab 5
+    /// eight KPI tiles covering both value sources, every comparison mode, thresholds, the sparkline,
+    /// the meter, and grouping. A report-level filter drops the R&D-bench builds from every widget.
     /// </summary>
     private static Report BuildFeatureShowcaseReport(
         List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
@@ -1389,12 +1402,11 @@ public static class DbSeeder
             ReportFiltersJson((dataset.Id, FilterGroupJson("and", ConditionJson(lineRef, "notEquals", "R&D Bench")))));
 
         // ---- Tab 1: the data, as a table, a filtered table, and a pivot ----
-        // Taller than the default 30 rows so the two KPI tiles fit below the pivot/rework-table row.
-        var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0, Rows = 38 };
+        var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0 };
         revision.Tabs.Add(overview);
         overview.Widgets.Add(TitleWidget("Engine Build — Feature Tour", 0, 0, 48, 2));
         overview.Widgets.Add(ParagraphWidget(
-            "One dataset of engine builds, shown through every widget and option the builder offers — a table and a pivot, each chart kind, tolerance bands, per-widget and report-level filters, dual axes, and four tabs.",
+            "One dataset of engine builds, shown through every widget and option the builder offers — a table and a pivot, each chart kind, KPI tiles, tolerance bands, per-widget and report-level filters, dual axes, and five tabs.",
             0, 2, 48, 3));
 
         var logColumns = new[]
@@ -1426,22 +1438,6 @@ public static class DbSeeder
         overview.Widgets.Add(pivot);
         pendingCharts.Add(new PendingChart(pivot, () =>
             PivotConfigJson("Builds by engine & line", dataset, [engineRef, lineRef], measures)));
-
-        // Two KPI tiles: a plain aggregate against a fixed target, and the "% out of limits" case
-        // against the very spec band the box plot, histogram, and line above read — reusing the
-        // same tolerance pointer rather than a separate one.
-        var avgCost = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 0, Y = 29, W = 24, H = 8, ConfigJson = "{}" };
-        overview.Widgets.Add(avgCost);
-        pendingCharts.Add(new PendingChart(avgCost, () =>
-            KpiConfigJson("Average build cost", dataset, "aggregate", "average", costRef, "null", "fail", true,
-                "fixedTarget", 7000, null, 7, "lowerIsBetter", "£", 0)));
-
-        var outOfSpec = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 24, Y = 29, W = 24, H = 8, ConfigJson = "{}" };
-        overview.Widgets.Add(outOfSpec);
-        pendingCharts.Add(new PendingChart(outOfSpec, () =>
-            KpiConfigJson("Bearing clearance out of spec", dataset, "toleranceOutOfLimits", "sum", clearanceRef,
-                KpiToleranceJson(spec.Id, specRowRef, lsl.RefId, usl.RefId), "fail", true,
-                "fixedTarget", 5, null, 7, "lowerIsBetter", "%", 1)));
 
         // ---- Tab 2: the point charts ----
         var trends = new Tab { RefId = Guid.NewGuid(), Name = "Trends", Order = 1 };
@@ -1553,6 +1549,82 @@ public static class DbSeeder
             XBarRChartConfigJson("Bearing clearance control (by inspector)", dataset, inspectorRef, clearanceRef, "Clearance (mm)",
                 bandsJson: SpecBandJson(spec.Id, specRowRef, lsl.RefId, usl.RefId))));
 
+        // ---- Tab 5: the KPI widget, every value source / comparison / display combination ----
+        var kpis = new Tab { RefId = Guid.NewGuid(), Name = "KPIs", Order = 4 };
+        revision.Tabs.Add(kpis);
+        kpis.Widgets.Add(TitleWidget("KPI tiles", 0, 0, 48, 2));
+        kpis.Widgets.Add(ParagraphWidget(
+            "One headline number reduced from the build log — a plain aggregate or a tolerance-band out-of-limits check, "
+            + "optionally compared against a fixed target or the previous period, with status thresholds, a trend sparkline, "
+            + "a target meter, or split into a grouped row of mini-tiles.",
+            0, 2, 48, 3));
+
+        // Row 1: the baseline cases — a plain count, an aggregate against a fixed target with status
+        // thresholds, the tolerance "out of limits" case against the same spec band the box plot,
+        // histograms, and line chart read (with its own thresholds), and a trend against the
+        // previous period instead of a fixed point.
+        var buildCount = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 0, Y = 5, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(buildCount);
+        pendingCharts.Add(new PendingChart(buildCount, () =>
+            KpiConfigJson("Builds logged", dataset, "aggregate", "count", null, "null", "fail", true,
+                "none", null, null, 7, "higherIsBetter", "", "", 0)));
+
+        // Thresholds straddle the seeded average (~£7,380) so the card actually tints amber rather
+        // than always reading "good" — a threshold wider than the real data would never demonstrate
+        // the warning state.
+        var avgCost = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 12, Y = 5, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(avgCost);
+        pendingCharts.Add(new PendingChart(avgCost, () =>
+            KpiConfigJson("Average build cost", dataset, "aggregate", "average", costRef, "null", "fail", true,
+                "fixedTarget", 7000, null, 7, "lowerIsBetter", "£", "", 0,
+                thresholdsEnabled: true, warningThreshold: 7200, criticalThreshold: 7800)));
+
+        var outOfSpec = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 24, Y = 5, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(outOfSpec);
+        pendingCharts.Add(new PendingChart(outOfSpec, () =>
+            KpiConfigJson("Bearing clearance out of spec", dataset, "toleranceOutOfLimits", "sum", clearanceRef,
+                KpiToleranceJson(spec.Id, specRowRef, lsl.RefId, usl.RefId), "fail", true,
+                "fixedTarget", 5, null, 7, "lowerIsBetter", "", "%", 1,
+                thresholdsEnabled: true, warningThreshold: 3, criticalThreshold: 6)));
+
+        var powerTrend = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 36, Y = 5, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(powerTrend);
+        pendingCharts.Add(new PendingChart(powerTrend, () =>
+            KpiConfigJson("Peak power vs last period", dataset, "aggregate", "average", powerRef, "null", "fail", true,
+                "previousPeriod", null, dateRef, 30, "higherIsBetter", "", " kW", 0)));
+
+        // Row 2: the same figures shown differently — a sparkline instead of a single comparison, a
+        // progress-bar meter instead of a trend arrow, and the tolerance/aggregate cases each split
+        // into a grouped row of mini-tiles instead of one widget-wide figure.
+        var costTrend = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 0, Y = 14, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(costTrend);
+        pendingCharts.Add(new PendingChart(costTrend, () =>
+            KpiConfigJson("Average build cost (trend)", dataset, "aggregate", "average", costRef, "null", "fail", true,
+                "none", null, dateRef, 14, "lowerIsBetter", "£", "", 0,
+                showSparkline: true, sparklinePeriods: 6)));
+
+        var costMeter = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 12, Y = 14, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(costMeter);
+        pendingCharts.Add(new PendingChart(costMeter, () =>
+            KpiConfigJson("Average build cost (meter)", dataset, "aggregate", "average", costRef, "null", "fail", true,
+                "fixedTarget", 9000, null, 7, "lowerIsBetter", "£", "", 0,
+                showAsMeter: true)));
+
+        var outOfSpecByLine = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 24, Y = 14, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(outOfSpecByLine);
+        pendingCharts.Add(new PendingChart(outOfSpecByLine, () =>
+            KpiConfigJson("Clearance out of spec by line", dataset, "toleranceOutOfLimits", "sum", clearanceRef,
+                KpiToleranceJson(spec.Id, specRowRef, lsl.RefId, usl.RefId), "fail", true,
+                "none", null, null, 7, "lowerIsBetter", "", "%", 1,
+                thresholdsEnabled: true, warningThreshold: 3, criticalThreshold: 6, groupByColumnRef: lineRef)));
+
+        var buildsByInspector = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 36, Y = 14, W = 12, H = 9, ConfigJson = "{}" };
+        kpis.Widgets.Add(buildsByInspector);
+        pendingCharts.Add(new PendingChart(buildsByInspector, () =>
+            KpiConfigJson("Builds by inspector", dataset, "aggregate", "count", null, "null", "fail", true,
+                "none", null, null, 7, "higherIsBetter", "", "", 0,
+                groupByColumnRef: inspectorRef)));
+
         report.Revisions.Add(revision);
         return report;
     }
@@ -1598,7 +1670,11 @@ public static class DbSeeder
         var inspectors = new[] { "A. Whitfield", "R. Okafor", "M. Lindqvist", "S. Bhandari" };
 
         var rng = new Random(20260913);
-        var start = new DateTime(2026, 1, 6);
+        // Anchored to "today" rather than a fixed calendar date, so the KPI tab's previous-period
+        // comparison and sparkline — both windowed on rolling "last N days" — always have recent
+        // rows to reduce. 110 days comfortably covers the ~102-day span the 52 builds below produce
+        // (2-day spacing), ending a little before today.
+        var start = DateTime.UtcNow.Date.AddDays(-110);
         var build = 1;
         var day = 0;
         const int perGroup = 6;

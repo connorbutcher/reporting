@@ -15,14 +15,17 @@
   justify-content: center;
   gap: 8px;
   min-height: 0;
-  padding: 8px;
+  padding: 12px 8px;
   text-align: center;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
 
   .value {
-    font-size: 2.25rem;
+    font-family: var(--app-font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 2.5rem;
     font-weight: 700;
     color: var(--app-navy, #152a55);
-    font-variant-numeric: tabular-nums;
     line-height: 1.1;
   }
 
@@ -43,6 +46,116 @@
 
     &.bad {
       color: #b42318;
+    }
+  }
+
+  .meter {
+    width: 100%;
+    max-width: 180px;
+
+    .meter-track {
+      height: 8px;
+      border-radius: 4px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+
+    .meter-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: #64748b;
+      transition: width 0.2s ease;
+
+      &.good {
+        background: #15803d;
+      }
+
+      &.bad {
+        background: #b42318;
+      }
+    }
+  }
+
+  .sparkline {
+    width: 100%;
+    max-width: 180px;
+    height: 28px;
+    color: #94a3b8;
+  }
+
+  &.status-good {
+    background: rgba(22, 163, 74, 0.08);
+
+    .value {
+      color: #15803d;
+    }
+  }
+
+  &.status-warning {
+    background: rgba(245, 158, 11, 0.12);
+
+    .value {
+      color: #92400e;
+    }
+  }
+
+  &.status-critical {
+    background: rgba(229, 72, 77, 0.12);
+
+    .value {
+      color: #b42318;
+    }
+  }
+}
+
+.kpi-groups {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto;
+
+  .kpi-tile {
+    flex: 1 1 120px;
+    min-width: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border-left: 3px solid #cbd5e1;
+
+    .tile-label {
+      font-size: 0.7rem;
+      color: #64748b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tile-value {
+      font-family: var(--app-font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--app-navy, #152a55);
+    }
+
+    &.status-good {
+      border-left-color: #15803d;
+    }
+
+    &.status-warning {
+      border-left-color: #92400e;
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    &.status-critical {
+      border-left-color: #b42318;
+      background: rgba(229, 72, 77, 0.08);
     }
   }
 }
