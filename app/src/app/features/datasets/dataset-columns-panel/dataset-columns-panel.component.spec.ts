@@ -41,6 +41,7 @@ describe('DatasetColumnsPanelComponent column usage', () => {
           useValue: {
             columns: signal([col('region', 'Region'), col('notes', 'Notes')]),
             schemaLoading: signal(false),
+            isFiltered: signal(false),
             columnUses: (id: string) => usesById[id] ?? [],
             columnUsageKnown: known,
             deleteColumn,
@@ -138,6 +139,7 @@ describe('DatasetColumnsPanelComponent changing a column type', () => {
           useValue: {
             columns: signal([{ ...col('revenue', 'Revenue'), type: 'double' }]),
             schemaLoading: signal(false),
+            isFiltered: signal(false),
             columnUses: () => [],
             columnUsageKnown: signal(true),
             columnTypeImpact: vi.fn(() => check),

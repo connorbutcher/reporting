@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -40,7 +41,7 @@ public class XBarRChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private XBarRChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
+    private XBarRChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db));
 
     [Fact]
     public async Task QueryForXBarR_computes_means_ranges_and_control_limits_for_equal_subgroups()

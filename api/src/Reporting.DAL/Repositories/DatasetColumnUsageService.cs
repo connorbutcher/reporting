@@ -16,10 +16,14 @@ public class DatasetColumnUsageService(ReportingDbContext db)
 {
     private sealed record ScanWidget(Guid RefId, WidgetType Type, string ConfigJson, string TabName);
 
+    /// <summary>A filtered dataset built directly on this one, and the raw JSON of its saved filter.</summary>
+    private sealed record ScanFilteredDataset(string Name, string FilterJson);
+
     private sealed record Source(
         Dictionary<Guid, DatasetColumnType> ColumnTypes,
         List<ScanWidget> Widgets,
-        List<string> FilterJsons);
+        List<string> FilterJsons,
+        List<ScanFilteredDataset> FilteredDatasets);
 
     /// <summary>A reason a reference stops working. The key ignores the column type, so a break that already exists can be told from a new one.</summary>
     private readonly record struct Reason(string Key, string Message);
@@ -48,6 +52,15 @@ public class DatasetColumnUsageService(ReportingDbContext db)
             {
                 if (!uses.TryGetValue(byColumn.Key, out var list)) uses[byColumn.Key] = list = new List<ColumnUseDto>();
                 list.Add(FilterUse(Roles(byColumn.Select(_ => "Filter condition"))));
+            }
+        }
+
+        foreach (var filtered in source.FilteredDatasets)
+        {
+            foreach (var byColumn in ColumnReferenceScanner.Scan(filtered.FilterJson, columnIds).GroupBy(r => r.ColumnId))
+            {
+                if (!uses.TryGetValue(byColumn.Key, out var list)) uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                list.Add(FilteredDatasetUse(filtered.Name, Roles(byColumn.Select(_ => "Filter condition"))));
             }
         }
 
@@ -95,6 +108,11 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         {
             var breaks = Breaks(ColumnReferenceScanner.Scan(filterJson, only));
             if (breaks.Count > 0) impact.Breaks.Add(FilterUse(breaks));
+        }
+        foreach (var filtered in source.FilteredDatasets)
+        {
+            var breaks = Breaks(ColumnReferenceScanner.Scan(filtered.FilterJson, only));
+            if (breaks.Count > 0) impact.Breaks.Add(FilteredDatasetUse(filtered.Name, breaks));
         }
         return impact;
     }
@@ -176,10 +194,25 @@ public class DatasetColumnUsageService(ReportingDbContext db)
             .Select(r => r.FiltersJson)
             .FirstOrDefaultAsync();
 
+        // Sibling datasets in the same revision filtered directly on top of this one — their saved
+        // filter references this dataset's column RefIds exactly like a widget or report filter does.
+        var siblings = await db.Datasets.AsNoTracking()
+            .Include(d => d.Source)
+            .Where(d => d.ReportRevisionId == dataset.ReportRevisionId
+                && d.DatasetSourceId == DatasetSourceIds.Filtered
+                && d.Id != datasetId)
+            .ToListAsync();
+        var filteredDatasets = siblings
+            .Select(d => (d.Name, Config: d.GetSourceConfig() as FilteredDatasetSourceConfig))
+            .Where(d => d.Config?.BaseDatasetId == datasetId)
+            .Select(d => new ScanFilteredDataset(d.Name, JsonSerializer.Serialize(d.Config!.Filter)))
+            .ToList();
+
         return new Source(
             dataset.Columns.ToDictionary(c => c.RefId, c => c.Type),
             widgets,
-            ReportFiltersFor(filtersJson, datasetId).ToList());
+            ReportFiltersFor(filtersJson, datasetId).ToList(),
+            filteredDatasets);
     }
 
     private static ColumnUseDto WidgetUse(ScanWidget widget, List<string> roles) => new()
@@ -193,6 +226,9 @@ public class DatasetColumnUsageService(ReportingDbContext db)
     };
 
     private static ColumnUseDto FilterUse(List<string> roles) => new() { Kind = ColumnUseKind.ReportFilter, Roles = roles };
+
+    private static ColumnUseDto FilteredDatasetUse(string datasetName, List<string> roles) =>
+        new() { Kind = ColumnUseKind.FilteredDataset, WidgetTitle = datasetName, Roles = roles };
 
     /// <summary>The distinct roles, in first-seen order, each suffixed with a count when it occurs more than once.</summary>
     private static List<string> Roles(IEnumerable<string> roles) =>

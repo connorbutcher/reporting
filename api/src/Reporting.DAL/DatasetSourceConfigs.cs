@@ -11,6 +11,7 @@ public static class DatasetSourceConfigs
         DatasetSourceKey.Assembly => new AssemblyDatasetSourceConfig(),
         DatasetSourceKey.Disassembly => new DisassemblyDatasetSourceConfig(),
         DatasetSourceKey.Specification => new SpecificationDatasetSourceConfig(),
+        DatasetSourceKey.Filtered => new FilteredDatasetSourceConfig(),
         _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown dataset source.")
     };
 }

@@ -1,5 +1,7 @@
+import { FilterGroup } from '../filter/filter.model';
+
 /** The source system a dataset draws from. Doubles as the discriminator of its source config. */
-export type DatasetSourceKey = 'assembly' | 'disassembly' | 'specification';
+export type DatasetSourceKey = 'assembly' | 'disassembly' | 'specification' | 'filtered';
 
 /** A selectable dataset source system, for the source pickers. */
 export interface DatasetSource {
@@ -31,10 +33,20 @@ export interface SpecificationSourceConfig {
   source: 'specification';
 }
 
+/** Configuration for a filtered dataset: the dataset it draws rows from, plus the saved filter. */
+export interface FilteredSourceConfig {
+  source: 'filtered';
+  /** The dataset (in the same report) this one filters. Null until chosen. */
+  baseDatasetId: number | null;
+  /** The saved filter, referencing the base dataset's columns. Null (or empty) filters nothing. */
+  filter: FilterGroup | null;
+}
+
 export type DatasetSourceConfig =
   | AssemblySourceConfig
   | DisassemblySourceConfig
-  | SpecificationSourceConfig;
+  | SpecificationSourceConfig
+  | FilteredSourceConfig;
 
 export interface DatasetSummary {
   /** The dataset's primary key. Datasets belong to a report revision and are referenced by this id. */

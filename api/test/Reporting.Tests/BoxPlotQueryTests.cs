@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -39,7 +40,7 @@ public class BoxPlotQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private BoxPlotQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
+    private BoxPlotQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db));
 
     [Fact]
     public async Task QueryForBoxPlot_minMax_returns_five_number_summary_per_category()

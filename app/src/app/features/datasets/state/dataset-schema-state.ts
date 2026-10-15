@@ -50,6 +50,12 @@ export class DatasetSchemaState {
     this.schemaResource.hasValue() ? this.schemaResource.value().sourceConfig : null,
   );
 
+  /**
+   * True when the selected dataset is a filtered view over another dataset — its columns and rows
+   * are inherited/computed, not its own, so the editor's columns and rows panels show them read-only.
+   */
+  readonly isFiltered = computed(() => this.source() === 'filtered');
+
   /** Fetches the schema again — for after a change that alters columns the client did not edit itself (a formula recalculating). */
   reload(): void {
     this.schemaResource.reload();

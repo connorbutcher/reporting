@@ -69,6 +69,8 @@ export class DatasetsStore {
   readonly source = this.schema.source;
   readonly sourceId = this.schema.sourceId;
   readonly sourceConfig = this.schema.sourceConfig;
+  /** True when the selected dataset is a filtered view over another — its columns/rows are read-only. */
+  readonly isFiltered = this.schema.isFiltered;
   readonly schemaLoading = this.schema.schemaLoading;
   readonly error = this.schema.error;
 

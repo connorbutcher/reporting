@@ -23,11 +23,12 @@ public abstract class FormulaColumnTestBase : SqliteDbTestBase
     {
         Db.ChangeTracker.Clear();
         var calculator = new FormulaCalculationService(Db, new FormulaFunctionCatalogueLoader(Db));
+        var resolver = new DatasetResolver(Db);
 
         return new FormulaColumnServices(
             new DatasetFormulaRepository(Db, calculator),
-            new DatasetRepository(Db, calculator),
-            new DatasetRowRepository(Db, calculator));
+            new DatasetRepository(Db, calculator, resolver),
+            new DatasetRowRepository(Db, calculator, resolver));
     }
 
     protected async Task SeedAsync()

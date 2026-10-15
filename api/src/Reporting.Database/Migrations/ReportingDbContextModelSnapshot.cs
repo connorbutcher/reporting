@@ -291,6 +291,12 @@ namespace Reporting.Database.Migrations
                             Id = 3,
                             Key = "Specification",
                             Name = "Specification"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Key = "Filtered",
+                            Name = "Filtered"
                         });
                 });
 

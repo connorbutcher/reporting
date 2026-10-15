@@ -38,6 +38,8 @@ export class DatasetRowsPanelComponent {
   protected readonly rowsLoading = this.store.rowsLoading;
   protected readonly rowsReady = this.store.rowsReady;
   protected readonly exporting = this.store.exporting;
+  /** A filtered dataset's rows come from its base — no add/edit/delete, but export still works. */
+  protected readonly isFiltered = this.store.isFiltered;
 
   constructor() {
     // Bring a requested row (e.g. a freshly added last row) into view for editing.

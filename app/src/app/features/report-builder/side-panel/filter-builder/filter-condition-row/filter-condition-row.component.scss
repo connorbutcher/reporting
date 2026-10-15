@@ -8,6 +8,35 @@
   background: #fff;
 }
 
+// With enough width (the report builder's own side panel never has this much), lay the column,
+// operator and value out on one line instead of stacking them — same controls, far less height.
+@container (min-width: 480px) {
+  :host {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .head {
+    flex: 1 1 220px;
+  }
+
+  // The operator select and the value control(s) are both direct children, top-level siblings of
+  // `.head` — `styleClass` lands on an inner element (see the `::ng-deep` rules below), not the
+  // host tag, so they're sized by position rather than by their `filter-operator`/`filter-value-select` class.
+  :host > p-select,
+  :host > p-multiselect,
+  :host > .operands {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+
+  .filter-row-problem {
+    flex-basis: 100%;
+  }
+}
+
 .head {
   display: flex;
   align-items: center;

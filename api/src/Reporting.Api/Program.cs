@@ -37,6 +37,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<ReportingDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
+builder.Services.AddScoped<DatasetResolver>();
 builder.Services.AddScoped<DatasetRepository>();
 builder.Services.AddScoped<DatasetRowRepository>();
 builder.Services.AddScoped<DatasetColumnUsageService>();

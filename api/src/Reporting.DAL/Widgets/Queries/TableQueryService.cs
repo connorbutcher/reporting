@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -10,15 +11,16 @@ namespace Reporting.DAL.Widgets;
 /// requested column's value already formatted per its stored display configuration and
 /// classified against its tolerance band, if it has one.
 /// </summary>
-public class TableQueryService(ReportingDbContext db, ToleranceResolver tolerance)
+public class TableQueryService(ReportingDbContext db, ToleranceResolver tolerance, DatasetResolver resolver)
 {
     public async Task<TableQueryResultDto?> QueryForTableAsync(int id, TableQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
         // Keyed by RefId: the client references columns by their stable RefId, and the translator
         // resolves each to the column's int id for cell comparisons.
@@ -57,9 +59,10 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
         var matchedLimits = await tolerance.ResolveMatchedAsync(matchSpecs);
 
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds, operatorCatalogue);
 
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
+        var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds, operatorCatalogue);
         var matching = predicate is null ? all : all.Where(predicate);
 
         var totalRowCount = await all.CountAsync();
@@ -80,8 +83,8 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
 
         return new TableQueryResultDto
         {
-            Id = dataset.Id,
-            Name = dataset.Name,
+            Id = resolved.Id,
+            Name = resolved.Name,
             Rows = resultRows,
             TotalRowCount = totalRowCount,
             MatchedRowCount = matchedRowCount

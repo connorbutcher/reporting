@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -40,7 +41,7 @@ public class BarChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private BarChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
+    private BarChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db));
 
     [Fact]
     public async Task QueryForBarChart_sums_a_single_measure_per_category()

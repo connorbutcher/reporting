@@ -414,6 +414,19 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
             if (datasetIdMap.TryGetValue(filter.DatasetId, out var mapped)) { filter.DatasetId = mapped; filtersChanged = true; }
         if (filtersChanged) target.SetFilters(filters);
 
+        // A filtered dataset's SourceConfigJson was copied verbatim above, so its BaseDatasetId
+        // still names the *source* revision's dataset — remap it through the same old-id -> new-id
+        // map, exactly like a widget's bound dataset id above.
+        foreach (var copy in datasetCopies.Select(d => d.Copy))
+        {
+            if (copy.DatasetSourceId != DatasetSourceIds.Filtered) continue;
+            if (Mapping.TryGetSourceConfig(copy.SourceConfigJson) is not FilteredDatasetSourceConfig config) continue;
+            if (!datasetIdMap.TryGetValue(config.BaseDatasetId, out var mappedBaseId)) continue;
+
+            config.BaseDatasetId = mappedBaseId;
+            copy.SetSourceConfig(config);
+        }
+
         await db.SaveChangesAsync();
     }
 

@@ -23,7 +23,7 @@
       severity="secondary"
       outlined
       size="small"
-      [disabled]="columns().length === 0"
+      [disabled]="columns().length === 0 || isFiltered()"
       (onClick)="addRow()"
     />
   </div>
@@ -77,6 +77,7 @@
                 <select
                   class="cell"
                   [value]="row.values[column.id] ?? 'False'"
+                  [disabled]="isFiltered()"
                   [attr.aria-label]="column.name"
                   (change)="setCell(row, column.id, $any($event.target).value)"
                 >
@@ -88,6 +89,7 @@
                   class="cell"
                   [type]="inputType(column.type)"
                   [value]="cellValue(row, column)"
+                  [readOnly]="isFiltered()"
                   [attr.aria-label]="column.name"
                   (change)="setCell(row, column.id, $any($event.target).value)"
                 />
@@ -95,14 +97,16 @@
             </td>
           }
           <td class="actions">
-            <p-button
-              icon="pi pi-trash"
-              severity="danger"
-              text
-              size="small"
-              ariaLabel="Delete row"
-              (onClick)="deleteRow(row)"
-            />
+            @if (!isFiltered()) {
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                text
+                size="small"
+                ariaLabel="Delete row"
+                (onClick)="deleteRow(row)"
+              />
+            }
           </td>
         </tr>
       </ng-template>

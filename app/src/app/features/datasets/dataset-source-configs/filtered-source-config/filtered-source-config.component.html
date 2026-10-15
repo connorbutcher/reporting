@@ -1,0 +1,28 @@
+@if (config(); as config) {
+  <label class="field">
+    <span class="panel-field-label">Base dataset</span>
+    <p-select
+      [options]="baseOptions()"
+      optionLabel="name"
+      optionValue="id"
+      appendTo="body"
+      placeholder="Choose a dataset to filter"
+      [ngModel]="config.baseDatasetId"
+      ariaLabel="Base dataset"
+      (onChange)="setBaseDataset($event.value)"
+    />
+  </label>
+
+  <div class="filter-section">
+    @if (!config.baseDatasetId) {
+      <p class="empty">Choose a base dataset to build the filter.</p>
+    } @else if (baseSchemaLoading()) {
+      <p class="empty">Loading columns…</p>
+    } @else if (filterGroup(); as group) {
+      <app-filter-builder
+        [group]="group"
+        hint="Every reader sees only the rows matching this filter — further filters narrow from there."
+      />
+    }
+  </div>
+}

@@ -274,7 +274,8 @@ public static class DbSeeder
     /// Idempotent and independent of the other seeds (same pattern as <see cref="SeedBoxPlotShowcase"/>).
     /// One engine-build dataset shown through every widget and option the builder offers — a data table,
     /// a widget-filtered table, a pivot, scatter/line/bar/combination/box/histogram charts, KPI tiles,
-    /// tolerance bands, tooltip columns, dual value axes, a report-level filter, and five tabs.
+    /// tolerance bands, tooltip columns, dual value axes, a report-level filter, a second dataset
+    /// filtered server-side from the first, and six tabs.
     /// </summary>
     public static void SeedFeatureShowcase(ReportingDbContext db)
     {
@@ -1337,14 +1338,16 @@ public static class DbSeeder
 
     /// <summary>
     /// The feature-tour report: one engine-build dataset (plus a one-row clearance spec) laid out across
-    /// five tabs so every widget and option is on show. Tab 1 pairs a full data table with a
+    /// six tabs so every widget and option is on show. Tab 1 pairs a full data table with a
     /// widget-filtered table and a pivot; tab 2 the point charts (a series-split scatter with tooltip
     /// columns, a colour-by-value scatter, and a line with a spec band); tab 3 a grouped bar and the
     /// combination chart (bars + a line on a second axis); tab 4 a box plot, a pooled histogram, a
     /// second histogram overlaying two engines' clearance as separate bound series on shared bins, and
     /// an Xbar-R control chart subgrouped by inspector — all four against the clearance spec; tab 5
     /// eight KPI tiles covering both value sources, every comparison mode, thresholds, the sparkline,
-    /// the meter, and grouping. A report-level filter drops the R&D-bench builds from every widget.
+    /// the meter, and grouping; tab 6 a filtered dataset — High-Rework Builds, narrowed server-side
+    /// from the build log to the builds that needed rework, read by a table and a KPI tile. A
+    /// report-level filter drops the R&D-bench builds from every widget.
     /// </summary>
     private static Report BuildFeatureShowcaseReport(
         List<PendingCell> pending, List<PendingTable> pendingTables, List<PendingChart> pendingCharts,
@@ -1401,12 +1404,26 @@ public static class DbSeeder
         pendingFilters.Add(() => revision.FiltersJson =
             ReportFiltersJson((dataset.Id, FilterGroupJson("and", ConditionJson(lineRef, "notEquals", "R&D Bench")))));
 
+        // A filtered dataset: no columns or rows of its own — it's the build log above, narrowed
+        // server-side to the builds that needed rework, so every widget bound to it (Tab 6) sees that
+        // restriction automatically. Its config references the build log's now-assigned int id, so it's
+        // set the same way the report-level filter above is — once that id is known.
+        var highRework = new Dataset
+        {
+            Name = "High-Rework Builds",
+            DatasetSourceId = DatasetSourceIds.Filtered,
+            SourceConfigJson = "{}",
+        };
+        revision.Datasets.Add(highRework);
+        pendingFilters.Add(() => highRework.SourceConfigJson =
+            FilteredSourceConfigJson(dataset.Id, FilterGroupJson("and", ConditionJson(reworkRef, "greaterThan", "0"))));
+
         // ---- Tab 1: the data, as a table, a filtered table, and a pivot ----
         var overview = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0 };
         revision.Tabs.Add(overview);
         overview.Widgets.Add(TitleWidget("Engine Build — Feature Tour", 0, 0, 48, 2));
         overview.Widgets.Add(ParagraphWidget(
-            "One dataset of engine builds, shown through every widget and option the builder offers — a table and a pivot, each chart kind, KPI tiles, tolerance bands, per-widget and report-level filters, dual axes, and five tabs.",
+            "One dataset of engine builds, shown through every widget and option the builder offers — a table and a pivot, each chart kind, KPI tiles, tolerance bands, per-widget and report-level filters, dual axes, a second dataset filtered server-side from the first, and six tabs.",
             0, 2, 48, 3));
 
         var logColumns = new[]
@@ -1624,6 +1641,32 @@ public static class DbSeeder
             KpiConfigJson("Builds by inspector", dataset, "aggregate", "count", null, "null", "fail", true,
                 "none", null, null, 7, "higherIsBetter", "", "", 0,
                 groupByColumnRef: inspectorRef)));
+
+        // ---- Tab 6: a filtered dataset — the same high-rework slice, saved once on the dataset ----
+        var filteredTab = new Tab { RefId = Guid.NewGuid(), Name = "Filtered dataset", Order = 5 };
+        revision.Tabs.Add(filteredTab);
+        filteredTab.Widgets.Add(TitleWidget("Filtered dataset", 0, 0, 48, 2));
+        filteredTab.Widgets.Add(ParagraphWidget(
+            "High-Rework Builds has no columns or rows of its own — it's the build log above, narrowed "
+            + "server-side to the builds that needed rework. Every widget bound to it, like the table and "
+            + "KPI below, sees that restriction automatically: the same effect as the report-level filter "
+            + "on the Build log tab, but saved once on the dataset instead of repeated per widget.",
+            0, 2, 48, 3));
+
+        var highReworkTable = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.DataTable, X = 0, Y = 5, W = 36, H = 13, ConfigJson = "{}" };
+        filteredTab.Widgets.Add(highReworkTable);
+        // Columns resolve against the base dataset's own schema (the filtered dataset owns none of
+        // its own), but the widget binds to the filtered dataset's id, via the override.
+        pendingCharts.Add(new PendingChart(highReworkTable, () =>
+            TableConfigJson("High-rework builds", dataset,
+                new[] { "Build ID", "Engine Type", "Assembly Line", "Inspector", "Rework Count", "Passed" },
+                datasetIdOverride: highRework.Id)));
+
+        var highReworkCount = new Widget { RefId = Guid.NewGuid(), Type = WidgetType.Kpi, X = 36, Y = 5, W = 12, H = 13, ConfigJson = "{}" };
+        filteredTab.Widgets.Add(highReworkCount);
+        pendingCharts.Add(new PendingChart(highReworkCount, () =>
+            KpiConfigJson("High-rework builds", highRework, "aggregate", "count", null, "null", "fail", true,
+                "none", null, null, 7, "higherIsBetter", "", "", 0)));
 
         report.Revisions.Add(revision);
         return report;
@@ -1983,6 +2026,10 @@ public static class DbSeeder
     private static string ReportFiltersJson(params (int DatasetId, string FilterGroup)[] filters)
         => "[" + string.Join(",", filters.Select(f => $$"""{"datasetId":{{f.DatasetId}},"filter":{{f.FilterGroup}}}""")) + "]";
 
+    /// <summary>A filtered dataset's source config as JSON — the base dataset it draws rows from, plus the saved filter.</summary>
+    private static string FilteredSourceConfigJson(int baseDatasetId, string filterGroupJson)
+        => $$"""{"source":"filtered","baseDatasetId":{{baseDatasetId}},"filter":{{filterGroupJson}}}""";
+
     private static Report PublishedReport(
         int number, string name, Folder? folder, Func<List<PendingCell>, Dataset> datasetFactory,
         string[] columns, int versions, int daysAgo, List<PendingCell> pending, List<PendingTable> pendingTables)
@@ -2092,15 +2139,20 @@ public static class DbSeeder
     /// <summary>
     /// The data-table config JSON, built once the dataset has a primary key. The dataset is
     /// referenced by that int id; columns are still referenced by their stable RefIds.
+    /// <paramref name="datasetIdOverride"/> binds the widget to a different dataset (a filtered one
+    /// built on top of <paramref name="dataset"/>) while still resolving columns against
+    /// <paramref name="dataset"/>'s own schema — the filtered dataset's RefIds are the same ones,
+    /// but it owns no <see cref="Dataset.Columns"/> of its own to resolve them against.
     /// </summary>
-    private static string TableConfigJson(string title, Dataset dataset, string[] columnNames, string filterJson = "null")
+    private static string TableConfigJson(
+        string title, Dataset dataset, string[] columnNames, string filterJson = "null", int? datasetIdOverride = null)
     {
         var columnIds = columnNames
             .Select(name => dataset.Columns.First(c => c.Name == name).RefId)
             .Select(id => $"{{\"columnId\":\"{id}\",\"sortable\":true}}");
 
         return $$"""
-            {"type":"dataTable","datasetId":{{dataset.Id}},"title":"{{title}}",
+            {"type":"dataTable","datasetId":{{datasetIdOverride ?? dataset.Id}},"title":"{{title}}",
              "showTitle":true,"showColumnHeaders":true,"resizableColumns":true,
              "stripedRows":true,"showGridlines":false,"rowHover":true,"density":"compact",
              "paginator":false,"rowsPerPage":10,"emptyMessage":"No rows to display.",

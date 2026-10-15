@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -14,7 +15,7 @@ namespace Reporting.DAL.Widgets;
 /// each category into a box per series. Whiskers reach the actual extremes, or 1.5×IQR
 /// past the quartiles with the remainder returned as outlier points.
 /// </summary>
-public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands)
+public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands, DatasetResolver resolver)
 {
     /// <summary>
     /// Ceiling on rows scanned for one box-plot query. A box returns only its five-number summary,
@@ -29,13 +30,14 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
 
     public async Task<BoxPlotQueryResultDto?> QueryForBoxPlotAsync(int id, BoxPlotQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
-        var empty = new BoxPlotQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+        var empty = new BoxPlotQueryResultDto { Id = resolved.Id, Name = resolved.Name };
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
@@ -44,7 +46,8 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
         var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
         empty.TotalRowCount = totalRowCount;
@@ -107,8 +110,8 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
 
         return new BoxPlotQueryResultDto
         {
-            Id = dataset.Id,
-            Name = dataset.Name,
+            Id = resolved.Id,
+            Name = resolved.Name,
             Categories = orderedCategories,
             Series = series,
             ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),

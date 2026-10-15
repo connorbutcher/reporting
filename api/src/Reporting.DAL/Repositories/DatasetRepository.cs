@@ -14,8 +14,16 @@ public sealed record DatasetOwner(int ReportId, int? FolderId, bool InheritsPerm
 public sealed record ReportDraftContext(int RevisionId, int? FolderId, bool InheritsPermissions);
 
 /// <summary>Dataset metadata and column schema CRUD, plus the generic filtered row query.</summary>
-public class DatasetRepository(ReportingDbContext db, FormulaCalculationService formulas)
+public class DatasetRepository(ReportingDbContext db, FormulaCalculationService formulas, DatasetResolver resolver)
 {
+    /// <summary>A filtered dataset has no columns, rows or formulas of its own — it's a read-only
+    /// computed view over its base. Thrown by every mutation that doesn't make sense on one.</summary>
+    private static void EnsureNotFiltered(Dataset dataset)
+    {
+        if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+            throw new DataValidationException("A filtered dataset's columns and rows come from its base dataset and can't be edited directly.");
+    }
+
     // --- authorization context (resolved by the controller against the owning report) --------
 
     /// <summary>The owning report's permission context for a dataset, or null if it doesn't exist.</summary>
@@ -62,7 +70,13 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
-        return dataset?.ToSchemaDto();
+        if (dataset is null) return null;
+        if (dataset.Source!.Key != DatasetSourceKey.Filtered) return dataset.ToSchemaDto();
+
+        // A filtered dataset's own identity and source config show as requested, but its columns
+        // are inherited from whatever it ultimately resolves to.
+        var resolved = await resolver.ResolveAsync(id);
+        return resolved is null ? null : dataset.ToSchemaDto(resolved.Physical.Columns);
     }
 
     /// <summary>
@@ -72,23 +86,25 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     /// </summary>
     public async Task<DatasetQueryResultDto?> QueryAsync(int id, FilterGroupDto? filter)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null) return null;
+        var physical = resolved.Physical;
 
         // The client references columns by their RefId, so the translator is keyed that way and
         // resolves each to the column's int id for the cell comparison.
+        var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = FilterTranslator.Apply(
-            all, filter, dataset.Columns.ToDictionary(c => c.RefId), operatorCatalogue: operatorCatalogue);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == physical.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
+        var matching = FilterTranslator.Apply(all, filter, columnsByRef, operatorCatalogue: operatorCatalogue);
 
         var rows = await matching.Include(r => r.Cells).ToListAsync();
-        var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+        var columnRefById = physical.Columns.ToDictionary(c => c.Id, c => c.RefId);
 
         return new DatasetQueryResultDto
         {
-            Id = dataset.Id,
-            Name = dataset.Name,
+            Id = resolved.Id,
+            Name = resolved.Name,
             Rows = rows.Select(r => r.ToDto(columnRefById)).ToList(),
             TotalRowCount = await all.CountAsync(),
             MatchedRowCount = rows.Count
@@ -104,13 +120,15 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     /// </summary>
     public async Task<DatasetCountResultDto?> CountAsync(int id, FilterGroupDto? filter)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null) return null;
+        var physical = resolved.Physical;
 
+        var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var matching = FilterTranslator.Apply(
-            all, filter, dataset.Columns.ToDictionary(c => c.RefId), operatorCatalogue: operatorCatalogue);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == physical.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
+        var matching = FilterTranslator.Apply(all, filter, columnsByRef, operatorCatalogue: operatorCatalogue);
 
         return new DatasetCountResultDto
         {
@@ -129,7 +147,8 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     /// </summary>
     public async Task<List<string>?> GetColumnValuesAsync(int id, Guid columnId, string? search, int limit)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
+        var resolved = await resolver.ResolveAsync(id);
+        var column = resolved?.Physical.Columns.FirstOrDefault(c => c.RefId == columnId);
         if (column is null) return null;
 
         // A column belongs to exactly one dataset, so every cell carrying its ColumnId is already
@@ -313,10 +332,47 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
                 $"Configuration for '{config.SourceKey}' doesn't match the dataset's source '{dataset.Source.Key}'.");
         }
 
+        if (config is FilteredDatasetSourceConfig filtered)
+        {
+            await ValidateFilteredConfigAsync(dataset, filtered);
+        }
+
         dataset.SetSourceConfig(config);
         await db.SaveChangesAsync();
-        return dataset.ToSchemaDto();
+        return config is FilteredDatasetSourceConfig
+            ? (await GetSchemaAsync(id))!
+            : dataset.ToSchemaDto();
     }
+
+    /// <summary>
+    /// A filtered dataset's base must be a real dataset in the same revision, not itself, and not a
+    /// dataset that (transitively) already filters this one — and its saved filter can't use a
+    /// tolerance operator, which needs widget-level banding context a saved dataset filter has none of.
+    /// </summary>
+    private async Task ValidateFilteredConfigAsync(Dataset dataset, FilteredDatasetSourceConfig config)
+    {
+        if (config.BaseDatasetId == 0) return; // not yet configured
+
+        if (config.BaseDatasetId == dataset.Id)
+            throw new DataValidationException("A filtered dataset can't filter itself.");
+
+        var baseExists = await db.Datasets.AnyAsync(d => d.Id == config.BaseDatasetId && d.ReportRevisionId == dataset.ReportRevisionId);
+        if (!baseExists)
+            throw new DataValidationException("The base dataset doesn't exist in this report.");
+
+        if (await resolver.WouldCreateCycleAsync(dataset.Id, config.BaseDatasetId))
+            throw new DataValidationException("That base dataset already depends on this one.");
+
+        if (config.Filter is not null && ContainsToleranceOperator(config.Filter))
+            throw new DataValidationException("A filtered dataset's saved filter can't use a tolerance condition.");
+    }
+
+    private static bool ContainsToleranceOperator(FilterNodeDto node) => node switch
+    {
+        FilterGroupDto group => group.Children.Any(ContainsToleranceOperator),
+        FilterConditionDto condition => condition.Operator is FilterOperator.InTolerance or FilterOperator.NeedsConcession or FilterOperator.OutOfTolerance,
+        _ => false
+    };
 
     public async Task<bool> DeleteAsync(int id)
     {
@@ -334,8 +390,9 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
 
     public async Task<DatasetColumnDto?> AddColumnAsync(int id, string name, DatasetColumnType type)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
+        EnsureNotFiltered(dataset);
 
         var column = new DatasetColumn
         {
@@ -426,6 +483,7 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
+        EnsureNotFiltered(dataset);
 
         for (var i = 0; i < columnIds.Count; i++)
         {

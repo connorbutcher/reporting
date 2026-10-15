@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -18,7 +19,7 @@ namespace Reporting.DAL.Widgets;
 /// rows: a trailing sparkline history (one value per <see cref="KpiQueryDto.PeriodDays"/>-wide
 /// bucket), and a grouped reduction (one value per distinct value of a dimension column).
 /// </summary>
-public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance)
+public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance, DatasetResolver resolver)
 {
     /// <summary>Ceiling on rows scanned to reduce one KPI value — every row must be pulled into memory
     /// to aggregate or tolerance-classify it, same reasoning as <c>PivotQueryService</c>.</summary>
@@ -31,15 +32,17 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance)
 
     public async Task<KpiQueryResultDto?> QueryForKpiAsync(int id, KpiQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, operatorCatalogue: operatorCatalogue);
 
         var result = new KpiQueryResultDto();

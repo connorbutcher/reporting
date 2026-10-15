@@ -125,5 +125,15 @@ function sourceConfigIssue(config: DatasetSourceConfig | null): DatasetIssue | n
       return null;
     case 'specification':
       return null;
+    case 'filtered':
+      if (config.baseDatasetId == null) {
+        return {
+          id: 'source-config',
+          severity: 'warning',
+          title: 'Source not configured',
+          detail: 'Choose the dataset this one filters.',
+        };
+      }
+      return null;
   }
 }

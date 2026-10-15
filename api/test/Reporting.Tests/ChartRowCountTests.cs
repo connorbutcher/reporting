@@ -1,4 +1,5 @@
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -17,10 +18,10 @@ public class ChartRowCountTests : SqliteDbTestBase
     public ChartRowCountTests() : base(foreignKeys: false) { }
 
     private ChartToleranceBands Bands() => new(new ToleranceResolver(Db));
-    private ChartQueryService ChartRepo() => new(Db, Bands());
-    private BarChartQueryService BarRepo() => new(Db, Bands());
-    private BoxPlotQueryService BoxPlotRepo() => new(Db, Bands());
-    private HistogramQueryService HistogramRepo() => new(Db, Bands());
+    private ChartQueryService ChartRepo() => new(Db, Bands(), new DatasetResolver(Db));
+    private BarChartQueryService BarRepo() => new(Db, Bands(), new DatasetResolver(Db));
+    private BoxPlotQueryService BoxPlotRepo() => new(Db, Bands(), new DatasetResolver(Db));
+    private HistogramQueryService HistogramRepo() => new(Db, Bands(), new DatasetResolver(Db));
 
     /// <summary>Five rows: three in "North", two in "South".</summary>
     private async Task<int> SeedAsync()

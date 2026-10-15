@@ -1,20 +1,47 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
+using Reporting.DAL.Filtering;
 using Reporting.DAL.Formulas;
 
 namespace Reporting.DAL.Repositories;
 
 /// <summary>Row and cell CRUD for a dataset.</summary>
-public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationService formulas)
+public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationService formulas, DatasetResolver resolver)
 {
+    /// <summary>A filtered dataset has no rows of its own to add, edit or delete — they're
+    /// whatever its base's rows resolve to.</summary>
+    private static void EnsureNotFiltered(Dataset dataset)
+    {
+        if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+            throw new DataValidationException("A filtered dataset's rows come from its base dataset and can't be edited directly.");
+    }
+
     public async Task<DatasetDataDto?> GetDataAsync(int id)
     {
-        var dataset = await db.Datasets
-            .Include(d => d.Columns)
-            .Include(d => d.Rows).ThenInclude(r => r.Cells)
-            .FirstOrDefaultAsync(d => d.Id == id);
-        return dataset?.ToDataDto();
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null) return null;
+        if (resolved.MandatoryFilter is null)
+        {
+            var dataset = await db.Datasets
+                .Include(d => d.Columns)
+                .Include(d => d.Rows).ThenInclude(r => r.Cells)
+                .FirstOrDefaultAsync(d => d.Id == resolved.Physical.Id);
+            return dataset?.ToDataDto();
+        }
+
+        var physical = resolved.Physical;
+        var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
+        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == physical.Id);
+        var rows = await FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue)
+            .Include(r => r.Cells)
+            .ToListAsync();
+
+        var data = Mapping.BuildDataDto(physical, rows);
+        data.Id = resolved.Id;
+        data.Name = resolved.Name;
+        return data;
     }
 
     /// <summary>
@@ -26,19 +53,24 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     /// </summary>
     public async Task<DatasetRowWindowDto?> GetRowWindowAsync(int id, int first, int count)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null) return null;
+        var physical = resolved.Physical;
 
-        var total = await db.DatasetRows.CountAsync(r => r.DatasetId == id);
-        var rows = await db.DatasetRows
-            .Where(r => r.DatasetId == id)
+        var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
+        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == physical.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
+
+        var total = await all.CountAsync();
+        var rows = await all
             .OrderBy(r => r.Id)
             .Skip(Math.Max(first, 0))
             .Take(Math.Clamp(count, 0, 500))
             .Include(r => r.Cells)
             .ToListAsync();
 
-        var columnRefById = dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+        var columnRefById = physical.Columns.ToDictionary(c => c.Id, c => c.RefId);
         return new DatasetRowWindowDto
         {
             Total = total,
@@ -48,8 +80,9 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
 
     public async Task<DatasetRowDto?> AddRowAsync(int id, Dictionary<Guid, string> values)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        var dataset = await db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         if (dataset is null) return null;
+        EnsureNotFiltered(dataset);
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
         ApplyValues(dataset, row, values);

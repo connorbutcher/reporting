@@ -31,8 +31,14 @@ app-dataset-toolbar {
   flex-shrink: 0;
 }
 
+// Normally a few compact fields, so it stays at its natural height — but a filtered dataset's
+// saved filter can grow tall, so it's capped and scrolls internally rather than pushing the
+// columns/rows panels below it out of the fixed-height editor.
 app-dataset-source-panel {
-  flex: none;
+  flex: 0 1 auto;
+  max-height: 45%;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 app-dataset-columns-panel {

@@ -42,6 +42,7 @@ public class DatasetFormulaRepository(ReportingDbContext db, FormulaCalculationS
         {
             return null;
         }
+        EnsureNotFiltered(dataset);
 
         var name = FormulaColumnValidator.ValidName(dataset, dto.Name, except: null);
         var (expression, type) = await _validator.CheckAsync(dataset, dto);
@@ -141,6 +142,13 @@ public class DatasetFormulaRepository(ReportingDbContext db, FormulaCalculationS
 
     private Task<Dataset?> LoadAsync(int id)
     {
-        return db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+        return db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
+    }
+
+    /// <summary>A filtered dataset has no columns of its own to add a formula to.</summary>
+    private static void EnsureNotFiltered(Dataset dataset)
+    {
+        if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+            throw new DataValidationException("A filtered dataset's columns come from its base dataset — add the formula there instead.");
     }
 }

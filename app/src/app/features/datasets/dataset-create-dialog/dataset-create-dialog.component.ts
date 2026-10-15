@@ -29,6 +29,7 @@ const SOURCE_ICONS: Record<DatasetSourceKey, string> = {
   assembly: 'pi pi-sitemap',
   disassembly: 'pi pi-wrench',
   specification: 'pi pi-file-edit',
+  filtered: 'pi pi-filter',
 };
 
 /** One-line explanation of what each source contributes, shown under the picker. */
@@ -36,6 +37,7 @@ const SOURCE_HINTS: Record<DatasetSourceKey, string> = {
   assembly: 'Build data — configured by type and the phases to include.',
   disassembly: 'Strip-down data — configured by type and the phases to include.',
   specification: 'Limits and reference values used for tolerance banding.',
+  filtered: 'A subset of another dataset — pick the base dataset and build the filter after it’s created.',
 };
 
 /**

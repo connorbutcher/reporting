@@ -124,7 +124,8 @@ public class ReportingDbContext : DbContext
         modelBuilder.Entity<DatasetSource>().HasData(
             new DatasetSource { Id = DatasetSourceIds.Assembly, Key = DatasetSourceKey.Assembly, Name = "Assembly" },
             new DatasetSource { Id = DatasetSourceIds.Disassembly, Key = DatasetSourceKey.Disassembly, Name = "Disassembly" },
-            new DatasetSource { Id = DatasetSourceIds.Specification, Key = DatasetSourceKey.Specification, Name = "Specification" });
+            new DatasetSource { Id = DatasetSourceIds.Specification, Key = DatasetSourceKey.Specification, Name = "Specification" },
+            new DatasetSource { Id = DatasetSourceIds.Filtered, Key = DatasetSourceKey.Filtered, Name = "Filtered" });
 
         // Every dataset draws from exactly one source; a source can't be deleted while datasets use it.
         modelBuilder.Entity<Dataset>()

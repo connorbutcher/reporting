@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -51,13 +52,13 @@ public class FeatureShowcaseSeedTests : IDisposable
     }
 
     [Fact]
-    public void Seeds_a_five_tab_report_whose_every_widget_config_is_valid_json()
+    public void Seeds_a_six_tab_report_whose_every_widget_config_is_valid_json()
     {
         DbSeeder.SeedFeatureShowcase(_db);
 
         var revision = LoadRevision();
         var tabs = revision.Tabs.OrderBy(t => t.Order).ToList();
-        Assert.Equal(5, tabs.Count);
+        Assert.Equal(6, tabs.Count);
 
         var widgets = tabs.SelectMany(t => t.Widgets).ToList();
 
@@ -148,7 +149,7 @@ public class FeatureShowcaseSeedTests : IDisposable
         Guid Ref(string name) => dataset.Columns.First(c => c.Name == name).RefId;
 
         // The combo's bar binding runs through the bar-chart query — the same path the client uses.
-        var result = await new BarChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)))
+        var result = await new BarChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db))
             .QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
             {
                 CategoryColumnId = Ref("Engine Type"),
@@ -178,7 +179,7 @@ public class FeatureShowcaseSeedTests : IDisposable
 
         // The control chart's own binding runs through the real Xbar-R query — the same path the
         // client uses — and should subgroup cleanly into the four seeded inspectors.
-        var result = await new XBarRChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)))
+        var result = await new XBarRChartQueryService(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db))
             .QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
             {
                 CategoryColumnId = Ref("Inspector"),
@@ -189,6 +190,40 @@ public class FeatureShowcaseSeedTests : IDisposable
         Assert.All(result.Subgroups, s => Assert.True(s.Count > 1));
         // Every build is bound to an inspector, so nothing should be lost into a missing group.
         Assert.Equal(result.MatchedRowCount, result.Subgroups.Sum(s => s.Count));
+    }
+
+    [Fact]
+    public async Task Filtered_dataset_returns_only_the_builds_that_needed_rework()
+    {
+        DbSeeder.SeedFeatureShowcase(_db);
+
+        var revision = LoadRevision();
+        var baseDataset = revision.Datasets.Single(d => d.Name == "Engine Build Log");
+        var filtered = revision.Datasets.Single(d => d.Name == "High-Rework Builds");
+        Assert.Equal(DatasetSourceIds.Filtered, filtered.DatasetSourceId);
+
+        var reworkColumn = baseDataset.Columns.Single(c => c.Name == "Rework Count");
+        var expectedCount = await _db.DatasetRows.CountAsync(r =>
+            r.DatasetId == baseDataset.Id
+            && r.Cells.Any(c => c.ColumnId == reworkColumn.Id && c.NumberValue > 0));
+        Assert.True(expectedCount > 0, "the seeded data should include at least one reworked build");
+
+        // Reads through the real repository path — resolver, filter translation and all — the same
+        // way the dataset editor and any widget bound to the filtered dataset would.
+        var repo = new DatasetRepository(
+            _db,
+            new Reporting.DAL.Formulas.FormulaCalculationService(_db, new Reporting.DAL.Formulas.Catalogue.FormulaFunctionCatalogueLoader(_db)),
+            new DatasetResolver(_db));
+
+        var schema = await repo.GetSchemaAsync(filtered.Id);
+        Assert.Equal(DatasetSourceKey.Filtered, schema!.Source);
+        // The filtered dataset owns no columns of its own — its schema is inherited from the base.
+        Assert.Equal(baseDataset.Columns.Count, schema.Columns.Count);
+
+        var result = await repo.QueryAsync(filtered.Id, null);
+        Assert.Equal(expectedCount, result!.TotalRowCount);
+        Assert.Equal(expectedCount, result.MatchedRowCount);
+        Assert.All(result.Rows, row => Assert.True(int.Parse(row.Values[reworkColumn.RefId]) > 0));
     }
 
     private ReportRevision LoadRevision() =>

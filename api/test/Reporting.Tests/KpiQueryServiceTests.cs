@@ -1,4 +1,5 @@
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -13,7 +14,7 @@ public class KpiQueryServiceTests : SqliteDbTestBase
 {
     public KpiQueryServiceTests() : base(foreignKeys: false) { }
 
-    private KpiQueryService Service() => new(Db, new ToleranceResolver(Db));
+    private KpiQueryService Service() => new(Db, new ToleranceResolver(Db), new DatasetResolver(Db));
 
     private static DatasetColumn Col(Guid refId, string name, DatasetColumnType type, int order) =>
         new() { RefId = refId, Name = name, Type = type, Order = order };

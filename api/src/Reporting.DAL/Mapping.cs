@@ -196,15 +196,19 @@ public static class Mapping
         Source = dataset.Source!.Key
     };
 
-    /// <summary>Assumes <see cref="Dataset.Source"/> and <see cref="Dataset.Columns"/> are loaded.</summary>
-    public static DatasetSchemaDto ToSchemaDto(this Dataset dataset) => new()
+    /// <summary>
+    /// Assumes <see cref="Dataset.Source"/> and <see cref="Dataset.Columns"/> are loaded.
+    /// <paramref name="columnsOverride"/> shows different columns than the dataset's own — for a
+    /// filtered dataset, whose schema is inherited from whatever it resolves to.
+    /// </summary>
+    public static DatasetSchemaDto ToSchemaDto(this Dataset dataset, IEnumerable<DatasetColumn>? columnsOverride = null) => new()
     {
         Id = dataset.Id,
         Name = dataset.Name,
         SourceId = dataset.DatasetSourceId,
         Source = dataset.Source!.Key,
         SourceConfig = dataset.GetSourceConfig(),
-        Columns = dataset.Columns.OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
+        Columns = (columnsOverride ?? dataset.Columns).OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
     };
 
     /// <summary>
@@ -233,6 +237,24 @@ public static class Mapping
 
     public static void SetSourceConfig(this Dataset dataset, DatasetSourceConfig config) =>
         dataset.SourceConfigJson = JsonSerializer.Serialize(config, typeof(DatasetSourceConfig), ConfigJsonOptions);
+
+    /// <summary>
+    /// Deserializes a dataset's source-config blob without needing <see cref="Dataset.Source"/>
+    /// loaded — for a revision copy, where the copy's columns/rows (and navigation properties) aren't
+    /// populated yet but its <see cref="Dataset.SourceConfigJson"/> and <see cref="Dataset.DatasetSourceId"/>
+    /// are already known to agree. Null for a blank or malformed blob.
+    /// </summary>
+    public static DatasetSourceConfig? TryGetSourceConfig(string sourceConfigJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<DatasetSourceConfig>(sourceConfigJson, ConfigJsonOptions);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            return null;
+        }
+    }
 
     public static DatasetColumnDto ToDto(this DatasetColumn column) => new()
     {

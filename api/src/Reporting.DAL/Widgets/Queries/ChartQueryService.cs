@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -10,7 +11,7 @@ namespace Reporting.DAL.Widgets;
 /// column's value, paired with resolved tolerance bounds and pre-formatted tooltip lines — the
 /// client only builds the ECharts option.
 /// </summary>
-public class ChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands)
+public class ChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands, DatasetResolver resolver)
 {
     /// <summary>
     /// Ceiling on points returned for one scatter/line query. Past this the payload and the
@@ -21,11 +22,12 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
 
     public async Task<ChartQueryResultDto?> QueryForChartAsync(int id, ChartQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
         // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
@@ -35,7 +37,8 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.XColumnId, dto.YColumnId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
         var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
 
@@ -113,8 +116,8 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
 
         return new ChartQueryResultDto
         {
-            Id = dataset.Id,
-            Name = dataset.Name,
+            Id = resolved.Id,
+            Name = resolved.Name,
             Series = groups.Select(group => new ChartSeriesDto
             {
                 Label = group.Key,

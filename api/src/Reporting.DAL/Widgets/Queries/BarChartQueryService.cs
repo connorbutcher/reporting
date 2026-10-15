@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -14,17 +15,18 @@ namespace Reporting.DAL.Widgets;
 /// only the aggregated rows (one per category/series) come back rather than every
 /// underlying row.
 /// </summary>
-public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands)
+public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands, DatasetResolver resolver)
 {
     public async Task<BarChartQueryResultDto?> QueryForBarChartAsync(int id, BarChartQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
-        var empty = new BarChartQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+        var empty = new BarChartQueryResultDto { Id = resolved.Id, Name = resolved.Name };
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
@@ -43,7 +45,8 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(
             dto.ToleranceBands, bounds, dto.CategoryColumnId, valueColumnIds.FirstOrDefault());
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
         var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
         empty.TotalRowCount = totalRowCount;
@@ -118,8 +121,8 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
 
         return new BarChartQueryResultDto
         {
-            Id = dataset.Id,
-            Name = dataset.Name,
+            Id = resolved.Id,
+            Name = resolved.Name,
             Categories = orderedCategories,
             Series = series,
             ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),

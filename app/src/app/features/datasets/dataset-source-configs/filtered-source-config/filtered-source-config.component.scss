@@ -1,0 +1,23 @@
+// Fields flow into the source panel's wrapping row.
+:host {
+  display: contents;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+
+// Forces the filter builder onto its own line below the base-dataset field, inside the
+// source panel's wrapping flex row.
+.filter-section {
+  flex-basis: 100%;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}

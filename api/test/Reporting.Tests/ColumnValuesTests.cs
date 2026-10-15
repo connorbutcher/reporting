@@ -40,7 +40,10 @@ public class ColumnValuesTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private DatasetRepository Repo() => new(_db, new Reporting.DAL.Formulas.FormulaCalculationService(_db, new Reporting.DAL.Formulas.Catalogue.FormulaFunctionCatalogueLoader(_db)));
+    private DatasetRepository Repo() => new(
+        _db,
+        new Reporting.DAL.Formulas.FormulaCalculationService(_db, new Reporting.DAL.Formulas.Catalogue.FormulaFunctionCatalogueLoader(_db)),
+        new DatasetResolver(_db));
 
     /// <summary>Seeds a "shift" column with the given per-row values and returns its RefId.</summary>
     private async Task<(int DatasetId, Guid ColumnRef)> SeedShiftAsync(params string?[] values)

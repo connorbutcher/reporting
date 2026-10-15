@@ -2,6 +2,7 @@ using System.Linq;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -43,7 +44,7 @@ public class ChartQueryTests : IDisposable
         _connection.Dispose();
     }
 
-    private ChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)));
+    private ChartQueryService Repo() => new(_db, new ChartToleranceBands(new ToleranceResolver(_db)), new DatasetResolver(_db));
 
     [Fact]
     public async Task QueryForChart_numeric_axes_returns_points_and_only_needed_tooltip_cell()

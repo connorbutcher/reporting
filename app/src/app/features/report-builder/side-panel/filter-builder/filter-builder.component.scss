@@ -18,4 +18,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  // Lets each condition row query how much width it actually has (narrow in the report builder's
+  // side panel, often much wider when the filter builder is embedded elsewhere) and lay out inline
+  // instead of stacking when there's room.
+  container-type: inline-size;
 }

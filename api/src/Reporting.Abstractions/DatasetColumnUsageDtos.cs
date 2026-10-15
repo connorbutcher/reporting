@@ -4,7 +4,10 @@ namespace Reporting.Abstractions;
 public enum ColumnUseKind
 {
     Widget,
-    ReportFilter
+    ReportFilter,
+
+    /// <summary>A filtered dataset built directly on top of this one, referencing the column in its saved filter.</summary>
+    FilteredDataset
 }
 
 /// <summary>One place in a report that refers to a column — the widget (or report filter) and how it uses it.</summary>

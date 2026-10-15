@@ -13,6 +13,7 @@ namespace Reporting.Abstractions;
 [JsonDerivedType(typeof(AssemblyDatasetSourceConfig), typeDiscriminator: "assembly")]
 [JsonDerivedType(typeof(DisassemblyDatasetSourceConfig), typeDiscriminator: "disassembly")]
 [JsonDerivedType(typeof(SpecificationDatasetSourceConfig), typeDiscriminator: "specification")]
+[JsonDerivedType(typeof(FilteredDatasetSourceConfig), typeDiscriminator: "filtered")]
 public abstract class DatasetSourceConfig
 {
     /// <summary>
@@ -54,4 +55,21 @@ public sealed class DisassemblyDatasetSourceConfig : PhasedDatasetSourceConfig
 public sealed class SpecificationDatasetSourceConfig : DatasetSourceConfig
 {
     [JsonIgnore] public override DatasetSourceKey SourceKey => DatasetSourceKey.Specification;
+}
+
+/// <summary>
+/// Configuration for a filtered dataset: the dataset (in the same revision) it draws rows from, and
+/// the filter every reader sees applied — AND-ed with whatever filter the reader supplies on top.
+/// Carries no columns or rows of its own; <see cref="BaseDatasetId"/> is resolved by
+/// <see cref="Reporting.DAL.Repositories.DatasetResolver"/>.
+/// </summary>
+public sealed class FilteredDatasetSourceConfig : DatasetSourceConfig
+{
+    [JsonIgnore] public override DatasetSourceKey SourceKey => DatasetSourceKey.Filtered;
+
+    /// <summary>The dataset this one filters. Zero until chosen.</summary>
+    public int BaseDatasetId { get; set; }
+
+    /// <summary>The saved filter, referencing the base dataset's column RefIds. Null (or empty) filters nothing.</summary>
+    public FilterGroupDto? Filter { get; set; }
 }

@@ -29,6 +29,7 @@
           <input
             pInputText
             [ngModel]="column.name"
+            [readOnly]="isFiltered()"
             (blur)="onRenameBlur(column, $event)"
             [attr.aria-label]="'Name of column ' + column.name"
           />
@@ -39,7 +40,7 @@
             optionLabel="label"
             optionValue="value"
             appendTo="body"
-            [disabled]="column.formula != null"
+            [disabled]="column.formula != null || isFiltered()"
             [ariaLabel]="'Type of column ' + column.name"
             (onChange)="retype(column, $event.value, typeSelect)"
           />
@@ -49,6 +50,7 @@
               severity="secondary"
               text
               size="small"
+              [disabled]="isFiltered()"
               [ariaLabel]="'Edit the formula of ' + column.name"
               (onClick)="openFormulaBuilder(column)"
             />
@@ -59,7 +61,7 @@
             text
             size="small"
             [ariaLabel]="'Move ' + column.name + ' up'"
-            [disabled]="i === 0"
+            [disabled]="i === 0 || isFiltered()"
             (onClick)="move(i, -1)"
           />
           <p-button
@@ -68,7 +70,7 @@
             text
             size="small"
             [ariaLabel]="'Move ' + column.name + ' down'"
-            [disabled]="i === columns().length - 1"
+            [disabled]="i === columns().length - 1 || isFiltered()"
             (onClick)="move(i, 1)"
           />
           <p-button
@@ -76,6 +78,7 @@
             severity="danger"
             text
             size="small"
+            [disabled]="isFiltered()"
             [ariaLabel]="'Delete column ' + column.name"
             (onClick)="remove(column)"
           />
@@ -136,40 +139,44 @@
   </ul>
 }
 
-<div class="new">
-  <input
-    pInputText
-    [formField]="addForm.name"
-    (keyup.enter)="add()"
-    placeholder="New column name"
-    aria-label="New column name"
-  />
-  <p-select
-    [options]="columnTypes"
-    [ngModel]="addForm.type().value()"
-    optionLabel="label"
-    optionValue="value"
-    appendTo="body"
-    ariaLabel="New column type"
-    (onChange)="addForm.type().value.set($event.value)"
-  />
+@if (isFiltered()) {
+  <p class="empty">Columns are inherited from the base dataset — edit them there.</p>
+} @else {
+  <div class="new">
+    <input
+      pInputText
+      [formField]="addForm.name"
+      (keyup.enter)="add()"
+      placeholder="New column name"
+      aria-label="New column name"
+    />
+    <p-select
+      [options]="columnTypes"
+      [ngModel]="addForm.type().value()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      ariaLabel="New column type"
+      (onChange)="addForm.type().value.set($event.value)"
+    />
+    <p-button
+      label="Add column"
+      icon="pi pi-plus"
+      severity="secondary"
+      outlined
+      [disabled]="!addForm().valid()"
+      (onClick)="add()"
+    />
+  </div>
   <p-button
-    label="Add column"
-    icon="pi pi-plus"
+    label="Add formula column"
+    icon="pi pi-calculator"
     severity="secondary"
-    outlined
-    [disabled]="!addForm().valid()"
-    (onClick)="add()"
+    text
+    size="small"
+    (onClick)="openFormulaBuilder(null)"
   />
-</div>
-<p-button
-  label="Add formula column"
-  icon="pi pi-calculator"
-  severity="secondary"
-  text
-  size="small"
-  (onClick)="openFormulaBuilder(null)"
-/>
+}
 
 @if (addNameError() ?? renameError(); as message) {
   <p class="error">{{ message }}</p>

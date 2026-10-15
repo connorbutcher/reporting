@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
+using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
@@ -12,7 +13,7 @@ namespace Reporting.DAL.Widgets;
 /// the tabular counterpart of the bar chart's aggregate. An optional grand-total row reduces
 /// every matched row. Dimension and measure values come back already formatted for display.
 /// </summary>
-public class PivotQueryService(ReportingDbContext db)
+public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
 {
     /// <summary>
     /// Ceiling on rows scanned for one pivot query. Every row must be pulled to be grouped and
@@ -26,18 +27,20 @@ public class PivotQueryService(ReportingDbContext db)
 
     public async Task<PivotQueryResultDto?> QueryForPivotAsync(int id, PivotQueryDto dto)
     {
-        var dataset = await db.Datasets.AsNoTracking().Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
+        var resolved = await resolver.ResolveAsync(id);
+        if (resolved is null)
         {
             return null;
         }
+        var dataset = resolved.Physical;
 
-        var result = new PivotQueryResultDto { Id = dataset.Id, Name = dataset.Name };
+        var result = new PivotQueryResultDto { Id = resolved.Id, Name = resolved.Name };
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
+        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
+        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
         var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var all = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
         var matching = predicate is null ? all : all.Where(predicate);
 
         result.TotalRowCount = await all.CountAsync();

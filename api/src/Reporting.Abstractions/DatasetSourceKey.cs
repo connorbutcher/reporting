@@ -9,5 +9,8 @@ public enum DatasetSourceKey
 {
     Assembly,
     Disassembly,
-    Specification
+    Specification,
+
+    /// <summary>Wraps another dataset in the same revision plus a saved filter — no data of its own.</summary>
+    Filtered
 }

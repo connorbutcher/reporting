@@ -65,6 +65,8 @@ export class DatasetColumnsPanelComponent {
   protected readonly columns = this.store.columns;
   protected readonly loading = this.store.schemaLoading;
   protected readonly columnTypes = COLUMN_TYPES;
+  /** A filtered dataset's columns are inherited from its base — no add/rename/retype/reorder/delete. */
+  protected readonly isFiltered = this.store.isFiltered;
 
   // The add-a-column row is a signal form: a required, unique name plus a type.
   // The duplicate check runs as a live validator (reading the current columns),

@@ -1,4 +1,5 @@
 using Reporting.Abstractions;
+using Reporting.DAL.Repositories;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
 
@@ -21,7 +22,7 @@ public class ToleranceMatchTests : SqliteDbTestBase
 
     public ToleranceMatchTests() : base(foreignKeys: false) { }
 
-    private TableQueryService Repo() => new(Db, new ToleranceResolver(Db));
+    private TableQueryService Repo() => new(Db, new ToleranceResolver(Db), new DatasetResolver(Db));
 
     private static DatasetColumn Col(Guid refId, string name, DatasetColumnType type, int order) =>
         new() { RefId = refId, Name = name, Type = type, Order = order };
