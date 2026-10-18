@@ -58,7 +58,10 @@ export class BarOption {
       ...ToleranceMarks.lines(bands, valueAxisKey),
       ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
     ];
-    const areas = ToleranceMarks.areas(bands, valueAxisKey);
+    const areas = [
+      ...ToleranceMarks.areas(bands, valueAxisKey),
+      ...GuideLineMarks.areas(config.guideLines ?? [], valueAxisKey),
+    ];
     const outlineColor = ToleranceOutline.forValue(bands);
 
     // Categories sit on the X axis for vertical bars, the Y axis for horizontal ones; the value

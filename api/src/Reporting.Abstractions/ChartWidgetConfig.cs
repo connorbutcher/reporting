@@ -142,6 +142,9 @@ public class ChartGuideLine
     /// <summary>The line's fixed position on the axis.</summary>
     public double Value { get; set; }
 
+    /// <summary>The region's other edge; null keeps this a single line rather than a shaded range.</summary>
+    public double? ValueTo { get; set; }
+
     /// <summary>The caption drawn on the line; blank falls back to the formatted value.</summary>
     public string Label { get; set; } = string.Empty;
 
@@ -150,6 +153,9 @@ public class ChartGuideLine
 
     /// <summary>Line dash (solid/dashed/dotted); null draws dashed.</summary>
     public string? DashStyle { get; set; }
+
+    /// <summary>Shades the zone between <see cref="Value"/> and <see cref="ValueTo"/>. Ignored when <see cref="ValueTo"/> is null.</summary>
+    public bool Fill { get; set; }
 }
 
 /// <summary>One extra field shown in a point's tooltip, beyond the X/Y values.</summary>

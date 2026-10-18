@@ -43,6 +43,38 @@
           (ngModelChange)="setValue($event)"
         />
       </label>
+
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="guide-line-range"
+          [ngModel]="line.valueTo !== null && line.valueTo !== undefined"
+          (onChange)="setRange($event.checked)"
+        />
+        <label for="guide-line-range">Range</label>
+      </div>
+      @if (line.valueTo !== null && line.valueTo !== undefined) {
+        <label class="panel-field">
+          <span class="panel-field-label">To value</span>
+          <p-inputnumber
+            [ngModel]="line.valueTo"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="6"
+            fluid
+            (ngModelChange)="setValueTo($event)"
+          />
+        </label>
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            inputId="guide-line-fill"
+            [ngModel]="line.fill ?? false"
+            (onChange)="setFill($event.checked)"
+          />
+          <label for="guide-line-fill">Shade region</label>
+        </div>
+      }
+
       <label class="panel-field">
         <span class="panel-field-label">Label</span>
         <input

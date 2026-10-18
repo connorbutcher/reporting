@@ -149,7 +149,10 @@ export class ComboOption {
         ...ToleranceMarks.lines(axisBands, () => 'yAxis'),
         ...GuideLineMarks.lines(axisLines, () => 'yAxis'),
       ];
-      const areas = ToleranceMarks.areas(axisBands, () => 'yAxis');
+      const areas = [
+        ...ToleranceMarks.areas(axisBands, () => 'yAxis'),
+        ...GuideLineMarks.areas(axisLines, () => 'yAxis'),
+      ];
       if (marks.length === 0 && areas.length === 0) continue;
       marksBySeries.set(indices[0], { marks, areas });
     }

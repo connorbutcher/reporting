@@ -108,6 +108,25 @@ export class PanelChartGuideLineComponent {
     if (lineId) this.chart()?.updateGuideLine(lineId, { value: value ?? 0 });
   }
 
+  /** Toggles this line between a single value and a region — seeding `valueTo` with the
+   * current value so a freshly-turned-on range starts zero-width and visibly expandable. */
+  public setRange(isRange: boolean): void {
+    const lineId = this.lineId();
+    const line = this.line();
+    if (!lineId || !line) return;
+    this.chart()?.updateGuideLine(lineId, { valueTo: isRange ? line.value : null });
+  }
+
+  public setValueTo(valueTo: number | null): void {
+    const lineId = this.lineId();
+    if (lineId) this.chart()?.updateGuideLine(lineId, { valueTo: valueTo ?? 0 });
+  }
+
+  public setFill(fill: boolean): void {
+    const lineId = this.lineId();
+    if (lineId) this.chart()?.updateGuideLine(lineId, { fill });
+  }
+
   public setLabel(label: string): void {
     const lineId = this.lineId();
     if (lineId) this.chart()?.updateGuideLine(lineId, { label });

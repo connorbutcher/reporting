@@ -150,12 +150,16 @@ export interface ChartGuideLine {
   yAxisId?: string | null;
   /** The line's fixed position on the axis. */
   value: number;
+  /** The region's other edge; null keeps this a single line rather than a shaded range. */
+  valueTo?: number | null;
   /** The caption drawn on the line; blank falls back to the formatted value. */
   label: string;
   /** Overrides the default guide colour; null uses the default. */
   color?: string | null;
   /** Line dash; null draws dashed. */
   dashStyle?: LineDashStyle | null;
+  /** Shades the zone between `value` and `valueTo`. Ignored when `valueTo` is null. */
+  fill?: boolean;
 }
 
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */

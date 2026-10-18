@@ -62,7 +62,10 @@ export class BoxOption {
       ...ToleranceMarks.lines(bands, valueAxisKey),
       ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
     ];
-    const areas = ToleranceMarks.areas(bands, valueAxisKey);
+    const areas = [
+      ...ToleranceMarks.areas(bands, valueAxisKey),
+      ...GuideLineMarks.areas(config.guideLines ?? [], valueAxisKey),
+    ];
     // Boxes whose whiskers breach an outlined spec band are bordered in the crossed limit's colour.
     const outline = ToleranceOutline.forExtent(bands);
 

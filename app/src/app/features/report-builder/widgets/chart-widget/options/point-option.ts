@@ -180,10 +180,15 @@ export class PointOption {
       line.axis === 'x' ? 0 : chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
     const hangGuideLines = (seriesIdx: number, axisLines: ChartGuideLine[]): void => {
       const marks = GuideLineMarks.lines(axisLines, axisKeyFor);
-      if (marks.length === 0) return;
+      const areas = GuideLineMarks.areas(axisLines, axisKeyFor);
+      if (marks.length === 0 && areas.length === 0) return;
       const existing = marksBySeries.get(seriesIdx);
-      if (existing) existing.marks.push(...marks);
-      else marksBySeries.set(seriesIdx, { marks, areas: [] });
+      if (existing) {
+        existing.marks.push(...marks);
+        existing.areas.push(...areas);
+      } else {
+        marksBySeries.set(seriesIdx, { marks, areas });
+      }
     };
     for (const [k, indices] of indicesByAxis) {
       hangGuideLines(indices[0], guideLines.filter((l) => l.axis === 'y' && guideLineAxisIndex(l) === k));

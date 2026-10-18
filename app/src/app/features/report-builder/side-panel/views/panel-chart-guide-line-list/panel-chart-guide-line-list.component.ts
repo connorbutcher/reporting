@@ -26,7 +26,9 @@ export class PanelChartGuideLineListComponent {
 
   public lineSummary(line: ChartGuideLine): string {
     const label = line.label.trim();
-    return label || String(line.value);
+    const range = line.valueTo !== null && line.valueTo !== undefined;
+    const position = range ? `${line.value}–${line.valueTo}` : String(line.value);
+    return label ? `${label} (${position})` : position;
   }
 
   public navigate(view: PanelView): void {

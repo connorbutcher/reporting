@@ -106,7 +106,10 @@ export class XBarROption {
       ...ToleranceMarks.lines(bands, () => 'yAxis'),
       ...GuideLineMarks.lines(config.guideLines ?? [], () => 'yAxis'),
     ];
-    const specAreas = ToleranceMarks.areas(bands, () => 'yAxis');
+    const specAreas = [
+      ...ToleranceMarks.areas(bands, () => 'yAxis'),
+      ...GuideLineMarks.areas(config.guideLines ?? [], () => 'yAxis'),
+    ];
 
     const meanTooltip: SubgroupTooltipContext = {
       kind: 'mean',

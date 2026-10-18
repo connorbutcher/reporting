@@ -59,7 +59,10 @@ export class HistogramOption {
       ...ToleranceMarks.lines(bands, () => binAxisKey),
       ...GuideLineMarks.lines(guideLines, () => binAxisKey),
     ];
-    const areas = ToleranceMarks.areas(bands, () => binAxisKey);
+    const areas = [
+      ...ToleranceMarks.areas(bands, () => binAxisKey),
+      ...GuideLineMarks.areas(guideLines, () => binAxisKey),
+    ];
 
     const binRotate = ChartScale.labelRotate(config.xAxisRotate, !horizontal && bins.length > 6 ? 30 : 0);
     const binScale = ChartScale.categoryAxis(binLabels, config.xAxisInterval);
@@ -207,7 +210,11 @@ export class HistogramOption {
 
     return lines
       .filter((line) => line.axis === 'x')
-      .map((line) => ({ ...line, value: toIndex(line.value) }));
+      .map((line) => ({
+        ...line,
+        value: toIndex(line.value),
+        valueTo: line.valueTo === null || line.valueTo === undefined ? line.valueTo : toIndex(line.valueTo),
+      }));
   }
 
   /** The longest formatted count label, in characters, to size a non-overlapping count-axis gap. */

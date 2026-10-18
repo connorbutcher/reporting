@@ -1,5 +1,5 @@
 import { ChartGuideLine } from '../../../../../core/models/report';
-import { MarkLineData } from './chart-option.types';
+import { MarkAreaData, MarkLineData } from './chart-option.types';
 
 /** Which axis a line's marks bind to — chosen by the caller (a bar's value axis flips with orientation). */
 type AxisKeyFor = (line: Pick<ChartGuideLine, 'axis'>) => 'xAxis' | 'yAxis';
@@ -9,10 +9,16 @@ type AxisKey = 'xAxis' | 'yAxis';
 // A neutral tone, deliberately distinct from tolerance's red/amber so the two kinds of line
 // read as different things at a glance.
 const DEFAULT_COLOR = '#4f46e5';
+// Translucent, in the same indigo family as the default line colour, so a shaded guide
+// region reads as "the same kind of thing" as a plain guide line rather than a spec band.
+const DEFAULT_FILL = 'rgba(79, 70, 229, 0.10)';
 
-/** Reference lines drawn from fixed values and their captions — the simpler alternative to a tolerance band. */
+/** Reference lines (and optional shaded regions) drawn from fixed values and their captions — the simpler alternative to a tolerance band. */
 export class GuideLineMarks {
-  /** One dashed line entry per guide line, captioned with its label (or the formatted value if blank). */
+  /**
+   * One dashed line entry per guide line edge — one for a single value, two (start and end,
+   * both captioned) when `valueTo` turns it into a region.
+   */
   public static lines(lines: readonly ChartGuideLine[], axisKeyFor: AxisKeyFor): MarkLineData {
     const entries: MarkLineData = [];
 
@@ -21,14 +27,34 @@ export class GuideLineMarks {
       const color = line.color ?? DEFAULT_COLOR;
       const label = line.label.trim() || GuideLineMarks.formatValue(line.value);
 
-      entries.push({
-        ...GuideLineMarks.onAxis(axisKey, line.value),
+      const mark = (value: number): MarkLineData[number] => ({
+        ...GuideLineMarks.onAxis(axisKey, value),
         label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
         lineStyle: { color, type: line.dashStyle ?? 'dashed', width: 1.5 },
       });
+
+      entries.push(mark(line.value));
+      if (line.valueTo !== null && line.valueTo !== undefined) entries.push(mark(line.valueTo));
     }
 
     return entries;
+  }
+
+  /** Shaded regions for every guide line that has a `valueTo` and `fill` on. */
+  public static areas(lines: readonly ChartGuideLine[], axisKeyFor: AxisKeyFor): MarkAreaData {
+    const areas: MarkAreaData = [];
+
+    for (const line of lines) {
+      if (!line.fill || line.valueTo === null || line.valueTo === undefined) continue;
+
+      const axisKey = axisKeyFor(line);
+      areas.push([
+        { ...GuideLineMarks.onAxis(axisKey, line.value), itemStyle: { color: DEFAULT_FILL } },
+        GuideLineMarks.onAxis(axisKey, line.valueTo),
+      ]);
+    }
+
+    return areas;
   }
 
   /** Pins a value to the chosen axis as a typed `{ xAxis }` or `{ yAxis }` fragment. */
