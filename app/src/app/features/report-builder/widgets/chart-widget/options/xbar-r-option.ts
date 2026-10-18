@@ -5,6 +5,7 @@ import { ECOption, LineSeriesOption, TooltipCallbackParams } from './chart-optio
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
+import { GuideLineMarks } from './guide-line-marks';
 import { ToleranceMarks } from './tolerance-marks';
 
 // In-control points/line stay blue; a point breaching its own control limits turns red — the same
@@ -101,7 +102,10 @@ export class XBarROption {
     // Spec limits (a tolerance band), when set, overlay the X-bar chart only — a control chart's R
     // side has no spec of its own to compare against.
     const bands = data?.toleranceBands ?? [];
-    const specMarks = ToleranceMarks.lines(bands, () => 'yAxis');
+    const specMarks = [
+      ...ToleranceMarks.lines(bands, () => 'yAxis'),
+      ...GuideLineMarks.lines(config.guideLines ?? [], () => 'yAxis'),
+    ];
     const specAreas = ToleranceMarks.areas(bands, () => 'yAxis');
 
     const meanTooltip: SubgroupTooltipContext = {

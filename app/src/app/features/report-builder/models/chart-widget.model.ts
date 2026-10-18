@@ -2,6 +2,7 @@ import { Signal, WritableSignal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   AxisLabelRotation,
+  ChartGuideLine,
   ChartSeriesBinding,
   ChartToleranceBand,
   ChartTooltipColumn,
@@ -56,6 +57,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   /** Reference lines per spec, each resolved against its own limits dataset. */
   public readonly toleranceBands = signal<readonly ChartToleranceBand[]>([]);
+  /** Dashed, labelled lines at fixed values — the simpler alternative to a tolerance band. */
+  public readonly guideLines = signal<readonly ChartGuideLine[]>([]);
   /** Extra fields shown in a point's tooltip, beyond X/Y. */
   public readonly tooltipColumns = signal<readonly ChartTooltipColumn[]>([]);
 
@@ -88,6 +91,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.showLegend.set(config.showLegend);
     this.pointSize.set(config.pointSize);
     this.toleranceBands.set(config.toleranceBands ?? []);
+    this.guideLines.set(config.guideLines ?? []);
     this.tooltipColumns.set(config.tooltipColumns ?? []);
 
     // A saved chart carries its bindings; a fresh one seeds a single empty binding to bind.
@@ -149,6 +153,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.toleranceBands.update((bands) =>
       bands.map((b) => (b.yAxisId === id ? { ...b, yAxisId: null } : b)),
     );
+    this.guideLines.update((lines) =>
+      lines.map((l) => (l.yAxisId === id ? { ...l, yAxisId: null } : l)),
+    );
   }
 
   public updateYAxis(id: string, patch: Partial<Omit<ChartValueAxis, 'id'>>): void {
@@ -191,6 +198,31 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   public toleranceBand(id: string): ChartToleranceBand | null {
     return this.toleranceBands().find((b) => b.id === id) ?? null;
+  }
+
+  // --- guide lines -----------------------------------------------------
+
+  public addGuideLine(): string {
+    const line: ChartGuideLine = {
+      id: crypto.randomUUID(),
+      axis: 'y',
+      value: 0,
+      label: '',
+    };
+    this.guideLines.update((lines) => [...lines, line]);
+    return line.id;
+  }
+
+  public removeGuideLine(id: string): void {
+    this.guideLines.update((lines) => lines.filter((l) => l.id !== id));
+  }
+
+  public updateGuideLine(id: string, patch: Partial<Omit<ChartGuideLine, 'id'>>): void {
+    this.guideLines.update((lines) => lines.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }
+
+  public guideLine(id: string): ChartGuideLine | null {
+    return this.guideLines().find((l) => l.id === id) ?? null;
   }
 
   // --- tooltip columns -----------------------------------------------------
@@ -259,6 +291,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
       toleranceBands: this.toleranceBands()
         .filter((b) => b.sourceDatasetId && b.sourceRowId && b.minColumnId && b.maxColumnId)
         .map((b) => ({ ...b })),
+      guideLines: this.guideLines().map((l) => ({ ...l })),
       tooltipColumns: this.tooltipColumns().map((c) => ({ ...c })),
     };
   }

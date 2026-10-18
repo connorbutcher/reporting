@@ -13,6 +13,7 @@ export type PanelView =
   | { kind: 'chartAxis'; widgetId: string; axis: 'x' }
   | { kind: 'chartAxis'; widgetId: string; axis: 'y'; axisId: string }
   | { kind: 'chartToleranceBand'; widgetId: string; bandId: string }
+  | { kind: 'chartGuideLine'; widgetId: string; lineId: string }
   | { kind: 'tableAppearance'; widgetId: string }
   | { kind: 'textStyle'; widgetId: string }
   | { kind: 'widgetFilters'; widgetId: string; bindingId?: string }

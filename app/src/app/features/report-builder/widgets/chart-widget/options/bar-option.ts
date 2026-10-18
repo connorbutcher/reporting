@@ -5,6 +5,7 @@ import { BarSeriesOption, ECOption, LabelCallbackParams } from './chart-option.t
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
+import { GuideLineMarks } from './guide-line-marks';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -53,7 +54,10 @@ export class BarOption {
     // fills land on the measure regardless of orientation.
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis');
     const bands = data?.toleranceBands ?? [];
-    const marks = ToleranceMarks.lines(bands, valueAxisKey);
+    const marks = [
+      ...ToleranceMarks.lines(bands, valueAxisKey),
+      ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
+    ];
     const areas = ToleranceMarks.areas(bands, valueAxisKey);
     const outlineColor = ToleranceOutline.forValue(bands);
 

@@ -1,5 +1,6 @@
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import {
+  ChartGuideLine,
   HistogramNormalize,
   HistogramWidgetConfig,
   readChartAxes,
@@ -10,6 +11,7 @@ import { BarSeriesOption, ECOption, LabelCallbackParams, LineSeriesOption } from
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
+import { GuideLineMarks } from './guide-line-marks';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 
@@ -52,7 +54,11 @@ export class HistogramOption {
     const countOrientation = horizontal ? 'x' : 'y';
 
     const bands = HistogramOption.bandsOnBinAxis(data?.toleranceBands ?? [], bins);
-    const marks = ToleranceMarks.lines(bands, () => binAxisKey);
+    const guideLines = HistogramOption.linesOnBinAxis(config.guideLines ?? [], bins);
+    const marks = [
+      ...ToleranceMarks.lines(bands, () => binAxisKey),
+      ...GuideLineMarks.lines(guideLines, () => binAxisKey),
+    ];
     const areas = ToleranceMarks.areas(bands, () => binAxisKey);
 
     const binRotate = ChartScale.labelRotate(config.xAxisRotate, !horizontal && bins.length > 6 ? 30 : 0);
@@ -181,6 +187,27 @@ export class HistogramOption {
         concessionLower: at(band.concessionLower),
         concessionUpper: at(band.concessionUpper),
       }));
+  }
+
+  /**
+   * The {@link bandsOnBinAxis} remap, for guide lines: only lines on the binned variable (the X
+   * axis) have a position across the bins, so — like a spec band — a line on the count axis is
+   * dropped rather than drawn in the wrong place.
+   */
+  private static linesOnBinAxis(
+    lines: readonly ChartGuideLine[],
+    bins: HistogramQueryResult['bins'],
+  ): ChartGuideLine[] {
+    if (bins.length === 0) return [];
+    const firstLower = bins[0].lower;
+    const binWidth = bins[0].upper - bins[0].lower;
+    if (!(binWidth > 0)) return [];
+
+    const toIndex = (v: number): number => (v - firstLower) / binWidth - 0.5;
+
+    return lines
+      .filter((line) => line.axis === 'x')
+      .map((line) => ({ ...line, value: toIndex(line.value) }));
   }
 
   /** The longest formatted count label, in characters, to size a non-overlapping count-axis gap. */

@@ -10,6 +10,7 @@ import {
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
+import { GuideLineMarks } from './guide-line-marks';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -57,7 +58,10 @@ export class BoxOption {
     // fills land on the measure regardless of orientation.
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis') as 'xAxis' | 'yAxis';
     const bands = data?.toleranceBands ?? [];
-    const marks = ToleranceMarks.lines(bands, valueAxisKey);
+    const marks = [
+      ...ToleranceMarks.lines(bands, valueAxisKey),
+      ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
+    ];
     const areas = ToleranceMarks.areas(bands, valueAxisKey);
     // Boxes whose whiskers breach an outlined spec band are bordered in the crossed limit's colour.
     const outline = ToleranceOutline.forExtent(bands);

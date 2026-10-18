@@ -1,0 +1,29 @@
+<app-panel-group label="Guide lines" icon="◐" [open]="false">
+  <p class="panel-hint">Dashed lines at a fixed value, captioned with a label.</p>
+  @if (chart().guideLines().length === 0) {
+    <p class="panel-empty">No guide lines yet.</p>
+  } @else {
+    @for (line of chart().guideLines(); track line.id) {
+      <button
+        type="button"
+        class="panel-menu-item"
+        (click)="navigate({ kind: 'chartGuideLine', widgetId: chart().id, lineId: line.id })"
+      >
+        <i class="pi pi-minus" aria-hidden="true"></i>
+        <span class="panel-menu-text">
+          <span class="panel-menu-label">{{ line.axis === 'x' ? 'X axis' : 'Y axis' }}</span>
+          <span class="panel-menu-hint">{{ lineSummary(line) }}</span>
+        </span>
+        <i class="pi pi-angle-right" aria-hidden="true"></i>
+      </button>
+    }
+  }
+  <p-button
+    label="Add line"
+    icon="pi pi-plus"
+    severity="secondary"
+    outlined
+    fluid
+    (onClick)="addGuideLine()"
+  />
+</app-panel-group>

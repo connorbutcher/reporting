@@ -1,6 +1,7 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import {
   Aggregate,
+  ChartGuideLine,
   ChartSymbol,
   ComboChartWidgetConfig,
   LineDashStyle,
@@ -21,6 +22,7 @@ import {
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
+import { GuideLineMarks } from './guide-line-marks';
 import { AXIS_OFFSET } from './point-types';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
@@ -134,14 +136,22 @@ export class ComboOption {
     const bandYAxisId = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
     const bandAxisIndex = (band: ResolvedToleranceBand): number =>
       chartAxisIndex(axes, bandYAxisId.get(band.id) ?? null);
+    const guideLines = (config.guideLines ?? []).filter((l) => l.axis === 'y');
+    const guideLineYAxisId = new Map(guideLines.map((l) => [l.id, l.yAxisId ?? null]));
+    const guideLineAxisIndex = (line: ChartGuideLine): number =>
+      chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
+
     const marksBySeries = new Map<number, { marks: MarkLineData; areas: MarkAreaData }>();
     for (const [k, indices] of indicesByAxis) {
       const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
-      if (axisBands.length === 0) continue;
-      marksBySeries.set(indices[0], {
-        marks: ToleranceMarks.lines(axisBands, () => 'yAxis'),
-        areas: ToleranceMarks.areas(axisBands, () => 'yAxis'),
-      });
+      const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
+      const marks = [
+        ...ToleranceMarks.lines(axisBands, () => 'yAxis'),
+        ...GuideLineMarks.lines(axisLines, () => 'yAxis'),
+      ];
+      const areas = ToleranceMarks.areas(axisBands, () => 'yAxis');
+      if (marks.length === 0 && areas.length === 0) continue;
+      marksBySeries.set(indices[0], { marks, areas });
     }
     // One out-of-tolerance test per axis, shared by every series on it, for the outlined-point option.
     const outlineByAxis = new Map<number, (v: number) => string | null>();

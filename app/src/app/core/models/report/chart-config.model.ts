@@ -134,6 +134,30 @@ export interface ChartToleranceBand {
   outlinePoints?: boolean;
 }
 
+/**
+ * A single dashed line drawn at a fixed value on an axis, captioned with a short label —
+ * the lightweight alternative to a {@link ChartToleranceBand} for marking a target, a cap,
+ * or any other fixed point that doesn't need resolving against a separate dataset row.
+ */
+export interface ChartGuideLine {
+  /** Client-generated, only for addressing this line in the editor — not meaningful server-side. */
+  id: string;
+  axis: ChartAxis;
+  /**
+   * Which value axis a `y` line draws against, by {@link ChartValueAxis.id}; null — or an id
+   * no longer among the chart's axes — falls back to the primary. Ignored for an `x` line.
+   */
+  yAxisId?: string | null;
+  /** The line's fixed position on the axis. */
+  value: number;
+  /** The caption drawn on the line; blank falls back to the formatted value. */
+  label: string;
+  /** Overrides the default guide colour; null uses the default. */
+  color?: string | null;
+  /** Line dash; null draws dashed. */
+  dashStyle?: LineDashStyle | null;
+}
+
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */
 export interface ChartTooltipColumn {
   columnId: string;
@@ -262,6 +286,8 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
 
   /** Dashed reference lines for one or more specs plotted against an axis. */
   toleranceBands: ChartToleranceBand[];
+  /** Dashed, labelled lines at fixed values — the simpler alternative to a tolerance band. */
+  guideLines: ChartGuideLine[];
   /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
   tooltipColumns: ChartTooltipColumn[];
 }
@@ -416,6 +442,7 @@ const DEFAULT_CHART_CONFIG_BASE: Omit<ChartWidgetConfigBase, 'type' | 'title'> =
   showLegend: true,
   pointSize: 8,
   toleranceBands: [],
+  guideLines: [],
   tooltipColumns: [],
 };
 

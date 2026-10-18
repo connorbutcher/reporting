@@ -1,5 +1,5 @@
 import { DatasetColumn } from '../../../../../core/models/dataset';
-import { chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
+import { ChartGuideLine, chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
 import { ChartQueryResult, ChartSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
 import { ECOption, LabelCallbackParams, MarkAreaData, MarkLineData, TooltipCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
@@ -17,6 +17,7 @@ import {
   SeriesStyle,
   SizeScale,
 } from './point-types';
+import { GuideLineMarks } from './guide-line-marks';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -170,6 +171,25 @@ export class PointOption {
     }
     if (series.length > 0) {
       hangBands(0, bands.filter((b) => b.axis === 'x'));
+    }
+
+    // Guide lines hang on a series the same way tolerance bands do.
+    const guideLines = config.guideLines ?? [];
+    const guideLineYAxisId = new Map(guideLines.map((l) => [l.id, l.yAxisId ?? null]));
+    const guideLineAxisIndex = (line: ChartGuideLine): number =>
+      line.axis === 'x' ? 0 : chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
+    const hangGuideLines = (seriesIdx: number, axisLines: ChartGuideLine[]): void => {
+      const marks = GuideLineMarks.lines(axisLines, axisKeyFor);
+      if (marks.length === 0) return;
+      const existing = marksBySeries.get(seriesIdx);
+      if (existing) existing.marks.push(...marks);
+      else marksBySeries.set(seriesIdx, { marks, areas: [] });
+    };
+    for (const [k, indices] of indicesByAxis) {
+      hangGuideLines(indices[0], guideLines.filter((l) => l.axis === 'y' && guideLineAxisIndex(l) === k));
+    }
+    if (series.length > 0) {
+      hangGuideLines(0, guideLines.filter((l) => l.axis === 'x'));
     }
 
     // One out-of-tolerance test per Y axis, memoised and shared by every series on that axis.

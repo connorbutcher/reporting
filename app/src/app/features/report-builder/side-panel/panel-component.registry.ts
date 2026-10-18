@@ -3,6 +3,7 @@ import { PanelView } from './panel-view';
 import { PanelAddColumnComponent } from './views/panel-add-column/panel-add-column.component';
 import { PanelAddWidgetComponent } from './views/panel-add-widget/panel-add-widget.component';
 import { PanelChartAxisComponent } from './views/panel-chart-axis/panel-chart-axis.component';
+import { PanelChartGuideLineComponent } from './views/panel-chart-guide-line/panel-chart-guide-line.component';
 import { PanelChartSeriesComponent } from './views/panel-chart-series/panel-chart-series.component';
 import { PanelChartToleranceBandComponent } from './views/panel-chart-tolerance-band/panel-chart-tolerance-band.component';
 import { PanelColumnListComponent } from './views/panel-column-list/panel-column-list.component';
@@ -95,6 +96,10 @@ export const PANEL_VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K
   },
   chartToleranceBand: {
     component: PanelChartToleranceBandComponent,
+    parent: (view) => ({ kind: 'widget', widgetId: view.widgetId }),
+  },
+  chartGuideLine: {
+    component: PanelChartGuideLineComponent,
     parent: (view) => ({ kind: 'widget', widgetId: view.widgetId }),
   },
   addColumn: {

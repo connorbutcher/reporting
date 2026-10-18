@@ -121,6 +121,37 @@ public class ChartToleranceBand
     public bool OutlinePoints { get; set; }
 }
 
+/// <summary>
+/// A single dashed line drawn at a fixed value on an axis, captioned with a short label —
+/// the lightweight alternative to <see cref="ChartToleranceBand"/> for marking a target, a
+/// cap, or any other fixed point that doesn't need resolving against a separate dataset row.
+/// </summary>
+public class ChartGuideLine
+{
+    /// <summary>Client-generated, only for addressing this line in the editor — not meaningful server-side.</summary>
+    public string Id { get; set; } = string.Empty;
+
+    public ChartAxis Axis { get; set; } = ChartAxis.Y;
+
+    /// <summary>
+    /// Which value axis a <see cref="ChartAxis.Y"/> line draws against, by <see cref="ChartValueAxis.Id"/>;
+    /// null falls back to the primary. Ignored for an X line. Client-side render concern; persisted only.
+    /// </summary>
+    public string? YAxisId { get; set; }
+
+    /// <summary>The line's fixed position on the axis.</summary>
+    public double Value { get; set; }
+
+    /// <summary>The caption drawn on the line; blank falls back to the formatted value.</summary>
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>Overrides the default guide colour; null uses the default.</summary>
+    public string? Color { get; set; }
+
+    /// <summary>Line dash (solid/dashed/dotted); null draws dashed.</summary>
+    public string? DashStyle { get; set; }
+}
+
 /// <summary>One extra field shown in a point's tooltip, beyond the X/Y values.</summary>
 public class ChartTooltipColumn
 {
@@ -254,6 +285,9 @@ public abstract class ChartWidgetConfig : WidgetConfig
 
     /// <summary>Dashed reference lines for one or more specs plotted against an axis.</summary>
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
+
+    /// <summary>Dashed, labelled lines at fixed values — the simpler alternative to a tolerance band.</summary>
+    public List<ChartGuideLine> GuideLines { get; set; } = new();
 
     /// <summary>Extra fields shown in a point's tooltip, in order, beyond the X/Y values.</summary>
     public List<ChartTooltipColumn> TooltipColumns { get; set; } = new();

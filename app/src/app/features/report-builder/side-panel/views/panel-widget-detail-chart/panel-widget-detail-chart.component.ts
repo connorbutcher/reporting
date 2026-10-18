@@ -8,6 +8,7 @@ import {
 } from '../../../models/widget.model';
 import { PanelChartAppearanceComponent } from '../panel-chart-appearance/panel-chart-appearance.component';
 import { PanelChartAxisListComponent } from '../panel-chart-axis-list/panel-chart-axis-list.component';
+import { PanelChartGuideLineListComponent } from '../panel-chart-guide-line-list/panel-chart-guide-line-list.component';
 import { PanelChartSourceComponent } from '../panel-chart-source/panel-chart-source.component';
 import { PanelChartToleranceListComponent } from '../panel-chart-tolerance-list/panel-chart-tolerance-list.component';
 import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-columns/panel-chart-tooltip-columns.component';
@@ -25,6 +26,7 @@ import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-column
     PanelChartAxisListComponent,
     PanelChartAppearanceComponent,
     PanelChartToleranceListComponent,
+    PanelChartGuideLineListComponent,
     PanelChartTooltipColumnsComponent,
   ],
   templateUrl: './panel-widget-detail-chart.component.html',
