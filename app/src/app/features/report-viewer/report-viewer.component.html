@@ -32,6 +32,7 @@
             [pageFilters]="viewFilters()?.pageFilters ?? null"
             [widgetFilters]="viewFilters()?.widgetFilters ?? null"
             (filterWidget)="filterWidget($event)"
+            (commentsRequest)="openComments($event)"
           />
         }
       } @else {

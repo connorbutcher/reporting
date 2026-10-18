@@ -1,9 +1,12 @@
+import { httpResource } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import type { ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { ChartWidgetConfig, barValueColumnIds, readChartBindings } from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
+import { WidgetComment } from '../../../../core/models/widget-comment.model';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -11,6 +14,7 @@ import {
   HistogramQueryResult,
   XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
+import { ReportComments } from '../../../report-viewer/comments/report-comments';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
@@ -24,6 +28,7 @@ import { ComboOption } from './options/combo-option';
 import { ECOption } from './options/chart-option.types';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
+import { ChartCommentAnchor, CommentAnchorPoint, COMMENT_ANCHOR_SERIES_NAME } from './options/point-types';
 import { SeriesPalette } from './options/series-colors';
 import { XBarROption } from './options/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
@@ -55,9 +60,20 @@ export class ChartWidgetComponent extends DataWidgetBase {
    * absent from the map plots unfiltered.
    */
   public readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
+  /** This widget's stable id — set by the outlet directive only when rendered in the viewer. Needed to key comment anchors. */
+  public readonly widgetId = input<string | null>(null);
 
   /** Icon for the empty state, so each chart kind shows its own glyph. */
   public readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
+
+  /** Whether this chart can take comment anchors at all — a point chart, rendered where comments exist (the viewer) and identified. */
+  public readonly canAnchorComments = computed(
+    () => this.isPointChart() && !!this.reportComments && this.widgetId() !== null,
+  );
+  /** Whether clicking a point right now pins a new comment to it, rather than doing nothing. */
+  public readonly anchorModeOn = computed(
+    () => this.canAnchorComments() && this.reportComments?.anchorModeWidgetId() === this.widgetId(),
+  );
 
   /** Null until there's a dataset and enough columns bound to actually plot. */
   public readonly chartOption = computed<ECOption | null>(() => {
@@ -77,7 +93,14 @@ export class ChartWidgetComponent extends DataWidgetBase {
       case 'xbarRChart':
         return XBarROption.build(config, data as XBarRChartQueryResult | null, columns);
       default:
-        return PointOption.build(config, data as ChartQueryResult | null, columns, colors);
+        return PointOption.build(
+          config,
+          data as ChartQueryResult | null,
+          columns,
+          colors,
+          this.commentAnchors(),
+          this.highlightedAnchor(),
+        );
     }
   });
 
@@ -131,7 +154,36 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** A reload while a chart is already on screen — dims it rather than blanking to a spinner. */
   public readonly reloading = computed(() => this.loading() && this.source.result() !== null);
 
+  /** This widget's own anchored comments, as markers — independent of whichever thread the aside panel has focused. */
+  public readonly commentAnchors = computed<ChartCommentAnchor[]>(() =>
+    (this.anchorsResource.value() ?? [])
+      .filter((c): c is WidgetComment & { anchorX: number; anchorY: number } => c.anchorX != null && c.anchorY != null)
+      .map((c) => ({ x: c.anchorX, y: c.anchorY, yAxisIndex: c.anchorYAxisIndex })),
+  );
+
+  /** The anchor currently drawing attention, when it's one of this widget's own — a chip in the comments panel or one of this chart's own markers was just clicked. */
+  public readonly highlightedAnchor = computed<ChartCommentAnchor | null>(() => {
+    const target = this.reportComments?.highlightedAnchor();
+    return target && target.widgetId === this.widgetId() ? { x: target.x, y: target.y, yAxisIndex: target.yAxisIndex } : null;
+  });
+
   private readonly datasetApi = inject(DatasetApiService);
+  private readonly reportComments = inject(ReportComments, { optional: true });
+
+  /**
+   * This widget's own comments, fetched independently of the aside panel's focused thread so its
+   * anchor markers show up without the reader ever opening the panel. `countFor` is read only to pick
+   * up the `counts` signal as a reactive dependency — posting or deleting a comment elsewhere changes
+   * it, which is what triggers the refetch here.
+   */
+  private readonly anchorsResource = httpResource<WidgetComment[]>(() => {
+    const comments = this.reportComments;
+    const widgetId = this.widgetId();
+    if (!comments || !widgetId || !this.isPointChart()) return undefined;
+    comments.countFor(widgetId);
+    const reportId = comments.reportId();
+    return reportId ? `/api/reports/${reportId}/widgets/${widgetId}/comments` : undefined;
+  });
 
   /** Whether this is a point chart (scatter/line) — as opposed to an aggregating bar, box, or histogram. */
   private readonly isPointChart = computed(() => {
@@ -350,6 +402,41 @@ export class ChartWidgetComponent extends DataWidgetBase {
     this.chartInstance = instance;
   }
 
+  /** Switches "click a point to anchor a comment" on or off for this chart. */
+  public toggleAnchorMode(): void {
+    const widgetId = this.widgetId();
+    if (widgetId) this.reportComments?.toggleAnchorMode(widgetId);
+  }
+
+  /**
+   * Either opens an existing comment (the click landed on one of its own anchor markers) or, in
+   * anchor mode, pins a new one to the data point that was clicked. Anchoring only makes sense for a
+   * numeric point — a category axis's click value is a label, not a coordinate, so that case is
+   * silently ignored rather than anchored to the wrong thing.
+   */
+  public onChartClick(event: ECElementEvent): void {
+    const comments = this.reportComments;
+    const widgetId = this.widgetId();
+    if (!comments || !widgetId) return;
+
+    if (event.seriesName === COMMENT_ANCHOR_SERIES_NAME) {
+      const anchor = (event.data as CommentAnchorPoint | undefined)?.anchor;
+      if (!anchor) return;
+      comments.open(widgetId);
+      comments.highlight({ widgetId, ...anchor });
+      return;
+    }
+
+    if (!this.anchorModeOn()) return;
+    const value = event.value;
+    if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number') return;
+    const [x, y] = value;
+    const series = this.chartOption()?.series;
+    const clicked = Array.isArray(series) ? series[event.seriesIndex ?? -1] : undefined;
+    const yAxisIndex = clicked && 'yAxisIndex' in clicked ? (clicked.yAxisIndex as number | undefined) : undefined;
+    comments.pickAnchor(widgetId, { x, y, yAxisIndex, label: formatAnchorLabel(x, y) });
+  }
+
   /**
    * Grabs the PNG straight from the live echarts canvas rather than the base
    * class's default DOM rasterization — cheaper, and sharper than re-drawing
@@ -371,4 +458,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
   protected exportName(): string {
     return this.config().title?.trim() || 'chart';
   }
+}
+
+/** A coordinate shown in the comment composer's anchor chip — exact enough to recognise the point, not a formatted axis tick. */
+function formatAnchorLabel(x: number, y: number): string {
+  const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  return `${format(x)}, ${format(y)}`;
 }

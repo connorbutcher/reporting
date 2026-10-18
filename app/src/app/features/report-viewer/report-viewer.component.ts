@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { ReportComments } from './comments/report-comments';
 import { ReadonlyReportGridComponent } from './readonly-report-grid/readonly-report-grid.component';
 import { ReportViewerAsideComponent } from './report-viewer-aside/report-viewer-aside.component';
 import { ReportViewerHeaderComponent } from './report-viewer-header/report-viewer-header.component';
@@ -14,7 +15,7 @@ import { ViewFilterSession } from './filters/view-filter-session';
   imports: [ReadonlyReportGridComponent, ReportViewerHeaderComponent, ReportViewerAsideComponent],
   templateUrl: './report-viewer.component.html',
   styleUrl: './report-viewer.component.scss',
-  providers: [ReportViewerStore, ViewFilterSchemas, SavedViewFilters, SharedViewLink, ViewFilterSession],
+  providers: [ReportViewerStore, ViewFilterSchemas, SavedViewFilters, SharedViewLink, ViewFilterSession, ReportComments],
 })
 export class ReportViewerComponent {
   private readonly store = inject(ReportViewerStore);
@@ -31,6 +32,10 @@ export class ReportViewerComponent {
 
   protected filterWidget(widgetId: string): void {
     this.store.filterWidget(widgetId);
+  }
+
+  protected openComments(widgetId: string): void {
+    this.store.openComments(widgetId);
   }
 
   protected selectTab(tabId: string): void {

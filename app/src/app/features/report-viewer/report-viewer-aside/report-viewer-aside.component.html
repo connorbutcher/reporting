@@ -23,22 +23,41 @@
     >
       History
     </button>
+    <button
+      type="button"
+      role="tab"
+      class="tab"
+      [class.active]="asideTab() === 'comments'"
+      [attr.aria-selected]="asideTab() === 'comments'"
+      (click)="showTab('comments')"
+    >
+      Comments
+      @if (commentCount(); as count) {
+        <span class="tab-badge">{{ count }}</span>
+      }
+    </button>
   </div>
 
-  @if (asideTab() === 'filters') {
-    @if (viewFilters(); as filters) {
-      <app-view-filters-panel
-        [filters]="filters"
-        [sharedLink]="sharedLink()"
-        [(openKey)]="openFilterKey"
-        (copyLink)="copyLink()"
-        (saveLink)="saveLinkAsMine()"
-        (discardLink)="discardLink()"
-      />
-    } @else {
-      <p class="status">Nothing to filter yet.</p>
+  @switch (asideTab()) {
+    @case ('filters') {
+      @if (viewFilters(); as filters) {
+        <app-view-filters-panel
+          [filters]="filters"
+          [sharedLink]="sharedLink()"
+          [(openKey)]="openFilterKey"
+          (copyLink)="copyLink()"
+          (saveLink)="saveLinkAsMine()"
+          (discardLink)="discardLink()"
+        />
+      } @else {
+        <p class="status">Nothing to filter yet.</p>
+      }
     }
-  } @else {
-    <app-version-history />
+    @case ('comments') {
+      <app-comments-panel />
+    }
+    @default {
+      <app-version-history />
+    }
   }
 </aside>

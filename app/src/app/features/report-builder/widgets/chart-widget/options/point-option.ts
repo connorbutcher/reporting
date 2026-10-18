@@ -8,7 +8,15 @@ import { ChartScale } from './chart-scale';
 import { PointAxes } from './point-axes';
 import { PointSeries } from './point-series';
 import { PointTooltip } from './point-tooltip';
-import { AXIS_OFFSET, Coord, PointChartConfig, ScatterTooltipParams, SeriesStyle, SizeScale } from './point-types';
+import {
+  AXIS_OFFSET,
+  ChartCommentAnchor,
+  Coord,
+  PointChartConfig,
+  ScatterTooltipParams,
+  SeriesStyle,
+  SizeScale,
+} from './point-types';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -29,6 +37,8 @@ export class PointOption {
     data: ChartQueryResult | null,
     columns: DatasetColumn[],
     colors: Map<string, string>,
+    commentAnchors: readonly ChartCommentAnchor[] = [],
+    highlightedAnchor: ChartCommentAnchor | null = null,
   ): ECOption | null {
     // The first bound binding names the shared axes; its dataset's columns are `columns`.
     const primary = readChartBindings(config).find((b) => b.datasetId) ?? null;
@@ -179,6 +189,9 @@ export class PointOption {
     // one of the two occupies the top strip at a time.
     const showLegendNow = showSeries && config.showLegend && !colorByValue;
     const topReserved = showLegendNow || colorByValue;
+    // A trend line's end-of-line stats text sits past the last point on the grid's trailing edge;
+    // reserve enough room there that it stays on-canvas instead of getting clipped.
+    const trendReserve = config.showTrendLine ? PointSeries.trendLabelReserve(series) : 0;
 
     return {
       // Date axes are plotted from UTC-epoch millis and labelled in UTC, so lay time axes out
@@ -186,7 +199,7 @@ export class PointOption {
       useUTC: true,
       grid: {
         left: 56 + Math.max(0, leftCount - 1) * AXIS_OFFSET,
-        right: 20 + rightCount * AXIS_OFFSET,
+        right: 20 + rightCount * AXIS_OFFSET + trendReserve,
         top: topReserved ? 40 : 20,
         bottom: zoom ? 76 : 48,
         containLabel: true,
@@ -196,6 +209,12 @@ export class PointOption {
       },
       tooltip: {
         trigger: 'item',
+        // The widget that hosts this chart clips its content to rounded corners (`overflow:
+        // hidden`), which would otherwise cut off a tooltip positioned near the widget's edge.
+        // `appendToBody` renders it as a direct child of <body> instead, outside that clip, and
+        // `confine` then keeps it within the browser viewport so it's always fully on screen.
+        appendToBody: true,
+        confine: true,
         formatter: (raw: TooltipCallbackParams) => {
           // echarts types the param loosely (it can be an array under other triggers); an item
           // tooltip always gets one, carrying our per-point payload (`ScatterTooltipParams`).
@@ -251,41 +270,47 @@ export class PointOption {
         splitLine: { show: showGridLines && !xIsText },
       },
       yAxis: multiAxis ? yAxisDefs : yAxisDefs[0],
-      series: series.flatMap((s, i) => {
-        const color = seriesColors[i];
-        const axisK = seriesAxisIndex[i];
-        const onPrimary = axisK === 0;
-        // Colour-by-value drives the fill from the visualMap, so drop the per-series colour and the
-        // per-point outline (the value colour already conveys where a mark sits).
-        const outlineColor = colorByValue ? () => null : outlineFor(axisK);
-        const formatY = onPrimary ? formatYPrimary : formatYOther;
-        const hung = marksBySeries.get(i);
-        const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
-        const main = {
-          name: s.label || config.title || 'Series',
-          ...PointSeries.kindOptions(config, color, seriesStyle[i], sizeScale),
-          ...(colorByValue ? {} : { itemStyle: { color } }),
-          data: PointSeries.points(s, color, outlineColor),
-          ...(config.showValueLabels
-            ? {
-                label: {
-                  show: true,
-                  position: 'top' as const,
-                  formatter: (p: LabelCallbackParams) =>
-                    formatY((p.value as [Coord, Coord])[1]),
-                },
-              }
-            : {}),
-          ...(yAxisIndex !== null ? { yAxisIndex } : {}),
-          ...(hung && hung.marks.length > 0
-            ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
-            : {}),
-          ...(hung && hung.areas.length > 0 ? { markArea: { silent: true, data: hung.areas } } : {}),
-        };
-        // Not added to `names`/`legend.data`, so it draws without its own legend entry.
-        const trend = config.showTrendLine ? PointSeries.trendLine(s, color, yAxisIndex) : null;
-        return trend ? [main, trend] : [main];
-      }),
+      series: [
+        ...series.flatMap((s, i) => {
+          const color = seriesColors[i];
+          const axisK = seriesAxisIndex[i];
+          const onPrimary = axisK === 0;
+          // Colour-by-value drives the fill from the visualMap, so drop the per-series colour and the
+          // per-point outline (the value colour already conveys where a mark sits).
+          const outlineColor = colorByValue ? () => null : outlineFor(axisK);
+          const formatY = onPrimary ? formatYPrimary : formatYOther;
+          const hung = marksBySeries.get(i);
+          const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
+          const mainName = s.label || config.title || 'Series';
+          const main = {
+            name: mainName,
+            ...PointSeries.kindOptions(config, color, seriesStyle[i], sizeScale),
+            ...(colorByValue ? {} : { itemStyle: { color } }),
+            data: PointSeries.points(s, color, outlineColor),
+            ...(config.showValueLabels
+              ? {
+                  label: {
+                    show: true,
+                    position: 'top' as const,
+                    formatter: (p: LabelCallbackParams) =>
+                      formatY((p.value as [Coord, Coord])[1]),
+                  },
+                }
+              : {}),
+            ...(yAxisIndex !== null ? { yAxisIndex } : {}),
+            ...(hung && hung.marks.length > 0
+              ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
+              : {}),
+            ...(hung && hung.areas.length > 0 ? { markArea: { silent: true, data: hung.areas } } : {}),
+          };
+          // Shares `mainName` rather than a name of its own, so it draws without a separate legend
+          // entry but still toggles off along with the series it fits.
+          const trend = config.showTrendLine ? PointSeries.trendLine(s, mainName, color, yAxisIndex) : null;
+          return trend ? [main, trend] : [main];
+        }),
+        ...PointSeries.anchorMarkers(commentAnchors, multiAxis, axes.length),
+        ...PointSeries.highlightMarker(highlightedAnchor, multiAxis, axes.length),
+      ],
     };
   }
 

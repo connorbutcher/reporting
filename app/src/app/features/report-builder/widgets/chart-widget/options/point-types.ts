@@ -44,3 +44,19 @@ export interface ScatterTooltipParams {
   seriesIndex: number;
   data: ScatterPoint;
 }
+
+/** A point on the chart a comment is pinned to — just enough to place and re-identify its marker. */
+export interface ChartCommentAnchor {
+  x: number;
+  y: number;
+  yAxisIndex?: number;
+}
+
+/** The series `name` every comment-anchor marker series shares, so a click handler can tell them apart from real data. */
+export const COMMENT_ANCHOR_SERIES_NAME = '__commentAnchors';
+
+/** A comment-anchor marker's data item — the echarts click event hands this back as `params.data`. */
+export interface CommentAnchorPoint {
+  value: [number, number];
+  anchor: ChartCommentAnchor;
+}

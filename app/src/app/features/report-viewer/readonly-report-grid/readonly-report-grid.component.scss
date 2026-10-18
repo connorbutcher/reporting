@@ -69,7 +69,8 @@
     }
   }
 
-  .filter {
+  .filter,
+  .comments {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -89,14 +90,20 @@
       background: #fff;
       color: var(--app-navy, #152a55);
     }
+  }
 
-    // An applied filter is state the reader must be able to see at a glance.
-    &.active {
-      border-color: var(--p-primary-200, #adc3e5);
-      background: var(--p-primary-50, #eef3fa);
-      color: var(--app-navy, #152a55);
-      font-weight: 600;
-    }
+  // An applied filter is state the reader must be able to see at a glance.
+  .filter.active {
+    border-color: var(--p-primary-200, #adc3e5);
+    background: var(--p-primary-50, #eef3fa);
+    color: var(--app-navy, #152a55);
+    font-weight: 600;
+  }
+
+  // A thread already exists here — worth the same glance-ahead treatment as an applied filter.
+  .comments.has-comments {
+    border-color: var(--p-primary-200, #adc3e5);
+    color: var(--app-navy, #152a55);
   }
 
   .body {

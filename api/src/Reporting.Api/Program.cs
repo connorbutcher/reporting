@@ -49,6 +49,7 @@ builder.Services.AddScoped<ReportRepository>();
 builder.Services.AddScoped<ReportPersonalizationService>();
 builder.Services.AddScoped<ReportViewStateService>();
 builder.Services.AddScoped<ReportSharedViewService>();
+builder.Services.AddScoped<WidgetCommentService>();
 builder.Services.AddScoped<ToleranceResolver>();
 builder.Services.AddScoped<ChartToleranceBands>();
 builder.Services.AddScoped<TableQueryService>();

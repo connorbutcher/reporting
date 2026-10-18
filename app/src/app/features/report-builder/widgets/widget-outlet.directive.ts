@@ -31,7 +31,7 @@ export type WidgetOutputHandler = (value: never) => void;
  *
  * Everything is wired from the component's own metadata, so a new widget kind needs
  * no changes here — only a {@link WIDGET_COMPONENTS} entry:
- *  - `config` is always set; `reportFilter`/`widgetFilter`/`datasetVersion` are set
+ *  - `config` is always set; `widgetId`/`reportFilter`/`widgetFilter`/`datasetVersion` are set
  *    only on components that declare them (static text, say, has none of them).
  *  - each entry in {@link widgetOutputs} is subscribed only if the component actually
  *    declares that output (only a table emits `sortChange`/`columnResize`).
@@ -73,6 +73,7 @@ export class WidgetOutletDirective {
       this.ensureComponent(widget.type);
 
       this.ref!.setInput('config', widget.config);
+      this.setOptionalInput('widgetId', widget.id);
       this.setOptionalInput('reportFilter', this.reportFilter());
       this.setOptionalInput('widgetFilter', this.widgetFilter());
       this.setOptionalInput('bindingFilters', this.bindingFilters());

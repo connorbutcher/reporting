@@ -28,12 +28,27 @@
   }
   @case ('ready') {
     @if (chartOption(); as option) {
+      @if (canAnchorComments()) {
+        <button
+          type="button"
+          class="anchor-toggle"
+          [class.active]="anchorModeOn()"
+          [attr.aria-pressed]="anchorModeOn()"
+          title="Click a point on the chart to pin a comment to it"
+          (click)="toggleAnchorMode()"
+        >
+          <i class="pi pi-map-marker" aria-hidden="true"></i>
+          {{ anchorModeOn() ? 'Click a point…' : 'Anchor to point' }}
+        </button>
+      }
       <div
         echarts
         [options]="option"
         [autoResize]="true"
         class="canvas"
+        [class.anchor-mode]="anchorModeOn()"
         (chartInit)="onChartInit($event)"
+        (chartClick)="onChartClick($event)"
       ></div>
       @if (countBar(); as bar) {
         <app-widget-count-bar

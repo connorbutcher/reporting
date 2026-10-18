@@ -14,7 +14,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { UrlFragmentService } from '../../core/services/url-fragment.service';
 
 /** Which secondary pane the aside is showing. */
-export type AsideTab = 'filters' | 'history';
+export type AsideTab = 'filters' | 'history' | 'comments';
 
 /**
  * The report viewer's state: which report, version and tab are showing, and navigating to another
@@ -32,6 +32,8 @@ export class ReportViewerStore {
   readonly asideTab = signal<AsideTab>('filters');
   /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
   readonly openFilterKey = signal<string | null>(null);
+  /** The widget the comments panel is focused on — set from a widget's own comment button. */
+  readonly commentsWidgetId = signal<string | null>(null);
 
   /** The last report id whose view we recorded, so switching version doesn't re-record the same report. */
   private lastRecordedView: number | null = null;
@@ -168,6 +170,12 @@ export class ReportViewerStore {
   filterWidget(widgetId: string): void {
     this.asideTab.set('filters');
     this.openFilterKey.set(widgetId);
+  }
+
+  /** Clicking a widget's comment button (or a chart's own anchor affordance) focuses its thread. */
+  openComments(widgetId: string): void {
+    this.asideTab.set('comments');
+    this.commentsWidgetId.set(widgetId);
   }
 
   /** Checks out a draft — from a specific version when restoring, otherwise from latest — then edits it. */

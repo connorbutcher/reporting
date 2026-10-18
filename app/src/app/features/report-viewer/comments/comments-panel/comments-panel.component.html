@@ -1,0 +1,91 @@
+@if (!widgetId()) {
+  <p class="status">Click a widget's comment button to see its discussion.</p>
+} @else {
+  <div class="panel">
+    @if (widgetTitle(); as title) {
+      <div class="context">On: <strong>{{ title }}</strong></div>
+    }
+
+    <div class="composer">
+      @if (comments.pendingAnchor(); as anchor) {
+        <div class="anchor-chip">
+          <i class="pi pi-map-marker" aria-hidden="true"></i>
+          Anchored to <strong>{{ anchor.label }}</strong>
+          <button type="button" aria-label="Remove anchor" (click)="clearAnchor()">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
+        </div>
+      }
+
+      <textarea
+        #composerInput
+        rows="3"
+        placeholder="Write a comment… type @ to mention someone"
+        [value]="composerText()"
+        (input)="onComposerInput($any($event.target).value)"
+      ></textarea>
+
+      @if (mentionCandidates().length > 0) {
+        <div class="mentions">
+          @for (user of mentionCandidates(); track user.id) {
+            <button type="button" (click)="pickMention(user)">
+              <span class="avatar">{{ initials(user.displayName) }}</span>
+              {{ user.displayName }}
+            </button>
+          }
+        </div>
+      }
+
+      <div class="actions">
+        <button type="button" class="post" [disabled]="!canPost()" (click)="post()">
+          Post
+          <i class="pi pi-send" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="thread">
+      @if (comments.loading()) {
+        <p class="status">Loading…</p>
+      } @else if (comments.loadFailed()) {
+        <p class="status">Couldn't load comments.</p>
+      } @else if (thread().length === 0) {
+        <p class="status">No comments yet.</p>
+      } @else {
+        @for (comment of thread(); track comment.id) {
+          <div class="comment" [class.highlighted]="comment.isHighlighted">
+            <div class="head">
+              <span class="avatar">{{ initials(comment.author.displayName) }}</span>
+              <span class="author">{{ comment.author.displayName }}</span>
+              <span class="time">{{ comment.createdAt | date: 'short' }}</span>
+            </div>
+
+            <p class="body">
+              @for (part of comment.parts; track $index) {
+                @if (part.isMention) {
+                  <span class="mention">{{ part.text }}</span>
+                } @else {
+                  {{ part.text }}
+                }
+              }
+            </p>
+
+            <div class="foot">
+              @if (comment.anchor; as anchor) {
+                <button type="button" class="anchor-chip small" (click)="highlightAnchor(anchor)">
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
+                  {{ anchor.label }}
+                </button>
+              }
+              @if (comment.isOwn) {
+                <button type="button" class="delete" aria-label="Delete comment" (click)="remove(comment.id)">
+                  <i class="pi pi-trash" aria-hidden="true"></i>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

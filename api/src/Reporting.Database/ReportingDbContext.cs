@@ -30,6 +30,8 @@ public class ReportingDbContext : DbContext
     public DbSet<ReportView> ReportViews => Set<ReportView>();
     public DbSet<ReportViewState> ReportViewStates => Set<ReportViewState>();
     public DbSet<ReportSharedView> ReportSharedViews => Set<ReportSharedView>();
+    public DbSet<WidgetComment> WidgetComments => Set<WidgetComment>();
+    public DbSet<WidgetCommentMention> WidgetCommentMentions => Set<WidgetCommentMention>();
     public DbSet<FilterOperatorDefinition> FilterOperatorDefinitions => Set<FilterOperatorDefinition>();
     public DbSet<FormulaFunctionDefinition> FormulaFunctionDefinitions => Set<FormulaFunctionDefinition>();
     public DbSet<FormulaFunctionParameter> FormulaFunctionParameters => Set<FormulaFunctionParameter>();
@@ -322,6 +324,28 @@ public class ReportingDbContext : DbContext
             .HasOne<Report>().WithMany().HasForeignKey(v => v.ReportId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<ReportSharedView>()
             .HasOne<User>().WithMany().HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
+
+        // --- widget comments -------------------------------------------------
+
+        // Found by (report, widget) for a widget's own thread, and by report alone for the bulk
+        // count the aside's footer pills need. No FK to Widget: a comment's WidgetRefId is a stable
+        // logical id that outlives the Widget row it was made against (same reasoning as the view
+        // state above), so there is nothing in the Widgets table to reference.
+        modelBuilder.Entity<WidgetComment>().Property(c => c.Body).HasMaxLength(WidgetComment.MaxBodyLength);
+        modelBuilder.Entity<WidgetComment>().HasIndex(c => new { c.ReportId, c.WidgetRefId, c.CreatedAt });
+        modelBuilder.Entity<WidgetComment>()
+            .HasOne<Report>().WithMany().HasForeignKey(c => c.ReportId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WidgetComment>()
+            .HasOne<User>().WithMany().HasForeignKey(c => c.AuthorUserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WidgetComment>()
+            .HasMany(c => c.Mentions).WithOne().HasForeignKey(m => m.CommentId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WidgetCommentMention>().HasIndex(m => new { m.CommentId, m.UserId }).IsUnique();
+        // Restrict, not cascade: a mention already reaches Users through its own comment's author FK
+        // (Comment -> Author), so a second cascading path from here to Users is the same table twice —
+        // SQL Server refuses that. The mentioned user is never actually deletable today (users have no
+        // delete in the admin UI), so this never fires in practice.
+        modelBuilder.Entity<WidgetCommentMention>()
+            .HasOne<User>().WithMany().HasForeignKey(m => m.UserId).OnDelete(DeleteBehavior.Restrict);
 
         // --- filter operator catalogue -------------------------------------
 

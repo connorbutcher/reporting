@@ -1,7 +1,18 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
-import { LineSeriesOption, PointSeriesOption } from './chart-option.types';
+import { EffectScatterSeriesOption, LineSeriesOption, PointSeriesOption, ScatterSeriesOption } from './chart-option.types';
 import { ToleranceOutline } from './tolerance-outline';
-import { Coord, PointChartConfig, ScatterPoint, SeriesStyle, SizeScale } from './point-types';
+import {
+  ChartCommentAnchor,
+  COMMENT_ANCHOR_SERIES_NAME,
+  Coord,
+  PointChartConfig,
+  ScatterPoint,
+  SeriesStyle,
+  SizeScale,
+} from './point-types';
+
+/** The fixed colour every comment-anchor marker draws in — distinct from any series' own palette colour. */
+const ANCHOR_COLOR = '#152a55';
 
 /** The per-kind echarts series options and the plotted points for a point chart. */
 export class PointSeries {
@@ -54,20 +65,27 @@ export class PointSeries {
   /**
    * A dashed overlay fitting {@link ChartSeriesResult.trendLine}, drawn in the series' own colour
    * so it reads as "that series, straightened out". Null when the series has no fit — the trend
-   * toggle is off, the axes aren't both numeric, or there weren't enough points. Kept out of the
-   * legend (the caller doesn't add its name to `legend.data`). Its fit stats (slope and R²) are
-   * always shown at the line's end, rather than only on hover, so the numbers are readable at a
-   * glance; hovering anywhere on the line shows the same text.
+   * toggle is off, the axes aren't both numeric, or there weren't enough points. Shares `mainName`
+   * with the series it fits (the caller's main series `name`, already in `legend.data`) rather than
+   * a name of its own, so toggling that legend entry hides the trend line along with its series
+   * instead of leaving it stranded on screen. Its fit stats (slope and R²) are always shown at the
+   * line's end, rather than only on hover, so the numbers are readable at a glance; hovering
+   * anywhere on the line shows the same text.
    */
-  public static trendLine(series: ChartSeriesResult, color: string, yAxisIndex: number | null): LineSeriesOption | null {
+  public static trendLine(
+    series: ChartSeriesResult,
+    mainName: string,
+    color: string,
+    yAxisIndex: number | null,
+  ): LineSeriesOption | null {
     const trend = series.trendLine;
     if (!trend) return null;
 
-    const stats = `Slope: ${trend.slope.toFixed(2)} · R²: ${trend.rSquared.toFixed(2)}`;
+    const stats = PointSeries.trendStatsText(trend);
 
     return {
       type: 'line',
-      name: series.label ? `${series.label} (trend)` : 'Trend',
+      name: mainName,
       data: [
         [trend.x1, trend.y1],
         [trend.x2, trend.y2],
@@ -88,6 +106,97 @@ export class PointSeries {
       },
       ...(yAxisIndex !== null ? { yAxisIndex } : {}),
     };
+  }
+
+  /** The fit stats text drawn at a trend line's end and on its hover tooltip. */
+  public static trendStatsText(trend: NonNullable<ChartSeriesResult['trendLine']>): string {
+    return `Slope: ${trend.slope.toFixed(2)} · R²: ${trend.rSquared.toFixed(2)}`;
+  }
+
+  /**
+   * One pin-shaped marker per widget comment anchored to this chart, grouped into a series per Y
+   * axis (most charts need only one). Shares {@link COMMENT_ANCHOR_SERIES_NAME} across every group
+   * rather than each series' own name, so clicking one is unambiguous in the chart's click handler
+   * and so toggling a data series off in the legend never hides a comment pinned near it — the two
+   * are independent. Kept off the legend the same way a trend line is.
+   */
+  public static anchorMarkers(
+    anchors: readonly ChartCommentAnchor[],
+    multiAxis: boolean,
+    axisCount: number,
+  ): ScatterSeriesOption[] {
+    if (anchors.length === 0) return [];
+
+    const byAxis = new Map<number, ChartCommentAnchor[]>();
+    for (const anchor of anchors) {
+      const axisK = Math.min(Math.max(anchor.yAxisIndex ?? 0, 0), axisCount - 1);
+      const group = byAxis.get(axisK);
+      if (group) group.push(anchor);
+      else byAxis.set(axisK, [anchor]);
+    }
+
+    return [...byAxis.entries()].map(([axisK, group]) => ({
+      type: 'scatter' as const,
+      name: COMMENT_ANCHOR_SERIES_NAME,
+      data: group.map((anchor) => ({ value: [anchor.x, anchor.y] as [number, number], anchor })),
+      symbol: 'pin',
+      symbolSize: 26,
+      itemStyle: { color: ANCHOR_COLOR },
+      legendHoverLink: false,
+      tooltip: { formatter: () => 'Click to view this comment' },
+      z: 10,
+      ...(multiAxis ? { yAxisIndex: axisK } : {}),
+    }));
+  }
+
+  /**
+   * A rippling halo drawn at a comment's point, so clicking its marker — or its chip in the
+   * comments panel — actually draws the eye there rather than just opening the thread and leaving
+   * the reader to hunt for which point it was. `null` when nothing is currently highlighted, or the
+   * highlighted anchor belongs to a different widget (the caller already filtered for that, but
+   * stays defensive here since a stray cross-widget value would otherwise silently misplace a ring).
+   */
+  public static highlightMarker(
+    point: ChartCommentAnchor | null,
+    multiAxis: boolean,
+    axisCount: number,
+  ): EffectScatterSeriesOption[] {
+    if (!point) return [];
+    const axisK = Math.min(Math.max(point.yAxisIndex ?? 0, 0), axisCount - 1);
+    return [
+      {
+        type: 'effectScatter',
+        name: COMMENT_ANCHOR_SERIES_NAME,
+        data: [[point.x, point.y]],
+        symbolSize: 30,
+        itemStyle: { color: ANCHOR_COLOR, opacity: 0.35 },
+        rippleEffect: { scale: 3, brushType: 'stroke' },
+        silent: true,
+        z: 9,
+        ...(multiAxis ? { yAxisIndex: axisK } : {}),
+      },
+    ];
+  }
+
+  /**
+   * The pixel width to reserve on the chart's trailing edge so a trend line's end-of-line stats
+   * text (drawn just past its last point, in the direction the grid's right margin already backs
+   * onto) stays inside the canvas instead of getting clipped at its edge. 0 when no series has a
+   * fit. Estimated from the widest stats string across every series, same approach as
+   * {@link ChartScale.nameGap} for axis names — echarts can't size this itself since it lays the
+   * label out after the grid rect is fixed.
+   */
+  public static trendLabelReserve(series: readonly ChartSeriesResult[]): number {
+    const CHAR_W = 6.5; // ~px per char at the endLabel's 11px font (proportional; erring wide)
+    const DISTANCE = 6; // the endLabel's own `distance` from its point
+    const MARGIN = 10; // breathing room past the text
+    let maxLen = 0;
+    for (const s of series) {
+      if (!s.trendLine) continue;
+      const len = PointSeries.trendStatsText(s.trendLine).length;
+      if (len > maxLen) maxLen = len;
+    }
+    return maxLen === 0 ? 0 : Math.round(maxLen * CHAR_W + DISTANCE + MARGIN);
   }
 
   public static points(

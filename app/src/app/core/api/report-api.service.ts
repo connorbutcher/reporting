@@ -9,6 +9,7 @@ import {
   ReportSummary,
   ReportVersionSummary,
 } from '../models/report';
+import { CreateWidgetComment, WidgetComment } from '../models/widget-comment.model';
 
 @Service()
 export class ReportApiService {
@@ -63,6 +64,25 @@ export class ReportApiService {
   /** Shares viewing filters, returning the short id a link carries instead of them (the same id for the same filters). */
   createSharedView(id: number, filters: string): Observable<ReportSharedView> {
     return this.http.post<ReportSharedView>(`/api/reports/${id}/shared-views`, { filters });
+  }
+
+  /** A widget's comments, newest first. */
+  getWidgetComments(reportId: number, widgetId: string): Observable<WidgetComment[]> {
+    return this.http.get<WidgetComment[]>(`/api/reports/${reportId}/widgets/${widgetId}/comments`);
+  }
+
+  postWidgetComment(reportId: number, widgetId: string, comment: CreateWidgetComment): Observable<WidgetComment> {
+    return this.http.post<WidgetComment>(`/api/reports/${reportId}/widgets/${widgetId}/comments`, comment);
+  }
+
+  /** Unguarded beyond having posted it, like clearing saved filters: a user can always remove their own. */
+  deleteWidgetComment(reportId: number, widgetId: string, commentId: number): Observable<void> {
+    return this.http.delete<void>(`/api/reports/${reportId}/widgets/${widgetId}/comments/${commentId}`);
+  }
+
+  /** Every widget's comment count on this report, for the viewer's footer pills — one request, not one per widget. */
+  getCommentCounts(reportId: number): Observable<Record<string, number>> {
+    return this.http.get<Record<string, number>>(`/api/reports/${reportId}/comment-counts`);
   }
 
   create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {

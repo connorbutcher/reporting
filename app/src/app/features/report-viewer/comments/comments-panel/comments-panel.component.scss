@@ -1,0 +1,244 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.status {
+  margin: auto;
+  padding: 24px;
+  color: #64748b;
+  text-align: center;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+}
+
+.context {
+  font-size: 0.78rem;
+  color: #64748b;
+
+  strong {
+    color: var(--app-navy);
+  }
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--app-card-border, #e2e8f0);
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    border: 1px solid var(--app-card-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 0.78rem;
+    color: #1f2937;
+    box-sizing: border-box;
+
+    &:focus-visible {
+      outline: 2px solid var(--app-navy);
+      outline-offset: 1px;
+    }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .post {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 7px;
+    background: var(--app-navy);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .pi {
+      font-size: 0.7rem;
+    }
+  }
+}
+
+.anchor-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--p-primary-50, #eef3fa);
+  color: var(--app-navy);
+  font-size: 0.72rem;
+  font-weight: 600;
+
+  button {
+    display: flex;
+    border: none;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 2px;
+  }
+
+  &.small {
+    cursor: pointer;
+    background: #f8fafc;
+    border: 1px solid var(--app-card-border, #e2e8f0);
+    font-size: 0.68rem;
+
+    &:hover {
+      background: var(--p-primary-50, #eef3fa);
+    }
+  }
+}
+
+.mentions {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--app-card-border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    border: none;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.75rem;
+    color: #1f2937;
+
+    &:hover {
+      background: var(--p-primary-50, #eef3fa);
+    }
+  }
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--app-navy);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.mentions .avatar {
+  background: var(--app-card-border, #e2e8f0);
+  color: var(--app-navy);
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.comment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 11px;
+  border: 1px solid var(--app-card-border, #e2e8f0);
+  border-radius: 9px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  // The chart's own marker was clicked, or this card's own point chip was — either way, this is the
+  // comment the reader is now looking for.
+  &.highlighted {
+    border-color: var(--app-navy);
+    background: var(--p-primary-50, #eef3fa);
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .author {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--app-navy);
+  }
+
+  .time {
+    margin-left: auto;
+    font-size: 0.68rem;
+    color: #94a3b8;
+  }
+
+  .body {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #1f2937;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .mention {
+    color: var(--app-navy);
+    background: var(--p-primary-50, #eef3fa);
+    border-radius: 4px;
+    padding: 0 3px;
+    font-weight: 600;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .delete {
+    margin-left: auto;
+    display: flex;
+    border: none;
+    background: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+
+    &:hover {
+      color: #dc2626;
+    }
+  }
+}

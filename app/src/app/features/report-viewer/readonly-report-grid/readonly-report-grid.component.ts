@@ -1,4 +1,4 @@
-import { Component, Signal, computed, input, output } from '@angular/core';
+import { Component, Signal, computed, inject, input, output } from '@angular/core';
 import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
 import {
   ReportRevisionContent,
@@ -12,6 +12,7 @@ import { FilterGroup, combineFilters, countConditions } from '../../../core/mode
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
+import { ReportComments } from '../comments/report-comments';
 import { chartBindingKey } from '../filters/view-filter-entry';
 
 /** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
@@ -49,6 +50,10 @@ export class ReadonlyReportGridComponent {
 
   /** A widget's filter button was clicked; the host decides where to show it. */
   readonly filterWidget = output<string>();
+  /** A widget's comments button was clicked; the host switches the aside to that widget's thread. */
+  readonly commentsRequest = output<string>();
+
+  private readonly comments = inject(ReportComments);
 
   private readonly widgetOutputs = new Map<string, Record<string, WidgetOutputHandler>>();
 
@@ -82,6 +87,11 @@ export class ReadonlyReportGridComponent {
       return !!widget.config.datasetId;
     }
     return isChartWidget(widget) && readChartBindings(widget.config).some((b) => !!b.datasetId);
+  }
+
+  /** This widget's comment count, for its header button's badge. */
+  protected commentCount(widget: Widget): number {
+    return this.comments.countFor(widget.id);
   }
 
   /** Conditions across this widget's own filters — what the button badge shows. */

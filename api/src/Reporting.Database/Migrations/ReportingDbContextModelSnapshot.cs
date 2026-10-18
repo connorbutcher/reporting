@@ -3188,6 +3188,73 @@ namespace Reporting.Database.Migrations
                     b.ToTable("Widgets");
                 });
 
+            modelBuilder.Entity("Reporting.Database.WidgetComment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<double?>("AnchorX")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("AnchorY")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("AnchorYAxisIndex")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AuthorUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ReportId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("WidgetRefId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorUserId");
+
+                    b.HasIndex("ReportId", "WidgetRefId", "CreatedAt");
+
+                    b.ToTable("WidgetComments");
+                });
+
+            modelBuilder.Entity("Reporting.Database.WidgetCommentMention", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CommentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("CommentId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("WidgetCommentMentions");
+                });
+
             modelBuilder.Entity("Reporting.Database.AccessGrant", b =>
                 {
                     b.HasOne("Reporting.Database.Folder", null)
@@ -3433,6 +3500,36 @@ namespace Reporting.Database.Migrations
                     b.Navigation("Tab");
                 });
 
+            modelBuilder.Entity("Reporting.Database.WidgetComment", b =>
+                {
+                    b.HasOne("Reporting.Database.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Reporting.Database.Report", null)
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Reporting.Database.WidgetCommentMention", b =>
+                {
+                    b.HasOne("Reporting.Database.WidgetComment", null)
+                        .WithMany("Mentions")
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Reporting.Database.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Reporting.Database.Dataset", b =>
                 {
                     b.Navigation("Columns");
@@ -3477,6 +3574,11 @@ namespace Reporting.Database.Migrations
                     b.Navigation("Managers");
 
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("Reporting.Database.WidgetComment", b =>
+                {
+                    b.Navigation("Mentions");
                 });
 #pragma warning restore 612, 618
         }
