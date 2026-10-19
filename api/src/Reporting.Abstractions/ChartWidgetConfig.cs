@@ -38,6 +38,15 @@ public class ChartValueAxis
 
     /// <summary>Plots this axis on a logarithmic scale. Ignored on a category axis.</summary>
     public bool LogScale { get; set; }
+
+    /// <summary>Forced tick interval; null lets the chart choose. Ignored on a category axis.</summary>
+    public double? Interval { get; set; }
+
+    /// <summary>Tick-label orientation ("horizontal" or "vertical"); null keeps the chart's default.</summary>
+    public string? Rotate { get; set; }
+
+    /// <summary>Fits the axis to the data instead of anchoring it at zero.</summary>
+    public bool? Scale { get; set; }
 }
 
 /// <summary>How a bar chart reduces the many rows in one category down to a single bar height.</summary>
@@ -174,6 +183,12 @@ public class ChartTooltipColumn
     public Guid ColumnId { get; set; }
     public string? Prefix { get; set; }
     public string? Suffix { get; set; }
+
+    /// <summary>
+    /// The column's name, sent at query time only: a dataset other than the one the tooltip columns
+    /// were picked from has different column ids, so it falls back to its own column of this name.
+    /// </summary>
+    public string? ColumnName { get; set; }
 }
 
 /// <summary>
@@ -278,6 +293,11 @@ public abstract class ChartWidgetConfig : WidgetConfig
     public double? XAxisMax { get; set; }
     public bool XLogScale { get; set; }
 
+    /// <summary>X-axis tick interval, label orientation, and fit-to-data — client-side render options, persisted only.</summary>
+    public double? XAxisInterval { get; set; }
+    public string? XAxisRotate { get; set; }
+    public bool? XAxisScale { get; set; }
+
     /// <summary>Adds mouse-wheel/drag zoom plus a slider to point charts. On for new charts.</summary>
     public bool Zoom { get; set; } = true;
 
@@ -323,6 +343,12 @@ public class LineChartWidgetConfig : ChartWidgetConfig
     public bool ShowPoints { get; set; } = true;
     /// <summary>Shades the area under the line.</summary>
     public bool AreaFill { get; set; }
+
+    /// <summary>Reduces every row sharing an X value to one point; null plots the raw rows.</summary>
+    public Aggregate? Aggregate { get; set; }
+
+    /// <summary>Buckets a date X axis by period before aggregating; ignored without <see cref="Aggregate"/>.</summary>
+    public DateGrouping? XGrouping { get; set; }
 }
 
 /// <summary>
@@ -345,6 +371,15 @@ public class BarChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>How the bars are ordered along the category axis.</summary>
     public ChartSort Sort { get; set; } = new();
+
+    /// <summary>Buckets a date category by period; null groups by the exact date.</summary>
+    public DateGrouping? CategoryGrouping { get; set; }
+
+    /// <summary>Stacks bars as each series' share of its category's total (100% stacked). Implies stacked.</summary>
+    public bool? PercentStacked { get; set; }
+
+    /// <summary>Prints each stack's total above it.</summary>
+    public bool? ShowStackTotals { get; set; }
 }
 
 /// <summary>
@@ -372,6 +407,12 @@ public class ComboChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>How the bars/lines are ordered along the category axis.</summary>
     public ChartSort Sort { get; set; } = new();
+
+    /// <summary>Buckets a date category by period; null groups by the exact date.</summary>
+    public DateGrouping? CategoryGrouping { get; set; }
+
+    /// <summary>Draws line series straight across categories a series has no value for, instead of breaking.</summary>
+    public bool? ConnectNulls { get; set; }
 }
 
 /// <summary>
@@ -401,11 +442,14 @@ public class BoxPlotWidgetConfig : ChartWidgetConfig
     /// <summary>Overlays the individual measurements as jittered points over each box.</summary>
     public bool ShowPoints { get; set; }
 
-    /// <summary>Adds process capability (Cp/Cpk) to each box's tooltip, resolved against the value-axis spec band.</summary>
+    /// <summary>Adds process performance (Pp/Ppk) to each box's tooltip, resolved against the value-axis spec band.</summary>
     public bool ShowCapability { get; set; }
 
     /// <summary>Draws boxes horizontally (categories down the Y axis) rather than upright.</summary>
     public bool Horizontal { get; set; }
+
+    /// <summary>Buckets a date category by period; null groups by the exact date.</summary>
+    public DateGrouping? CategoryGrouping { get; set; }
 }
 
 /// <summary>
@@ -440,6 +484,9 @@ public class HistogramWidgetConfig : ChartWidgetConfig
 
     /// <summary>Draws bars horizontally (bins down the Y axis) rather than as vertical columns.</summary>
     public bool Horizontal { get; set; }
+
+    /// <summary>Overlays a fitted normal curve on each series (non-cumulative only).</summary>
+    public bool? ShowNormalCurve { get; set; }
 }
 
 /// <summary>
@@ -460,4 +507,29 @@ public class XBarRChartWidgetConfig : ChartWidgetConfig
 
     /// <summary>Colours a subgroup's mean or range red when it falls outside its control limits.</summary>
     public bool HighlightOutOfControl { get; set; } = true;
+
+    /// <summary>Buckets a date subgroup column by period; null groups by the exact date.</summary>
+    public DateGrouping? CategoryGrouping { get; set; }
+
+    /// <summary>Which pair of control charts to draw.</summary>
+    public ControlChartMode Mode { get; set; } = ControlChartMode.XBarR;
+
+    /// <summary>Computes the control limits from only the first N points (a baseline) and holds them; null uses every point.</summary>
+    public int? BaselineSubgroups { get; set; }
+
+    /// <summary>Also flags the Nelson run rules (2–5), not just points beyond the limits.</summary>
+    public bool? RunRules { get; set; }
+}
+
+/// <summary>Which control chart pair an <see cref="XBarRChartWidgetConfig"/> draws.</summary>
+public enum ControlChartMode
+{
+    /// <summary>Subgroup means and ranges.</summary>
+    XBarR,
+
+    /// <summary>Subgroup means and standard deviations — better for subgroups larger than ~10.</summary>
+    XBarS,
+
+    /// <summary>Individual values and their moving ranges, one point per row (subgroups of one).</summary>
+    Individuals
 }

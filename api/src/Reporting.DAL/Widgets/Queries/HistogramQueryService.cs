@@ -105,9 +105,22 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             max = dataMax;
         }
 
-        var edges = BinEdges(allValues, min, max, dto.BinMode, dto.BinCount, dto.BinWidth);
+        var edges = BinEdges(allValues, min, max, dto.BinMode, dto.BinCount, dto.BinWidth, fixedStart: dto.RangeMin is not null);
         var bins = BuildBins(edges);
         var binWidth = edges[1] - edges[0];
+
+        // A fixed range zooms in: values outside it are left out (and counted) rather than piled
+        // into the end bins, which would inflate them. An auto-fit range holds every value anyway.
+        var excluded = 0;
+        if (dto.RangeMin is not null || dto.RangeMax is not null)
+        {
+            for (var m = 0; m < perMeasure.Count; m++)
+            {
+                var inRange = perMeasure[m].Projected.Where(p => p.Value >= min && p.Value <= max).ToList();
+                excluded += perMeasure[m].Projected.Count - inRange.Count;
+                perMeasure[m] = (perMeasure[m].Column, inRange);
+            }
+        }
 
         // One set of series per measure, measure-major so a measure's split series sit together —
         // mirrors a bar chart's measure-major series ordering.
@@ -125,7 +138,8 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             TotalRowCount = totalRowCount,
             MatchedRowCount = matchedRowCount,
             Truncated = truncated,
-            ScannedRowCount = scannedCount
+            ScannedRowCount = scannedCount,
+            ExcludedCount = excluded
         };
     }
 
@@ -215,6 +229,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     {
         var counts = new double[binCount];
         var total = 0;
+        var seriesValues = new List<double>();
         foreach (var (key, value) in projected)
         {
             if (key != seriesKey)
@@ -222,8 +237,10 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
                 continue;
             }
             counts[BinIndex(value, edges, binCount)]++;
+            seriesValues.Add(value);
             total++;
         }
+        var mean = total > 0 ? seriesValues.Average() : 0d;
 
         var values = new List<double>(binCount);
         var running = 0d;
@@ -239,7 +256,14 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             values.Add(dto.Cumulative ? running : shown);
         }
 
-        return new HistogramSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Values = values };
+        return new HistogramSeriesDto
+        {
+            Label = SeriesLabels.Format(seriesColumn, seriesKey),
+            Values = values,
+            Mean = mean,
+            StdDev = Statistics.StdDev(seriesValues, mean),
+            Count = total
+        };
     }
 
     /// <summary>The bin a value falls into: the first bin at or below the lowest edge, the last at
@@ -262,27 +286,43 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
 
     /// <summary>
     /// The ascending bin edges spanning [<paramref name="min"/>, <paramref name="max"/>]. A fixed
-    /// count divides the range evenly; a fixed width tiles bins across it; Auto picks a count with
-    /// the Freedman–Diaconis rule (falling back to Sturges when the IQR is zero). A degenerate range
-    /// (all values equal) yields a single unit-wide bin. The bin count is capped either way.
+    /// count divides the range evenly; a fixed width tiles bins of exactly that width, starting on a
+    /// multiple of it (or on a fixed range's start) so edges read as round numbers, with the last bin
+    /// running past the maximum if need be; Auto picks a count with the Freedman–Diaconis rule
+    /// (falling back to Sturges when the IQR is zero). A degenerate range (all values equal) yields a
+    /// single unit-wide bin. The bin count is capped either way — for a fixed width by widening the bins.
     /// </summary>
     private static List<double> BinEdges(
-        List<double> values, double min, double max, HistogramBinMode mode, int binCount, double binWidth)
+        List<double> values, double min, double max, HistogramBinMode mode, int binCount, double binWidth, bool fixedStart = false)
     {
         // All values equal (or a collapsed range): one bin, widened to a unit so it draws.
-        if (max <= min)
+        if (max <= min && !(mode == HistogramBinMode.Width && binWidth > 0))
         {
             return new List<double> { min, min + 1 };
         }
 
+        if (mode == HistogramBinMode.Width && binWidth > 0)
+        {
+            var width = binWidth;
+            var start = fixedStart ? min : Math.Floor(min / width) * width;
+            var widthCount = Math.Max(1, (int)Math.Ceiling((max - start) / width));
+            // A value sitting exactly on the last edge still belongs in the last bin, so no extra bin for it.
+            if (widthCount > MaxHistogramBins)
+            {
+                widthCount = MaxHistogramBins;
+                width = (max - start) / widthCount;
+            }
+            var widthEdges = new List<double>(widthCount + 1);
+            for (var i = 0; i <= widthCount; i++)
+            {
+                widthEdges.Add(start + i * width);
+            }
+            return widthEdges;
+        }
+
         var range = max - min;
         int count;
-        if (mode == HistogramBinMode.Width)
-        {
-            var width = binWidth > 0 ? binWidth : range;
-            count = (int)Math.Ceiling(range / width);
-        }
-        else if (mode == HistogramBinMode.Count)
+        if (mode == HistogramBinMode.Count)
         {
             count = binCount;
         }

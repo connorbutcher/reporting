@@ -29,6 +29,12 @@ public class BarChartQueryDto
 
     /// <summary>How the bars are ordered along the category axis.</summary>
     public ChartSort Sort { get; set; } = new();
+
+    /// <summary>Buckets a date category by period; null groups by the exact date.</summary>
+    public DateGrouping? CategoryGrouping { get; set; }
+
+    /// <summary>Numeric columns reduced per bar by the same aggregate (Count sums) and shown in its tooltip.</summary>
+    public List<ChartTooltipColumn> TooltipColumns { get; set; } = new();
 }
 
 public class BarSeriesDto
@@ -44,6 +50,12 @@ public class BarSeriesDto
 
     /// <summary>One entry per category in <see cref="BarChartQueryResultDto.Categories"/> order; null where this series has no rows in that category.</summary>
     public List<double?> Values { get; set; } = new();
+
+    /// <summary>How many rows fed each bar, aligned with <see cref="Values"/>; null where there's no bar.</summary>
+    public List<int?> RowCounts { get; set; } = new();
+
+    /// <summary>Each bar's formatted tooltip column lines, aligned with <see cref="Values"/>; empty when none were requested.</summary>
+    public List<List<string>> TooltipLines { get; set; } = new();
 }
 
 public class BarChartQueryResultDto : ChartResultCountsDto
@@ -54,6 +66,9 @@ public class BarChartQueryResultDto : ChartResultCountsDto
     /// <summary>The bar categories, in display order — the shared X axis every series aligns to.</summary>
     public List<string> Categories { get; set; } = new();
     public List<BarSeriesDto> Series { get; set; } = new();
+
+    /// <summary>One entry per category, in the same order: its natural sort key and drill-through conditions.</summary>
+    public List<ChartCategoryDto> CategoryDetails { get; set; } = new();
 
     /// <summary>Reference lines for the value axis, resolved the same way as scatter/line bands.</summary>
     public List<ResolvedToleranceBandDto> ToleranceBands { get; set; } = new();

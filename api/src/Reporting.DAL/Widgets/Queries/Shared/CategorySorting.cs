@@ -27,7 +27,7 @@ public static class CategorySorting
     /// </summary>
     public static async Task<List<string>> OrderedCategoryKeysAsync(
         IQueryable<DatasetRow> matching,
-        int categoryId,
+        ChartCategoryReader reader,
         int valueId,
         List<GroupedValueProjection> projected,
         List<string> naturalOrder,
@@ -42,7 +42,7 @@ public static class CategorySorting
 
         var metrics = sortColumn.Id == valueId
             ? PooledMetrics(projected, sort.Aggregate)
-            : await CategorySortMetricsAsync(matching, categoryId, sortColumn, sort.Aggregate);
+            : await CategorySortMetricsAsync(matching, reader, sortColumn, sort.Aggregate);
         return OrderByMetric(naturalOrder, metrics, sort.Descending);
     }
 
@@ -56,74 +56,63 @@ public static class CategorySorting
     /// Per-category metric for a column sort that isn't already pooled in memory for some other
     /// reason — a bar chart's SQL-only aggregation, or a box plot/Xbar-R sorting by a column other
     /// than its bound measure. Scans (capped) the matching rows' category and sort-column values and
-    /// reduces each category's values by the chosen aggregate; a category with no values for the
+    /// reduces each category's values by the chosen aggregate; categories are keyed by
+    /// <paramref name="reader"/>, exactly as the chart keys them. A category with no values for the
     /// sort column is simply absent from the result, so the caller can sink it to the end. A text
     /// sort column ranks alphabetically (Min/Max) or by row count — reduced in C# since there's no
     /// SQL aggregate for "alphabetically first"; a date column reduces as its epoch-ms number.
     /// </summary>
     public static async Task<Dictionary<string, IComparable>> CategorySortMetricsAsync(
-        IQueryable<DatasetRow> matching, int categoryId, DatasetColumn sortColumn, SortAggregate aggregate)
+        IQueryable<DatasetRow> matching, ChartCategoryReader reader, DatasetColumn sortColumn, SortAggregate aggregate)
     {
-        if (sortColumn.Type == DatasetColumnType.String)
-        {
-            return await TextCategorySortMetricsAsync(matching, categoryId, sortColumn.Id, aggregate);
-        }
-
-        return await NumericCategorySortMetricsAsync(matching, categoryId, sortColumn, aggregate);
-    }
-
-    private static async Task<Dictionary<string, IComparable>> TextCategorySortMetricsAsync(
-        IQueryable<DatasetRow> matching, int categoryId, int sortColumnId, SortAggregate aggregate)
-    {
+        var categoryId = reader.Column.Id;
+        var sortColumnId = sortColumn.Id;
         var scanned = await matching
             .OrderBy(r => r.Id)
             .Take(MaxCategorySortScanRows)
             .Select(r => new
             {
-                Category = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "",
-                Value = r.Cells.Where(c => c.ColumnId == sortColumnId).Select(c => c.StringValue).FirstOrDefault()
+                Category = r.Cells
+                    .Where(c => c.ColumnId == categoryId)
+                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
+                    .FirstOrDefault(),
+                Value = r.Cells
+                    .Where(c => c.ColumnId == sortColumnId)
+                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
+                    .FirstOrDefault()
             })
             .ToListAsync();
 
-        var metrics = new Dictionary<string, IComparable>();
-        foreach (var group in scanned.GroupBy(row => row.Category))
-        {
-            var values = group.Where(row => !string.IsNullOrWhiteSpace(row.Value)).Select(row => row.Value!.Trim()).ToList();
-            if (values.Count == 0)
-            {
-                continue;
-            }
-            metrics[group.Key] = ReduceTextForSort(values, aggregate);
-        }
-        return metrics;
-    }
-
-    private static async Task<Dictionary<string, IComparable>> NumericCategorySortMetricsAsync(
-        IQueryable<DatasetRow> matching, int categoryId, DatasetColumn sortColumn, SortAggregate aggregate)
-    {
-        var isDate = sortColumn.Type == DatasetColumnType.DateTime;
-        var scanned = await matching
-            .OrderBy(r => r.Id)
-            .Take(MaxCategorySortScanRows)
-            .Select(r => new
-            {
-                Category = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "",
-                Number = r.Cells.Where(c => c.ColumnId == sortColumn.Id).Select(c => c.NumberValue).FirstOrDefault(),
-                Date = r.Cells.Where(c => c.ColumnId == sortColumn.Id).Select(c => c.DateValue).FirstOrDefault()
-            })
-            .ToListAsync();
+        var keyed = scanned.Select(row => (
+            Key: reader.Read(row.Category?.StringValue, row.Category?.NumberValue, row.Category?.DateValue).Key,
+            row.Value));
 
         var metrics = new Dictionary<string, IComparable>();
-        foreach (var group in scanned.GroupBy(row => row.Category))
+        foreach (var group in keyed.GroupBy(row => row.Key))
         {
-            var values = isDate
-                ? group.Where(row => row.Date.HasValue).Select(row => (row.Date!.Value - DateTime.UnixEpoch).TotalMilliseconds).ToList()
-                : group.Where(row => row.Number.HasValue).Select(row => row.Number!.Value).ToList();
-            if (values.Count == 0)
+            if (sortColumn.Type == DatasetColumnType.String)
             {
+                var texts = group
+                    .Select(row => row.Value?.StringValue)
+                    .Where(text => !string.IsNullOrWhiteSpace(text))
+                    .Select(text => text!.Trim())
+                    .ToList();
+                if (texts.Count > 0)
+                {
+                    metrics[group.Key] = ReduceTextForSort(texts, aggregate);
+                }
                 continue;
             }
-            metrics[group.Key] = ReduceForSort(values, aggregate);
+
+            var values = sortColumn.Type == DatasetColumnType.DateTime
+                ? group.Where(row => row.Value?.DateValue is not null)
+                    .Select(row => (row.Value!.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds).ToList()
+                : group.Where(row => row.Value?.NumberValue is not null)
+                    .Select(row => row.Value!.NumberValue!.Value).ToList();
+            if (values.Count > 0)
+            {
+                metrics[group.Key] = ReduceForSort(values, aggregate);
+            }
         }
         return metrics;
     }
