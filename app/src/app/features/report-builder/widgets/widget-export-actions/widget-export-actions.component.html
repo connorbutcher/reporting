@@ -14,3 +14,8 @@
 >
   <i class="pi pi-download" aria-hidden="true"></i>
 </button>
+@if (expandable()) {
+  <button type="button" aria-label="View full screen" title="View full screen" (click)="expand.emit()">
+    <i class="pi pi-window-maximize" aria-hidden="true"></i>
+  </button>
+}

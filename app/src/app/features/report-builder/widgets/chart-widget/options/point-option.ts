@@ -18,6 +18,8 @@ import {
   SizeScale,
 } from './point-types';
 import { GuideLineMarks } from './guide-line-marks';
+import { GuideLineOutline } from './guide-line-outline';
+import { OutlineSeverity } from './outline-zone';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -197,12 +199,17 @@ export class PointOption {
       hangGuideLines(0, guideLines.filter((l) => l.axis === 'x'));
     }
 
-    // One out-of-tolerance test per Y axis, memoised and shared by every series on that axis.
+    // One out-of-tolerance test per Y axis, memoised and shared by every series on that axis —
+    // tolerance bands and outlined guide lines both contribute zones, worst-wins.
     const outlineByAxis = new Map<number, (x: Coord, y: Coord) => string | null>();
     const outlineFor = (axisK: number): ((x: Coord, y: Coord) => string | null) => {
       let outline = outlineByAxis.get(axisK);
       if (!outline) {
-        outline = ToleranceOutline.forPoints(bands.filter((b) => b.axis === 'x' || bandAxisIndex(b) === axisK));
+        const zones = [
+          ...ToleranceOutline.zonesFor(bands.filter((b) => b.axis === 'x' || bandAxisIndex(b) === axisK)),
+          ...GuideLineOutline.zonesFor(guideLines.filter((l) => l.axis === 'x' || guideLineAxisIndex(l) === axisK)),
+        ];
+        outline = OutlineSeverity.forPoints(zones);
         outlineByAxis.set(axisK, outline);
       }
       return outline;

@@ -1,0 +1,24 @@
+<div class="widget-fullscreen">
+  <header class="header">
+    <span class="title">{{ data.title() }}</span>
+    <app-widget-export-actions
+      [expandable]="false"
+      (screenshot)="outlet.exporter()?.downloadScreenshot()"
+      (exportCsv)="outlet.exporter()?.downloadCsv()"
+    />
+    <button type="button" class="close" aria-label="Close full screen view" title="Close" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+  </header>
+  <div class="body">
+    <ng-container
+      [appWidgetOutlet]="data.widget()"
+      #outlet="widgetOutlet"
+      [reportFilter]="data.reportFilter()"
+      [widgetFilter]="data.widgetFilter()"
+      [bindingFilters]="data.bindingFilters()"
+      [datasetVersion]="data.datasetVersion()"
+      [widgetOutputs]="data.widgetOutputs"
+    />
+  </div>
+</div>

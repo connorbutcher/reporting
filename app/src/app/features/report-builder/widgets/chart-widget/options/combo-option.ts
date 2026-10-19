@@ -23,6 +23,8 @@ import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
+import { GuideLineOutline } from './guide-line-outline';
+import { OutlineSeverity } from './outline-zone';
 import { AXIS_OFFSET } from './point-types';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
@@ -156,12 +158,17 @@ export class ComboOption {
       if (marks.length === 0 && areas.length === 0) continue;
       marksBySeries.set(indices[0], { marks, areas });
     }
-    // One out-of-tolerance test per axis, shared by every series on it, for the outlined-point option.
+    // One out-of-tolerance test per axis, shared by every series on it — bands and outlined guide
+    // lines on that axis both contribute zones, worst-wins.
     const outlineByAxis = new Map<number, (v: number) => string | null>();
     const outlineFor = (axisK: number): ((v: number) => string | null) => {
       let outline = outlineByAxis.get(axisK);
       if (!outline) {
-        outline = ToleranceOutline.forValue(bands.filter((b) => bandAxisIndex(b) === axisK));
+        const zones = [
+          ...ToleranceOutline.zonesFor(bands.filter((b) => bandAxisIndex(b) === axisK)),
+          ...GuideLineOutline.zonesFor(guideLines.filter((l) => guideLineAxisIndex(l) === axisK)),
+        ];
+        outline = OutlineSeverity.forValue(zones);
         outlineByAxis.set(axisK, outline);
       }
       return outline;
@@ -230,7 +237,7 @@ export class ComboOption {
       itemStyle: { color: s.color },
       data: s.result.values.map((v) => {
         const border = v !== null ? outline(v) : null;
-        return border ? { value: v, itemStyle: ToleranceOutline.itemStyle(s.color, border) } : v;
+        return border ? { value: v, itemStyle: OutlineSeverity.itemStyle(s.color, border) } : v;
       }),
     };
   }

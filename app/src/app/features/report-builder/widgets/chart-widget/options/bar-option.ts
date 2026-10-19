@@ -6,6 +6,8 @@ import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
+import { GuideLineOutline } from './guide-line-outline';
+import { OutlineSeverity } from './outline-zone';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -54,15 +56,14 @@ export class BarOption {
     // fills land on the measure regardless of orientation.
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis');
     const bands = data?.toleranceBands ?? [];
-    const marks = [
-      ...ToleranceMarks.lines(bands, valueAxisKey),
-      ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
-    ];
-    const areas = [
-      ...ToleranceMarks.areas(bands, valueAxisKey),
-      ...GuideLineMarks.areas(config.guideLines ?? [], valueAxisKey),
-    ];
-    const outlineColor = ToleranceOutline.forValue(bands);
+    const guideLines = config.guideLines ?? [];
+    const marks = [...ToleranceMarks.lines(bands, valueAxisKey), ...GuideLineMarks.lines(guideLines, valueAxisKey)];
+    const areas = [...ToleranceMarks.areas(bands, valueAxisKey), ...GuideLineMarks.areas(guideLines, valueAxisKey)];
+    // A bar's bands and outlined guide lines both test against the one value axis, worst-wins.
+    const outlineColor = OutlineSeverity.forValue([
+      ...ToleranceOutline.zonesFor(bands),
+      ...GuideLineOutline.zonesFor(guideLines),
+    ]);
 
     // Categories sit on the X axis for vertical bars, the Y axis for horizontal ones; the value
     // axis takes whichever is left. Each name's gap is sized for its labels *on that axis*.
@@ -139,7 +140,7 @@ export class BarOption {
           // A bar outside an outlined band is bordered in the crossed limit's colour.
           data: s.values.map((v) => {
             const border = v !== null ? outlineColor(v) : null;
-            return border ? { value: v, itemStyle: ToleranceOutline.itemStyle(color, border) } : v;
+            return border ? { value: v, itemStyle: OutlineSeverity.itemStyle(color, border) } : v;
           }),
           ...(i === 0 && marks.length > 0
             ? { markLine: { silent: true, symbol: 'none', data: marks } }

@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection, widgetFragment } from '../../../core/models/report';
@@ -16,6 +17,10 @@ import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
 import { WidgetSelection } from '../state/widget-selection';
 import { WidgetExportActionsComponent } from '../widgets/widget-export-actions/widget-export-actions.component';
+import {
+  WidgetFullscreenDialogComponent,
+  WidgetFullscreenDialogData,
+} from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
@@ -45,6 +50,7 @@ export class WidgetHostComponent {
   private readonly selection = inject(WidgetSelection);
   private readonly navigation = inject(PanelNavigation);
   private readonly schema = inject(DatasetSchema);
+  private readonly dialog = inject(Dialog);
 
   protected readonly selected = computed(() =>
     this.selection.selectedWidgetIds().includes(this.widget().id),
@@ -155,6 +161,21 @@ export class WidgetHostComponent {
   protected showIssues(): void {
     this.selection.set([this.widget().id]);
     this.navigation.navigate({ kind: 'issues' });
+  }
+
+  /** Opens this widget at near-fullscreen size, fed the same reactive inputs its outlet already gets. */
+  protected openFullscreen(): void {
+    this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
+      data: {
+        widget: this.widgetDto,
+        title: this.title,
+        reportFilter: this.reportFilter,
+        widgetFilter: this.widgetFilter,
+        bindingFilters: this.bindingFilters,
+        datasetVersion: this.datasetVersion,
+        widgetOutputs: this.widgetOutputs,
+      },
+    });
   }
 
   protected onSortChange(sort: { columnId: string; direction: SortDirection }): void {

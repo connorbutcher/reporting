@@ -156,6 +156,16 @@ public class ChartGuideLine
 
     /// <summary>Shades the zone between <see cref="Value"/> and <see cref="ValueTo"/>. Ignored when <see cref="ValueTo"/> is null.</summary>
     public bool Fill { get; set; }
+
+    /// <summary>Outlines plotted points on the wrong side of the line (or outside the range, once it's one).</summary>
+    public bool OutlinePoints { get; set; }
+
+    /// <summary>
+    /// For a single-value line only (ignored once <see cref="ValueTo"/> is set): "above" or "below" —
+    /// which side of <see cref="Value"/> is out of range. Null defaults to "above". Client-side render
+    /// concern; persisted only.
+    /// </summary>
+    public string? Direction { get; set; }
 }
 
 /// <summary>One extra field shown in a point's tooltip, beyond the X/Y values.</summary>

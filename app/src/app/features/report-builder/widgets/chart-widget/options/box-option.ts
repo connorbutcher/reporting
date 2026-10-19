@@ -11,6 +11,8 @@ import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
+import { GuideLineOutline } from './guide-line-outline';
+import { OutlineSeverity } from './outline-zone';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -58,16 +60,14 @@ export class BoxOption {
     // fills land on the measure regardless of orientation.
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis') as 'xAxis' | 'yAxis';
     const bands = data?.toleranceBands ?? [];
-    const marks = [
-      ...ToleranceMarks.lines(bands, valueAxisKey),
-      ...GuideLineMarks.lines(config.guideLines ?? [], valueAxisKey),
-    ];
-    const areas = [
-      ...ToleranceMarks.areas(bands, valueAxisKey),
-      ...GuideLineMarks.areas(config.guideLines ?? [], valueAxisKey),
-    ];
-    // Boxes whose whiskers breach an outlined spec band are bordered in the crossed limit's colour.
-    const outline = ToleranceOutline.forExtent(bands);
+    const guideLines = config.guideLines ?? [];
+    const marks = [...ToleranceMarks.lines(bands, valueAxisKey), ...GuideLineMarks.lines(guideLines, valueAxisKey)];
+    const areas = [...ToleranceMarks.areas(bands, valueAxisKey), ...GuideLineMarks.areas(guideLines, valueAxisKey)];
+    // Boxes whose whiskers breach an outlined spec band or guide line are bordered in the crossed one's colour.
+    const outline = OutlineSeverity.forExtent([
+      ...ToleranceOutline.zonesFor(bands),
+      ...GuideLineOutline.zonesFor(guideLines),
+    ]);
 
     const categoryOrientation = horizontal ? 'y' : 'x';
     const valueOrientation = horizontal ? 'x' : 'y';

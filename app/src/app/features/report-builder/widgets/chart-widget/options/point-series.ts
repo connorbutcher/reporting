@@ -1,6 +1,6 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
 import { EffectScatterSeriesOption, LineSeriesOption, PointSeriesOption, ScatterSeriesOption } from './chart-option.types';
-import { ToleranceOutline } from './tolerance-outline';
+import { OutlineSeverity } from './outline-zone';
 import {
   ChartCommentAnchor,
   COMMENT_ANCHOR_SERIES_NAME,
@@ -210,7 +210,7 @@ export class PointSeries {
         value: [p.x, p.y],
         tooltipLines: p.tooltipLines,
         size: p.size,
-        ...(border ? { itemStyle: ToleranceOutline.itemStyle(color, border) } : {}),
+        ...(border ? { itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
       };
     });
   }

@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { Component, Signal, computed, inject, input, output } from '@angular/core';
 import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
 import {
@@ -11,6 +12,10 @@ import { isChartWidget, isExportableWidgetType } from '../../../core/models/widg
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
+import {
+  WidgetFullscreenDialogComponent,
+  WidgetFullscreenDialogData,
+} from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
 import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
 import { ReportComments } from '../comments/report-comments';
 import { chartBindingKey } from '../filters/view-filter-entry';
@@ -54,6 +59,7 @@ export class ReadonlyReportGridComponent {
   readonly commentsRequest = output<string>();
 
   private readonly comments = inject(ReportComments);
+  private readonly dialog = inject(Dialog);
 
   private readonly widgetOutputs = new Map<string, Record<string, WidgetOutputHandler>>();
 
@@ -79,6 +85,21 @@ export class ReadonlyReportGridComponent {
 
   protected isExportable(widget: Widget): boolean {
     return isExportableWidgetType(widget.type);
+  }
+
+  /** Opens this widget at near-fullscreen size, fed the same per-widget filters its outlet already gets. */
+  protected openFullscreen(widget: Widget): void {
+    this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
+      data: {
+        widget: () => widget,
+        title: () => widget.config.title || widget.type,
+        reportFilter: () => this.reportFilterFor(widget),
+        widgetFilter: () => this.widgetFilterFor(widget),
+        bindingFilters: () => this.bindingFiltersFor(widget),
+        datasetVersion: () => 0,
+        widgetOutputs: this.outputsFor(widget),
+      },
+    });
   }
 
   /** Only a table, pivot, KPI, or chart bound to a dataset has anything to filter. */

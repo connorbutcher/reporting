@@ -73,7 +73,29 @@
           />
           <label for="guide-line-fill">Shade region</label>
         </div>
+      } @else {
+        <label class="panel-field">
+          <span class="panel-field-label">Out of range is</span>
+          <p-selectbutton
+            [options]="directionOptions"
+            [ngModel]="line.direction ?? 'above'"
+            optionLabel="label"
+            optionValue="value"
+            [allowEmpty]="false"
+            (ngModelChange)="setDirection($event)"
+          />
+        </label>
       }
+
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="guide-line-outline"
+          [ngModel]="line.outlinePoints ?? false"
+          (onChange)="setOutlinePoints($event.checked)"
+        />
+        <label for="guide-line-outline">{{ outlineLabel() }}</label>
+      </div>
 
       <label class="panel-field">
         <span class="panel-field-label">Label</span>

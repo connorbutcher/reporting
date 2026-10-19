@@ -70,6 +70,9 @@ export type ChartSymbol = 'circle' | 'rect' | 'triangle' | 'diamond' | 'none';
 /** How a line series' stroke is dashed. */
 export type LineDashStyle = 'solid' | 'dashed' | 'dotted';
 
+/** Which side of a single-value guide line counts as out of range. Irrelevant once the line is a range. */
+export type LineDirection = 'above' | 'below';
+
 /** How a combination chart draws one series' aggregated values: as bars, or as a line over the categories. */
 export type ChartSeriesRenderAs = 'bar' | 'line';
 
@@ -160,6 +163,13 @@ export interface ChartGuideLine {
   dashStyle?: LineDashStyle | null;
   /** Shades the zone between `value` and `valueTo`. Ignored when `valueTo` is null. */
   fill?: boolean;
+  /** Outlines plotted points on the wrong side of the line (or outside the range, once it's one). */
+  outlinePoints?: boolean;
+  /**
+   * For a single-value line only (ignored once `valueTo` is set): which side of `value` is out
+   * of range. Null/absent defaults to `above`.
+   */
+  direction?: LineDirection | null;
 }
 
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */

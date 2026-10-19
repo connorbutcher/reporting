@@ -6,7 +6,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartAxis, LineDashStyle, chartAxisDisplayName } from '../../../../../core/models/report';
+import { ChartAxis, LineDashStyle, LineDirection, chartAxisDisplayName } from '../../../../../core/models/report';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelGroupComponent } from '../../panel-group.component';
@@ -20,6 +20,11 @@ const DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
   { label: 'Solid', value: 'solid' },
   { label: 'Dashed', value: 'dashed' },
   { label: 'Dotted', value: 'dotted' },
+];
+
+const DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
+  { label: 'Above the line', value: 'above' },
+  { label: 'Below the line', value: 'below' },
 ];
 
 const DEFAULT_COLOR = '#4f46e5';
@@ -47,7 +52,15 @@ export class PanelChartGuideLineComponent {
   public static readonly title = 'Guide line';
 
   public readonly dashOptions = DASH_OPTIONS;
+  public readonly directionOptions = DIRECTION_OPTIONS;
   public readonly defaultColor = DEFAULT_COLOR;
+
+  /** "the range"/"the line" so the outline checkbox's label matches whichever shape the line currently is. */
+  public readonly outlineLabel = computed(() => {
+    const line = this.line();
+    const isRange = line?.valueTo !== null && line?.valueTo !== undefined;
+    return isRange ? 'Outline points outside the range' : 'Outline points past this line';
+  });
 
   /**
    * Only axes bound to a numeric column can carry a line — a line is a fixed numeric
@@ -125,6 +138,16 @@ export class PanelChartGuideLineComponent {
   public setFill(fill: boolean): void {
     const lineId = this.lineId();
     if (lineId) this.chart()?.updateGuideLine(lineId, { fill });
+  }
+
+  public setDirection(direction: LineDirection): void {
+    const lineId = this.lineId();
+    if (lineId) this.chart()?.updateGuideLine(lineId, { direction });
+  }
+
+  public setOutlinePoints(outlinePoints: boolean): void {
+    const lineId = this.lineId();
+    if (lineId) this.chart()?.updateGuideLine(lineId, { outlinePoints });
   }
 
   public setLabel(label: string): void {

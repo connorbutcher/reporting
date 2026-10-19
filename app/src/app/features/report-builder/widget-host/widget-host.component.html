@@ -31,6 +31,7 @@
           (pointerdown)="$event.stopPropagation()"
           (screenshot)="outlet.exporter()?.downloadScreenshot()"
           (exportCsv)="outlet.exporter()?.downloadCsv()"
+          (expand)="openFullscreen()"
         />
       }
       @if (issues().length > 0) {

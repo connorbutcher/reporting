@@ -20,6 +20,7 @@
             <app-widget-export-actions
               (screenshot)="outlet.exporter()?.downloadScreenshot()"
               (exportCsv)="outlet.exporter()?.downloadCsv()"
+              (expand)="openFullscreen(widget)"
             />
           }
           @if (canFilter(widget)) {
