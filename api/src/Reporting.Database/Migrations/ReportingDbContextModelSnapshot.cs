@@ -1715,6 +1715,253 @@ namespace Reporting.Database.Migrations
                             PropagatesNull = true,
                             ReturnKind = "Number",
                             SortOrder = 61
+                        },
+                        new
+                        {
+                            Id = 63,
+                            Category = "Math",
+                            Description = "Rounds to the nearest multiple of a number; halves round away from zero. Blank when the multiple is zero.",
+                            Example = "MROUND([Price], 0.05)",
+                            ImplementationKey = "MROUND",
+                            IsEnabled = true,
+                            Name = "MROUND",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 62
+                        },
+                        new
+                        {
+                            Id = 64,
+                            Category = "Math",
+                            Description = "The numbers multiplied together, ignoring blanks.",
+                            Example = "PRODUCT([Count], [Price])",
+                            ImplementationKey = "PRODUCT",
+                            IsEnabled = true,
+                            Name = "PRODUCT",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 63
+                        },
+                        new
+                        {
+                            Id = 65,
+                            Category = "Math",
+                            Description = "How many of the values aren't blank.",
+                            Example = "COUNT([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "COUNT",
+                            IsEnabled = true,
+                            Name = "COUNT",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 64
+                        },
+                        new
+                        {
+                            Id = 66,
+                            Category = "Math",
+                            Description = "The sample standard deviation of the numbers, ignoring blanks. Blank with fewer than two.",
+                            Example = "STDEV([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "STDEV",
+                            IsEnabled = true,
+                            Name = "STDEV",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 65
+                        },
+                        new
+                        {
+                            Id = 67,
+                            Category = "Math",
+                            Description = "The sample variance of the numbers, ignoring blanks. Blank with fewer than two.",
+                            Example = "VAR([Reading 1], [Reading 2], [Reading 3])",
+                            ImplementationKey = "VAR",
+                            IsEnabled = true,
+                            Name = "VAR",
+                            PropagatesNull = false,
+                            ReturnKind = "Number",
+                            SortOrder = 66
+                        },
+                        new
+                        {
+                            Id = 68,
+                            Category = "Text",
+                            Description = "Pads the text on the right up to a length, with spaces or the given character.",
+                            Example = "PADRIGHT([Part], 10, \".\")",
+                            ImplementationKey = "PADRIGHT",
+                            IsEnabled = true,
+                            Name = "PADRIGHT",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 67
+                        },
+                        new
+                        {
+                            Id = 69,
+                            Category = "Text",
+                            Description = "The text before a delimiter (ignoring case): its first occurrence, the nth, or the nth from the end when negative. Blank when it isn't there.",
+                            Example = "TEXTBEFORE([Email], \"@\")",
+                            ImplementationKey = "TEXTBEFORE",
+                            IsEnabled = true,
+                            Name = "TEXTBEFORE",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 68
+                        },
+                        new
+                        {
+                            Id = 70,
+                            Category = "Text",
+                            Description = "The text after a delimiter (ignoring case): its first occurrence, the nth, or the nth from the end when negative. Blank when it isn't there.",
+                            Example = "TEXTAFTER([Serial], \"-\", -1)",
+                            ImplementationKey = "TEXTAFTER",
+                            IsEnabled = true,
+                            Name = "TEXTAFTER",
+                            PropagatesNull = true,
+                            ReturnKind = "Text",
+                            SortOrder = 69
+                        },
+                        new
+                        {
+                            Id = 71,
+                            Category = "Date",
+                            Description = "The minute of a date and time, 0 to 59.",
+                            Example = "MINUTE([Logged At])",
+                            ImplementationKey = "MINUTE",
+                            IsEnabled = true,
+                            Name = "MINUTE",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 70
+                        },
+                        new
+                        {
+                            Id = 72,
+                            Category = "Date",
+                            Description = "The second of a date and time, 0 to 59.",
+                            Example = "SECOND([Logged At])",
+                            ImplementationKey = "SECOND",
+                            IsEnabled = true,
+                            Name = "SECOND",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 71
+                        },
+                        new
+                        {
+                            Id = 73,
+                            Category = "Date",
+                            Description = "The day of the year, 1 to 366.",
+                            Example = "DAYOFYEAR([Build Date])",
+                            ImplementationKey = "DAYOFYEAR",
+                            IsEnabled = true,
+                            Name = "DAYOFYEAR",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 72
+                        },
+                        new
+                        {
+                            Id = 74,
+                            Category = "Date",
+                            Description = "The Monday that starts the date's week.",
+                            Example = "STARTOFWEEK([Build Date])",
+                            ImplementationKey = "STARTOFWEEK",
+                            IsEnabled = true,
+                            Name = "STARTOFWEEK",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 73
+                        },
+                        new
+                        {
+                            Id = 75,
+                            Category = "Date",
+                            Description = "The first day of the date's calendar quarter.",
+                            Example = "STARTOFQUARTER([Build Date])",
+                            ImplementationKey = "STARTOFQUARTER",
+                            IsEnabled = true,
+                            Name = "STARTOFQUARTER",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 74
+                        },
+                        new
+                        {
+                            Id = 76,
+                            Category = "Date",
+                            Description = "The first day of the date's year.",
+                            Example = "STARTOFYEAR([Build Date])",
+                            ImplementationKey = "STARTOFYEAR",
+                            IsEnabled = true,
+                            Name = "STARTOFYEAR",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 75
+                        },
+                        new
+                        {
+                            Id = 77,
+                            Category = "Date",
+                            Description = "The working days (Monday to Friday) from one date to another, counting both; negative when the end is earlier.",
+                            Example = "NETWORKDAYS([Ordered], [Shipped])",
+                            ImplementationKey = "NETWORKDAYS",
+                            IsEnabled = true,
+                            Name = "NETWORKDAYS",
+                            PropagatesNull = true,
+                            ReturnKind = "Number",
+                            SortOrder = 76
+                        },
+                        new
+                        {
+                            Id = 78,
+                            Category = "Date",
+                            Description = "The date a number of working days (Monday to Friday) after a date, or before it when negative.",
+                            Example = "WORKDAY([Invoice Date], 10)",
+                            ImplementationKey = "WORKDAY",
+                            IsEnabled = true,
+                            Name = "WORKDAY",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 77
+                        },
+                        new
+                        {
+                            Id = 79,
+                            Category = "Logic",
+                            Description = "Blank when a value equals another, otherwise the value: turns a placeholder such as 0 or \"N/A\" into a blank.",
+                            Example = "NULLIF([Inspected By], \"N/A\")",
+                            ImplementationKey = "NULLIF",
+                            IsEnabled = true,
+                            Name = "NULLIF",
+                            PropagatesNull = false,
+                            ReturnKind = "Any",
+                            SortOrder = 78
+                        },
+                        new
+                        {
+                            Id = 80,
+                            Category = "Logic",
+                            Description = "True when an odd number of the conditions are true.",
+                            Example = "XOR([Late], [Damaged])",
+                            ImplementationKey = "XOR",
+                            IsEnabled = true,
+                            Name = "XOR",
+                            PropagatesNull = true,
+                            ReturnKind = "Bool",
+                            SortOrder = 79
+                        },
+                        new
+                        {
+                            Id = 81,
+                            Category = "Conversion",
+                            Description = "Reads text as a date, such as \"2026-03-15\". Blank when it isn't one.",
+                            Example = "DATEVALUE([Date Text])",
+                            ImplementationKey = "DATEVALUE",
+                            IsEnabled = true,
+                            Name = "DATEVALUE",
+                            PropagatesNull = true,
+                            ReturnKind = "Date",
+                            SortOrder = 80
                         });
                 });
 
@@ -2749,6 +2996,296 @@ namespace Reporting.Database.Migrations
                         {
                             Id = 100,
                             FormulaFunctionDefinitionId = 62,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 101,
+                            FormulaFunctionDefinitionId = 63,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 102,
+                            FormulaFunctionDefinitionId = 63,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "multiple",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 103,
+                            FormulaFunctionDefinitionId = 64,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 104,
+                            FormulaFunctionDefinitionId = 65,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 105,
+                            FormulaFunctionDefinitionId = 66,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 106,
+                            FormulaFunctionDefinitionId = 67,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Number",
+                            Name = "number",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 107,
+                            FormulaFunctionDefinitionId = 68,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 108,
+                            FormulaFunctionDefinitionId = 68,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "length",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 109,
+                            FormulaFunctionDefinitionId = 68,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "pad",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 110,
+                            FormulaFunctionDefinitionId = 69,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 111,
+                            FormulaFunctionDefinitionId = 69,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "delimiter",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 112,
+                            FormulaFunctionDefinitionId = 69,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "occurrence",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 113,
+                            FormulaFunctionDefinitionId = 70,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "text",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 114,
+                            FormulaFunctionDefinitionId = 70,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Text",
+                            Name = "delimiter",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 115,
+                            FormulaFunctionDefinitionId = 70,
+                            IsOptional = true,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "occurrence",
+                            Position = 2
+                        },
+                        new
+                        {
+                            Id = 116,
+                            FormulaFunctionDefinitionId = 71,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 117,
+                            FormulaFunctionDefinitionId = 72,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 118,
+                            FormulaFunctionDefinitionId = 73,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 119,
+                            FormulaFunctionDefinitionId = 74,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 120,
+                            FormulaFunctionDefinitionId = 75,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 121,
+                            FormulaFunctionDefinitionId = 76,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 122,
+                            FormulaFunctionDefinitionId = 77,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "start",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 123,
+                            FormulaFunctionDefinitionId = 77,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "end",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 124,
+                            FormulaFunctionDefinitionId = 78,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Date",
+                            Name = "date",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 125,
+                            FormulaFunctionDefinitionId = 78,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Number",
+                            Name = "days",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 126,
+                            FormulaFunctionDefinitionId = 79,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "value",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 127,
+                            FormulaFunctionDefinitionId = 79,
+                            IsOptional = false,
+                            IsVariadic = false,
+                            Kind = "Any",
+                            Name = "match",
+                            Position = 1
+                        },
+                        new
+                        {
+                            Id = 128,
+                            FormulaFunctionDefinitionId = 80,
+                            IsOptional = false,
+                            IsVariadic = true,
+                            Kind = "Bool",
+                            Name = "condition",
+                            Position = 0
+                        },
+                        new
+                        {
+                            Id = 129,
+                            FormulaFunctionDefinitionId = 81,
                             IsOptional = false,
                             IsVariadic = false,
                             Kind = "Text",

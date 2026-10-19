@@ -16,6 +16,9 @@ public class FormulaLogicFunctionTests
     [InlineData("BETWEEN(11, 1, 10)", false)]
     [InlineData("ONEOF(\"b\", \"a\", \"B\")", true)]
     [InlineData("ONEOF(3, 1, 2)", false)]
+    [InlineData("XOR(TRUE, FALSE)", true)]
+    [InlineData("XOR(TRUE, TRUE)", false)]
+    [InlineData("XOR(TRUE, TRUE, TRUE)", true)]
     public void Functions_returning_true_or_false(string expression, bool expected)
     {
         Assert.Equal(expected, Run(expression));
@@ -27,6 +30,16 @@ public class FormulaLogicFunctionTests
         var result = Run("IF([B], \"yes\", \"no\")", new FormulaTestInput("B", null, DatasetColumnType.Bool));
 
         Assert.Equal("no", result);
+    }
+
+    [Fact]
+    public void NULLIF_blanks_a_value_equal_to_the_match()
+    {
+        Assert.Null(Run("NULLIF(0, 0)"));
+        Assert.Null(Run("NULLIF(\"N/A\", \"n/a\")"));
+        Assert.Equal(5.0, Run("NULLIF(5, 0)"));
+        Assert.Equal(5.0, RunNumbers("NULLIF([A], [B])", 5.0, null));
+        Assert.Null(RunNumbers("NULLIF([A], 0)", [null]));
     }
 
     [Fact]

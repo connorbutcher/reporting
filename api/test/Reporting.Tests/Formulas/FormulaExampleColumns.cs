@@ -9,7 +9,7 @@ public static class FormulaExampleColumns
     private static readonly string[] TextNames =
     [
         "Region", "Email", "Name", "Part Number", "Serial", "First Name", "Last Name", "City", "Country",
-        "Notes", "File", "Part", "Reading Text", "Inspected By"
+        "Notes", "File", "Part", "Reading Text", "Inspected By", "Date Text"
     ];
 
     private static readonly string[] FlagNames = ["Passed", "Signed Off", "Late", "Damaged"];
