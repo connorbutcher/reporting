@@ -35,7 +35,7 @@
           <i class="pi pi-table" aria-hidden="true"></i>
           <span class="chip-name" [attr.title]="item.name">{{ item.name }}</span>
           <span class="badge">{{ columnBadge(item.name) }}</span>
-          <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove column ' + item.name">
+          <button type="button" class="icon-btn remove" (click)="remove(item)" [attr.aria-label]="'Remove column ' + item.name">
             <i class="pi pi-times" aria-hidden="true"></i>
           </button>
         </span>
@@ -77,7 +77,7 @@
               <span aria-hidden="true">"</span>
             }
           }
-          <button type="button" class="icon-btn" (click)="remove(item)" aria-label="Remove value">
+          <button type="button" class="icon-btn remove" (click)="remove(item)" aria-label="Remove value">
             <i class="pi pi-times" aria-hidden="true"></i>
           </button>
         </span>
@@ -102,7 +102,7 @@
           (mouseleave)="unhover(item)"
         >
           <span class="op-symbol">{{ symbol(item.op) }}</span>
-          <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove ' + operatorName(item.op)">
+          <button type="button" class="icon-btn remove" (click)="remove(item)" [attr.aria-label]="'Remove ' + operatorName(item.op)">
             <i class="pi pi-times" aria-hidden="true"></i>
           </button>
         </span>
@@ -124,7 +124,7 @@
           <span class="paren" draggable="true" (dragstart)="startDrag($event, item)" (dragend)="endDrag()" title="Brackets: work out what is inside first">(</span>
           <app-formula-expression [items]="item.body" [address]="addressOf(item.id, 0)" hint="Drop or type inside the brackets" />
           <span class="paren" aria-hidden="true">)</span>
-          <button type="button" class="icon-btn" (click)="remove(item)" aria-label="Remove the brackets and what is inside">
+          <button type="button" class="icon-btn remove" (click)="remove(item)" aria-label="Remove the brackets and what is inside">
             <i class="pi pi-times" aria-hidden="true"></i>
           </button>
         </div>
@@ -154,11 +154,10 @@
             </button>
             <span class="card-name">{{ item.name }}({{ isCollapsed(item.id) ? '…)' : '' }}</span>
             <span class="badge" title="What this returns">→ {{ resultBadge(item) }}</span>
-            <span class="spacer"></span>
-            <button type="button" class="icon-btn" (click)="remove(item)" [attr.aria-label]="'Remove ' + item.name">
-              <i class="pi pi-times" aria-hidden="true"></i>
-            </button>
           </div>
+          <button type="button" class="icon-btn remove" (click)="remove(item)" [attr.aria-label]="'Remove ' + item.name">
+            <i class="pi pi-times" aria-hidden="true"></i>
+          </button>
 
           @if (!isCollapsed(item.id)) {
             <div class="args">
