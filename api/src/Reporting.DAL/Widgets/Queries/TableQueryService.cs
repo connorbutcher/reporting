@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
@@ -13,7 +14,24 @@ namespace Reporting.DAL.Widgets;
 /// </summary>
 public class TableQueryService(ReportingDbContext db, ToleranceResolver tolerance, DatasetResolver resolver)
 {
-    public async Task<TableQueryResultDto?> QueryForTableAsync(int id, TableQueryDto dto)
+    /// <summary>The most rows one on-screen page or scroll window can ask for.</summary>
+    public const int MaxPageRows = 500;
+
+    /// <summary>The most rows a CSV export pulls in one go, so a runaway dataset can't be dragged into memory wholesale.</summary>
+    public const int MaxExportRows = 50_000;
+
+    public Task<TableQueryResultDto?> QueryForTableAsync(int id, TableQueryDto dto) =>
+        QueryAsync(id, dto, MaxPageRows);
+
+    /// <summary>Every matched row (up to <see cref="MaxExportRows"/>) from the start, for a CSV export of the whole table.</summary>
+    public Task<TableQueryResultDto?> QueryForTableExportAsync(int id, TableQueryDto dto)
+    {
+        dto.Skip = 0;
+        dto.Take = MaxExportRows;
+        return QueryAsync(id, dto, MaxExportRows);
+    }
+
+    private async Task<TableQueryResultDto?> QueryAsync(int id, TableQueryDto dto, int maxTake)
     {
         var resolved = await resolver.ResolveAsync(id);
         if (resolved is null)
@@ -65,15 +83,26 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
         var predicate = FilterTranslator.Build(dto.Filter, columnsByRef, bounds, operatorCatalogue);
         var matching = predicate is null ? all : all.Where(predicate);
 
+        var search = SearchPredicate(dto.Search, dto.Columns, columnsByRef);
+        if (search is not null)
+        {
+            matching = matching.Where(search);
+        }
+        if (dto.RowId is { } rowId)
+        {
+            matching = matching.Where(r => r.RefId == rowId);
+        }
+        var narrowed = predicate is not null || search is not null || dto.RowId is not null;
+
         var totalRowCount = await all.CountAsync();
-        // With no filter every row matches, so the second COUNT would just repeat the first.
-        var matchedRowCount = predicate is null ? totalRowCount : await matching.CountAsync();
+        // With nothing narrowing the rows every row matches, so the second COUNT would just repeat the first.
+        var matchedRowCount = narrowed ? await matching.CountAsync() : totalRowCount;
 
         var sortColumn = dto.SortColumnId is { } sortId ? columnsByRef.GetValueOrDefault(sortId) : null;
         var ordered = ApplySort(matching, sortColumn, dto.SortDirection);
 
         var skip = Math.Max(0, dto.Skip);
-        var take = Math.Clamp(dto.Take <= 0 ? 50 : dto.Take, 1, 500);
+        var take = Math.Clamp(dto.Take <= 0 ? 50 : dto.Take, 1, maxTake);
         // Read-only projection to DTOs below, so skip change tracking on the materialised rows/cells.
         var rows = await ordered.Skip(skip).Take(take).Include(r => r.Cells).AsNoTracking().ToListAsync();
 
@@ -87,8 +116,119 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
             Name = resolved.Name,
             Rows = resultRows,
             TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount
+            MatchedRowCount = matchedRowCount,
+            Totals = await TotalsAsync(matching, dto.Columns, columnsByRef),
+            ColumnStats = await ColumnStatsAsync(matching, dto.Columns, columnsByRef),
         };
+    }
+
+    /// <summary>
+    /// Rows where any requested column's stored text contains <paramref name="search"/>. Every cell keeps
+    /// its canonical text in <see cref="DatasetCell.StringValue"/>, so this reaches numbers and dates too.
+    /// </summary>
+    private static Expression<Func<DatasetRow, bool>>? SearchPredicate(
+        string? search,
+        List<DataTableColumnSetting> settings,
+        Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        var text = search?.Trim();
+        if (string.IsNullOrEmpty(text))
+        {
+            return null;
+        }
+
+        var ids = settings
+            .Select(s => columnsByRef.GetValueOrDefault(s.ColumnId)?.Id)
+            .OfType<int>()
+            .ToList();
+        if (ids.Count == 0)
+        {
+            return null;
+        }
+
+        var pattern = $"%{text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
+        return r => r.Cells.Any(c => ids.Contains(c.ColumnId) && c.StringValue != null && EF.Functions.Like(c.StringValue, pattern, "\\"));
+    }
+
+    /// <summary>Each column's configured total, reduced over every matched row (not only the returned page).</summary>
+    private static async Task<Dictionary<Guid, TableCellDto>> TotalsAsync(
+        IQueryable<DatasetRow> matching,
+        List<DataTableColumnSetting> settings,
+        Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        var totals = new Dictionary<Guid, TableCellDto>();
+        foreach (var setting in settings)
+        {
+            if (setting.Total is not { } aggregate || !columnsByRef.TryGetValue(setting.ColumnId, out var column))
+            {
+                continue;
+            }
+
+            var columnId = column.Id;
+            var cells = matching.SelectMany(r => r.Cells).Where(c => c.ColumnId == columnId);
+            double? value;
+            if (aggregate == Aggregate.Count)
+            {
+                // Count works on any column: the matched rows that have a value in it.
+                value = await cells.CountAsync(c => c.StringValue != null && c.StringValue != "");
+            }
+            else if (column.Type is DatasetColumnType.Int or DatasetColumnType.Double)
+            {
+                var numbers = cells.Where(c => c.NumberValue != null).Select(c => c.NumberValue!.Value);
+                value = await numbers.AnyAsync()
+                    ? aggregate switch
+                    {
+                        Aggregate.Sum => await numbers.SumAsync(),
+                        Aggregate.Average => await numbers.AverageAsync(),
+                        Aggregate.Min => await numbers.MinAsync(),
+                        Aggregate.Max => await numbers.MaxAsync(),
+                        _ => null,
+                    }
+                    : null;
+            }
+            else
+            {
+                continue; // Sums and averages only mean something for numbers.
+            }
+
+            // A count is a plain tally; the other aggregates read in the column's own number format.
+            var config = aggregate == Aggregate.Count ? null : column.GetConfig() as NumericColumnConfig;
+            totals[setting.ColumnId] = new TableCellDto
+            {
+                Value = value,
+                DisplayValue = value is { } v ? CellFormatter.Number(v, config) : null,
+            };
+        }
+        return totals;
+    }
+
+    /// <summary>The numeric range of each data-bar column over every matched row, so bars scale the same on every page.</summary>
+    private static async Task<Dictionary<Guid, TableColumnStatsDto>> ColumnStatsAsync(
+        IQueryable<DatasetRow> matching,
+        List<DataTableColumnSetting> settings,
+        Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        var stats = new Dictionary<Guid, TableColumnStatsDto>();
+        foreach (var setting in settings)
+        {
+            if (!setting.DataBars
+                || !columnsByRef.TryGetValue(setting.ColumnId, out var column)
+                || column.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+            {
+                continue;
+            }
+
+            var columnId = column.Id;
+            var numbers = matching.SelectMany(r => r.Cells)
+                .Where(c => c.ColumnId == columnId && c.NumberValue != null)
+                .Select(c => c.NumberValue);
+            stats[setting.ColumnId] = new TableColumnStatsDto
+            {
+                Min = await numbers.MinAsync(),
+                Max = await numbers.MaxAsync(),
+            };
+        }
+        return stats;
     }
 
     /// <summary>One row's result: a formatted, tolerance-classified cell per requested column.</summary>
@@ -131,7 +271,24 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
             status = ToleranceResolver.Classify(value, columnBounds);
         }
 
-        return new TableCellDto { DisplayValue = display, Tolerance = status };
+        return new TableCellDto { DisplayValue = display, Value = TypedValue(cell, column.Type), Tolerance = status };
+    }
+
+    /// <summary>A cell's value in its column's own type, falling back to the stored text where it didn't parse.</summary>
+    private static object? TypedValue(DatasetCell? cell, DatasetColumnType type)
+    {
+        if (cell is null)
+        {
+            return null;
+        }
+        object? typed = type switch
+        {
+            DatasetColumnType.Int or DatasetColumnType.Double => cell.NumberValue,
+            DatasetColumnType.DateTime => cell.DateValue,
+            DatasetColumnType.Bool => cell.BoolValue,
+            _ => null,
+        };
+        return typed ?? (string.IsNullOrEmpty(cell.StringValue) ? null : cell.StringValue);
     }
 
     /// <summary>The tolerance bounds a cell is classified against: a per-row limits lookup for a
@@ -158,7 +315,11 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
         return columnBounds;
     }
 
-    /// <summary>Orders by the sort column's typed value, correlated per row the same way filters are.</summary>
+    /// <summary>
+    /// Orders by the sort column's typed value, correlated per row the same way filters are, with the
+    /// row id as the tiebreak. Paging needs a total order: without one the database may return tied
+    /// (or, unsorted, all) rows in a different order per query, repeating or skipping rows across pages.
+    /// </summary>
     private static IQueryable<DatasetRow> ApplySort(
         IQueryable<DatasetRow> query,
         DatasetColumn? sortColumn,
@@ -166,8 +327,16 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
     {
         if (sortColumn is null)
         {
-            return query;
+            return query.OrderBy(r => r.Id);
         }
+        return SortByColumn(query, sortColumn, direction).ThenBy(r => r.Id);
+    }
+
+    private static IOrderedQueryable<DatasetRow> SortByColumn(
+        IQueryable<DatasetRow> query,
+        DatasetColumn sortColumn,
+        SortDirection direction)
+    {
         var desc = direction == SortDirection.Desc;
         var sortId = sortColumn.Id;
 
