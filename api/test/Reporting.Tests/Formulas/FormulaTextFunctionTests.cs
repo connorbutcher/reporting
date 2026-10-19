@@ -22,6 +22,16 @@ public class FormulaTextFunctionTests
     [InlineData("REPLACE(\"a-b-c\", \"-\", \"\")", "abc")]
     [InlineData("REPEAT(\"ab\", 3)", "ababab")]
     [InlineData("PADLEFT(\"7\", 3, \"0\")", "007")]
+    [InlineData("PADRIGHT(\"7\", 3, \"0\")", "700")]
+    [InlineData("PADRIGHT(\"abc\", 2)", "abc")]
+    [InlineData("TEXTBEFORE(\"ann@example.com\", \"@\")", "ann")]
+    [InlineData("TEXTBEFORE(\"a-b-c\", \"-\", 2)", "a-b")]
+    [InlineData("TEXTBEFORE(\"a-b-c\", \"-\", -1)", "a-b")]
+    [InlineData("TEXTAFTER(\"a-b-c\", \"-\")", "b-c")]
+    [InlineData("TEXTAFTER(\"a-b-c\", \"-\", -1)", "c")]
+    [InlineData("TEXTAFTER(\"a-b-c\", \"-\", -2)", "b-c")]
+    [InlineData("TEXTAFTER(\"aXbxc\", \"x\", 2)", "c")]
+    [InlineData("TEXTAFTER(\"ENG--42\", \"-\", -2)", "-42")]
     [InlineData("TEXT(3.14159, \"0.00\")", "3.14")]
     [InlineData("TEXT(42)", "42")]
     public void Functions_returning_text(string expression, string expected)
@@ -48,6 +58,26 @@ public class FormulaTextFunctionTests
     public void Functions_returning_true_or_false(string expression, bool expected)
     {
         Assert.Equal(expected, Run(expression));
+    }
+
+    [Theory]
+    [InlineData("TEXTBEFORE(\"abc\", \"-\")")]
+    [InlineData("TEXTAFTER(\"a-b\", \"-\", 2)")]
+    [InlineData("TEXTAFTER(\"a-b\", \"-\", -2)")]
+    [InlineData("TEXTBEFORE(\"a-b\", \"-\", 0)")]
+    [InlineData("TEXTBEFORE(\"a-b\", \"\")")]
+    [InlineData("TEXTAFTER(\"aaa\", \"aa\", 2)")]
+    public void TEXTBEFORE_and_TEXTAFTER_are_blank_when_the_delimiter_isnt_there(string expression)
+    {
+        Assert.Null(Run(expression));
+    }
+
+    [Fact]
+    public void DATEVALUE_reads_text_as_a_date_or_gives_a_blank()
+    {
+        Assert.Equal(new DateTime(2026, 3, 15), Run("DATEVALUE(\"2026-03-15\")"));
+        Assert.Equal(new DateTime(2026, 3, 15, 14, 30, 0), Run("DATEVALUE(\"2026-03-15T14:30:00\")"));
+        Assert.Null(Run("DATEVALUE(\"not a date\")"));
     }
 
     [Fact]

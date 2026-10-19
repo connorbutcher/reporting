@@ -7,7 +7,8 @@ namespace Reporting.Database;
 /// It seeds the FormulaFunctionDefinitions/FormulaFunctionParameters tables, and the DAL builds the same
 /// rows in memory when there's no database, so the two can't drift. Each function's <c>ImplementationKey</c>
 /// (its name, here) must have a matching implementation registered on the server. The functions are listed
-/// by category, in the order that gives each its id.
+/// by category, in the order that gives each its id; functions added later go after them all (see
+/// <see cref="AddedFunctionSpecs"/>) so existing ids never change.
 /// </summary>
 public static class FormulaFunctionSeedData
 {
@@ -36,6 +37,7 @@ public static class FormulaFunctionSeedData
         specs.AddRange(DateFunctionSpecs.All());
         specs.AddRange(LogicFunctionSpecs.All());
         specs.AddRange(ConversionFunctionSpecs.All());
+        specs.AddRange(AddedFunctionSpecs.All());
         return specs;
     }
 
