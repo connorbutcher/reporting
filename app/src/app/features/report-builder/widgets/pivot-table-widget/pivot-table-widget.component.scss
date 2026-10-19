@@ -1,3 +1,5 @@
+@use '../cell-format';
+
 :host {
   display: flex;
   flex-direction: column;
@@ -62,6 +64,72 @@
     font-family: var(--app-font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  // A cross-tab's block headings sit over their measures, centred across the block.
+  th.block {
+    text-align: center;
+    border-bottom: 1px solid var(--app-card-border, #e2e8f0);
+  }
+
+  // The first dimension stays in view while a wide pivot (a cross-tab, say) scrolls sideways.
+  th.dim-0,
+  td.dim-0 {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+
+  td.dim-0 {
+    background: #fff;
+  }
+
+  // A subtotal heads its group: its values are the group's, so it reads as a heading row.
+  tr.subtotal td {
+    background: #f8fafc;
+    font-weight: 600;
+    color: var(--app-navy, #152a55);
+  }
+
+  tr.subtotal td.dim-0 {
+    background: #f8fafc;
+  }
+
+  td .toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: none;
+    color: inherit;
+    vertical-align: middle;
+    cursor: pointer;
+
+    .pi {
+      font-size: 0.65rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: #e2e8f0;
+    }
+  }
+
+  // A cell that opens the rows behind it.
+  td.drillable {
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+      text-decoration-color: #94a3b8;
+    }
+  }
+
+  @include cell-format.cell-format;
 
   // The grand-total row is the summary of the whole pivot — set it apart.
   tr.grand-total td {

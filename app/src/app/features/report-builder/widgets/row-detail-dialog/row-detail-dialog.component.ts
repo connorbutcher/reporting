@@ -29,10 +29,10 @@ export interface RowDetailDialogData {
   styleUrl: './row-detail-dialog.component.scss',
 })
 export class RowDetailDialogComponent {
-  protected readonly data = inject<RowDetailDialogData>(DIALOG_DATA);
-  protected readonly row = signal<TableRowResult | null>(null);
-  protected readonly loading = signal(true);
-  protected readonly error = signal(false);
+  public readonly data = inject<RowDetailDialogData>(DIALOG_DATA);
+  public readonly row = signal<TableRowResult | null>(null);
+  public readonly loading = signal(true);
+  public readonly error = signal(false);
 
   private readonly dialogRef = inject(DialogRef<void>);
 
@@ -59,7 +59,7 @@ export class RowDetailDialogComponent {
       });
   }
 
-  protected toleranceLabel(status: string | undefined): string | null {
+  public toleranceLabel(status: string | undefined): string | null {
     switch (status) {
       case 'fail':
         return 'Out of tolerance';
@@ -70,7 +70,7 @@ export class RowDetailDialogComponent {
     }
   }
 
-  protected close(): void {
+  public close(): void {
     this.dialogRef.close();
   }
 }
