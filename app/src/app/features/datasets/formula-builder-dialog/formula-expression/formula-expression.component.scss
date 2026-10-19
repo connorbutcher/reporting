@@ -40,6 +40,55 @@
   }
 }
 
+// Every item's remove button is a small bubble on its top-right corner, shown while the item itself (not something
+// nested inside it) is hovered, selected or the button has keyboard focus, so it takes no room in the row.
+[data-item] {
+  position: relative;
+}
+
+.icon-btn.remove {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--app-card-border);
+  border-radius: 50%;
+  background: #fff;
+  font-size: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease-out;
+
+  &:hover {
+    background: var(--fb-error-bg);
+    border-color: var(--fb-error-border);
+    color: var(--fb-error-fg);
+  }
+
+  &:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+[data-item]:hover:not(:has([data-item]:hover)) > .remove,
+.selected > .remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .icon-btn.remove {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 // The row of items. Values, operator symbols, brackets and functions flow left to right and wrap.
 .expr {
   display: flex;
@@ -122,7 +171,7 @@
   gap: 6px;
   max-width: 100%;
   min-width: 0;
-  padding: 4px 6px 4px 8px;
+  padding: 4px 8px;
   border-radius: 6px;
   border: 1px solid var(--fb-border);
   font-size: 0.83rem;
@@ -177,7 +226,8 @@
   gap: 2px;
   min-width: 30px;
   height: 30px;
-  padding: 0 4px 0 10px;
+  justify-content: center;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--fb-card-border);
   background: var(--fb-card-bg);
@@ -196,16 +246,6 @@
     background: var(--fb-error-bg);
     border-color: var(--fb-error-border);
     color: var(--fb-error-fg);
-  }
-
-  .icon-btn {
-    opacity: 0;
-    padding: 2px 3px;
-  }
-
-  &:hover .icon-btn,
-  &:focus-within .icon-btn {
-    opacity: 1;
   }
 }
 
@@ -237,8 +277,10 @@
   }
 }
 
+// A function always takes a whole row, so functions stack with their left edges and widths lined up, and the
+// operators and values between them sit on their own rows rather than wrapping beside one function but not another.
 .card {
-  flex: 1 1 320px;
+  flex: 1 1 100%;
   min-width: 0;
   border: 1px solid var(--fb-card-border);
   border-radius: 8px;
@@ -253,7 +295,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px 5px 4px;
+  padding: 5px 28px 5px 4px;
   cursor: grab;
 
   .card-name {
@@ -262,10 +304,12 @@
     font-size: 0.84rem;
     color: var(--fb-function-fg);
   }
+}
 
-  .spacer {
-    flex: 1;
-  }
+// A function has room for its remove button inside its header.
+.card > .remove {
+  top: 6px;
+  right: 6px;
 }
 
 .args {
