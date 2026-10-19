@@ -1,6 +1,22 @@
 import { FilterGroup } from '../filter';
 import { Aggregate } from './chart-config.model';
+import { FormatRule } from './format-rule.model';
 import { WidgetConfigBase } from './widget-base.model';
+
+/** How a pivot measure reduces a group: the chart aggregates, plus a distinct count and a median. */
+export type PivotAggregate = Aggregate | 'countDistinct' | 'median';
+
+/** How a measure's value is shown: as itself, or as a share of its column's total or of its enclosing group. */
+export type PivotShowAs = 'value' | 'percentOfTotal' | 'percentOfParent';
+
+/** The period a date field is grouped into. */
+export type DateGrouping = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
+/** Groups a date row or column field by period rather than by exact value. */
+export interface PivotFieldGrouping {
+  columnId: string;
+  grouping: DateGrouping;
+}
 
 /**
  * One measure a pivot computes and shows as a value column: an aggregate over a column, reduced
@@ -11,9 +27,15 @@ export interface PivotMeasure {
   id: string;
   /** The column reduced; null for `count`. */
   columnId: string | null;
-  aggregate: Aggregate;
+  aggregate: PivotAggregate;
+  /** Omitted shows the value itself. */
+  showAs?: PivotShowAs;
   /** Overrides the derived column header (e.g. "Sum of Cost"); blank uses the derived one. */
   label: string;
+  /** Draws a bar behind each value, scaled across the measure's values in the pivot. */
+  dataBars?: boolean;
+  /** Conditional highlighting, checked in order; the first rule a value matches wins. */
+  formatRules?: FormatRule[];
 }
 
 /**
@@ -29,6 +51,12 @@ export interface PivotTableWidgetConfig extends WidgetConfigBase {
   /** The columns rows are grouped by, in order — nested left to right. */
   rowFields: string[];
 
+  /** The columns spread across the top, in order — one group of value columns per combination. Omitted means none. */
+  columnFields?: string[];
+
+  /** Date row/column fields grouped by period rather than by exact value. */
+  fieldGroupings?: PivotFieldGrouping[];
+
   /** The measures computed for each group, each shown as its own value column. */
   measures: PivotMeasure[];
 
@@ -37,8 +65,11 @@ export interface PivotTableWidgetConfig extends WidgetConfigBase {
   /** Orders the measure sort highest-first when true. */
   sortDescending: boolean;
 
-  /** Appends a totals row aggregating every matched row. */
+  /** Appends a totals row aggregating every matched row (and a totals column group with column fields). */
   showGrandTotal: boolean;
+
+  /** With two or more row fields, adds a subtotal row heading each outer group, which readers can collapse. */
+  showSubtotals?: boolean;
 
   /** Rows this widget aggregates, narrowed server-side. Null means no widget-level filter. */
   filter: FilterGroup | null;
@@ -49,9 +80,12 @@ export const DEFAULT_PIVOT_CONFIG: Omit<PivotTableWidgetConfig, 'type'> = {
   title: 'Pivot table',
   showTitle: true,
   rowFields: [],
+  columnFields: [],
+  fieldGroupings: [],
   measures: [],
   sortMeasureId: null,
   sortDescending: true,
   showGrandTotal: true,
+  showSubtotals: false,
   filter: null,
 };

@@ -1,4 +1,6 @@
 import { FilterGroup } from '../filter';
+import { Aggregate } from './chart-config.model';
+import { FormatRule } from './format-rule.model';
 import { WidgetConfigBase } from './widget-base.model';
 
 export type SortDirection = 'asc' | 'desc';
@@ -17,6 +19,14 @@ export interface DataTableColumnSetting {
   sortable?: boolean;
   /** Pass/fail highlighting for this column's values. Omitted shows no banding. */
   tolerance?: ToleranceConfig;
+  /** The aggregate shown for this column in the totals row. Omitted leaves its total blank. */
+  total?: Aggregate | null;
+  /** Wraps long values onto more lines instead of clipping them to one. */
+  wrap?: boolean;
+  /** Draws a bar behind each numeric value, scaled between the column's min and max. */
+  dataBars?: boolean;
+  /** Conditional highlighting, checked in order; the first rule a value matches wins. */
+  formatRules?: FormatRule[];
 }
 
 /** The limits dataset and which of its columns hold the bounds — what every tolerance pointer carries. */
@@ -85,7 +95,16 @@ export interface DataTableWidgetConfig extends WidgetConfigBase {
 
   emptyMessage: string;
 
-  /** Columns on the table. Empty means "every dataset column, in dataset order". */
+  /** Shows a footer row with each column's total, over every matched row. */
+  showTotals: boolean;
+  /** Shows a search box readers can use to narrow the rows to those containing some text. */
+  showSearch: boolean;
+  /** How many leading columns stay put while the table scrolls sideways. */
+  frozenColumns: number;
+  /** Clicking a row opens a panel listing every column of that row. */
+  rowDetails: boolean;
+
+  /** Columns on the table, in display order. Empty shows nothing until columns are added. */
   columns: DataTableColumnSetting[];
 
   sortColumnId: string | null;
@@ -108,6 +127,10 @@ export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
   paginator: false,
   rowsPerPage: 10,
   emptyMessage: 'No rows to display.',
+  showTotals: false,
+  showSearch: false,
+  frozenColumns: 0,
+  rowDetails: true,
   columns: [],
   sortColumnId: null,
   sortDirection: 'asc',

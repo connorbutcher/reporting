@@ -1,0 +1,35 @@
+<aside class="row-detail" aria-labelledby="row-detail-title">
+  <header class="header">
+    <span class="title" id="row-detail-title">{{ data.title }}</span>
+    <button type="button" class="close" aria-label="Close row details" title="Close" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+  </header>
+  <div class="body">
+    @if (loading()) {
+      <p class="status">Loading…</p>
+    } @else if (error()) {
+      <p class="status error">Couldn’t load this row.</p>
+    } @else if (row(); as row) {
+      <dl>
+        @for (field of data.fields; track field.setting.columnId) {
+          @let cell = row.cells[field.setting.columnId];
+          <div class="field">
+            <dt>{{ field.label }}</dt>
+            <dd
+              [class.cell-red]="cell?.tolerance === 'fail'"
+              [class.cell-orange]="cell?.tolerance === 'concession'"
+            >
+              {{ cell?.displayValue ?? '—' }}
+              @if (toleranceLabel(cell?.tolerance); as label) {
+                <span class="badge">{{ label }}</span>
+              }
+            </dd>
+          </div>
+        }
+      </dl>
+    } @else {
+      <p class="status">This row is no longer in the dataset.</p>
+    }
+  </div>
+</aside>

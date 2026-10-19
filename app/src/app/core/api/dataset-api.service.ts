@@ -93,6 +93,11 @@ export class DatasetApiService {
     return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-query`, request);
   }
 
+  /** Every matched row for a table widget (up to the server's export cap), for a CSV of the whole table. */
+  exportTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
+    return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-export`, request);
+  }
+
   /**
    * Rows shaped for a chart widget: filtered, grouped into series, and paired
    * with resolved tolerance bounds and pre-formatted tooltip lines.

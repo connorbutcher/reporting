@@ -1,0 +1,48 @@
+// Conditional-format and data-bar styles shared by the data table and the pivot. Each widget pulls
+// these in under its own :host ::ng-deep, so the classes reach the cells PrimeNG renders.
+@mixin cell-format {
+  .fmt-red {
+    background: rgba(229, 72, 77, 0.16);
+    color: #b42318;
+    font-weight: 600;
+  }
+
+  .fmt-amber {
+    background: rgba(245, 158, 11, 0.16);
+    color: #92400e;
+    font-weight: 600;
+  }
+
+  .fmt-green {
+    background: rgba(22, 163, 74, 0.14);
+    color: #166534;
+    font-weight: 600;
+  }
+
+  .fmt-blue {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1e40af;
+    font-weight: 600;
+  }
+
+  .fmt-bold {
+    font-weight: 700;
+  }
+
+  // A data bar sits behind the value, so the cell is the bar's positioning context.
+  td.has-bar {
+    position: relative;
+  }
+
+  .data-bar {
+    position: absolute;
+    inset: 4px auto 4px 0;
+    border-radius: 0 3px 3px 0;
+    background: rgba(37, 99, 235, 0.16);
+    pointer-events: none;
+  }
+
+  .cell-value {
+    position: relative;
+  }
+}

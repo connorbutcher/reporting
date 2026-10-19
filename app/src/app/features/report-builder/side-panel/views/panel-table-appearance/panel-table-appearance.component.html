@@ -42,6 +42,56 @@
         />
         <label for="resizable">Resizable columns</label>
       </div>
+
+      <label class="panel-field">
+        <span class="panel-field-label">Freeze leading columns</span>
+        <p-inputnumber
+          [ngModel]="appearance.frozenColumns()"
+          (ngModelChange)="appearance.frozenColumns.set($event ?? 0)"
+          [min]="0"
+          [max]="10"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+          fluid
+        />
+      </label>
+    </app-panel-group>
+
+    <app-panel-group label="Reading" icon="⌕">
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="show-totals"
+          [ngModel]="appearance.showTotals()"
+          (onChange)="appearance.showTotals.set($event.checked)"
+        />
+        <label for="show-totals">Show totals row</label>
+      </div>
+      @if (appearance.showTotals()) {
+        <p class="panel-hint">Pick each column’s total in its column settings.</p>
+      }
+
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="show-search"
+          [ngModel]="appearance.showSearch()"
+          (onChange)="appearance.showSearch.set($event.checked)"
+        />
+        <label for="show-search">Show search box</label>
+      </div>
+
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="row-details"
+          [ngModel]="appearance.rowDetails()"
+          (onChange)="appearance.rowDetails.set($event.checked)"
+        />
+        <label for="row-details">Open row details on click</label>
+      </div>
     </app-panel-group>
 
     <app-panel-group label="Style" icon="◐">

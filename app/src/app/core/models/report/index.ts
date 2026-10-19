@@ -1,4 +1,5 @@
 export * from './widget-base.model';
+export * from './format-rule.model';
 export * from './table-config.model';
 export * from './text-config.model';
 export * from './chart-config.model';
