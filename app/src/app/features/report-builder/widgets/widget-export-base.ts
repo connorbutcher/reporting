@@ -24,7 +24,9 @@ export abstract class WidgetExportBase {
   public downloadCsv(): void {
     const csv = this.exportCsv();
     if (csv === null) return;
-    this.downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${this.exportName()}.csv`);
+    // A BOM keeps Excel from mangling non-ASCII characters such as £ or µ, as the dataset export does.
+    const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: 'text/csv;charset=utf-8' });
+    this.downloadBlob(blob, `${this.exportName()}.csv`);
   }
 
   /** Saves a screenshot of the widget as a PNG. Charts override this to export their canvas directly. */
