@@ -120,9 +120,11 @@ public static class ColumnReferenceScanner
             "xcolumnid" => context.WidgetType == WidgetType.Histogram,
             // A table column that carries tolerance banding is compared to numeric limits.
             "columnid" when parent == "columns" => owner is { } o && o.TryGetProperty("tolerance", out var t) && t.ValueKind == JsonValueKind.Object,
-            // A pivot measure reduces numbers, unless it just counts rows.
+            // A pivot measure reduces numbers, unless it just counts rows or distinct values.
             "columnid" when parent == "measures" =>
-                !string.Equals(owner is { } m ? StringProperty(m, "aggregate") : null, "count", StringComparison.OrdinalIgnoreCase),
+                (owner is { } m ? StringProperty(m, "aggregate") : null) is not { } aggregate
+                || !(string.Equals(aggregate, "count", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(aggregate, "countDistinct", StringComparison.OrdinalIgnoreCase)),
             _ => false,
         };
     }
@@ -161,6 +163,7 @@ public static class ColumnReferenceScanner
                 "columns" => "Table column",
                 "tooltipcolumns" => "Tooltip",
                 "measures" => "Pivot measure",
+                "fieldgroupings" => "Pivot date grouping",
                 _ => "Column",
             },
             "sortcolumnid" => "Sort column",
@@ -169,6 +172,7 @@ public static class ColumnReferenceScanner
             "valuecolumnids" => "Value column",
             "seriescolumnid" => "Colour-by column",
             "rowfields" => "Pivot row grouping",
+            "columnfields" => "Pivot column grouping",
             _ => Humanise(path.Count > 0 ? path[^1] : ""),
         };
     }
