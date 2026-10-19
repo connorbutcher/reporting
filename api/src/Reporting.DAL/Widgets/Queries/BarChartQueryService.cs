@@ -153,6 +153,7 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
                 .Select(seriesKey => new BarSeriesDto
                 {
                     Label = SeriesLabels.Format(seriesColumn, seriesKey),
+                    Drill = SeriesLabels.Drill(seriesColumn, seriesKey),
                     ValueColumnId = measure.Column?.RefId,
                     ValueColumnLabel = measure.Column?.Name ?? "",
                     Values = orderedKeys

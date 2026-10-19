@@ -1,4 +1,4 @@
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import {
   ChartGuideLine,
   HistogramNormalize,
@@ -12,6 +12,7 @@ import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
+import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 
@@ -36,7 +37,7 @@ export class HistogramOption {
 
     const bins = data?.bins ?? [];
     const series = data?.series ?? [];
-    const binLabels = bins.map((b) => b.label);
+    const binLabels = HistogramOption.binLabels(bins, ChartFormat.numericConfig(valueColumn));
 
     const binAxisLabel = config.xAxisLabel.trim() || valueColumn.name;
     // The count/frequency axis is the primary value axis; its label falls back to what's plotted.
@@ -72,6 +73,8 @@ export class HistogramOption {
       nameLocation: 'middle' as const,
       nameGap: ChartScale.nameGap(ChartScale.longestLen(binLabels), binRotate, binOrientation),
       axisLabel: { ...binScale.axisLabel, rotate: binRotate },
+      // Read a horizontal histogram top-down, lowest bin first.
+      ...(horizontal ? { inverse: true } : {}),
     };
 
     const countScale = ChartScale.numericAxis(
@@ -99,66 +102,119 @@ export class HistogramOption {
       splitLine: { show: showGridLines },
     };
 
+    const reference = ReferenceSeries.build(marks, areas);
+    const names = series.map((s) => s.label || config.title || 'Series');
+    const colorOf = (label: string, i: number): string => {
+      // A colour override applies only to a single, unsplit distribution; once a series column
+      // splits it, each series keeps its own palette colour.
+      const override = series.length === 1 ? (primary?.color ?? null) : null;
+      return override ?? SeriesColors.forSeries(colors, label, i);
+    };
+
+    // A fitted normal curve per distribution, on the same scale as its bars: sampled at each bin's
+    // centre and smoothed between them. A cumulative chart has no bell to fit.
+    const curves: LineSeriesOption[] =
+      config.showNormalCurve && !config.cumulative
+        ? series.flatMap((s, i) => {
+            const values = HistogramOption.normalCurve(s, bins, config.normalize);
+            return values
+              ? [
+                  {
+                    name: names[i],
+                    id: `normal:${i}`,
+                    type: 'line' as const,
+                    smooth: true,
+                    symbol: 'none',
+                    silent: true,
+                    tooltip: { show: false },
+                    lineStyle: { color: colorOf(s.label, i), width: 2, type: 'dashed' as const },
+                    itemStyle: { color: colorOf(s.label, i) },
+                    z: 3,
+                    data: values,
+                  },
+                ]
+              : [];
+          })
+        : [];
+
     return {
       grid: { left: 56, right: 20, top: showLegend ? 40 : 20, bottom: 56, containLabel: true, outerBoundsContain: 'all' },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
+        appendToBody: true,
+        confine: true,
         valueFormatter: (value: unknown) =>
           typeof value === 'number' ? HistogramOption.formatCount(value, config.normalize) : String(value ?? ''),
       },
-      ...(showLegend ? { legend: { top: 0, data: series.map((s) => s.label), type: 'scroll' } } : {}),
+      ...(showLegend ? { legend: { top: 0, data: names, type: 'scroll' } } : {}),
       xAxis: horizontal ? countAxis : binAxis,
       yAxis: horizontal ? binAxis : countAxis,
-      series: series.map((s, i): BarSeriesOption | LineSeriesOption => {
-        // A colour override applies only to a single, unsplit distribution; once a series column
-        // splits it, each series keeps its own palette colour.
-        const override = series.length === 1 ? (primary?.color ?? null) : null;
-        const color = override ?? SeriesColors.forSeries(colors, s.label, i);
+      series: [
+        ...series.map((s, i): BarSeriesOption | LineSeriesOption => {
+          const color = colorOf(s.label, i);
 
-        const label = config.showValueLabels
-          ? {
-              label: {
-                show: true,
-                position: (horizontal ? 'right' : 'top') as 'right' | 'top',
-                formatter: (p: LabelCallbackParams) =>
-                  typeof p.value === 'number' ? HistogramOption.formatCount(p.value, config.normalize) : '',
-              },
-            }
-          : {};
-        const overlays = {
-          ...(i === 0 && marks.length > 0 ? { markLine: { silent: true, symbol: 'none', data: marks } } : {}),
-          ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
-        };
+          const label = config.showValueLabels
+            ? {
+                label: {
+                  show: true,
+                  position: (horizontal ? 'right' : 'top') as 'right' | 'top',
+                  formatter: (p: LabelCallbackParams) =>
+                    typeof p.value === 'number' ? HistogramOption.formatCount(p.value, config.normalize) : '',
+                },
+              }
+            : {};
 
-        // A cumulative distribution reads as a rising step line, not a bank of bars; the plain
-        // distribution stays as bars that butt together so adjacent bins read as continuous.
-        if (config.cumulative) {
+          // A cumulative distribution reads as a rising step line, not a bank of bars; the plain
+          // distribution stays as bars that butt together so adjacent bins read as continuous.
+          if (config.cumulative) {
+            return {
+              name: names[i],
+              type: 'line',
+              step: 'end',
+              symbol: 'none',
+              lineStyle: { color, width: 2 },
+              itemStyle: { color },
+              areaStyle: series.length === 1 ? { color, opacity: 0.12 } : undefined,
+              data: s.values,
+              ...label,
+            };
+          }
+
           return {
-            name: s.label || config.title || 'Series',
-            type: 'line',
-            step: 'end',
-            symbol: 'none',
-            lineStyle: { color, width: 2 },
+            name: names[i],
+            type: 'bar',
+            barCategoryGap: series.length > 1 ? '20%' : '0%',
             itemStyle: { color },
-            areaStyle: series.length === 1 ? { color, opacity: 0.12 } : undefined,
             data: s.values,
             ...label,
-            ...overlays,
           };
-        }
-
-        return {
-          name: s.label || config.title || 'Series',
-          type: 'bar',
-          barCategoryGap: series.length > 1 ? '20%' : '0%',
-          itemStyle: { color },
-          data: s.values,
-          ...label,
-          ...overlays,
-        };
-      }),
+        }),
+        ...curves,
+        ...(reference ? [reference] : []),
+      ],
     };
+  }
+
+  /**
+   * A normal curve fitted to one distribution (its mean and σ), as one value per bin centre on the
+   * histogram's own scale: count = n·w·pdf, frequency = w·pdf, density = pdf. Null when the series
+   * lacks its stats, has no spread, or the bins have no width.
+   */
+  public static normalCurve(
+    series: { mean?: number; stdDev?: number; count?: number },
+    bins: HistogramQueryResult['bins'],
+    normalize: HistogramNormalize,
+  ): number[] | null {
+    const { mean, stdDev, count } = series;
+    if (mean == null || stdDev == null || !(stdDev > 0) || bins.length === 0) return null;
+    const width = bins[0].upper - bins[0].lower;
+    if (!(width > 0)) return null;
+    const scale = normalize === 'density' ? 1 : normalize === 'frequency' ? width : (count ?? 0) * width;
+    return bins.map((bin) => {
+      const z = ((bin.lower + bin.upper) / 2 - mean) / stdDev;
+      return (scale * Math.exp(-0.5 * z * z)) / (stdDev * Math.sqrt(2 * Math.PI));
+    });
   }
 
   /**
@@ -215,6 +271,18 @@ export class HistogramOption {
         value: toIndex(line.value),
         valueTo: line.valueTo === null || line.valueTo === undefined ? line.valueTo : toIndex(line.valueTo),
       }));
+  }
+
+  /**
+   * Each bin's axis label, its edges formatted like the column's cells (prefix, units, decimals).
+   * Falls back to the server's label when the column's decimals would print both edges the same.
+   */
+  private static binLabels(bins: HistogramQueryResult['bins'], config: NumericColumnConfig | undefined): string[] {
+    return bins.map((bin) => {
+      const lower = ChartFormat.numeric(bin.lower, config);
+      const upper = ChartFormat.numeric(bin.upper, config);
+      return lower === upper ? bin.label : `${lower} – ${upper}`;
+    });
   }
 
   /** The longest formatted count label, in characters, to size a non-overlapping count-axis gap. */

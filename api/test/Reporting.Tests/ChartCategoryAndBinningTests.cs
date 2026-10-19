@@ -134,6 +134,31 @@ public class ChartCategoryAndBinningTests() : SqliteDbTestBase(foreignKeys: fals
     }
 
     [Fact]
+    public async Task Bar_drill_conditions_select_a_month_category_and_a_split_series()
+    {
+        var (dataset, refs) = NewDataset(
+            ("Made", DatasetColumnType.DateTime), ("Line", DatasetColumnType.String), ("Qty", DatasetColumnType.Double));
+        AddRow(dataset, "2026-02-03T00:00:00.0000000", "L1", "1");
+        AddRow(dataset, "2026-02-20T00:00:00.0000000", "L2", "2");
+        await Db.SaveChangesAsync();
+
+        var result = await Bar().QueryForBarChartAsync(dataset.Id, new BarChartQueryDto
+        {
+            CategoryColumnId = refs[0], SeriesColumnId = refs[1], ValueColumnIds = [refs[2]],
+            Aggregate = Aggregate.Sum, CategoryGrouping = DateGrouping.Month
+        });
+
+        // The month drills as the whole of February, inclusive of its last day.
+        var month = Assert.IsType<FilterConditionDto>(Assert.Single(result!.CategoryDetails.Single().Drill!.Children));
+        Assert.Equal(FilterOperator.Between, month.Operator);
+        Assert.Equal(["2026-02-01", "2026-02-28"], month.Values);
+
+        var line = Assert.IsType<FilterConditionDto>(Assert.Single(result.Series.Single(s => s.Label == "L2").Drill!.Children));
+        Assert.Equal(FilterOperator.Equals, line.Operator);
+        Assert.Equal(["L2"], line.Values);
+    }
+
+    [Fact]
     public async Task Series_labels_format_a_date_split_column()
     {
         var (dataset, refs) = NewDataset(("Region", DatasetColumnType.String), ("Qty", DatasetColumnType.Double), ("Made", DatasetColumnType.DateTime));

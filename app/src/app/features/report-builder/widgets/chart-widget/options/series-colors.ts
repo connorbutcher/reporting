@@ -1,6 +1,9 @@
 /** The palette plus the stateless label→colour lookup. */
 export class SeriesColors {
-  /** Cycles if there are more series than colours. */
+  /**
+   * Cycles if there are more series than colours. Red stays out: it's the out-of-tolerance and
+   * out-of-control colour, so a red series would read as "failing".
+   */
   public static readonly PALETTE = [
     '#2f6fed',
     '#f97316',
@@ -9,7 +12,7 @@ export class SeriesColors {
     '#7c3aed',
     '#0891b2',
     '#ca8a04',
-    '#dc2626',
+    '#65a30d',
   ];
 
   /** A series' colour from the resolved map, falling back to index order. */
@@ -20,11 +23,23 @@ export class SeriesColors {
 
 /**
  * Assigns each series a palette colour keyed by its label and remembers it across renders,
- * so adding or removing one series never reshuffles the others. Owned by the chart component
- * (one per chart) and re-resolved on every option rebuild.
+ * so adding or removing one series never reshuffles the others. A label's first choice is a
+ * colour hashed from the label itself, so "Supplier A" gets the same colour in every chart on a
+ * report unless two labels in one chart collide. Owned by the chart component (one per chart)
+ * and re-resolved on every option rebuild.
  */
 export class SeriesPalette {
   private readonly assigned = new Map<string, string>();
+
+  /** A small, stable string hash (FNV-1a), so a label maps to the same palette slot everywhere. */
+  private static hash(label: string): number {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < label.length; i++) {
+      h ^= label.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    return h >>> 0;
+  }
 
   /** The colour map for the given series labels, in draw order. */
   public resolve(labels: readonly string[]): Map<string, string> {
@@ -34,10 +49,20 @@ export class SeriesPalette {
 
     for (const label of labels) {
       if (this.assigned.has(label)) continue;
-      // First palette colour not already taken; once all are in use, wrap by count.
+      // The label's own hashed colour, else the next one along not already taken; once all are in
+      // use, keep the hashed one.
       const used = new Set(this.assigned.values());
-      const free = SeriesColors.PALETTE.find((c) => !used.has(c));
-      this.assigned.set(label, free ?? SeriesColors.PALETTE[this.assigned.size % SeriesColors.PALETTE.length]);
+      const palette = SeriesColors.PALETTE;
+      const start = SeriesPalette.hash(label) % palette.length;
+      let chosen = palette[start];
+      for (let k = 0; k < palette.length; k++) {
+        const candidate = palette[(start + k) % palette.length];
+        if (!used.has(candidate)) {
+          chosen = candidate;
+          break;
+        }
+      }
+      this.assigned.set(label, chosen);
     }
     return new Map(this.assigned);
   }

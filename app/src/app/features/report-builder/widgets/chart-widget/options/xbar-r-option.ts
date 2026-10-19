@@ -1,12 +1,15 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { readChartAxes, readChartBindings, XBarRChartWidgetConfig } from '../../../../../core/models/report';
+import { ControlChartMode, readChartAxes, readChartBindings, XBarRChartWidgetConfig } from '../../../../../core/models/report';
 import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../core/models/widget-query';
 import { ECOption, LineSeriesOption, TooltipCallbackParams } from './chart-option.types';
+import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
+import { ReferenceSeries } from './reference-series';
 import { ToleranceMarks } from './tolerance-marks';
+import { TooltipHtml } from './tooltip-html';
 
 // In-control points/line stay blue; a point breaching its own control limits turns red — the same
 // alarm colour tolerance bands use for an out-of-spec value, since both mean "something's wrong
@@ -20,6 +23,8 @@ const LIMIT_LINE_COLOR = '#7c3aed';
 /** What the subgroup tooltip needs beyond its value: which chart it's on and how to format it. */
 interface SubgroupTooltipContext {
   kind: 'mean' | 'range';
+  /** The plotted value's name on this chart (Mean, Value, Range, Std dev, Moving range). */
+  valueLabel: string;
   categories: readonly string[];
   subgroups: readonly XBarRSubgroup[];
   config: NumericColumnConfig | undefined;
@@ -33,6 +38,15 @@ interface SubgroupTooltipContext {
  * they can differ per subgroup when subgroup sizes aren't all equal.
  */
 export class XBarROption {
+  /** What each Nelson rule means, for the tooltip. */
+  private static readonly RULES: Record<number, string> = {
+    1: 'beyond a control limit',
+    2: '9 in a row on one side of the centre line',
+    3: '6 in a row steadily rising or falling',
+    4: '14 in a row alternating up and down',
+    5: '2 of 3 beyond 2σ on one side',
+  };
+
   /** Null until there's a dataset and both a subgroup and a value column bound. */
   public static build(
     config: XBarRChartWidgetConfig,
@@ -47,6 +61,8 @@ export class XBarROption {
     const categories = data?.categories ?? [];
     const subgroups = data?.subgroups ?? [];
     const highlight = config.highlightOutOfControl ?? true;
+    const mode = data?.mode ?? config.mode ?? 'xBarR';
+    const names = XBarROption.names(mode);
     const xBarCenterLine = data?.xBarCenterLine ?? 0;
     const rCenterLine = data?.rCenterLine ?? 0;
 
@@ -78,7 +94,7 @@ export class XBarROption {
     const rangeScale = ChartScale.numericAxis(false, null, null, null, valueConfig, false);
 
     const meanExtentValues = subgroups.flatMap((s) => [s.mean, s.xBarUcl, s.xBarLcl]);
-    const rangeExtentValues = subgroups.flatMap((s) => [s.range, s.rUcl]);
+    const rangeExtentValues = subgroups.flatMap((s) => (s.hasRange === false ? [s.rUcl] : [s.range, s.rUcl]));
     const meanNameGap = ChartScale.nameGap(XBarROption.labelLen(meanExtentValues, valueConfig), 0, 'y');
     const rangeNameGap = ChartScale.nameGap(XBarROption.labelLen(rangeExtentValues, valueConfig), 0, 'y');
 
@@ -93,26 +109,38 @@ export class XBarROption {
     const rangeAxis = {
       ...rangeScale,
       gridIndex: 1,
-      name: 'Range',
+      name: names.dispersion,
       nameLocation: 'middle' as const,
       nameGap: rangeNameGap,
       splitLine: { show: showGridLines },
     };
 
     // Spec limits (a tolerance band), when set, overlay the X-bar chart only — a control chart's R
-    // side has no spec of its own to compare against.
-    const bands = data?.toleranceBands ?? [];
-    const specMarks = [
-      ...ToleranceMarks.lines(bands, () => 'yAxis'),
-      ...GuideLineMarks.lines(config.guideLines ?? [], () => 'yAxis'),
-    ];
-    const specAreas = [
-      ...ToleranceMarks.areas(bands, () => 'yAxis'),
-      ...GuideLineMarks.areas(config.guideLines ?? [], () => 'yAxis'),
-    ];
+    // side has no spec of its own to compare against. Only value-axis guide lines apply: the
+    // subgroup axis has no numeric scale to place an X line on.
+    const bands = (data?.toleranceBands ?? []).filter((b) => b.axis === 'y');
+    const guideLines = (config.guideLines ?? []).filter((l) => l.axis === 'y');
+    // Limits held from a baseline: a dotted marker after the last baseline subgroup says so.
+    const baselineCount = data?.baselineCount ?? null;
+    const baselineMark =
+      baselineCount != null && baselineCount > 0 && baselineCount < categories.length
+        ? [
+            {
+              xAxis: baselineCount - 1,
+              lineStyle: { color: CENTER_LINE_COLOR, type: 'dotted' as const, width: 1.25 },
+              label: { formatter: 'Limits baseline', position: 'insideEndTop' as const, color: CENTER_LINE_COLOR, fontSize: 10 },
+            },
+          ]
+        : [];
+    const specReference = ReferenceSeries.build(
+      [...ToleranceMarks.lines(bands, () => 'yAxis'), ...GuideLineMarks.lines(guideLines, () => 'yAxis'), ...baselineMark],
+      [...ToleranceMarks.areas(bands, () => 'yAxis'), ...GuideLineMarks.areas(guideLines, () => 'yAxis')],
+      { xAxisIndex: 0, yAxisIndex: 0 },
+    );
 
     const meanTooltip: SubgroupTooltipContext = {
       kind: 'mean',
+      valueLabel: names.value,
       categories,
       subgroups,
       config: valueConfig,
@@ -120,6 +148,7 @@ export class XBarROption {
     };
     const rangeTooltip: SubgroupTooltipContext = {
       kind: 'range',
+      valueLabel: names.dispersion,
       categories,
       subgroups,
       config: valueConfig,
@@ -127,7 +156,7 @@ export class XBarROption {
     };
 
     const meanSeries: LineSeriesOption = {
-      name: 'Mean',
+      name: names.value,
       type: 'line',
       xAxisIndex: 0,
       yAxisIndex: 0,
@@ -140,12 +169,10 @@ export class XBarROption {
         ...(highlight && s.meanOutOfControl ? { itemStyle: { color: OUT_OF_CONTROL_COLOR } } : {}),
       })),
       tooltip: { formatter: (p) => XBarROption.tooltip(p, meanTooltip) },
-      ...(specMarks.length > 0 ? { markLine: { silent: true, symbol: 'none', data: specMarks } } : {}),
-      ...(specAreas.length > 0 ? { markArea: { silent: true, data: specAreas } } : {}),
     };
 
     const rangeSeries: LineSeriesOption = {
-      name: 'Range',
+      name: names.dispersion,
       type: 'line',
       xAxisIndex: 1,
       yAxisIndex: 1,
@@ -153,33 +180,64 @@ export class XBarROption {
       symbolSize: 7,
       lineStyle: { color: IN_CONTROL_COLOR, width: 1.5 },
       itemStyle: { color: IN_CONTROL_COLOR },
+      // A subgroup of one (or the first individual) has no range: leave a gap rather than plot 0.
       data: subgroups.map((s) => ({
-        value: s.range,
+        value: s.hasRange === false ? null : s.range,
         ...(highlight && s.rangeOutOfControl ? { itemStyle: { color: OUT_OF_CONTROL_COLOR } } : {}),
       })),
       tooltip: { formatter: (p) => XBarROption.tooltip(p, rangeTooltip) },
     };
 
+    // Many subgroups get a slider that pans both charts together.
+    const zoom = CategoryZoom.enabled(config.zoom, categories.length);
+
     return {
       grid: [
         { left: 56, right: 20, top: 30, height: '36%', containLabel: true },
-        { left: 56, right: 20, top: '60%', bottom: 56, containLabel: true },
+        { left: 56, right: 20, top: '60%', bottom: zoom ? 76 : 56, containLabel: true },
       ],
       xAxis: [hiddenCategoryAxis, labelledCategoryAxis],
       yAxis: [meanAxis, rangeAxis],
-      tooltip: { trigger: 'item' },
+      tooltip: { trigger: 'item', appendToBody: true, confine: true },
+      ...(zoom
+        ? {
+            dataZoom: [
+              { type: 'inside' as const, xAxisIndex: [0, 1] },
+              { type: 'slider' as const, xAxisIndex: [0, 1], height: 20, bottom: 12 },
+            ],
+          }
+        : {}),
       series: [
         meanSeries,
-        ...XBarROption.limitSeries('X̄', categories.length, subgroups, 'xBarUcl', 0, 0),
-        ...XBarROption.limitSeries('X̄', categories.length, subgroups, 'xBarLcl', 0, 0),
-        XBarROption.centerSeries('X̄', categories.length, xBarCenterLine, 0, 0),
+        ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarUcl', 0, 0),
+        ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarLcl', 0, 0),
+        XBarROption.centerSeries(names.meanChart, categories.length, xBarCenterLine, 0, 0),
         rangeSeries,
-        ...XBarROption.limitSeries('R', categories.length, subgroups, 'rUcl', 1, 1),
-        ...XBarROption.limitSeries('R', categories.length, subgroups, 'rLcl', 1, 1),
-        XBarROption.centerSeries('R', categories.length, rCenterLine, 1, 1),
+        ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rUcl', 1, 1),
+        ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rLcl', 1, 1),
+        XBarROption.centerSeries(names.dispersionChart, categories.length, rCenterLine, 1, 1),
+        ...(specReference ? [specReference] : []),
       ],
     };
   }
+
+  /** What each chart and its plotted value are called in a control chart mode. */
+  public static names(mode: ControlChartMode): {
+    value: string;
+    dispersion: string;
+    meanChart: string;
+    dispersionChart: string;
+  } {
+    switch (mode) {
+      case 'xBarS':
+        return { value: 'Mean', dispersion: 'Std dev', meanChart: 'X̄', dispersionChart: 'S' };
+      case 'individuals':
+        return { value: 'Value', dispersion: 'Moving range', meanChart: 'X', dispersionChart: 'MR' };
+      default:
+        return { value: 'Mean', dispersion: 'Range', meanChart: 'X̄', dispersionChart: 'R' };
+    }
+  }
+
 
   /** One point's tooltip: its mean/range plus that subgroup's own control limits and sample size. */
   private static tooltip(params: TooltipCallbackParams, ctx: SubgroupTooltipContext): string {
@@ -194,17 +252,21 @@ export class XBarROption {
     const ucl = isMean ? s.xBarUcl : s.rUcl;
     const lcl = isMean ? s.xBarLcl : s.rLcl;
     const outOfControl = isMean ? s.meanOutOfControl : s.rangeOutOfControl;
-    const valueLabel = isMean ? 'Mean' : 'Range';
+    const rules = (isMean ? s.meanRules : s.rangeRules) ?? [];
+    if (!isMean && s.hasRange === false) return '';
 
     const lines = [
-      `<strong>${ctx.categories[i] ?? ''}</strong>`,
-      `${valueLabel}: ${num(value)}`,
+      `<strong>${TooltipHtml.escape(ctx.categories[i] ?? '')}</strong>`,
+      `${ctx.valueLabel}: ${num(value)}`,
       `UCL: ${num(ucl)}`,
       `CL: ${num(ctx.centerLine)}`,
       `LCL: ${num(lcl)}`,
       `n = ${s.count}`,
     ];
-    if (outOfControl) lines.push('<strong style="color:#dc2626">Out of control</strong>');
+    if (outOfControl) {
+      lines.push('<strong style="color:#dc2626">Out of control</strong>');
+      for (const rule of rules) lines.push(`Rule ${rule}: ${XBarROption.RULES[rule] ?? ''}`);
+    }
     return lines.join('<br/>');
   }
 

@@ -3,6 +3,7 @@ import {
   BarChartWidgetModel,
   BoxPlotWidgetModel,
   ChartWidgetModel,
+  ComboChartWidgetModel,
   HistogramWidgetModel,
   XBarRChartWidgetModel,
 } from '../../../models/widget.model';
@@ -17,7 +18,7 @@ import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-column
  * The chart branch of the widget-detail panel. A fixed frame — data source, axes,
  * appearance, tolerance bands — each of which resolves its own chart-type differences,
  * so this component holds no per-kind branching itself. Only the tooltip is gated here,
- * since it exists solely for point charts.
+ * since only point charts (per row) and bar/combination charts (per bar) have tooltip columns.
  */
 @Component({
   selector: 'app-panel-widget-detail-chart',
@@ -34,11 +35,18 @@ import { PanelChartTooltipColumnsComponent } from '../panel-chart-tooltip-column
 export class PanelWidgetDetailChartComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
+  /** A bar or combination chart, whose tooltip columns are summarised per bar. */
+  public readonly isBarChart = computed(() => {
+    const chart = this.chart();
+    return chart instanceof BarChartWidgetModel || chart instanceof ComboChartWidgetModel;
+  });
+
   /** A point chart (scatter/line) has a per-point tooltip; category charts (bar/box/histogram) don't. */
   public readonly isPointChart = computed(() => {
     const chart = this.chart();
     return !(
       chart instanceof BarChartWidgetModel ||
+      chart instanceof ComboChartWidgetModel ||
       chart instanceof BoxPlotWidgetModel ||
       chart instanceof HistogramWidgetModel ||
       chart instanceof XBarRChartWidgetModel

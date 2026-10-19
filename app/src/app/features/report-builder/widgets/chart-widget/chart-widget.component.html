@@ -49,6 +49,7 @@
         [class.anchor-mode]="anchorModeOn()"
         (chartInit)="onChartInit($event)"
         (chartClick)="onChartClick($event)"
+        (chartDataZoom)="onDataZoom($event)"
       ></div>
       @if (countBar(); as bar) {
         <app-widget-count-bar

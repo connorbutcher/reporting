@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { httpResource } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import type { ECElementEvent } from 'echarts/core';
@@ -20,6 +21,9 @@ import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.co
 import { WidgetDataSource } from '../widget-data-source';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 import { ChartSkeletonComponent, ChartSkeletonShape } from '../chart-skeleton/chart-skeleton.component';
+import { DrillThroughDialogComponent, DrillThroughDialogData } from '../drill-through-dialog/drill-through-dialog.component';
+import { ChartDrill } from './chart-drill';
+import { ChartZoomMemory, ChartZoomRange } from './chart-zoom';
 import { BoxOption } from './options/box-option';
 import { ChartCountBar, ChartCountBarContent } from './chart-count-bar';
 import { ChartExport } from './chart-export';
@@ -32,6 +36,13 @@ import { ChartCommentAnchor, CommentAnchorPoint, COMMENT_ANCHOR_SERIES_NAME } fr
 import { SeriesPalette } from './options/series-colors';
 import { XBarROption } from './options/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
+
+type AnyChartResult =
+  | ChartQueryResult
+  | BarChartQueryResult
+  | BoxPlotQueryResult
+  | HistogramQueryResult
+  | XBarRChartQueryResult;
 
 /**
  * Renders a scatter, line, or bar chart. This host owns only the shared plumbing — inputs, the
@@ -77,32 +88,14 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** Null until there's a dataset and enough columns bound to actually plot. */
   public readonly chartOption = computed<ECOption | null>(() => {
-    const config = this.config();
-    const columns = this.source.columns();
-    const data = this.source.result();
-    const colors = this.seriesColors();
-    switch (config.type) {
-      case 'barChart':
-        return BarOption.build(config, data as BarChartQueryResult | null, columns, colors);
-      case 'comboChart':
-        return ComboOption.build(config, data as BarChartQueryResult | null, columns, colors);
-      case 'boxPlot':
-        return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
-      case 'histogram':
-        return HistogramOption.build(config, data as HistogramQueryResult | null, columns, colors);
-      case 'xbarRChart':
-        return XBarROption.build(config, data as XBarRChartQueryResult | null, columns);
-      default:
-        return PointOption.build(
-          config,
-          data as ChartQueryResult | null,
-          columns,
-          colors,
-          this.commentAnchors(),
-          this.highlightedAnchor(),
-        );
-    }
+    const option = this.buildOption();
+    // The remembered zoom is read untracked: zooming mustn't rebuild the option on every drag, only
+    // be carried over when something else (a reload, a filter) does.
+    return option ? ChartZoomMemory.apply(option, untracked(() => this.zoomRange)) : null;
   });
+
+  /** Whether clicking a mark opens the rows behind it — every grouping chart, once data has loaded. */
+  public readonly canDrill = computed(() => !this.isPointChart() && this.source.result() !== null);
 
   /** The footer strip's content — see {@link ChartCountBar}. Null until a result has loaded. */
   public readonly countBar = computed<ChartCountBarContent | null>(() => {
@@ -168,6 +161,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   });
 
   private readonly datasetApi = inject(DatasetApiService);
+  private readonly dialog = inject(Dialog);
+  /** The X zoom window the reader last left this chart at, remembered for their session. */
+  private zoomRange: ChartZoomRange | null = null;
   private readonly reportComments = inject(ReportComments, { optional: true });
 
   /**
@@ -256,6 +252,14 @@ export class ChartWidgetComponent extends DataWidgetBase {
             cu: config.cumulative,
           }
         : null;
+    // Server-side grouping options: a date category's period (every grouping chart), a line chart's
+    // aggregate, and the control chart's order, mode, baseline and run rules.
+    const grouping = 'categoryGrouping' in config ? (config.categoryGrouping ?? null) : null;
+    const line = config.type === 'lineChart' ? { a: config.aggregate ?? null, g: config.xGrouping ?? null } : null;
+    const control =
+      config.type === 'xbarRChart'
+        ? { s: config.sort, m: config.mode ?? 'xBarR', b: config.baselineSubgroups ?? null, r: config.runRules ?? false }
+        : null;
     return JSON.stringify({
       bindings,
       trend,
@@ -263,6 +267,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
       barSort,
       box,
       hist,
+      grouping,
+      line,
+      control,
       tol: config.toleranceBands,
       tip: config.tooltipColumns,
     });
@@ -271,14 +278,12 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** Per-binding response cache so editing one binding doesn't refetch the others. */
   private readonly queryCache = new Map<string, ChartQueryResult>();
 
-  private readonly source = new WidgetDataSource<
-    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult
-  >({
+  private readonly source: WidgetDataSource<AnyChartResult> = new WidgetDataSource<AnyChartResult>({
     datasetId: this.datasetId,
     version: this.datasetVersion,
     api: this.datasetApi,
     fetch: () =>
-      ChartQuery.build(this.datasetApi, this.config(), this.bindingFilters(), this.queryCache),
+      ChartQuery.build(this.datasetApi, this.config(), this.bindingFilters(), this.queryCache, this.source.columns()),
   });
 
   private readonly loading = this.source.loading;
@@ -400,6 +405,15 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   public onChartInit(instance: { getDataURL(opts?: object): string }): void {
     this.chartInstance = instance;
+    this.zoomRange = ChartZoomMemory.read(this.zoomKey());
+  }
+
+  /** Remembers where the reader zoomed to, so the next rebuild keeps it. */
+  public onDataZoom(event: unknown): void {
+    const range = ChartZoomMemory.fromEvent(event);
+    if (!range) return;
+    this.zoomRange = range;
+    ChartZoomMemory.write(this.zoomKey(), range);
   }
 
   /** Switches "click a point to anchor a comment" on or off for this chart. */
@@ -409,15 +423,19 @@ export class ChartWidgetComponent extends DataWidgetBase {
   }
 
   /**
-   * Either opens an existing comment (the click landed on one of its own anchor markers) or, in
-   * anchor mode, pins a new one to the data point that was clicked. Anchoring only makes sense for a
+   * Either opens an existing comment (the click landed on one of its own anchor markers), in anchor
+   * mode pins a new one to the data point that was clicked, or otherwise — on a grouping chart —
+   * opens the rows behind the clicked mark. Anchoring only makes sense for a
    * numeric point — a category axis's click value is a label, not a coordinate, so that case is
    * silently ignored rather than anchored to the wrong thing.
    */
   public onChartClick(event: ECElementEvent): void {
     const comments = this.reportComments;
     const widgetId = this.widgetId();
-    if (!comments || !widgetId) return;
+    if (!comments || !widgetId) {
+      this.drill(event);
+      return;
+    }
 
     if (event.seriesName === COMMENT_ANCHOR_SERIES_NAME) {
       const anchor = (event.data as CommentAnchorPoint | undefined)?.anchor;
@@ -427,7 +445,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
       return;
     }
 
-    if (!this.anchorModeOn()) return;
+    if (!this.anchorModeOn()) {
+      this.drill(event);
+      return;
+    }
     const value = event.value;
     if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number') return;
     const [x, y] = value;
@@ -457,6 +478,61 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   protected exportName(): string {
     return this.config().title?.trim() || 'chart';
+  }
+
+  /** The option for the chart's kind, before any remembered zoom is applied. */
+  private buildOption(): ECOption | null {
+    const config = this.config();
+    const columns = this.source.columns();
+    const data = this.source.result();
+    const colors = this.seriesColors();
+    switch (config.type) {
+      case 'barChart':
+        return BarOption.build(config, data as BarChartQueryResult | null, columns, colors);
+      case 'comboChart':
+        return ComboOption.build(config, data as BarChartQueryResult | null, columns, colors);
+      case 'boxPlot':
+        return BoxOption.build(config, data as BoxPlotQueryResult | null, columns, colors);
+      case 'histogram':
+        return HistogramOption.build(config, data as HistogramQueryResult | null, columns, colors);
+      case 'xbarRChart':
+        return XBarROption.build(config, data as XBarRChartQueryResult | null, columns);
+      default:
+        return PointOption.build(
+          config,
+          data as ChartQueryResult | null,
+          columns,
+          colors,
+          this.commentAnchors(),
+          this.highlightedAnchor(),
+        );
+    }
+  }
+
+  /** Opens the rows behind a clicked bar, box, bin or control-chart point, as a table. */
+  private drill(event: ECElementEvent): void {
+    if (!this.canDrill()) return;
+    const data = this.source.result() as Parameters<typeof ChartDrill.target>[1];
+    const target = ChartDrill.target(
+      this.config(),
+      data,
+      { seriesName: event.seriesName, seriesType: event.seriesType, dataIndex: event.dataIndex },
+      this.bindingFilters(),
+    );
+    if (!target) return;
+    this.dialog.open<void, DrillThroughDialogData>(DrillThroughDialogComponent, {
+      data: {
+        datasetId: target.datasetId,
+        title: [this.exportName(), ...target.path].join(' › '),
+        filter: target.filter,
+      },
+      ariaLabelledBy: 'drill-through-title',
+    });
+  }
+
+  /** Where this chart's zoom is remembered: its widget id in the viewer, else its title. */
+  private zoomKey(): string | null {
+    return this.widgetId() ?? (this.config().title?.trim() || null);
   }
 }
 

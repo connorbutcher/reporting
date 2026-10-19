@@ -1,3 +1,18 @@
+@if (showGrouping()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Group dates by</span>
+    <p-select
+      [options]="groupings"
+      [ngModel]="grouping() ?? null"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="groupingChange.emit($event.value ?? null)"
+    />
+  </label>
+}
+
 <label class="panel-field">
   <span class="panel-field-label">Order by</span>
   <p-select
@@ -41,7 +56,8 @@
     </label>
     @if (showAggregateHint()) {
       <p class="panel-hint">
-        Only matters if a category has more than one different value here — otherwise Direction alone decides the order.
+        Only matters if a category has more than one different value here — otherwise Direction
+        alone decides the order.
       </p>
     }
   }
@@ -59,3 +75,29 @@
     (onChange)="setDescending($event.value)"
   />
 </label>
+
+@if (showTopN()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Show only the first</span>
+    <p-inputnumber
+      [ngModel]="resolved().limit ?? null"
+      (ngModelChange)="setLimit($event)"
+      [min]="1"
+      [maxFractionDigits]="0"
+      placeholder="All categories"
+      suffix=" categories"
+      fluid
+    />
+  </label>
+  @if (resolved().limit) {
+    <div class="panel-inline-field">
+      <p-checkbox
+        [binary]="true"
+        inputId="chart-sort-show-other"
+        [ngModel]="resolved().showOther ?? false"
+        (onChange)="setShowOther($event.checked)"
+      />
+      <label for="chart-sort-show-other">Group the rest as “Other”</label>
+    </div>
+  }
+}

@@ -31,4 +31,20 @@ public static class SeriesLabels
             _ => key
         };
     }
+
+    /// <summary>Conditions selecting the rows of one series (its split column's value), for drill-through; null with no split.</summary>
+    public static FilterGroupDto? Drill(DatasetColumn? seriesColumn, string key)
+    {
+        if (seriesColumn is null)
+        {
+            return null;
+        }
+        // The key is the split column's stored text; the reader picks whichever typed reading its column needs.
+        var reader = new ChartCategoryReader(seriesColumn, null);
+        var category = reader.Read(
+            key,
+            CellValues.TryParseNumber(key, out var number) ? number : null,
+            CellValues.TryParseDate(key, out var date) ? date : null);
+        return reader.Drill(category);
+    }
 }

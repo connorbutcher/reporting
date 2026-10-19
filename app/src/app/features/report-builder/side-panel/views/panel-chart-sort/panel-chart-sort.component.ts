@@ -1,10 +1,13 @@
 import { Component, computed, input, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CheckboxModule } from 'primeng/checkbox';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { SelectModule } from 'primeng/select';
 import { DatasetColumn, DatasetColumnType } from '../../../../../core/models/dataset';
 import {
   ChartSort,
   ChartSortBy,
+  DateGrouping,
   DEFAULT_CHART_SORT,
   SortAggregate,
 } from '../../../../../core/models/report';
@@ -49,7 +52,7 @@ function aggregateOptionsFor(type: DatasetColumnType | null): { label: string; v
  */
 @Component({
   selector: 'app-panel-chart-sort',
-  imports: [FormsModule, SelectModule],
+  imports: [FormsModule, CheckboxModule, InputNumberModule, SelectModule],
   templateUrl: './panel-chart-sort.component.html',
 })
 export class PanelChartSortComponent {
@@ -66,6 +69,36 @@ export class PanelChartSortComponent {
   public readonly defaultLabel = input('Category order');
 
   public readonly sortChange = output<ChartSort>();
+
+  /**
+   * The category column, so a date category can offer period grouping. Grouping is only offered when
+   * {@link grouping} is bound (not undefined) and this column is a date.
+   */
+  public readonly categoryColumnId = input<string | null>(null);
+
+  /** The chart's date grouping; undefined when the chart doesn't group its categories. */
+  public readonly grouping = input<DateGrouping | null | undefined>(undefined);
+
+  public readonly groupingChange = output<DateGrouping | null>();
+
+  /** Offers "Top N, rest as Other" — bar and combination charts only. */
+  public readonly showTopN = input(false);
+
+  public readonly showGrouping = computed(() => {
+    if (this.grouping() === undefined) return false;
+    const id = this.categoryColumnId();
+    return !!id && this.columns().find((c) => c.id === id)?.type === 'dateTime';
+  });
+
+  /** Period choices for a date category; null groups by the exact date. */
+  public readonly groupings: { label: string; value: DateGrouping | null }[] = [
+    { label: 'Exact date', value: null },
+    { label: 'Day', value: 'day' },
+    { label: 'Week', value: 'week' },
+    { label: 'Month', value: 'month' },
+    { label: 'Quarter', value: 'quarter' },
+    { label: 'Year', value: 'year' },
+  ];
 
   public readonly resolved = computed(() => this.sort() ?? DEFAULT_CHART_SORT);
 
@@ -119,5 +152,13 @@ export class PanelChartSortComponent {
 
   public setDescending(descending: boolean): void {
     this.sortChange.emit({ ...this.resolved(), descending });
+  }
+
+  public setLimit(limit: number | null): void {
+    this.sortChange.emit({ ...this.resolved(), limit: limit != null && limit > 0 ? Math.floor(limit) : null });
+  }
+
+  public setShowOther(showOther: boolean): void {
+    this.sortChange.emit({ ...this.resolved(), showOther });
   }
 }

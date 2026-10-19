@@ -17,3 +17,24 @@
   />
   <label for="chart-stacked">Stack series</label>
 </div>
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-percent-stacked"
+    [ngModel]="chart().percentStacked()"
+    [disabled]="!chart().multiSeries()"
+    (onChange)="chart().percentStacked.set($event.checked)"
+  />
+  <label for="chart-percent-stacked">Show as % of each bar (100% stacked)</label>
+</div>
+@if (chart().stacked() && !chart().percentStacked()) {
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-stack-totals"
+      [ngModel]="chart().showStackTotals()"
+      (onChange)="chart().showStackTotals.set($event.checked)"
+    />
+    <label for="chart-stack-totals">Show stack totals</label>
+  </div>
+}

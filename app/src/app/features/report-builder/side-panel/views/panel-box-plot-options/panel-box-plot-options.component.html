@@ -17,7 +17,7 @@
     <p-inputnumber
       [ngModel]="chart().whiskerFactor()"
       (ngModelChange)="chart().whiskerFactor.set($event ?? 1.5)"
-      [min]="0"
+      [min]="0.5"
       [maxFractionDigits]="2"
       [step]="0.5"
       showButtons
@@ -29,8 +29,11 @@
 <app-panel-chart-sort
   [sort]="chart().sort()"
   [columns]="chart().schema()?.columns ?? []"
+  [categoryColumnId]="chart().xColumnId()"
+  [grouping]="chart().categoryGrouping()"
   defaultLabel="Category order"
   (sortChange)="chart().sort.set($event)"
+  (groupingChange)="chart().categoryGrouping.set($event)"
 />
 
 <div class="panel-inline-field">
@@ -70,9 +73,9 @@
     [ngModel]="chart().showCapability()"
     (onChange)="chart().showCapability.set($event.checked)"
   />
-  <label for="box-show-capability">Show capability (Cp/Cpk)</label>
+  <label for="box-show-capability">Show process performance (Pp/Ppk)</label>
 </div>
-<span class="panel-hint">Cp/Cpk needs a single value-axis tolerance band as the spec limits.</span>
+<span class="panel-hint">Pp/Ppk needs a single value-axis tolerance band as the spec limits.</span>
 
 <div class="panel-inline-field">
   <p-checkbox
@@ -82,4 +85,14 @@
     (onChange)="chart().horizontal.set($event.checked)"
   />
   <label for="chart-horizontal">Horizontal boxes</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-category-zoom"
+    [ngModel]="chart().zoom()"
+    (onChange)="chart().zoom.set($event.checked)"
+  />
+  <label for="chart-category-zoom">Zoom &amp; pan slider when there are over 20 categories</label>
 </div>

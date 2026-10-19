@@ -1,4 +1,5 @@
 import { FilterGroup } from '../filter';
+import { DateGrouping } from './pivot-config.model';
 import { WidgetConfigBase } from './widget-base.model';
 
 /** How a bar chart reduces the many rows in one category down to a single bar height. */
@@ -36,6 +37,10 @@ export interface ChartSort {
   columnId: string | null;
   aggregate: SortAggregate;
   descending: boolean;
+  /** Keeps only the first N categories in this order (bar and combination charts); null keeps them all. */
+  limit?: number | null;
+  /** With `limit`, rolls the remaining categories into one "Other" category. */
+  showOther?: boolean;
 }
 
 /** A fresh sort: the chart's own natural order, ascending. */
@@ -177,7 +182,15 @@ export interface ChartTooltipColumn {
   columnId: string;
   prefix?: string;
   suffix?: string;
+  /**
+   * The column's name, sent at query time only so a dataset other than the one the column was
+   * picked from can fall back to its own column of that name.
+   */
+  columnName?: string;
 }
+
+/** Which pair of control charts an Xbar-R widget draws. */
+export type ControlChartMode = 'xBarR' | 'xBarS' | 'individuals';
 
 /**
  * One dataset's contribution to a chart: its axes, optional per-value split, and
@@ -277,7 +290,7 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   /** Fits the X axis to the data instead of anchoring it at zero. Ignored on a category X axis. */
   xAxisScale?: boolean;
 
-  /** Adds mouse-wheel/drag zoom plus a slider along the X axis to point charts. */
+  /** Adds mouse-wheel/drag zoom plus a slider along the X axis to point charts, and along the category axis of a grouping chart once it has more than 20 categories. */
   zoom: boolean;
   /** Adds mouse-wheel/drag zoom along the Y axis to point charts. */
   zoomY?: boolean;
@@ -319,6 +332,10 @@ export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
   showPoints: boolean;
   /** Shades the area under the line. */
   areaFill: boolean;
+  /** Reduces every row sharing an X value (per series) to one point; null/absent plots the raw rows. */
+  aggregate?: Aggregate | null;
+  /** Buckets a date X axis by period before aggregating; ignored without `aggregate`. */
+  xGrouping?: DateGrouping | null;
 }
 
 /**
@@ -337,6 +354,12 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
   /** How the bars are ordered along the category axis. */
   sort: ChartSort;
+  /** Buckets a date category by period; null/absent groups by the exact date. */
+  categoryGrouping?: DateGrouping | null;
+  /** Stacks each category's bars as shares of its total (100% stacked); implies stacked. */
+  percentStacked?: boolean;
+  /** Prints each stack's total above it. */
+  showStackTotals?: boolean;
 }
 
 /**
@@ -361,6 +384,10 @@ export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
   areaFill: boolean;
   /** How the bars/lines are ordered along the category axis. */
   sort: ChartSort;
+  /** Buckets a date category by period; null/absent groups by the exact date. */
+  categoryGrouping?: DateGrouping | null;
+  /** Draws line series straight across categories they have no value for, instead of breaking. */
+  connectNulls?: boolean;
 }
 
 /**
@@ -384,10 +411,15 @@ export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
   showSampleSize: boolean;
   /** Overlays the individual measurements as jittered points over each box. */
   showPoints: boolean;
-  /** Adds process capability (Cp/Cpk) to each box's tooltip, resolved against the value-axis spec band. */
+  /**
+   * Adds process performance (Pp/Ppk) to each box's tooltip, resolved against the value-axis spec band.
+   * Uses the group's overall σ — hence Pp/Ppk rather than the within-subgroup Cp/Cpk.
+   */
   showCapability: boolean;
   /** Draws boxes horizontally (categories down the Y axis) rather than upright. */
   horizontal: boolean;
+  /** Buckets a date category by period; null/absent groups by the exact date. */
+  categoryGrouping?: DateGrouping | null;
 }
 
 /**
@@ -414,6 +446,8 @@ export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
   cumulative: boolean;
   /** Draws bars horizontally (bins down the Y axis) rather than as vertical columns. */
   horizontal: boolean;
+  /** Overlays a fitted normal curve per series (ignored when cumulative). */
+  showNormalCurve?: boolean;
 }
 
 /**
@@ -432,6 +466,14 @@ export interface XBarRChartWidgetConfig extends ChartWidgetConfigBase {
   sort: ChartSort;
   /** Colours a subgroup's mean or range red when it falls outside its control limits. */
   highlightOutOfControl: boolean;
+  /** Buckets a date subgroup column by period; null/absent groups by the exact date. */
+  categoryGrouping?: DateGrouping | null;
+  /** Which pair of control charts to draw; absent means Xbar-R. */
+  mode?: ControlChartMode;
+  /** Computes the limits from only the first N points and holds them; null/absent uses every point. */
+  baselineSubgroups?: number | null;
+  /** Also flags the Nelson run rules 2–5, not just points beyond the limits. */
+  runRules?: boolean;
 }
 
 export type ChartWidgetConfig =

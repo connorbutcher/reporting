@@ -259,6 +259,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         return new HistogramSeriesDto
         {
             Label = SeriesLabels.Format(seriesColumn, seriesKey),
+            Drill = SeriesLabels.Drill(seriesColumn, seriesKey),
             Values = values,
             Mean = mean,
             StdDev = Statistics.StdDev(seriesValues, mean),

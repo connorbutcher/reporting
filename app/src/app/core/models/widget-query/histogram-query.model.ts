@@ -42,8 +42,16 @@ export interface HistogramSeriesResult {
   valueColumnId?: string | null;
   /** The measure column's display name, for composing a multi-measure legend label. */
   valueColumnLabel?: string;
+  /** Client-side, after merging: the binding this series came from. */
+  bindingId?: string;
   /** One value per bin in {@link HistogramQueryResult.bins} order — a count, frequency, or density. */
   values: number[];
+  /** The series' own mean, σ and in-range count, for a fitted normal curve. */
+  mean?: number;
+  stdDev?: number;
+  count?: number;
+  /** Conditions selecting this series' rows (its split value), for drill-through; null with no split. */
+  drill?: FilterGroup | null;
 }
 
 export interface HistogramQueryResult extends ChartRowCounts, PartialChartLoad {
@@ -52,5 +60,7 @@ export interface HistogramQueryResult extends ChartRowCounts, PartialChartLoad {
   /** The bins, in ascending order — the shared category axis every series aligns to. */
   bins: HistogramBin[];
   series: HistogramSeriesResult[];
+  /** Values left out because they fell outside a fixed range. */
+  excludedCount?: number;
   toleranceBands: ResolvedToleranceBand[];
 }

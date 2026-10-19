@@ -189,7 +189,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
                 outliers.Add(new BoxOutlierDto { CategoryIndex = categoryIndex[categoryKey], Value = value });
             }
         }
-        return new BoxPlotSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Boxes = boxes, Outliers = outliers };
+        return new BoxPlotSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Drill = SeriesLabels.Drill(seriesColumn, seriesKey), Boxes = boxes, Outliers = outliers };
     }
 
     /// <summary>

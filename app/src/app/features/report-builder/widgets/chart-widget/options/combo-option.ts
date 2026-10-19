@@ -1,6 +1,5 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import {
-  Aggregate,
   ChartGuideLine,
   ChartSymbol,
   ComboChartWidgetConfig,
@@ -15,10 +14,10 @@ import {
   ECOption,
   LabelCallbackParams,
   LineSeriesOption,
-  MarkAreaData,
-  MarkLineData,
   YAXisComponentOption,
 } from './chart-option.types';
+import { BarOption } from './bar-option';
+import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -26,6 +25,7 @@ import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
 import { OutlineSeverity } from './outline-zone';
 import { AXIS_OFFSET } from './point-types';
+import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -89,11 +89,26 @@ export class ComboOption {
       };
     });
 
-    const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
+    // A count has no measure, so it never borrows a leftover value column's units; otherwise each
+    // series reads through its own measure's format, and the primary axis through the shared one.
+    const isCount = config.aggregate === 'count';
+    const primaryMeasures = isCount
+      ? []
+      : [
+          ...new Set(
+            series
+              .filter((s) => s.axisIndex === 0)
+              .map((s) => s.result.valueColumnId ?? primary?.yColumnId ?? null)
+              .filter((id) => id != null),
+          ),
+        ];
+    const valueColumn = primaryMeasures.length === 1 ? ChartColumns.byId(columns, primaryMeasures[0]) : null;
     const valueConfig = ChartFormat.numericConfig(valueColumn);
+    const seriesConfig = (s: BarSeriesResult): NumericColumnConfig | undefined =>
+      isCount ? undefined : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ?? valueConfig);
+    const formatValue = (s: BarSeriesResult) => (v: number) => ChartFormat.numeric(v, seriesConfig(s));
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
-    const primaryValueLabel =
-      axes[0].label.trim() || valueColumn?.name || ComboOption.aggregateLabel(config.aggregate);
+    const primaryValueLabel = axes[0].label.trim() || BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null);
 
     const showLegend = series.length > 1 && config.showLegend;
     const showGridLines = config.showGridLines ?? true;
@@ -143,8 +158,10 @@ export class ComboOption {
     const guideLineAxisIndex = (line: ChartGuideLine): number =>
       chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
 
-    const marksBySeries = new Map<number, { marks: MarkLineData; areas: MarkAreaData }>();
-    for (const [k, indices] of indicesByAxis) {
+    // Each axis' reference lines ride their own carrier series, so hiding a data series in the
+    // legend never takes them with it.
+    const referenceSeries: LineSeriesOption[] = [];
+    for (const k of axes.keys()) {
       const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
       const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
       const marks = [
@@ -155,8 +172,8 @@ export class ComboOption {
         ...ToleranceMarks.areas(axisBands, () => 'yAxis'),
         ...GuideLineMarks.areas(axisLines, () => 'yAxis'),
       ];
-      if (marks.length === 0 && areas.length === 0) continue;
-      marksBySeries.set(indices[0], { marks, areas });
+      const reference = ReferenceSeries.build(marks, areas, multiAxis ? { yAxisIndex: k } : {});
+      if (reference) referenceSeries.push(reference);
     }
     // One out-of-tolerance test per axis, shared by every series on it — bands and outlined guide
     // lines on that axis both contribute zones, worst-wins.
@@ -174,50 +191,54 @@ export class ComboOption {
       return outline;
     };
 
+    const seriesName = (s: BarSeriesResult) => s.label || config.title || 'Series';
+    const seriesByName = new Map(rawSeries.map((s) => [seriesName(s), s]));
+    const zoom = CategoryZoom.enabled(config.zoom, categories.length);
+
     return {
       grid: {
         left: 56 + Math.max(0, leftCount - 1) * AXIS_OFFSET,
         right: 20 + rightCount * AXIS_OFFSET,
         top: showLegend ? 40 : 20,
-        bottom: 56,
+        bottom: zoom ? 76 : 56,
         containLabel: true,
         outerBoundsContain: 'all',
       },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        valueFormatter: (value: unknown) =>
-          typeof value === 'number' ? ChartFormat.numeric(value, valueConfig) : String(value ?? ''),
+        appendToBody: true,
+        confine: true,
+        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, formatValue, false),
       },
-      ...(showLegend ? { legend: { top: 0, data: series.map((s) => s.result.label), type: 'scroll' } } : {}),
+      ...(showLegend ? { legend: { top: 0, data: series.map((s) => seriesName(s.result)), type: 'scroll' } } : {}),
+      ...(zoom ? { dataZoom: CategoryZoom.dataZoom(false) } : {}),
       xAxis: categoryAxis,
       yAxis: multiAxis ? yAxes : yAxes[0],
-      series: series.map((s, i) => {
-        const hung = marksBySeries.get(i);
-        const outline = outlineFor(s.axisIndex);
-        const base = {
-          name: s.result.label || config.title || 'Series',
-          ...(multiAxis ? { yAxisIndex: Math.min(s.axisIndex, axes.length - 1) } : {}),
-          ...(config.showValueLabels
-            ? {
-                label: {
-                  show: true,
-                  position: 'top' as const,
-                  formatter: (p: LabelCallbackParams) =>
-                    typeof p.value === 'number' ? ChartFormat.numeric(p.value, valueConfig) : '',
-                },
-              }
-            : {}),
-          ...(hung && hung.marks.length > 0
-            ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
-            : {}),
-          ...(hung && hung.areas.length > 0 ? { markArea: { silent: true, data: hung.areas } } : {}),
-        };
+      series: [
+        ...series.map((s) => {
+          const outline = outlineFor(s.axisIndex);
+          const format = formatValue(s.result);
+          const base = {
+            name: seriesName(s.result),
+            ...(multiAxis ? { yAxisIndex: Math.min(s.axisIndex, axes.length - 1) } : {}),
+            ...(config.showValueLabels
+              ? {
+                  label: {
+                    show: true,
+                    position: 'top' as const,
+                    formatter: (p: LabelCallbackParams) => (typeof p.value === 'number' ? format(p.value) : ''),
+                  },
+                }
+              : {}),
+          };
 
-        return s.renderAs === 'line'
-          ? ComboOption.lineSeries(s, base, config)
-          : ComboOption.barSeries(s, base, config, outline);
-      }),
+          return s.renderAs === 'line'
+            ? ComboOption.lineSeries(s, base, config)
+            : ComboOption.barSeries(s, base, config, outline);
+        }),
+        ...referenceSeries,
+      ],
     };
   }
 
@@ -264,6 +285,8 @@ export class ComboOption {
         ...(s.dashStyle && s.dashStyle !== 'solid' ? { type: s.dashStyle } : {}),
       },
       ...(config.areaFill ? { areaStyle: { opacity: 0.15, color: s.color } } : {}),
+      // Bridge categories this series has no rows in, rather than breaking the line there.
+      ...(config.connectNulls ? { connectNulls: true } : {}),
       data: s.result.values,
     };
   }
@@ -335,20 +358,5 @@ export class ComboOption {
     }
     if (!Number.isFinite(min)) return 0;
     return Math.max(ChartFormat.numeric(min, config).length, ChartFormat.numeric(max, config).length);
-  }
-
-  private static aggregateLabel(aggregate: Aggregate): string {
-    switch (aggregate) {
-      case 'sum':
-        return 'Sum';
-      case 'average':
-        return 'Average';
-      case 'count':
-        return 'Count';
-      case 'min':
-        return 'Min';
-      case 'max':
-        return 'Max';
-    }
   }
 }

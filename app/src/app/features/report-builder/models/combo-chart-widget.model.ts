@@ -6,6 +6,7 @@ import {
   ComboChartWidgetConfig,
   DEFAULT_CHART_SORT,
   DEFAULT_COMBO_CHART_CONFIG,
+  DateGrouping,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
@@ -32,6 +33,10 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   public readonly areaFill = signal(false);
   /** How the bars/lines are ordered along the category axis. */
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  /** Buckets a date category by period; null groups by the exact date. */
+  public readonly categoryGrouping = signal<DateGrouping | null>(null);
+  /** Draws line series straight across categories they have no value for. */
+  public readonly connectNulls = signal(false);
 
   /**
    * Whether the chart can produce more than one bar series to stack — from several overlaid
@@ -56,6 +61,8 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     this.areaFill.set(widget.config.areaFill);
     // Charts saved before this existed default to the chart's own natural order.
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
+    this.connectNulls.set(widget.config.connectNulls ?? false);
   }
 
   /** Count summarises row counts, so it needs no measure column — matching the bar chart. */
@@ -74,6 +81,8 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
       showPoints: this.showPoints(),
       areaFill: this.areaFill(),
       sort: this.sort(),
+      categoryGrouping: this.categoryGrouping(),
+      connectNulls: this.connectNulls(),
     };
     return { ...this.geometryDto(), type: 'comboChart', config };
   }

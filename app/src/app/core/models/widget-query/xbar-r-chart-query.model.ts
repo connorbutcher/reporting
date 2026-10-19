@@ -1,6 +1,6 @@
-import { ChartSort, ChartToleranceBand } from '../report';
+import { ChartSort, ChartToleranceBand, ControlChartMode, DateGrouping } from '../report';
 import { FilterGroup } from '../filter';
-import { ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
+import { ChartCategoryDetail, ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
 export interface XBarRChartQueryRequest {
   filter: FilterGroup | null;
@@ -10,6 +10,10 @@ export interface XBarRChartQueryRequest {
   valueColumnId: string;
   sort: ChartSort;
   toleranceBands: ChartToleranceBand[];
+  categoryGrouping?: DateGrouping | null;
+  mode?: ControlChartMode;
+  baselineSubgroups?: number | null;
+  runRules?: boolean;
 }
 
 /**
@@ -22,6 +26,8 @@ export interface XBarRSubgroup {
   range: number;
   /** How many rows fed this subgroup. */
   count: number;
+  /** False for a subgroup of one, or the first individual (no moving range yet). */
+  hasRange?: boolean;
   xBarUcl: number;
   xBarLcl: number;
   rUcl: number;
@@ -30,6 +36,10 @@ export interface XBarRSubgroup {
   meanOutOfControl: boolean;
   /** Whether this subgroup's range falls outside its own R control limits. */
   rangeOutOfControl: boolean;
+  /** Nelson rules (1–5) broken on the mean/value chart. */
+  meanRules?: number[];
+  /** Nelson rules broken on the range/σ/moving-range chart. */
+  rangeRules?: number[];
 }
 
 export interface XBarRChartQueryResult extends ChartRowCounts {
@@ -43,5 +53,9 @@ export interface XBarRChartQueryResult extends ChartRowCounts {
   xBarCenterLine: number;
   /** The average subgroup range — the R chart's centre line. */
   rCenterLine: number;
+  mode?: ControlChartMode;
+  /** Points the limits were computed from, when a baseline held them. */
+  baselineCount?: number | null;
+  categoryDetails?: ChartCategoryDetail[];
   toleranceBands: ResolvedToleranceBand[];
 }

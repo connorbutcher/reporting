@@ -6,6 +6,7 @@ import {
   ChartSort,
   DEFAULT_BOX_PLOT_CONFIG,
   DEFAULT_CHART_SORT,
+  DateGrouping,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
@@ -32,10 +33,12 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   public readonly showSampleSize = signal(false);
   /** Overlays the individual measurements as jittered points over each box. */
   public readonly showPoints = signal(false);
-  /** Adds process capability (Cp/Cpk) to each box's tooltip, resolved against the value-axis spec band. */
+  /** Adds process performance (Pp/Ppk) to each box's tooltip, resolved against the value-axis spec band. */
   public readonly showCapability = signal(false);
   /** Draws boxes horizontally (categories down the Y axis) rather than upright. */
   public readonly horizontal = signal(false);
+  /** Buckets a date category by period; null groups by the exact date. */
+  public readonly categoryGrouping = signal<DateGrouping | null>(null);
 
   constructor(widget: BoxPlotWidget, sources: ModelSources) {
     super(widget, sources);
@@ -48,6 +51,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     this.showPoints.set(widget.config.showPoints ?? false);
     this.showCapability.set(widget.config.showCapability ?? false);
     this.horizontal.set(widget.config.horizontal);
+    this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
   }
 
   public override toDto(): BoxPlotWidget {
@@ -63,6 +67,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
       showPoints: this.showPoints(),
       showCapability: this.showCapability(),
       horizontal: this.horizontal(),
+      categoryGrouping: this.categoryGrouping(),
     };
     return { ...this.geometryDto(), type: 'boxPlot', config };
   }

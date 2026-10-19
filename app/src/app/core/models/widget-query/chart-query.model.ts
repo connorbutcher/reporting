@@ -1,4 +1,4 @@
-import { ChartAxis, ChartSort, ChartToleranceBand, ChartTooltipColumn } from '../report';
+import { Aggregate, ChartAxis, ChartSort, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
 import { FilterGroup } from '../filter';
 
 export interface ChartQueryRequest {
@@ -14,6 +14,10 @@ export interface ChartQueryRequest {
   sort?: ChartSort | null;
   /** Fits a least-squares trend line per series, when both axes are numeric/date. */
   showTrendLine?: boolean;
+  /** Reduces every row sharing an X value to one point; null plots raw rows. */
+  aggregate?: Aggregate | null;
+  /** Buckets a date X by period before aggregating. */
+  xGrouping?: DateGrouping | null;
 }
 
 export interface ChartPoint {
@@ -88,6 +92,18 @@ export interface ChartRowCounts {
  * Set client-side when an overlay chart queries several bindings and some fail: the chart still
  * draws the ones that loaded, and this says how many it had to leave out.
  */
+/**
+ * What a grouping chart knows about one category beyond its label: its natural sort key, so several
+ * datasets' categories merge in order, and the conditions selecting its rows, for drill-through.
+ */
+export interface ChartCategoryDetail {
+  sortNumber?: number | null;
+  sortText?: string | null;
+  isBlank?: boolean;
+  isOther?: boolean;
+  drill?: FilterGroup | null;
+}
+
 export interface PartialChartLoad {
   failedBindingCount?: number;
 }
@@ -99,4 +115,6 @@ export interface ChartQueryResult extends ChartRowCounts, PartialChartLoad {
   toleranceBands: ResolvedToleranceBand[];
   /** Total rows that matched before the server's point cap; equals the plotted count when not truncated. */
   totalPoints?: number;
+  /** A truncated chart thinned evenly across its X range, rather than cut off. */
+  sampled?: boolean;
 }

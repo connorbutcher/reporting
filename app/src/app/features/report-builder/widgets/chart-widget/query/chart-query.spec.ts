@@ -193,8 +193,10 @@ describe('ChartQuery histogram overlay', () => {
     const result = await runHistogram(api, histogramConfig('auto', null, null, histBinding('a', 1)));
 
     expect(calls).toBe(1);
+    // Each series remembers the binding it came from, for drill-through and colour overrides.
+    expect(result.series[0].bindingId).toBe('a');
     // No binding label and no split: the single series falls back to the dataset's own name.
-    expect(result.series).toEqual([{ label: 'D', values: [3, 4] }]);
+    expect(labelsAndValues(result.series)).toEqual([{ label: 'D', values: [3, 4] }]);
   });
 
   it('queries a single binding with several value columns exactly once, with no probe pass', async () => {
@@ -227,7 +229,7 @@ describe('ChartQuery histogram overlay', () => {
     // One binding, several value columns: a single request carries both, no shared-edges probe.
     expect(calls).toBe(1);
     expect(seenValueColumnIds).toEqual(['a', 'b']);
-    expect(result.series).toEqual([
+    expect(labelsAndValues(result.series)).toEqual([
       { label: 'A', values: [3, 4] },
       { label: 'B', values: [1, 2] },
     ]);
@@ -258,7 +260,7 @@ describe('ChartQuery histogram overlay', () => {
     // An explicit range and an explicit count need no probe round trip to agree.
     expect(calls).toBe(2);
     expect(result.bins.length).toBe(2);
-    expect(result.series).toEqual([
+    expect(labelsAndValues(result.series)).toEqual([
       { label: 'A', values: [3, 4] },
       { label: 'B', values: [5, 6] },
     ]);
@@ -332,7 +334,7 @@ describe('ChartQuery histogram overlay', () => {
     }
 
     expect(result.bins.length).toBe(5);
-    expect(result.series).toEqual([
+    expect(labelsAndValues(result.series)).toEqual([
       { label: 'A', values: [1, 1, 1, 1, 1] },
       { label: 'B', values: [2, 2, 2, 2, 2] },
     ]);
@@ -361,6 +363,39 @@ describe('ChartQuery histogram overlay', () => {
 
     expect(result.failedBindingCount).toBe(1);
     // Only one binding survives: no binding label and no split, so it falls back to the dataset name.
-    expect(result.series).toEqual([{ label: 'D', values: [5] }]);
+    expect(labelsAndValues(result.series)).toEqual([{ label: 'D', values: [5] }]);
+  });
+});
+
+/** Just the label and values of each histogram series — what these overlay tests are about. */
+function labelsAndValues(series: readonly { label: string; values: number[] }[]): { label: string; values: number[] }[] {
+  return series.map(({ label, values }) => ({ label, values }));
+}
+
+describe('ChartQuery bar overlay ordering', () => {
+  const part = (datasetId: number, categories: string[]): BarChartQueryResult => ({
+    id: String(datasetId),
+    name: `Dataset ${datasetId}`,
+    categories,
+    categoryDetails: categories.map((c) => ({ sortText: c })),
+    series: [{ label: '', valueColumnId: 'value', values: categories.map(() => 1) }],
+    toleranceBands: [],
+    totalRowCount: 1,
+    matchedRowCount: 1,
+  });
+
+  it('re-sorts the union of categories, so a later dataset’s categories don’t trail at the end', async () => {
+    const api = {
+      queryBarChart: (datasetId: number) => of(datasetId === 1 ? part(1, ['b', 'd']) : part(2, ['a', 'c'])),
+    } as unknown as DatasetApiService;
+
+    const result = await run(api, barConfig(binding('a', 1), binding('b', 2)));
+
+    expect(result.categories).toEqual(['a', 'b', 'c', 'd']);
+    // Each series' values follow its categories to their new positions.
+    expect(result.series.map((s) => s.values)).toEqual([
+      [null, 1, null, 1],
+      [1, null, 1, null],
+    ]);
   });
 });

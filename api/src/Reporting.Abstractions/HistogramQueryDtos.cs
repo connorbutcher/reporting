@@ -75,6 +75,9 @@ public class HistogramSeriesDto
     public double Mean { get; set; }
     public double StdDev { get; set; }
     public int Count { get; set; }
+
+    /// <summary>Conditions selecting this series' rows (its split value), for drill-through; null with no split.</summary>
+    public FilterGroupDto? Drill { get; set; }
 }
 
 public class HistogramQueryResultDto : ScanCappedChartResultDto

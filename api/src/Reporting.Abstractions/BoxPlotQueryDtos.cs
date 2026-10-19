@@ -74,6 +74,9 @@ public class BoxPlotSeriesDto
 
     /// <summary>Values past the whiskers (Tukey only), each carrying its category index. Empty for min/max whiskers.</summary>
     public List<BoxOutlierDto> Outliers { get; set; } = new();
+
+    /// <summary>Conditions selecting this series' rows (its split value), for drill-through; null with no split.</summary>
+    public FilterGroupDto? Drill { get; set; }
 }
 
 public class BoxPlotQueryResultDto : ScanCappedChartResultDto

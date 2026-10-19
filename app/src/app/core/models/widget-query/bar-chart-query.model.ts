@@ -1,6 +1,6 @@
-import { Aggregate, ChartSort, ChartToleranceBand } from '../report';
+import { Aggregate, ChartSort, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
 import { FilterGroup } from '../filter';
-import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
+import { ChartCategoryDetail, ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 
 export interface BarChartQueryRequest {
   filter: FilterGroup | null;
@@ -13,6 +13,8 @@ export interface BarChartQueryRequest {
   toleranceBands: ChartToleranceBand[];
   /** How the bars are ordered along the category axis. */
   sort: ChartSort;
+  categoryGrouping?: DateGrouping | null;
+  tooltipColumns?: ChartTooltipColumn[];
 }
 
 export interface BarSeriesResult {
@@ -29,6 +31,14 @@ export interface BarSeriesResult {
   bindingId?: string;
   /** One entry per category in {@link BarChartQueryResult.categories} order; null where this series has no rows in that category. */
   values: (number | null)[];
+  /** Rows behind each bar, aligned with `values`. */
+  rowCounts?: (number | null)[];
+  /** Each bar's formatted tooltip column lines, aligned with `values`. */
+  tooltipLines?: string[][];
+  /** Client-side, after merging: each category's drill-through conditions against this series' own dataset. */
+  categoryDrills?: (FilterGroup | null)[];
+  /** Conditions selecting this series' rows (its split value), for drill-through; null with no split. */
+  drill?: FilterGroup | null;
 }
 
 export interface BarChartQueryResult extends ChartRowCounts, PartialChartLoad {
@@ -36,6 +46,8 @@ export interface BarChartQueryResult extends ChartRowCounts, PartialChartLoad {
   name: string;
   /** The bar categories, in display order — the shared axis every series aligns to. */
   categories: string[];
+  /** One per category: natural sort key and drill-through conditions. */
+  categoryDetails?: ChartCategoryDetail[];
   series: BarSeriesResult[];
   toleranceBands: ResolvedToleranceBand[];
 }

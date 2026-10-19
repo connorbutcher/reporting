@@ -56,6 +56,9 @@ public class BarSeriesDto
 
     /// <summary>Each bar's formatted tooltip column lines, aligned with <see cref="Values"/>; empty when none were requested.</summary>
     public List<List<string>> TooltipLines { get; set; } = new();
+
+    /// <summary>Conditions selecting this series' rows (its split value), for drill-through; null with no split.</summary>
+    public FilterGroupDto? Drill { get; set; }
 }
 
 public class BarChartQueryResultDto : ChartResultCountsDto
