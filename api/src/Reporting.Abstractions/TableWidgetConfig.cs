@@ -38,6 +38,18 @@ public class DataTableColumnSetting
 
     /// <summary>Pass/fail highlighting for this column's values. Null shows no banding.</summary>
     public ToleranceConfig? Tolerance { get; set; }
+
+    /// <summary>The aggregate shown for this column in the totals row. Null leaves its total blank.</summary>
+    public Aggregate? Total { get; set; }
+
+    /// <summary>Wraps long values onto more lines instead of clipping them to one.</summary>
+    public bool Wrap { get; set; }
+
+    /// <summary>Draws a bar behind each numeric value, scaled between the column's min and max.</summary>
+    public bool DataBars { get; set; }
+
+    /// <summary>Conditional highlighting, evaluated in order; the first rule a value matches wins.</summary>
+    public List<FormatRule> FormatRules { get; set; } = new();
 }
 
 /// <summary>
@@ -98,7 +110,19 @@ public class DataTableWidgetConfig : WidgetConfig
 
     public string EmptyMessage { get; set; } = "No rows to display.";
 
-    /// <summary>Columns on the table. Empty means "every dataset column, in dataset order".</summary>
+    /// <summary>Shows a footer row with each column's <see cref="DataTableColumnSetting.Total"/>, over every matched row.</summary>
+    public bool ShowTotals { get; set; }
+
+    /// <summary>Shows a search box readers can use to narrow the rows to those containing some text.</summary>
+    public bool ShowSearch { get; set; }
+
+    /// <summary>How many leading columns stay put while the table scrolls sideways.</summary>
+    public int FrozenColumns { get; set; }
+
+    /// <summary>Clicking a row opens a panel listing every column of that row.</summary>
+    public bool RowDetails { get; set; } = true;
+
+    /// <summary>Columns on the table, in display order. Empty shows nothing until columns are added.</summary>
     public List<DataTableColumnSetting> Columns { get; set; } = new();
 
     public Guid? SortColumnId { get; set; }

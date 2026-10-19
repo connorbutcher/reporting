@@ -14,7 +14,8 @@ import {
   DateColumnConfig,
   NumericColumnConfig,
 } from '../../../../../core/models/dataset';
-import { ColumnAlign } from '../../../../../core/models/report';
+import { Aggregate, ColumnAlign } from '../../../../../core/models/report';
+import { FormatRulesEditorComponent } from '../../format-rules-editor/format-rules-editor.component';
 import { TableColumnModel } from '../../../models/table-column.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
@@ -55,6 +56,7 @@ export const DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
     SelectModule,
     SelectButtonModule,
     PanelGroupComponent,
+    FormatRulesEditorComponent,
   ],
   templateUrl: './panel-column-settings.component.html',
 })
@@ -102,6 +104,26 @@ export class PanelColumnSettingsComponent {
     const config = this.schemaColumn()?.configuration;
     return config?.kind === 'bool' ? config : { kind: 'bool' };
   });
+
+  /** Totals on offer: a count on any column, and the numeric aggregates on a number column. */
+  protected readonly totalOptions = computed<SelectOption<Aggregate | null>[]>(() => {
+    const options: SelectOption<Aggregate | null>[] = [
+      { label: 'None', value: null },
+      { label: 'Count of values', value: 'count' },
+    ];
+    const schemaColumn = this.schemaColumn();
+    if (schemaColumn && this.isNumeric(schemaColumn)) {
+      options.push(
+        { label: 'Sum', value: 'sum' },
+        { label: 'Average', value: 'average' },
+        { label: 'Min', value: 'min' },
+        { label: 'Max', value: 'max' },
+      );
+    }
+    return options;
+  });
+
+  protected readonly showsTotals = computed(() => this.table()?.appearance.showTotals() ?? false);
 
   protected readonly effectiveAlign = computed<ColumnAlign>(() => {
     const explicit = this.column()?.align();

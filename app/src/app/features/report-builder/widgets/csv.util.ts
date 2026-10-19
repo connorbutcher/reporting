@@ -1,7 +1,7 @@
-/** A CSV cell, quoted and escaped only when it contains a comma, quote, or newline. */
+/** A CSV cell, quoted and escaped only when it contains a comma, quote, or line break. */
 export function csvCell(value: unknown): string {
   const text = String(value ?? '');
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 /** Rows of raw values joined into a CSV body, each cell escaped. */

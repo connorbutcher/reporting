@@ -15,9 +15,9 @@
   </label>
 </app-panel-group>
 
-<app-panel-group label="Rows" icon="≡">
-  <p class="panel-hint">Group rows by these columns, nested top to bottom.</p>
-  @for (columnId of pivot().rowFields(); track columnId; let i = $index, count = $count) {
+<!-- One chosen row or column field: its name, a period picker for dates, and move / remove buttons. -->
+<ng-template #fieldItem let-columnId let-i="index" let-count="count" let-axis="axis">
+  <div class="panel-pivot-field">
     <div class="panel-pivot-row">
       <span class="name">{{ columnName().get(columnId) ?? '(removed column)' }}</span>
       <button
@@ -25,7 +25,7 @@
         class="icon"
         aria-label="Move up"
         [disabled]="i === 0"
-        (click)="pivot().moveRowField(i, -1)"
+        (click)="axis === 'row' ? pivot().moveRowField(i, -1) : pivot().moveColumnField(i, -1)"
       >
         <i class="pi pi-chevron-up" aria-hidden="true"></i>
       </button>
@@ -34,7 +34,7 @@
         class="icon"
         aria-label="Move down"
         [disabled]="i === count - 1"
-        (click)="pivot().moveRowField(i, 1)"
+        (click)="axis === 'row' ? pivot().moveRowField(i, 1) : pivot().moveColumnField(i, 1)"
       >
         <i class="pi pi-chevron-down" aria-hidden="true"></i>
       </button>
@@ -42,11 +42,34 @@
         type="button"
         class="icon remove"
         aria-label="Remove dimension"
-        (click)="pivot().removeRowField(columnId)"
+        (click)="axis === 'row' ? pivot().removeRowField(columnId) : pivot().removeColumnField(columnId)"
       >
         <i class="pi pi-times" aria-hidden="true"></i>
       </button>
     </div>
+    @if (dateColumns().has(columnId)) {
+      <label class="panel-field grouping">
+        <span class="panel-field-label">Group dates by</span>
+        <p-select
+          [options]="groupings"
+          [ngModel]="pivot().fieldGrouping(columnId)"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="pivot().setFieldGrouping(columnId, $event.value ?? null)"
+        />
+      </label>
+    }
+  </div>
+</ng-template>
+
+<app-panel-group label="Rows" icon="≡">
+  <p class="panel-hint">Group rows by these columns, nested top to bottom.</p>
+  @for (columnId of pivot().rowFields(); track columnId; let i = $index, count = $count) {
+    <ng-container
+      *ngTemplateOutlet="fieldItem; context: { $implicit: columnId, index: i, count: count, axis: 'row' }"
+    />
   }
   <p-select
     [options]="pivot().availableRowFields()"
@@ -58,6 +81,26 @@
     [disabled]="!pivot().datasetId()"
     fluid
     (onChange)="addRowField($event.value ?? null)"
+  />
+</app-panel-group>
+
+<app-panel-group label="Columns" icon="⫼">
+  <p class="panel-hint">Spread these columns across the top, so each value gets a column per combination.</p>
+  @for (columnId of pivot().columnFields(); track columnId; let i = $index, count = $count) {
+    <ng-container
+      *ngTemplateOutlet="fieldItem; context: { $implicit: columnId, index: i, count: count, axis: 'column' }"
+    />
+  }
+  <p-select
+    [options]="pivot().availableColumnFields()"
+    [ngModel]="null"
+    optionLabel="name"
+    optionValue="id"
+    placeholder="Add a column dimension"
+    appendTo="body"
+    [disabled]="!pivot().datasetId()"
+    fluid
+    (onChange)="addColumnField($event.value ?? null)"
   />
 </app-panel-group>
 
@@ -88,7 +131,7 @@
         <label class="panel-field">
           <span class="panel-field-label">Column</span>
           <p-select
-            [options]="pivot().numericColumns()"
+            [options]="measureColumns(measure)"
             [ngModel]="measure.columnId"
             optionLabel="name"
             optionValue="id"
@@ -102,6 +145,18 @@
         </label>
       }
       <label class="panel-field">
+        <span class="panel-field-label">Show as</span>
+        <p-select
+          [options]="showAsOptions"
+          [ngModel]="measure.showAs ?? 'value'"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="pivot().updateMeasure(measure.id, { showAs: $event.value ?? 'value' })"
+        />
+      </label>
+      <label class="panel-field">
         <span class="panel-field-label">Header (optional)</span>
         <input
           pInputText
@@ -110,6 +165,22 @@
           placeholder="Auto"
         />
       </label>
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          [inputId]="'pivot-bars-' + measure.id"
+          [ngModel]="measure.dataBars ?? false"
+          (onChange)="pivot().updateMeasure(measure.id, { dataBars: $event.checked })"
+        />
+        <label [for]="'pivot-bars-' + measure.id">Show data bars</label>
+      </div>
+      <details class="formatting" [open]="(measure.formatRules?.length ?? 0) > 0">
+        <summary>Conditional formatting</summary>
+        <app-format-rules-editor
+          [rules]="measure.formatRules ?? []"
+          (rulesChange)="pivot().updateMeasure(measure.id, { formatRules: $event })"
+        />
+      </details>
     </div>
   }
   <p-button
@@ -159,8 +230,21 @@
       [ngModel]="pivot().showGrandTotal()"
       (onChange)="pivot().showGrandTotal.set($event.checked)"
     />
-    <label for="pivot-grand-total">Show grand total row</label>
+    <label for="pivot-grand-total">Show grand totals</label>
   </div>
+
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="pivot-subtotals"
+      [ngModel]="pivot().showSubtotals()"
+      (onChange)="pivot().showSubtotals.set($event.checked)"
+    />
+    <label for="pivot-subtotals">Show subtotals for each group</label>
+  </div>
+  @if (pivot().showSubtotals() && pivot().rowFields().length < 2) {
+    <p class="panel-hint">Subtotals appear once the pivot groups by two or more row columns.</p>
+  }
 </app-panel-group>
 
 <button

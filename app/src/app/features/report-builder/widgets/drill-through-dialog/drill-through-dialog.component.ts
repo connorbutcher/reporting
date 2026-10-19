@@ -1,0 +1,65 @@
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
+import { DatasetApiService } from '../../../../core/api/dataset-api.service';
+import { DatasetColumn } from '../../../../core/models/dataset';
+import { FilterGroup } from '../../../../core/models/filter';
+import { DEFAULT_TABLE_CONFIG, DataTableWidgetConfig } from '../../../../core/models/report';
+import { DataTableWidgetComponent } from '../data-table-widget/data-table-widget.component';
+import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
+
+/** What a pivot hands the drill-through view: the dataset, a heading, and the filter selecting the rows behind a cell. */
+export interface DrillThroughDialogData {
+  datasetId: number;
+  title: string;
+  /** The pivot's own filters together with the clicked group's conditions. */
+  filter: FilterGroup | null;
+}
+
+/**
+ * The rows behind one pivot cell, as a searchable, exportable data table of every dataset column. It
+ * reuses the data table widget as-is, configured on the fly, so the rows read exactly as a table would.
+ */
+@Component({
+  selector: 'app-drill-through-dialog',
+  imports: [DataTableWidgetComponent, WidgetExportActionsComponent],
+  templateUrl: './drill-through-dialog.component.html',
+  styleUrl: './drill-through-dialog.component.scss',
+})
+export class DrillThroughDialogComponent {
+  public readonly data = inject<DrillThroughDialogData>(DIALOG_DATA);
+  public readonly table = viewChild(DataTableWidgetComponent);
+
+  public readonly error = signal(false);
+
+  /** A plain table of every dataset column, with a search box, scrolling through every matched row. */
+  public readonly config = computed<DataTableWidgetConfig | null>(() => {
+    const columns = this.columns();
+    if (!columns) return null;
+    return {
+      ...DEFAULT_TABLE_CONFIG,
+      type: 'dataTable',
+      title: this.data.title,
+      datasetId: this.data.datasetId,
+      showSearch: true,
+      stripedRows: true,
+      columns: columns.map((c) => ({ columnId: c.id })),
+    };
+  });
+
+  private readonly columns = signal<DatasetColumn[] | null>(null);
+
+  private readonly dialogRef = inject(DialogRef<void>);
+
+  constructor() {
+    inject(DatasetApiService)
+      .getSchema(this.data.datasetId)
+      .subscribe({
+        next: (schema) => this.columns.set(schema.columns),
+        error: () => this.error.set(true),
+      });
+  }
+
+  public close(): void {
+    this.dialogRef.close();
+  }
+}

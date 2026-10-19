@@ -1,0 +1,22 @@
+<div class="drill-through">
+  <header class="header">
+    <span class="title" id="drill-through-title">{{ data.title }}</span>
+    <app-widget-export-actions
+      [expandable]="false"
+      (screenshot)="table()?.downloadScreenshot()"
+      (exportCsv)="table()?.downloadCsv()"
+    />
+    <button type="button" class="close" aria-label="Close" title="Close" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+  </header>
+  <div class="body">
+    @if (config(); as config) {
+      <app-data-table-widget [config]="config" [widgetFilter]="data.filter" />
+    } @else if (error()) {
+      <p class="status error">Couldn’t load these rows.</p>
+    } @else {
+      <p class="status">Loading…</p>
+    }
+  </div>
+</div>

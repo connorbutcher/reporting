@@ -152,6 +152,18 @@ public class DatasetsController(
     }
 
     /// <summary>
+    /// Every matched row for a table widget, from the first, for a CSV export of the whole table
+    /// rather than the page on screen. Capped at <see cref="TableQueryService.MaxExportRows"/>.
+    /// </summary>
+    [HttpPost("{id:int}/table-export")]
+    [AuthorizeDataset(AccessLevel.Viewer)]
+    public async Task<ActionResult<TableQueryResultDto>> TableExport(int id, TableQueryDto dto)
+    {
+        var result = await tableQueries.QueryForTableExportAsync(id, dto);
+        return result is null ? NotFound() : result;
+    }
+
+    /// <summary>
     /// Rows shaped for a chart widget: filtered, grouped into series, with
     /// tolerance bounds resolved and tooltip lines pre-formatted.
     /// </summary>

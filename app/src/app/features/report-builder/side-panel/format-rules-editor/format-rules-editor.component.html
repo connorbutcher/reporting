@@ -1,0 +1,61 @@
+@for (rule of rules(); track $index; let i = $index) {
+  <div class="rule">
+    <div class="head">
+      <span class="when">When the value</span>
+      <button type="button" class="icon remove" aria-label="Remove rule" (click)="remove(i)">
+        <i class="pi pi-times" aria-hidden="true"></i>
+      </button>
+    </div>
+    <p-select
+      [options]="operators"
+      [ngModel]="rule.operator"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      ariaLabel="Comparison"
+      (onChange)="update(i, { operator: $event.value })"
+    />
+    @if (operands(rule) > 0) {
+      <div class="operands">
+        <input
+          pInputText
+          [ngModel]="rule.value"
+          (ngModelChange)="update(i, { value: $event })"
+          placeholder="Value"
+          aria-label="Value"
+        />
+        @if (operands(rule) === 2) {
+          <span class="and">and</span>
+          <input
+            pInputText
+            [ngModel]="rule.value2 ?? ''"
+            (ngModelChange)="update(i, { value2: $event })"
+            placeholder="Value"
+            aria-label="Second value"
+          />
+        }
+      </div>
+    }
+    <label class="panel-field">
+      <span class="panel-field-label">Show as</span>
+      <p-select
+        [options]="styles"
+        [ngModel]="rule.style"
+        optionLabel="label"
+        optionValue="value"
+        appendTo="body"
+        fluid
+        (onChange)="update(i, { style: $event.value })"
+      >
+        <ng-template #item let-option>
+          <span class="swatch" [class]="'fmt-' + option.value">{{ option.label }}</span>
+        </ng-template>
+      </p-select>
+    </label>
+  </div>
+}
+@if (rules().length > 1) {
+  <p class="panel-hint">Rules are tried top to bottom; the first one that matches wins.</p>
+}
+<p-button label="Add rule" icon="pi pi-plus" severity="secondary" outlined fluid size="small" (onClick)="add()" />

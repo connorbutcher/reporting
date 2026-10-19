@@ -1,8 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
-  Aggregate,
   DEFAULT_PIVOT_CONFIG,
+  DateGrouping,
+  PivotAggregate,
+  PivotFieldGrouping,
   PivotMeasure,
   PivotTableWidget,
   PivotTableWidgetConfig,
@@ -30,12 +32,17 @@ export class PivotTableWidgetModel extends WidgetModel {
   public readonly datasetId = signal<number | null>(null);
   /** Column ids rows are grouped by, in order. */
   public readonly rowFields = signal<readonly string[]>([]);
+  /** Column ids spread across the top, in order. */
+  public readonly columnFields = signal<readonly string[]>([]);
+  /** Date fields grouped by period, by column id. */
+  public readonly fieldGroupings = signal<readonly PivotFieldGrouping[]>([]);
   /** The measures computed per group, each a value column. */
   public readonly measures = signal<readonly PivotMeasure[]>([]);
   /** The measure the rows are ordered by (by its id); null orders by the dimensions. */
   public readonly sortMeasureId = signal<string | null>(null);
   public readonly sortDescending = signal(true);
   public readonly showGrandTotal = signal(true);
+  public readonly showSubtotals = signal(false);
 
   /** Rows this widget aggregates, narrowed server-side. */
   public readonly filter: FilterGroupModel;
@@ -46,8 +53,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   public readonly columns: Signal<DatasetColumn[]>;
   /** Numeric columns, for the measure column picker (Count aside). */
   public readonly numericColumns: Signal<DatasetColumn[]>;
-  /** Columns not already used as a row field, for the add-dimension picker. */
+  /** Columns not already used as a row or column field, for the add-field pickers. */
   public readonly availableRowFields: Signal<DatasetColumn[]>;
+  public readonly availableColumnFields: Signal<DatasetColumn[]>;
 
   constructor(widget: PivotTableWidget, sources: ModelSources) {
     super(widget);
@@ -55,10 +63,13 @@ export class PivotTableWidgetModel extends WidgetModel {
 
     this.datasetId.set(config.datasetId);
     this.rowFields.set([...config.rowFields]);
+    this.columnFields.set([...(config.columnFields ?? [])]);
+    this.fieldGroupings.set((config.fieldGroupings ?? []).map((g) => ({ ...g })));
     this.measures.set(config.measures.map((m) => ({ ...m })));
     this.sortMeasureId.set(config.sortMeasureId ?? null);
     this.sortDescending.set(config.sortDescending ?? true);
     this.showGrandTotal.set(config.showGrandTotal);
+    this.showSubtotals.set(config.showSubtotals ?? false);
 
     this.schema = computed(() => {
       const id = this.datasetId();
@@ -67,9 +78,10 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.columns = computed(() => this.schema()?.columns ?? []);
     this.numericColumns = computed(() => this.columns().filter((c) => isNumeric(c.type)));
     this.availableRowFields = computed(() => {
-      const used = new Set(this.rowFields());
+      const used = new Set([...this.rowFields(), ...this.columnFields()]);
       return this.columns().filter((c) => !used.has(c.id));
     });
+    this.availableColumnFields = this.availableRowFields;
 
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
@@ -87,18 +99,51 @@ export class PivotTableWidgetModel extends WidgetModel {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.rowFields.set([]);
+    this.columnFields.set([]);
+    this.fieldGroupings.set([]);
     this.measures.set([]);
     this.sortMeasureId.set(null);
     this.filter.clear();
   }
 
   public addRowField(columnId: string): void {
-    if (this.rowFields().includes(columnId)) return;
+    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) return;
     this.rowFields.update((fields) => [...fields, columnId]);
   }
 
   public removeRowField(columnId: string): void {
     this.rowFields.update((fields) => fields.filter((id) => id !== columnId));
+    this.setFieldGrouping(columnId, null);
+  }
+
+  public addColumnField(columnId: string): void {
+    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) return;
+    this.columnFields.update((fields) => [...fields, columnId]);
+  }
+
+  public removeColumnField(columnId: string): void {
+    this.columnFields.update((fields) => fields.filter((id) => id !== columnId));
+    this.setFieldGrouping(columnId, null);
+  }
+
+  public moveColumnField(index: number, offset: number): void {
+    const fields = [...this.columnFields()];
+    const target = index + offset;
+    if (target < 0 || target >= fields.length) return;
+    [fields[index], fields[target]] = [fields[target], fields[index]];
+    this.columnFields.set(fields);
+  }
+
+  /** The period a date field is grouped by; null when it groups by exact value. */
+  public fieldGrouping(columnId: string): DateGrouping | null {
+    return this.fieldGroupings().find((g) => g.columnId === columnId)?.grouping ?? null;
+  }
+
+  /** Groups a date field by period, or (null) by exact value again. */
+  public setFieldGrouping(columnId: string, grouping: DateGrouping | null): void {
+    const others = this.fieldGroupings().filter((g) => g.columnId !== columnId);
+    if (!grouping && others.length === this.fieldGroupings().length) return;
+    this.fieldGroupings.set(grouping ? [...others, { columnId, grouping }] : others);
   }
 
   public moveRowField(index: number, offset: number): void {
@@ -126,9 +171,19 @@ export class PivotTableWidgetModel extends WidgetModel {
     );
   }
 
-  /** Switching an aggregate to Count drops its column; away from Count leaves the picker to fill. */
-  public setMeasureAggregate(id: string, aggregate: Aggregate): void {
-    this.updateMeasure(id, aggregate === 'count' ? { aggregate, columnId: null } : { aggregate });
+  /**
+   * Switching an aggregate to Count drops its column; away from Count leaves the picker to fill. A
+   * distinct count reads any column, so leaving it for a numeric aggregate drops a non-number column.
+   */
+  public setMeasureAggregate(id: string, aggregate: PivotAggregate): void {
+    if (aggregate === 'count') {
+      this.updateMeasure(id, { aggregate, columnId: null });
+      return;
+    }
+    const measure = this.measures().find((m) => m.id === id);
+    const column = measure?.columnId ? this.columns().find((c) => c.id === measure.columnId) : null;
+    const keepsColumn = aggregate === 'countDistinct' || !column || isNumeric(column.type);
+    this.updateMeasure(id, keepsColumn ? { aggregate } : { aggregate, columnId: null });
   }
 
   public removeMeasure(id: string): void {
@@ -153,10 +208,13 @@ export class PivotTableWidgetModel extends WidgetModel {
       ...this.baseConfigDto(),
       datasetId: this.datasetId(),
       rowFields: [...this.rowFields()],
+      columnFields: [...this.columnFields()],
+      fieldGroupings: this.fieldGroupings().map((g) => ({ ...g })),
       measures: this.measures().map((m) => ({ ...m })),
       sortMeasureId: this.sortMeasureId(),
       sortDescending: this.sortDescending(),
       showGrandTotal: this.showGrandTotal(),
+      showSubtotals: this.showSubtotals(),
       filter: this.filter.toDto(),
     };
     return { ...this.geometryDto(), type: 'pivotTable', config };
@@ -204,7 +262,7 @@ export class PivotTableWidgetModel extends WidgetModel {
         id: `${this.id}:measureNoColumn`,
         severity: 'warning',
         title: `${name} has a measure with no column`,
-        detail: 'Pick a value column for each sum, average, min, or max measure.',
+        detail: 'Pick a value column for each measure other than Count.',
         widgetId: this.id,
         view,
       });
@@ -217,7 +275,7 @@ export class PivotTableWidgetModel extends WidgetModel {
     if (schema) {
       const columnIds = new Set(schema.columns.map((c) => c.id));
 
-      if (this.rowFields().some((id) => !columnIds.has(id))) {
+      if ([...this.rowFields(), ...this.columnFields()].some((id) => !columnIds.has(id))) {
         issues.push({
           id: `${this.id}:missingRowField`,
           severity: 'error',

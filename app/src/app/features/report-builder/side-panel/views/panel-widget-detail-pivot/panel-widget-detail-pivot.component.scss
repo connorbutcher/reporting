@@ -18,6 +18,16 @@
   }
 }
 
+.panel-pivot-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  .grouping {
+    padding-left: 10px;
+  }
+}
+
 .panel-pivot-measure {
   display: flex;
   flex-direction: column;
@@ -64,4 +74,11 @@
   &.remove:hover:not(:disabled) {
     color: #e5484d;
   }
+}
+
+.formatting summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--app-navy, #152a55);
+  margin-bottom: 6px;
 }

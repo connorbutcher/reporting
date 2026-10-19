@@ -16,52 +16,129 @@
     [showGridlines]="true"
   >
     <ng-template #header>
+      <!-- A cross-tab heads each block of values with its column-field values, above the measures. -->
+      @if (crossTab()) {
+        <tr>
+          @for (col of dimensionColumns(); track $index) {
+            <th
+              rowspan="2"
+              class="dimension"
+              [class.dim-0]="$index === 0"
+              [attr.aria-sort]="fieldSortState(col)"
+            >
+              <ng-container *ngTemplateOutlet="dimensionHeader; context: { $implicit: col }" />
+            </th>
+          }
+          @for (block of columnBlocks(); track $index) {
+            <th [attr.colspan]="block.span" class="block">{{ block.label }}</th>
+          }
+        </tr>
+      }
       <tr>
-        @for (col of columns(); track $index) {
-          <th
-            [style.text-align]="col.align"
-            [class.measure]="col.isMeasure"
-            [attr.aria-sort]="col.measureIndex !== null ? sortState(col) : null"
-          >
-            @if (col.measureIndex !== null) {
-              <button type="button" class="sort" (click)="toggleSort(col.measureIndex)">
-                {{ col.label }}
-                <i
-                  class="pi"
-                  [class.pi-sort-alt]="sortState(col) === 'none'"
-                  [class.pi-sort-amount-down]="sortState(col) === 'descending'"
-                  [class.pi-sort-amount-up-alt]="sortState(col) === 'ascending'"
-                  aria-hidden="true"
-                ></i>
-              </button>
-            } @else {
+        @if (!crossTab()) {
+          @for (col of dimensionColumns(); track $index) {
+            <th class="dimension" [class.dim-0]="$index === 0" [attr.aria-sort]="fieldSortState(col)">
+              <ng-container *ngTemplateOutlet="dimensionHeader; context: { $implicit: col }" />
+            </th>
+          }
+        }
+        @for (col of valueColumns(); track col.valueIndex) {
+          <th class="measure" [attr.aria-sort]="sortState(col)">
+            <button type="button" class="sort" (click)="toggleSort(col.measureIndex)">
               {{ col.label }}
-            }
+              <i
+                class="pi"
+                [class.pi-sort-alt]="sortState(col) === 'none'"
+                [class.pi-sort-amount-down]="sortState(col) === 'descending'"
+                [class.pi-sort-amount-up-alt]="sortState(col) === 'ascending'"
+                aria-hidden="true"
+              ></i>
+            </button>
           </th>
         }
       </tr>
     </ng-template>
     <ng-template #body let-row>
-      <tr>
-        @for (col of columns(); track $index) {
-          <td [style.text-align]="col.align" [class.measure]="col.isMeasure">{{ row.cells[$index] }}</td>
+      <tr [class.subtotal]="row.isSubtotal">
+        @for (col of dimensionColumns(); track $index; let i = $index) {
+          <td
+            class="dimension"
+            [class.dim-0]="i === 0"
+            [class.drillable]="canDrill(row, null)"
+            (click)="drill(row, null)"
+          >
+            @if (row.isSubtotal && i === row.depth - 1) {
+              <button
+                type="button"
+                class="toggle"
+                [attr.aria-expanded]="!isCollapsed(row)"
+                [attr.aria-label]="(isCollapsed(row) ? 'Expand ' : 'Collapse ') + row.path.join(' ')"
+                (click)="toggleGroup(row, $event)"
+              >
+                <i
+                  class="pi"
+                  [class.pi-chevron-right]="isCollapsed(row)"
+                  [class.pi-chevron-down]="!isCollapsed(row)"
+                  aria-hidden="true"
+                ></i>
+              </button>
+            }
+            {{ row.dimensions[i] }}
+          </td>
+        }
+        @for (col of valueColumns(); track col.valueIndex) {
+          @let percent = barPercent(col, row);
+          <td
+            class="measure"
+            [class]="valueClass(col, row)"
+            [class.has-bar]="percent !== null"
+            [class.drillable]="canDrill(row, col)"
+            (click)="drill(row, col)"
+          >
+            @if (percent !== null) {
+              <span class="data-bar" [style.width.%]="percent" aria-hidden="true"></span>
+            }
+            <span class="cell-value">{{ row.values[col.valueIndex]?.displayValue }}</span>
+          </td>
         }
       </tr>
     </ng-template>
     <ng-template #emptymessage>
       <tr>
-        <td [attr.colspan]="columns().length" class="empty">No rows to summarise.</td>
+        <td [attr.colspan]="dimensionColumns().length + valueColumns().length" class="empty">No rows to summarise.</td>
       </tr>
     </ng-template>
     @if (grandTotal(); as total) {
       <ng-template #footer>
         <tr class="grand-total">
-          @for (col of columns(); track $index) {
-            <td [style.text-align]="col.align" [class.measure]="col.isMeasure">{{ total.cells[$index] }}</td>
+          @for (col of dimensionColumns(); track $index; let i = $index) {
+            <td class="dimension" [class.dim-0]="i === 0">{{ total.dimensions[i] }}</td>
+          }
+          @for (col of valueColumns(); track col.valueIndex) {
+            <td
+              class="measure"
+              [class.drillable]="canDrill(total, col)"
+              (click)="drill(total, col)"
+            >
+              {{ total.values[col.valueIndex]?.displayValue }}
+            </td>
           }
         </tr>
       </ng-template>
     }
+
+    <ng-template #dimensionHeader let-col>
+      <button type="button" class="sort" (click)="toggleFieldSort(col.fieldIndex)">
+        {{ col.label }}
+        <i
+          class="pi"
+          [class.pi-sort-alt]="fieldSortState(col) === 'none'"
+          [class.pi-sort-alpha-down]="fieldSortState(col) === 'ascending'"
+          [class.pi-sort-alpha-down-alt]="fieldSortState(col) === 'descending'"
+          aria-hidden="true"
+        ></i>
+      </button>
+    </ng-template>
   </p-table>
 
   <app-widget-count-bar

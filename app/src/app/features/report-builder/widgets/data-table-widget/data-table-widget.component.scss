@@ -1,3 +1,5 @@
+@use '../cell-format';
+
 :host {
   display: flex;
   flex-direction: column;
@@ -34,6 +36,88 @@
     font-family: var(--app-font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  // A wrapped column breaks long values over lines. A paginated table lets the row grow; a scrolling
+  // one keeps every row the same height, so it shows two lines and the rest on hover.
+  td.wrap {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  td.wrap-clamped {
+    white-space: normal;
+    overflow-wrap: anywhere;
+
+    .cell-value {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  tr.clickable {
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--app-navy, #152a55);
+      outline-offset: -2px;
+    }
+  }
+
+  // A row still on its way from the server, while the reader scrolls past it.
+  .placeholder {
+    display: inline-block;
+    width: 60%;
+    height: 0.7em;
+    border-radius: 3px;
+    background: #eef2f7;
+  }
+
+  tr.totals td {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: var(--app-navy, #152a55);
+    border-top: 2px solid var(--app-card-border);
+  }
+
+  @include cell-format.cell-format;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--app-card-border, #e2e8f0);
+  color: #64748b;
+
+  input {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-size: 0.82rem;
+    color: inherit;
+    outline: none;
+  }
+
+  &:focus-within {
+    color: var(--app-navy, #152a55);
+  }
+}
+
+// Read aloud, not shown: a cell's tolerance band in words, alongside its colour.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 :host(.data-table-widget--no-head) ::ng-deep thead {

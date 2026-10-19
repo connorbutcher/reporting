@@ -17,14 +17,19 @@ export abstract class WidgetExportBase {
   /** The base filename (without extension) — typically the widget's title. */
   protected abstract exportName(): string;
 
-  /** CSV text for the widget's current data, or null when there's nothing to export yet. */
-  protected abstract exportCsv(): string | null;
+  /**
+   * CSV text for the widget's current data, or null when there's nothing to export yet. A widget
+   * that only holds part of its data on screen (a paged table) fetches the rest, so this may be async.
+   */
+  protected abstract exportCsv(): string | null | Promise<string | null>;
 
   /** Saves the widget's current data as a CSV file. */
-  public downloadCsv(): void {
-    const csv = this.exportCsv();
+  public async downloadCsv(): Promise<void> {
+    const csv = await this.exportCsv();
     if (csv === null) return;
-    this.downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${this.exportName()}.csv`);
+    // A BOM keeps Excel from mangling non-ASCII characters such as £ or µ, as the dataset export does.
+    const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: 'text/csv;charset=utf-8' });
+    this.downloadBlob(blob, `${this.exportName()}.csv`);
   }
 
   /** Saves a screenshot of the widget as a PNG. Charts override this to export their canvas directly. */

@@ -44,6 +44,48 @@
           fluid
         />
       </label>
+
+      <div class="panel-inline-field">
+        <p-checkbox
+          [binary]="true"
+          inputId="col-wrap"
+          [ngModel]="column.wrap()"
+          (onChange)="column.wrap.set($event.checked)"
+        />
+        <label for="col-wrap">Wrap long text</label>
+      </div>
+
+      @if (schemaColumn() && isNumeric(schemaColumn()!)) {
+        <div class="panel-inline-field">
+          <p-checkbox
+            [binary]="true"
+            inputId="col-data-bars"
+            [ngModel]="column.dataBars()"
+            (onChange)="column.dataBars.set($event.checked)"
+          />
+          <label for="col-data-bars">Show data bars</label>
+        </div>
+      }
+
+      <label class="panel-field">
+        <span class="panel-field-label">Total</span>
+        <p-select
+          [options]="totalOptions()"
+          [ngModel]="column.total()"
+          optionLabel="label"
+          optionValue="value"
+          appendTo="body"
+          fluid
+          (onChange)="column.total.set($event.value ?? null)"
+        />
+      </label>
+      @if (column.total() && !showsTotals()) {
+        <p class="panel-hint">Turn on “Show totals row” under Appearance to show it.</p>
+      }
+    </app-panel-group>
+
+    <app-panel-group label="Conditional formatting" icon="◑">
+      <app-format-rules-editor [rules]="column.formatRules()" (rulesChange)="column.formatRules.set($event)" />
     </app-panel-group>
 
     @if (schemaColumn(); as schemaColumn) {

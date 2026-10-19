@@ -15,6 +15,10 @@ export type TableAppearanceDto = Pick<
   | 'paginator'
   | 'rowsPerPage'
   | 'emptyMessage'
+  | 'showTotals'
+  | 'showSearch'
+  | 'frozenColumns'
+  | 'rowDetails'
 >;
 
 export class TableAppearanceModel extends EditorNode {
@@ -27,6 +31,10 @@ export class TableAppearanceModel extends EditorNode {
   readonly paginator = signal(false);
   readonly rowsPerPage = signal(10);
   readonly emptyMessage = signal('No rows to display.');
+  readonly showTotals = signal(false);
+  readonly showSearch = signal(false);
+  readonly frozenColumns = signal(0);
+  readonly rowDetails = signal(true);
 
   constructor(
     private readonly widgetId: string,
@@ -42,6 +50,10 @@ export class TableAppearanceModel extends EditorNode {
     this.paginator.set(dto.paginator);
     this.rowsPerPage.set(dto.rowsPerPage);
     this.emptyMessage.set(dto.emptyMessage);
+    this.showTotals.set(dto.showTotals ?? false);
+    this.showSearch.set(dto.showSearch ?? false);
+    this.frozenColumns.set(dto.frozenColumns ?? 0);
+    this.rowDetails.set(dto.rowDetails ?? true);
   }
 
   /** A short description of the notable settings, for the panel summary line. */
@@ -49,6 +61,8 @@ export class TableAppearanceModel extends EditorNode {
     const parts: string[] = [this.density()];
     if (this.resizableColumns()) parts.push('resizable');
     if (this.paginator()) parts.push('paginated');
+    if (this.showTotals()) parts.push('totals');
+    if (this.showSearch()) parts.push('search');
     return parts.join(' · ');
   }
 
@@ -63,6 +77,10 @@ export class TableAppearanceModel extends EditorNode {
       paginator: this.paginator(),
       rowsPerPage: this.rowsPerPage(),
       emptyMessage: this.emptyMessage(),
+      showTotals: this.showTotals(),
+      showSearch: this.showSearch(),
+      frozenColumns: this.frozenColumns(),
+      rowDetails: this.rowDetails(),
     };
   }
 

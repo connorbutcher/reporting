@@ -7,6 +7,19 @@
 } @else if (displayColumns().length === 0 && !loading()) {
   <app-widget-status icon="pi-list">Add the columns you want from the side panel.</app-widget-status>
 } @else {
+  @if (config().showSearch) {
+    <div class="search">
+      <i class="pi pi-search" aria-hidden="true"></i>
+      <input
+        type="search"
+        placeholder="Search this table"
+        [attr.aria-label]="'Search ' + (config().title || 'this table')"
+        [ngModel]="searchText()"
+        (ngModelChange)="onSearch($event)"
+      />
+    </div>
+  }
+
   <!-- [loading] shows a built-in overlay rather than us swapping this element
        out of the @if — a lazy p-table re-fires onLazyLoad on every fresh
        mount, which would otherwise turn a loading toggle into a fetch loop. -->
@@ -37,33 +50,82 @@
         <!-- The resize handle is attached when the cell is created, so the
              resizable flag is part of the key to force a rebuild on toggle. -->
         @for (col of displayColumns(); track col.column.id + resizeKey()) {
-          <th
-            [attr.data-column-id]="col.column.id"
-            [pSortableColumn]="col.column.id"
-            [pSortableColumnDisabled]="!col.sortable"
-            pResizableColumn
-            [pResizableColumnDisabled]="!config().resizableColumns"
-            pReorderableColumn
-            [style.width.px]="col.width ?? null"
-            [style.text-align]="col.align"
-          >
-            {{ col.header }}
-            @if (col.sortable) {
-              <p-sort-icon [field]="col.column.id" />
-            }
-          </th>
+          <!-- pFrozenColumn watches its cell's size, so only the frozen columns carry it. -->
+          @if (col.frozen) {
+            <th
+              [attr.data-column-id]="col.column.id"
+              [pSortableColumn]="col.column.id"
+              [pSortableColumnDisabled]="!col.sortable"
+              pResizableColumn
+              [pResizableColumnDisabled]="!config().resizableColumns"
+              pReorderableColumn
+              pFrozenColumn
+              [style.width.px]="col.width ?? null"
+              [style.text-align]="col.align"
+            >
+              <ng-container *ngTemplateOutlet="headerContent; context: { $implicit: col }" />
+            </th>
+          } @else {
+            <th
+              [attr.data-column-id]="col.column.id"
+              [pSortableColumn]="col.column.id"
+              [pSortableColumnDisabled]="!col.sortable"
+              pResizableColumn
+              [pResizableColumnDisabled]="!config().resizableColumns"
+              pReorderableColumn
+              [style.width.px]="col.width ?? null"
+              [style.text-align]="col.align"
+            >
+              <ng-container *ngTemplateOutlet="headerContent; context: { $implicit: col }" />
+            </th>
+          }
         }
       </tr>
     </ng-template>
     <ng-template #body let-row>
-      <tr [style.height.px]="rowHeight()">
+      <tr
+        [style.height.px]="bodyRowHeight()"
+        [class.clickable]="rowDetails() && !!row"
+        [attr.tabindex]="rowDetails() && row ? 0 : null"
+        (click)="openRow(row)"
+        (keydown.enter)="openRow(row)"
+      >
         @for (col of displayColumns(); track col.column.id) {
-          <td [style.text-align]="col.align" [class]="toleranceClass(row.cells[col.column.id])">
-            {{ row.cells[col.column.id]?.displayValue }}
-          </td>
+          @let cell = row?.cells[col.column.id];
+          @if (col.frozen) {
+            <td
+              pFrozenColumn
+              [style.text-align]="col.align"
+              [class]="cellClass(col, cell)"
+              [attr.title]="col.wrap && !config().paginator ? cell?.displayValue : null"
+            >
+              <ng-container *ngTemplateOutlet="cellContent; context: { $implicit: col, cell, row }" />
+            </td>
+          } @else {
+            <td
+              [style.text-align]="col.align"
+              [class]="cellClass(col, cell)"
+              [attr.title]="col.wrap && !config().paginator ? cell?.displayValue : null"
+            >
+              <ng-container *ngTemplateOutlet="cellContent; context: { $implicit: col, cell, row }" />
+            </td>
+          }
         }
       </tr>
     </ng-template>
+    @if (showTotals()) {
+      <ng-template #footer>
+        <tr class="totals">
+          @for (col of displayColumns(); track col.column.id; let i = $index) {
+            @if (col.frozen) {
+              <td pFrozenColumn [style.text-align]="col.align">{{ totalCell(col, i) }}</td>
+            } @else {
+              <td [style.text-align]="col.align">{{ totalCell(col, i) }}</td>
+            }
+          }
+        </tr>
+      </ng-template>
+    }
     <ng-template #emptymessage>
       <tr>
         <td [attr.colspan]="displayColumns().length" class="empty">
@@ -71,12 +133,33 @@
         </td>
       </tr>
     </ng-template>
+
+    <!-- Declared inside p-table so the sort icon finds its table. -->
+    <ng-template #headerContent let-col>
+      {{ col.header }}
+      @if (col.sortable) {
+        <p-sort-icon [field]="col.column.id" />
+      }
+    </ng-template>
+
+    <ng-template #cellContent let-col let-cell="cell" let-row="row">
+      @if (!row) {
+        <span class="placeholder" aria-hidden="true"></span>
+      } @else {
+        @if (barPercent(col, cell); as percent) {
+          <span class="data-bar" [style.width.%]="percent" aria-hidden="true"></span>
+        }
+        <span class="cell-value">{{ cell?.displayValue }}</span>
+        @if (toleranceText(cell); as text) {
+          <span class="visually-hidden">({{ text }})</span>
+        }
+      }
+    </ng-template>
   </p-table>
 
   <app-widget-count-bar
     [label]="countLabel()"
     [icon]="isFiltered() ? 'pi-filter' : 'pi-list'"
-    [warning]="isTruncated()"
     [filters]="filterLines()"
     [actionable]="filterable()"
     (activate)="filterRequest.emit()"

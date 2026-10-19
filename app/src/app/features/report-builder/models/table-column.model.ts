@@ -1,8 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
+  Aggregate,
   ColumnAlign,
   DataTableColumnSetting,
+  FormatRule,
   ToleranceConfig,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
@@ -21,6 +23,12 @@ export class TableColumnModel extends EditorNode {
   readonly sortable = signal(true);
   /** Pass/fail highlighting resolved against a row of a separate limits dataset. Null shows no banding. */
   readonly tolerance = signal<ToleranceConfig | null>(null);
+  /** The aggregate shown in the totals row; null leaves this column's total blank. */
+  readonly total = signal<Aggregate | null>(null);
+  readonly wrap = signal(false);
+  readonly dataBars = signal(false);
+  /** Conditional highlighting, checked in order; the first rule a value matches wins. */
+  readonly formatRules = signal<readonly FormatRule[]>([]);
 
   /** The dataset column this refers to, once the schema has loaded. */
   readonly schemaColumn: Signal<DatasetColumn | null>;
@@ -48,6 +56,10 @@ export class TableColumnModel extends EditorNode {
     this.align.set(dto.align ?? null);
     this.sortable.set(dto.sortable !== false);
     this.tolerance.set(dto.tolerance ?? null);
+    this.total.set(dto.total ?? null);
+    this.wrap.set(!!dto.wrap);
+    this.dataBars.set(!!dto.dataBars);
+    this.formatRules.set(dto.formatRules ?? []);
 
     this.schemaColumn = computed(
       () => this.schema()?.columns.find((c) => c.id === this.columnId) ?? null,
@@ -78,6 +90,10 @@ export class TableColumnModel extends EditorNode {
       ...(this.align() !== null ? { align: this.align()! } : {}),
       sortable: this.sortable(),
       ...(this.tolerance() ? { tolerance: this.tolerance()! } : {}),
+      ...(this.total() ? { total: this.total()! } : {}),
+      ...(this.wrap() ? { wrap: true } : {}),
+      ...(this.dataBars() ? { dataBars: true } : {}),
+      ...(this.formatRules().length ? { formatRules: this.formatRules().map((r) => ({ ...r })) } : {}),
     };
   }
 
