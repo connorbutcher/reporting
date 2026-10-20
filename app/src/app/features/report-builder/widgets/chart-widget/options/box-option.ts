@@ -141,6 +141,8 @@ export class BoxOption {
             color,
             borderColor: border ?? color,
             borderWidth: border ? 2.5 : 1.5,
+            // Dashed when out of spec, so the warning isn't carried by colour alone.
+            ...(border ? { borderType: 'dashed' as const } : {}),
             opacity: showPoints ? 0.35 : 1,
           },
         };
@@ -291,7 +293,8 @@ export class BoxOption {
       const body = lines.join('<br/>');
       return (
         `<strong>${TooltipHtml.escape(param.seriesName || 'Box')}</strong><br/>${body}<br/>n = ${box.count}` +
-        (capability ? `<br/>${capability}` : '')
+        (capability ? `<br/>${capability}` : '') +
+        (box.tooltipLines ?? []).map((line) => `<br/>${TooltipHtml.escape(line)}`).join('')
       );
     }
 

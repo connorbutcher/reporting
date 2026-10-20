@@ -85,21 +85,41 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
             : orderedCategoryKeys;
         var stats = dto.Mode == ControlChartMode.Individuals
             ? IndividualStats(orderedCategoryKeys.SelectMany(key => valuesByCategory[key]).ToList())
-            : orderedCategoryKeys.Select(key => SubgroupStat(valuesByCategory[key], dto.Mode)).ToList();
+            : IsAttribute(dto.Mode)
+                ? orderedCategoryKeys.Select(key => AttributeStat(valuesByCategory[key], dto.Mode)).ToList()
+                : orderedCategoryKeys.Select(key => SubgroupStat(valuesByCategory[key], dto.Mode)).ToList();
 
         // The centre lines (and so every limit) come from the baseline points only, when one is
         // set, and are then held across the whole chart.
         var baseline = dto.BaselineSubgroups is > 0 and var n && n < stats.Count ? n : (int?)null;
         var basis = baseline is { } count ? stats.Take(count).ToList() : stats;
 
-        var xBarBar = basis.Average(stat => stat.Mean);
-        // A subgroup of one has no spread of its own (and the first individual no moving range), so
-        // only points that have one contribute to the average — including them would bias it low.
-        var spread = basis.Where(stat => stat.HasDispersion).ToList();
-        var dispersionBar = spread.Count > 0 ? spread.Average(stat => stat.Dispersion) : 0d;
-
-        var subgroups = stats.Select(stat => BuildSubgroup(stat, xBarBar, dispersionBar, dto.Mode)).ToList();
-        ApplyRules(subgroups, dispersionBar, dto.RunRules);
+        List<XBarRSubgroupDto> subgroups;
+        List<double> centers;
+        double xBarBar;
+        double dispersionBar;
+        if (IsAttribute(dto.Mode))
+        {
+            // The overall defective rate p̄ = total defectives / total units (not the mean of the
+            // subgroup rates, which would over-weight small subgroups).
+            var units = basis.Sum(stat => stat.Count);
+            var pBar = units > 0 ? basis.Sum(stat => stat.Dispersion) / units : 0d;
+            subgroups = stats.Select(stat => BuildAttributeSubgroup(stat, pBar, dto.Mode)).ToList();
+            centers = stats.Select(stat => dto.Mode == ControlChartMode.Np ? stat.Count * pBar : pBar).ToList();
+            xBarBar = dto.Mode == ControlChartMode.Np ? basis.Average(stat => stat.Count) * pBar : pBar;
+            dispersionBar = 0;
+        }
+        else
+        {
+            xBarBar = basis.Average(stat => stat.Mean);
+            // A subgroup of one has no spread of its own (and the first individual no moving range), so
+            // only points that have one contribute to the average — including them would bias it low.
+            var spread = basis.Where(stat => stat.HasDispersion).ToList();
+            dispersionBar = spread.Count > 0 ? spread.Average(stat => stat.Dispersion) : 0d;
+            subgroups = stats.Select(stat => BuildSubgroup(stat, xBarBar, dispersionBar, dto.Mode)).ToList();
+            centers = stats.Select(_ => xBarBar).ToList();
+        }
+        ApplyRules(subgroups, centers, dispersionBar, dto.RunRules);
 
         return new XBarRChartQueryResultDto
         {
@@ -170,6 +190,58 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
         return new PointStat(mean, dispersion, values.Count, values.Count >= 2);
     }
 
+    private static bool IsAttribute(ControlChartMode mode) => mode is ControlChartMode.P or ControlChartMode.Np;
+
+    /// <summary>
+    /// One subgroup of an attribute chart: any non-zero value is a defective unit. The plotted value
+    /// is the defective proportion (p) or count (np); the defective count rides in the dispersion slot,
+    /// which an attribute chart has no other use for, so p̄ can be pooled from counts.
+    /// </summary>
+    private static PointStat AttributeStat(List<double> values, ControlChartMode mode)
+    {
+        var defective = values.Count(value => value != 0);
+        var plotted = mode == ControlChartMode.Np ? defective : (double)defective / values.Count;
+        return new PointStat(plotted, defective, values.Count, false);
+    }
+
+    /// <summary>
+    /// An attribute subgroup's limits from the binomial σ for its own size n: p̄ ± 3√(p̄(1−p̄)/n) for
+    /// a p chart, np̄ ± 3√(np̄(1−p̄)) for an np chart, the lower limit floored at zero (and a p chart's
+    /// upper at one). Limits step with n, like the Xbar-R limits do for unequal subgroups.
+    /// </summary>
+    private static XBarRSubgroupDto BuildAttributeSubgroup(PointStat stat, double pBar, ControlChartMode mode)
+    {
+        var n = stat.Count;
+        double center, spread, upperCap;
+        if (mode == ControlChartMode.Np)
+        {
+            center = n * pBar;
+            spread = 3 * Math.Sqrt(n * pBar * (1 - pBar));
+            upperCap = n;
+        }
+        else
+        {
+            center = pBar;
+            spread = 3 * Math.Sqrt(pBar * (1 - pBar) / n);
+            upperCap = 1;
+        }
+        var ucl = Math.Min(center + spread, upperCap);
+        var lcl = Math.Max(center - spread, 0);
+        return new XBarRSubgroupDto
+        {
+            Mean = stat.Mean,
+            Range = 0,
+            Count = n,
+            HasRange = false,
+            XBarUcl = ucl,
+            XBarLcl = lcl,
+            RUcl = 0,
+            RLcl = 0,
+            MeanOutOfControl = stat.Mean > ucl || stat.Mean < lcl,
+            RangeOutOfControl = false
+        };
+    }
+
     /// <summary>Individual values with their moving ranges |xᵢ − xᵢ₋₁|; the first has none.</summary>
     private static List<PointStat> IndividualStats(List<double> values) =>
         values.Select((value, i) => new PointStat(value, i == 0 ? 0 : Math.Abs(value - values[i - 1]), 1, i > 0)).ToList();
@@ -219,10 +291,12 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
     }
 
     /// <summary>Flags each point's broken Nelson rules on both charts — rule 1 always, the run rules when asked.</summary>
-    private static void ApplyRules(List<XBarRSubgroupDto> subgroups, double dispersionBar, bool runRules)
+    private static void ApplyRules(List<XBarRSubgroupDto> subgroups, List<double> centers, double dispersionBar, bool runRules)
     {
+        // Each point is judged against its own centre line: the grand mean, or for an np chart its
+        // own n·p̄ — never the midpoint of its limits, which moves once a limit is floored at zero.
         var meanRules = ControlChartRules.Evaluate(
-            subgroups.Select(s => new ControlChartRules.Point(s.Mean, (s.XBarUcl + s.XBarLcl) / 2, s.XBarUcl, s.XBarLcl)).ToList(),
+            subgroups.Select((s, i) => new ControlChartRules.Point(s.Mean, centers[i], s.XBarUcl, s.XBarLcl)).ToList(),
             runRules);
         var rangeRules = ControlChartRules.Evaluate(
             subgroups.Select(s => new ControlChartRules.Point(

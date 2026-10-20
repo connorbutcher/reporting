@@ -1,8 +1,8 @@
 <app-panel-group label="Tooltip" icon="◐" [open]="false">
   @if (grouped()) {
     <p class="panel-hint">
-      Shown when hovering a bar: each column summarised over the bar's rows, the same way as the
-      chart (a count sums them). Number columns only.
+      Shown when hovering a bar, box or bin: each column summarised over its rows. Bars use the
+      chart's own summary (a count sums them); boxes and bins use the average. Number columns only.
     </p>
   } @else {
     <p class="panel-hint">Shown when hovering a point, alongside X and Y.</p>

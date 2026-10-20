@@ -16,11 +16,16 @@
     }
   }
 
-  .anchor-toggle {
+  .chart-actions {
     position: absolute;
     top: 8px;
     right: 8px;
     z-index: 1;
+    display: flex;
+    gap: 6px;
+  }
+
+  .chart-action {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -42,6 +47,45 @@
       background: var(--app-navy, #152a55);
       border-color: var(--app-navy, #152a55);
       color: #fff;
+    }
+  }
+
+  // The "View data" table: the chart's plotted values, scrollable within the widget.
+  .data-table {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 40px 8px 8px;
+    font-size: 0.75rem;
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    caption {
+      text-align: left;
+      font-weight: 600;
+      padding-bottom: 6px;
+    }
+
+    .data-note {
+      font-weight: 400;
+      color: #64748b;
+    }
+
+    th,
+    td {
+      padding: 3px 8px;
+      border-bottom: 1px solid var(--app-card-border, #e2e8f0);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #fff;
     }
   }
 

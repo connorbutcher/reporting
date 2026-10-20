@@ -159,6 +159,65 @@ public class ChartCategoryAndBinningTests() : SqliteDbTestBase(foreignKeys: fals
     }
 
     [Fact]
+    public async Task P_chart_plots_defective_proportions_against_binomial_limits()
+    {
+        var (dataset, refs) = NewDataset(("Lot", DatasetColumnType.Double), ("Defective", DatasetColumnType.Double));
+        // Lot 1: 1 of 4 defective; lot 2: 3 of 4; lot 3: 0 of 2. p̄ = 4 / 10.
+        foreach (var (lot, flags) in new[] { (1, new[] { 1, 0, 0, 0 }), (2, new[] { 1, 1, 1, 0 }), (3, new[] { 0, 0 }) })
+        {
+            foreach (var flag in flags)
+            {
+                AddRow(dataset, lot.ToString(CultureInfo.InvariantCulture), flag.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+        await Db.SaveChangesAsync();
+
+        var p = await Control().QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
+        {
+            CategoryColumnId = refs[0], ValueColumnId = refs[1], Mode = ControlChartMode.P
+        });
+        var np = await Control().QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
+        {
+            CategoryColumnId = refs[0], ValueColumnId = refs[1], Mode = ControlChartMode.Np
+        });
+
+        Assert.Equal([0.25, 0.75, 0d], p!.Subgroups.Select(s => s.Mean));
+        Assert.Equal(0.4, p.XBarCenterLine, 9);
+        // Limits step with each lot's size; the lower limit floors at zero.
+        Assert.Equal(Math.Min(1, 0.4 + 3 * Math.Sqrt(0.4 * 0.6 / 4)), p.Subgroups[0].XBarUcl, 9);
+        Assert.Equal(0d, p.Subgroups[2].XBarLcl);
+        Assert.All(p.Subgroups, s => Assert.False(s.HasRange));
+
+        Assert.Equal([1d, 3d, 0d], np!.Subgroups.Select(s => s.Mean));
+        // An np limit never exceeds the lot size itself.
+        Assert.Equal(Math.Min(4, 4 * 0.4 + 3 * Math.Sqrt(4 * 0.4 * 0.6)), np.Subgroups[0].XBarUcl, 9);
+    }
+
+    [Fact]
+    public async Task Box_and_histogram_tooltips_average_extra_columns_per_box_and_bin()
+    {
+        var (dataset, refs) = NewDataset(("Line", DatasetColumnType.String), ("Width", DatasetColumnType.Double), ("Cost", DatasetColumnType.Double));
+        AddRow(dataset, "A", "1", "10");
+        AddRow(dataset, "A", "2", "20");
+        AddRow(dataset, "B", "9", "100");
+        await Db.SaveChangesAsync();
+        var cost = new ChartTooltipColumn { ColumnId = refs[2], Prefix = "Cost: " };
+
+        var box = await Box().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
+        {
+            CategoryColumnId = refs[0], ValueColumnId = refs[1], TooltipColumns = [cost]
+        });
+        var histogram = await Histogram().QueryForHistogramAsync(dataset.Id, new HistogramQueryDto
+        {
+            ValueColumnIds = [refs[1]], BinMode = HistogramBinMode.Count, BinCount = 2, TooltipColumns = [cost]
+        });
+
+        Assert.Equal([["Cost: 15"], ["Cost: 100"]], box!.Series.Single().Boxes.Select(b => b!.TooltipLines));
+        // Bins 1–5 and 5–9: the first holds the widths 1 and 2, the last the 9.
+        Assert.Equal([["Cost: 15"], ["Cost: 100"]], histogram!.Series.Single().TooltipLines);
+    }
+
+    [Fact]
     public async Task Series_labels_format_a_date_split_column()
     {
         var (dataset, refs) = NewDataset(("Region", DatasetColumnType.String), ("Qty", DatasetColumnType.Double), ("Made", DatasetColumnType.DateTime));

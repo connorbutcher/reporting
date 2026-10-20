@@ -27,7 +27,8 @@ interface SubgroupTooltipContext {
   valueLabel: string;
   categories: readonly string[];
   subgroups: readonly XBarRSubgroup[];
-  config: NumericColumnConfig | undefined;
+  /** How this chart's values and limits read: the measure's format, or a percentage on a p chart. */
+  format: (value: number) => string;
   centerLine: number;
 }
 
@@ -38,6 +39,13 @@ interface SubgroupTooltipContext {
  * they can differ per subgroup when subgroup sizes aren't all equal.
  */
 export class XBarROption {
+  /** An out-of-control point: red and a larger triangle, so its status isn't carried by colour alone. */
+  private static readonly OUT_OF_CONTROL_POINT = {
+    symbol: 'triangle',
+    symbolSize: 11,
+    itemStyle: { color: OUT_OF_CONTROL_COLOR },
+  };
+
   /** What each Nelson rule means, for the tooltip. */
   private static readonly RULES: Record<number, string> = {
     1: 'beyond a control limit',
@@ -66,12 +74,19 @@ export class XBarROption {
     const xBarCenterLine = data?.xBarCenterLine ?? 0;
     const rCenterLine = data?.rCenterLine ?? 0;
 
-    const valueConfig = ChartFormat.numericConfig(valueColumn);
+    // An attribute chart (p, np) plots a defective share or count on one chart, not a measure and
+    // its spread on two: no second grid, and its values don't take the measure column's units.
+    const attribute = mode === 'p' || mode === 'np';
+    const valueConfig = attribute ? undefined : ChartFormat.numericConfig(valueColumn);
+    const formatMean =
+      mode === 'p'
+        ? (v: number) => `${ChartFormat.numeric(v * 100, { kind: 'numeric', decimals: 1 })}%`
+        : (v: number) => ChartFormat.numeric(v, valueConfig);
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
     // An Xbar-R chart uses only the primary value axis, like a box plot — its label/bounds apply
     // to the X-bar (mean) chart; the R chart's axis is always auto-scaled from zero.
     const meanAxisConfig = readChartAxes(config)[0];
-    const meanLabel = meanAxisConfig.label.trim() || valueColumn.name;
+    const meanLabel = meanAxisConfig.label.trim() || (attribute ? names.value : valueColumn.name);
 
     const showGridLines = config.showGridLines ?? true;
 
@@ -82,7 +97,7 @@ export class XBarROption {
     const labelledCategoryAxis = {
       ...ChartScale.categoryAxis(categories, config.xAxisInterval),
       ...(categoryRotate !== 0 ? { axisLabel: { rotate: categoryRotate } } : {}),
-      gridIndex: 1,
+      gridIndex: attribute ? 0 : 1,
       name: categoryLabel,
       nameLocation: 'middle' as const,
       nameGap: categoryNameGap,
@@ -95,11 +110,16 @@ export class XBarROption {
 
     const meanExtentValues = subgroups.flatMap((s) => [s.mean, s.xBarUcl, s.xBarLcl]);
     const rangeExtentValues = subgroups.flatMap((s) => (s.hasRange === false ? [s.rUcl] : [s.range, s.rUcl]));
-    const meanNameGap = ChartScale.nameGap(XBarROption.labelLen(meanExtentValues, valueConfig), 0, 'y');
+    const meanNameGap = ChartScale.nameGap(
+      mode === 'p' ? 6 : XBarROption.labelLen(meanExtentValues, valueConfig),
+      0,
+      'y',
+    );
     const rangeNameGap = ChartScale.nameGap(XBarROption.labelLen(rangeExtentValues, valueConfig), 0, 'y');
 
     const meanAxis = {
       ...meanScale,
+      ...(mode === 'p' ? { axisLabel: { formatter: (v: number | string) => formatMean(Number(v)) } } : {}),
       gridIndex: 0,
       name: meanLabel,
       nameLocation: 'middle' as const,
@@ -143,7 +163,7 @@ export class XBarROption {
       valueLabel: names.value,
       categories,
       subgroups,
-      config: valueConfig,
+      format: formatMean,
       centerLine: xBarCenterLine,
     };
     const rangeTooltip: SubgroupTooltipContext = {
@@ -151,7 +171,7 @@ export class XBarROption {
       valueLabel: names.dispersion,
       categories,
       subgroups,
-      config: valueConfig,
+      format: (v: number) => ChartFormat.numeric(v, valueConfig),
       centerLine: rCenterLine,
     };
 
@@ -166,7 +186,7 @@ export class XBarROption {
       itemStyle: { color: IN_CONTROL_COLOR },
       data: subgroups.map((s) => ({
         value: s.mean,
-        ...(highlight && s.meanOutOfControl ? { itemStyle: { color: OUT_OF_CONTROL_COLOR } } : {}),
+        ...(highlight && s.meanOutOfControl ? XBarROption.OUT_OF_CONTROL_POINT : {}),
       })),
       tooltip: { formatter: (p) => XBarROption.tooltip(p, meanTooltip) },
     };
@@ -183,13 +203,31 @@ export class XBarROption {
       // A subgroup of one (or the first individual) has no range: leave a gap rather than plot 0.
       data: subgroups.map((s) => ({
         value: s.hasRange === false ? null : s.range,
-        ...(highlight && s.rangeOutOfControl ? { itemStyle: { color: OUT_OF_CONTROL_COLOR } } : {}),
+        ...(highlight && s.rangeOutOfControl ? XBarROption.OUT_OF_CONTROL_POINT : {}),
       })),
       tooltip: { formatter: (p) => XBarROption.tooltip(p, rangeTooltip) },
     };
 
     // Many subgroups get a slider that pans both charts together.
     const zoom = CategoryZoom.enabled(config.zoom, categories.length);
+
+    const meanSeriesSet = [
+      meanSeries,
+      ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarUcl', 0, 0),
+      ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarLcl', 0, 0),
+      XBarROption.centerSeries(names.meanChart, categories.length, xBarCenterLine, 0, 0),
+    ];
+
+    if (attribute) {
+      return {
+        grid: { left: 56, right: 20, top: 30, bottom: zoom ? 76 : 56, containLabel: true },
+        xAxis: labelledCategoryAxis,
+        yAxis: meanAxis,
+        tooltip: { trigger: 'item', appendToBody: true, confine: true },
+        ...(zoom ? { dataZoom: CategoryZoom.dataZoom(false) } : {}),
+        series: [...meanSeriesSet, ...(specReference ? [specReference] : [])],
+      };
+    }
 
     return {
       grid: [
@@ -208,10 +246,7 @@ export class XBarROption {
           }
         : {}),
       series: [
-        meanSeries,
-        ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarUcl', 0, 0),
-        ...XBarROption.limitSeries(names.meanChart, categories.length, subgroups, 'xBarLcl', 0, 0),
-        XBarROption.centerSeries(names.meanChart, categories.length, xBarCenterLine, 0, 0),
+        ...meanSeriesSet,
         rangeSeries,
         ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rUcl', 1, 1),
         ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rLcl', 1, 1),
@@ -233,6 +268,10 @@ export class XBarROption {
         return { value: 'Mean', dispersion: 'Std dev', meanChart: 'X̄', dispersionChart: 'S' };
       case 'individuals':
         return { value: 'Value', dispersion: 'Moving range', meanChart: 'X', dispersionChart: 'MR' };
+      case 'p':
+        return { value: 'Proportion defective', dispersion: '', meanChart: 'p', dispersionChart: '' };
+      case 'np':
+        return { value: 'Defectives', dispersion: '', meanChart: 'np', dispersionChart: '' };
       default:
         return { value: 'Mean', dispersion: 'Range', meanChart: 'X̄', dispersionChart: 'R' };
     }
@@ -245,7 +284,7 @@ export class XBarROption {
     const i = param.dataIndex;
     const s = ctx.subgroups[i];
     if (!s) return '';
-    const num = (v: number) => ChartFormat.numeric(v, ctx.config);
+    const num = ctx.format;
 
     const isMean = ctx.kind === 'mean';
     const value = isMean ? s.mean : s.range;

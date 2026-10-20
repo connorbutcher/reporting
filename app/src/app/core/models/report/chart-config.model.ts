@@ -190,7 +190,7 @@ export interface ChartTooltipColumn {
 }
 
 /** Which pair of control charts an Xbar-R widget draws. */
-export type ControlChartMode = 'xBarR' | 'xBarS' | 'individuals';
+export type ControlChartMode = 'xBarR' | 'xBarS' | 'individuals' | 'p' | 'np';
 
 /**
  * One dataset's contribution to a chart: its axes, optional per-value split, and

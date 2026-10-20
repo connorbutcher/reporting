@@ -28,6 +28,9 @@ public class BoxPlotQueryDto
     /// <summary>Buckets a date category by period; null groups by the exact date.</summary>
     public DateGrouping? CategoryGrouping { get; set; }
 
+    /// <summary>Extra numeric columns averaged over each box's rows, for its tooltip.</summary>
+    public List<ChartTooltipColumn> TooltipColumns { get; set; } = new();
+
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
 }
 
@@ -54,6 +57,9 @@ public class BoxDto
 
     /// <summary>A capped sample of the raw values behind this box, for the jittered overlay. Empty unless requested.</summary>
     public List<double> Points { get; set; } = new();
+
+    /// <summary>Each tooltip column's average over this box's rows, formatted with its prefix/suffix.</summary>
+    public List<string> TooltipLines { get; set; } = new();
 }
 
 /// <summary>A single value that fell beyond a Tukey whisker, tagged with the category slot it belongs to.</summary>

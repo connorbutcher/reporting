@@ -16,7 +16,7 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelChartTooltipColumnsComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
-  /** A bar or combination chart, whose tooltip columns are summarised per bar rather than read per row. */
+  /** A grouping chart (bar, combination, box plot, histogram), whose tooltip columns are summarised per mark rather than read per row. */
   public readonly grouped = input(false);
 
   public tooltipColumnsExhausted(): boolean {

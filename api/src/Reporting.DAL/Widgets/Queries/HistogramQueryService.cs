@@ -128,6 +128,37 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             .SelectMany(measure => SeriesForMeasure(measure.Column, measure.Projected, edges, bins.Count, binWidth, dto, seriesColumn))
             .ToList();
 
+        // Tooltip columns: each one averaged over the rows in each bin of each series.
+        var fixedRange = dto.RangeMin is not null || dto.RangeMax is not null;
+        foreach (var setting in dto.TooltipColumns)
+        {
+            var column = BarChartQueryService.ResolveTooltipColumn(setting, columnsByRef, dataset.Columns);
+            if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+            {
+                continue;
+            }
+            foreach (var measure in measures)
+            {
+                var averages = await BinAveragesAsync(matching, seriesId, measure.Id, column.Id, edges, bins.Count, fixedRange ? (min, max) : null);
+                foreach (var seriesDto in series.Where(s => s.ValueColumnId == measure.RefId))
+                {
+                    var perBin = averages.GetValueOrDefault(seriesDto.Key);
+                    if (seriesDto.TooltipLines.Count == 0)
+                    {
+                        seriesDto.TooltipLines = bins.Select(_ => new List<string>()).ToList();
+                    }
+                    for (var b = 0; b < bins.Count; b++)
+                    {
+                        if (perBin is not null && perBin[b].Count > 0)
+                        {
+                            var formatted = CellFormatter.Number(perBin[b].Sum / perBin[b].Count, column.GetConfig() as NumericColumnConfig);
+                            seriesDto.TooltipLines[b].Add($"{setting.Prefix}{formatted}{setting.Suffix}");
+                        }
+                    }
+                }
+            }
+        }
+
         return new HistogramQueryResultDto
         {
             Id = resolved.Id,
@@ -197,6 +228,46 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         return (projected, truncated, scanned.Count);
     }
 
+    /// <summary>
+    /// The average of a tooltip column over the rows in each bin, per series key: one capped scan of
+    /// (series, binned value, tooltip value), bucketed in memory with the same edges as the bars.
+    /// </summary>
+    private static async Task<Dictionary<string, (double Sum, int Count)[]>> BinAveragesAsync(
+        IQueryable<DatasetRow> matching, int seriesId, int valueId, int tooltipId, List<double> edges, int binCount, (double Min, double Max)? range)
+    {
+        var scanned = await matching
+            .Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null)
+                && r.Cells.Any(c => c.ColumnId == tooltipId && c.NumberValue != null))
+            .OrderBy(r => r.Id)
+            .Take(MaxHistogramScanRows)
+            .Select(r => new
+            {
+                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
+                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault(),
+                Tooltip = r.Cells.Where(c => c.ColumnId == tooltipId).Select(c => c.NumberValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var averages = new Dictionary<string, (double Sum, int Count)[]>();
+        foreach (var row in scanned)
+        {
+            var value = row.Value ?? 0d;
+            if (range is { } r && (value < r.Min || value > r.Max))
+            {
+                continue;
+            }
+            var key = (row.Series ?? "").Trim();
+            if (!averages.TryGetValue(key, out var perBin))
+            {
+                perBin = new (double, int)[binCount];
+                averages[key] = perBin;
+            }
+            var bin = BinIndex(value, edges, binCount);
+            perBin[bin] = (perBin[bin].Sum + (row.Tooltip ?? 0d), perBin[bin].Count + 1);
+        }
+        return averages;
+    }
+
     /// <summary>The client-facing bins for a set of edges — each one's range and its axis label.</summary>
     private static List<HistogramBinDto> BuildBins(List<double> edges)
     {
@@ -258,6 +329,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
 
         return new HistogramSeriesDto
         {
+            Key = seriesKey,
             Label = SeriesLabels.Format(seriesColumn, seriesKey),
             Drill = SeriesLabels.Drill(seriesColumn, seriesKey),
             Values = values,

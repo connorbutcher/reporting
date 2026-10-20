@@ -1,4 +1,4 @@
-import { ChartSort, BoxWhisker, ChartToleranceBand, DateGrouping } from '../report';
+import { ChartSort, BoxWhisker, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
 import { FilterGroup } from '../filter';
 import { ChartCategoryDetail, ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
@@ -17,6 +17,8 @@ export interface BoxPlotQueryRequest {
   includePoints: boolean;
   toleranceBands: ChartToleranceBand[];
   categoryGrouping?: DateGrouping | null;
+  /** Extra numeric columns averaged over each box's rows, for its tooltip. */
+  tooltipColumns?: ChartTooltipColumn[];
 }
 
 /** One category's box summary for a series. */
@@ -36,6 +38,8 @@ export interface Box {
   count: number;
   /** A capped sample of the raw values behind this box, for the jittered overlay. Empty unless requested. */
   points: number[];
+  /** Each tooltip column's average over this box's rows, formatted. */
+  tooltipLines?: string[];
 }
 
 /** A single value beyond a Tukey whisker, tagged with the category slot it belongs to. */

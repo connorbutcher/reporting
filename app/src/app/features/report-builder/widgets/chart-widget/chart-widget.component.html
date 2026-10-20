@@ -1,12 +1,19 @@
 @switch (view()) {
   @case ('noDataset') {
-    <app-widget-status [icon]="placeholderIcon()">Choose a dataset for this chart in the side panel.</app-widget-status>
+    <app-widget-status [icon]="placeholderIcon()"
+      >Choose a dataset for this chart in the side panel.</app-widget-status
+    >
   }
   @case ('needsConfig') {
     <app-widget-status icon="pi-sliders-h">{{ configHint() }}</app-widget-status>
   }
   @case ('error') {
-    <app-widget-status icon="pi-exclamation-triangle" tone="error" [retryable]="true" (retry)="retry()">
+    <app-widget-status
+      icon="pi-exclamation-triangle"
+      tone="error"
+      [retryable]="true"
+      (retry)="retry()"
+    >
       Couldn’t load this chart’s data.
     </app-widget-status>
   }
@@ -28,29 +35,88 @@
   }
   @case ('ready') {
     @if (chartOption(); as option) {
-      @if (canAnchorComments()) {
+      <div class="chart-actions">
+        @if (canAnchorComments() && !showData()) {
+          <button
+            type="button"
+            class="chart-action"
+            [class.active]="anchorModeOn()"
+            [attr.aria-pressed]="anchorModeOn()"
+            title="Click a point on the chart to pin a comment to it"
+            (click)="toggleAnchorMode()"
+          >
+            <i class="pi pi-map-marker" aria-hidden="true"></i>
+            {{ anchorModeOn() ? 'Click a point…' : 'Anchor to point' }}
+          </button>
+        }
         <button
           type="button"
-          class="anchor-toggle"
-          [class.active]="anchorModeOn()"
-          [attr.aria-pressed]="anchorModeOn()"
-          title="Click a point on the chart to pin a comment to it"
-          (click)="toggleAnchorMode()"
+          class="chart-action"
+          [class.active]="showData()"
+          [attr.aria-pressed]="showData()"
+          title="Show the chart's values as a table"
+          (click)="toggleData()"
         >
-          <i class="pi pi-map-marker" aria-hidden="true"></i>
-          {{ anchorModeOn() ? 'Click a point…' : 'Anchor to point' }}
+          <i
+            class="pi"
+            [class.pi-table]="!showData()"
+            [class.pi-chart-bar]="showData()"
+            aria-hidden="true"
+          ></i>
+          {{ showData() ? 'View chart' : 'View data' }}
         </button>
+      </div>
+      @if (showData()) {
+        @if (dataTable(); as table) {
+          <div
+            class="data-table"
+            tabindex="0"
+            role="region"
+            [attr.aria-label]="exportName() + ' data'"
+          >
+            <table>
+              <caption>
+                {{
+                  exportName()
+                }}
+                @if (table.hidden > 0) {
+                  <span class="data-note">
+                    · first {{ table.rows.length }} of {{ table.rows.length + table.hidden }} rows;
+                    export CSV for all
+                  </span>
+                }
+              </caption>
+              <thead>
+                <tr>
+                  @for (cell of table.header; track $index) {
+                    <th scope="col">{{ cell }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of table.rows; track $index) {
+                  <tr>
+                    @for (cell of row; track $index) {
+                      <td>{{ cell }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      } @else {
+        <div
+          echarts
+          [options]="option"
+          [autoResize]="true"
+          class="canvas"
+          [class.anchor-mode]="anchorModeOn()"
+          (chartInit)="onChartInit($event)"
+          (chartClick)="onChartClick($event)"
+          (chartDataZoom)="onDataZoom($event)"
+        ></div>
       }
-      <div
-        echarts
-        [options]="option"
-        [autoResize]="true"
-        class="canvas"
-        [class.anchor-mode]="anchorModeOn()"
-        (chartInit)="onChartInit($event)"
-        (chartClick)="onChartClick($event)"
-        (chartDataZoom)="onDataZoom($event)"
-      ></div>
       @if (countBar(); as bar) {
         <app-widget-count-bar
           [label]="bar.label"

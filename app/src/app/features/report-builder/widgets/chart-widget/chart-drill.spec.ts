@@ -5,7 +5,15 @@ import { BarChartQueryResult, HistogramQueryResult } from '../../../../core/mode
 import { ChartDrill } from './chart-drill';
 
 const binding = (id: string, datasetId: number, xColumnId = 'category'): ChartSeriesBinding =>
-  ({ id, datasetId, xColumnId, yColumnId: 'value', valueColumnIds: ['value'], seriesColumnId: null, label: '' }) as ChartSeriesBinding;
+  ({
+    id,
+    datasetId,
+    xColumnId,
+    yColumnId: 'value',
+    valueColumnIds: ['value'],
+    seriesColumnId: null,
+    label: '',
+  }) as ChartSeriesBinding;
 
 const config = (type: string, ...bindings: ChartSeriesBinding[]): ChartWidgetConfig =>
   ({ type, bindings, toleranceBands: [] }) as unknown as ChartWidgetConfig;
@@ -19,7 +27,9 @@ const equals = (columnId: string, value: string): FilterGroup => ({
 /** Every condition anywhere in a filter, flattened, as "column operator value". */
 const conditions = (filter: FilterGroup | null): string[] =>
   (filter?.children ?? []).flatMap((child) =>
-    child.kind === 'group' ? conditions(child) : [`${child.columnId} ${child.operator} ${child.values.join(',')}`],
+    child.kind === 'group'
+      ? conditions(child)
+      : [`${child.columnId} ${child.operator} ${child.values.join(',')}`],
   );
 
 describe('ChartDrill', () => {
@@ -68,7 +78,9 @@ describe('ChartDrill', () => {
       matchedRowCount: 2,
     };
 
-    expect(ChartDrill.target(config('barChart', binding('a', 1)), data, { dataIndex: 1 }, null)).toBeNull();
+    expect(
+      ChartDrill.target(config('barChart', binding('a', 1)), data, { dataIndex: 1 }, null),
+    ).toBeNull();
   });
 
   it('drills a histogram bin by its half-open range, closing the last bin', () => {
@@ -86,13 +98,11 @@ describe('ChartDrill', () => {
     };
     const histogram = config('histogram', binding('a', 1, 'value'));
 
-    expect(conditions(ChartDrill.target(histogram, data, { dataIndex: 0 }, null)?.filter ?? null)).toEqual([
-      'value greaterThanOrEqual 0',
-      'value lessThan 5',
-    ]);
-    expect(conditions(ChartDrill.target(histogram, data, { dataIndex: 1 }, null)?.filter ?? null)).toEqual([
-      'value greaterThanOrEqual 5',
-      'value lessThanOrEqual 10',
-    ]);
+    expect(
+      conditions(ChartDrill.target(histogram, data, { dataIndex: 0 }, null)?.filter ?? null),
+    ).toEqual(['value greaterThanOrEqual 0', 'value lessThan 5']);
+    expect(
+      conditions(ChartDrill.target(histogram, data, { dataIndex: 1 }, null)?.filter ?? null),
+    ).toEqual(['value greaterThanOrEqual 5', 'value lessThanOrEqual 10']);
   });
 });

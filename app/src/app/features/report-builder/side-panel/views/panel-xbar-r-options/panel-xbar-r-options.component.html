@@ -12,6 +12,14 @@
 </label>
 @if (chart().mode() === 'individuals') {
   <p class="panel-hint">Plots every row in subgroup order, with a moving-range chart below.</p>
+} @else if (chart().mode() === 'p' || chart().mode() === 'np') {
+  <p class="panel-hint">
+    Each row is one unit: a value of 1 (any non-zero) in the value column marks it defective, and 0
+    marks it good.
+    @if (chart().mode() === 'np') {
+      An np chart reads best when every subgroup has the same number of units.
+    }
+  </p>
 }
 
 <app-panel-chart-sort

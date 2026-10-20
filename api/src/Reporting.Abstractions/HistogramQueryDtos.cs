@@ -42,6 +42,9 @@ public class HistogramQueryDto
     public bool Cumulative { get; set; }
 
     public List<ChartToleranceBand> ToleranceBands { get; set; } = new();
+
+    /// <summary>Extra numeric columns averaged over each bin's rows, for its tooltip.</summary>
+    public List<ChartTooltipColumn> TooltipColumns { get; set; } = new();
 }
 
 /// <summary>One bin of a histogram: its half-open value range and a ready-made axis label.</summary>
@@ -62,6 +65,10 @@ public class HistogramSeriesDto
     /// <summary>Resolved series key, "(blank)" already applied. Empty when there's no series column.</summary>
     public string Label { get; set; } = string.Empty;
 
+    /// <summary>The raw split key behind <see cref="Label"/>; server-side only, not serialised.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Key { get; set; } = string.Empty;
+
     /// <summary>Which column this series distributes, when several value columns are plotted. Lets the client label a measure's series.</summary>
     public Guid? ValueColumnId { get; set; }
 
@@ -78,6 +85,9 @@ public class HistogramSeriesDto
 
     /// <summary>Conditions selecting this series' rows (its split value), for drill-through; null with no split.</summary>
     public FilterGroupDto? Drill { get; set; }
+
+    /// <summary>Each bin's tooltip column lines (averages over the bin's rows), aligned with <see cref="Values"/>.</summary>
+    public List<List<string>> TooltipLines { get; set; } = new();
 }
 
 public class HistogramQueryResultDto : ScanCappedChartResultDto

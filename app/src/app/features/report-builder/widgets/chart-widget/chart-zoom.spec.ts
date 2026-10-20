@@ -4,7 +4,14 @@ import { ChartZoomMemory } from './chart-zoom';
 describe('ChartZoomMemory', () => {
   it('reads a zoom window from a single event or the first of a batch', () => {
     expect(ChartZoomMemory.fromEvent({ start: 10, end: 40 })).toEqual({ start: 10, end: 40 });
-    expect(ChartZoomMemory.fromEvent({ batch: [{ start: 5, end: 50 }, { start: 0, end: 100 }] })).toEqual({
+    expect(
+      ChartZoomMemory.fromEvent({
+        batch: [
+          { start: 5, end: 50 },
+          { start: 0, end: 100 },
+        ],
+      }),
+    ).toEqual({
       start: 5,
       end: 50,
     });

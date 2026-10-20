@@ -19,12 +19,16 @@ const bar = (over: Partial<BarChartQueryResult>): BarChartQueryResult => ({
 
 describe('ChartCountBar', () => {
   it('shows a plain row count when nothing is filtered', () => {
-    expect(ChartCountBar.build(bar({ totalRowCount: 1300, matchedRowCount: 1300 }), false)).toEqual({
-      label: '1,300 rows',
-      icon: 'pi-list',
-      warning: false,
-    });
-    expect(ChartCountBar.build(bar({ totalRowCount: 1, matchedRowCount: 1 }), false).label).toBe('1 row');
+    expect(ChartCountBar.build(bar({ totalRowCount: 1300, matchedRowCount: 1300 }), false)).toEqual(
+      {
+        label: '1,300 rows',
+        icon: 'pi-list',
+        warning: false,
+      },
+    );
+    expect(ChartCountBar.build(bar({ totalRowCount: 1, matchedRowCount: 1 }), false).label).toBe(
+      '1 row',
+    );
   });
 
   it('shows the filtered view when a filter narrows the dataset', () => {
@@ -39,7 +43,15 @@ describe('ChartCountBar', () => {
     const points: ChartQueryResult = {
       id: '1',
       name: 'D',
-      series: [{ label: '', points: [{ x: 1, y: 1, tooltipLines: [] }, { x: 2, y: 2, tooltipLines: [] }] }],
+      series: [
+        {
+          label: '',
+          points: [
+            { x: 1, y: 1, tooltipLines: [] },
+            { x: 2, y: 2, tooltipLines: [] },
+          ],
+        },
+      ],
       toleranceBands: [],
       totalRowCount: 30000,
       matchedRowCount: 30000,
@@ -74,7 +86,10 @@ describe('ChartCountBar', () => {
   });
 
   it('says how many overlaid series failed to load, and warns', () => {
-    const result = ChartCountBar.build({ ...bar({ matchedRowCount: 40 }), failedBindingCount: 1 }, false);
+    const result = ChartCountBar.build(
+      { ...bar({ matchedRowCount: 40 }), failedBindingCount: 1 },
+      false,
+    );
 
     expect(result.label).toBe('Showing 40 of 52 rows · 1 series couldn’t load');
     expect(result.warning).toBe(true);

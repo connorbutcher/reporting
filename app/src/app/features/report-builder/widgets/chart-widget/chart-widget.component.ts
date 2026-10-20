@@ -89,9 +89,34 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** Null until there's a dataset and enough columns bound to actually plot. */
   public readonly chartOption = computed<ECOption | null>(() => {
     const option = this.buildOption();
+    if (!option) return null;
+    // Screen readers get echarts' generated description of the chart, named by its title (an
+    // undrawn title component — the widget header already shows it).
+    const described: ECOption = {
+      ...option,
+      title: { text: this.exportName(), show: false },
+      aria: { enabled: true },
+    };
     // The remembered zoom is read untracked: zooming mustn't rebuild the option on every drag, only
     // be carried over when something else (a reload, a filter) does.
-    return option ? ChartZoomMemory.apply(option, untracked(() => this.zoomRange)) : null;
+    return ChartZoomMemory.apply(described, untracked(() => this.zoomRange));
+  });
+
+  /** Whether the chart is showing its values as a table instead of the plot. */
+  public readonly showData = signal(false);
+
+  /** The "View data" table: the export's rows, capped so a large point chart stays responsive. */
+  public readonly dataTable = computed(() => {
+    if (!this.showData()) return null;
+    const data = this.source.result();
+    if (!data) return null;
+    const [header = [], ...rows] = ChartExport.table(this.config(), data, this.source.columns());
+    const limit = 500;
+    return {
+      header,
+      rows: rows.slice(0, limit).map((row) => row.map((cell) => dataCellText(cell))),
+      hidden: Math.max(0, rows.length - limit),
+    };
   });
 
   /** Whether clicking a mark opens the rows behind it — every grouping chart, once data has loaded. */
@@ -417,6 +442,12 @@ export class ChartWidgetComponent extends DataWidgetBase {
   }
 
   /** Switches "click a point to anchor a comment" on or off for this chart. */
+  public toggleData(): void {
+    this.showData.update((on) => !on);
+    // The canvas is re-created when the chart comes back, so its old instance is gone.
+    if (this.showData()) this.chartInstance = null;
+  }
+
   public toggleAnchorMode(): void {
     const widgetId = this.widgetId();
     if (widgetId) this.reportComments?.toggleAnchorMode(widgetId);
@@ -540,4 +571,11 @@ export class ChartWidgetComponent extends DataWidgetBase {
 function formatAnchorLabel(x: number, y: number): string {
   const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
   return `${format(x)}, ${format(y)}`;
+}
+
+/** One "View data" cell as text: numbers to a readable precision, flags as Yes/No. */
+function dataCellText(cell: string | number | boolean): string {
+  if (typeof cell === 'number') return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  if (typeof cell === 'boolean') return cell ? 'Yes' : 'No';
+  return cell;
 }

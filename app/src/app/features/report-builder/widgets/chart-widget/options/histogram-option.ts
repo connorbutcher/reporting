@@ -13,6 +13,7 @@ import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { ReferenceSeries } from './reference-series';
+import { TooltipHtml } from './tooltip-html';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 
@@ -144,8 +145,31 @@ export class HistogramOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        valueFormatter: (value: unknown) =>
-          typeof value === 'number' ? HistogramOption.formatCount(value, config.normalize) : String(value ?? ''),
+        // Hand-built so each bin can carry its tooltip columns under its height; the fitted curve
+        // and reference carrier have no tooltip of their own.
+        formatter: (raw: unknown) => {
+          const params = (Array.isArray(raw) ? raw : [raw]) as {
+            seriesName?: string;
+            seriesId?: string;
+            dataIndex: number;
+            value: unknown;
+            color?: unknown;
+          }[];
+          const index = params[0]?.dataIndex ?? -1;
+          const lines = [`<strong>${TooltipHtml.escape(binLabels[index] ?? '')}</strong>`];
+          for (const p of params) {
+            const i = names.indexOf(p.seriesName ?? '');
+            if (i < 0 || typeof p.value !== 'number' || p.seriesId?.startsWith('normal:')) continue;
+            const color = typeof p.color === 'string' ? TooltipHtml.marker(p.color) : '';
+            lines.push(
+              `${color}${TooltipHtml.escape(names[i])}: <strong>${HistogramOption.formatCount(p.value, config.normalize)}</strong>`,
+            );
+            for (const line of series[i].tooltipLines?.[p.dataIndex] ?? []) {
+              lines.push(`&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(line)}`);
+            }
+          }
+          return lines.join('<br/>');
+        },
       },
       ...(showLegend ? { legend: { top: 0, data: names, type: 'scroll' } } : {}),
       xAxis: horizontal ? countAxis : binAxis,

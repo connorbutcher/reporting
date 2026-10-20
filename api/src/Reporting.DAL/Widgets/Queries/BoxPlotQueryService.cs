@@ -101,6 +101,26 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
             .Select(seriesKey => BuildBoxPlotSeries(seriesKey, orderedCategoryKeys, categoryIndex, valuesByKey, seriesColumn, dto))
             .ToList();
 
+        // Tooltip columns are averaged over each box's rows (category × series), in SQL.
+        foreach (var setting in dto.TooltipColumns)
+        {
+            var column = BarChartQueryService.ResolveTooltipColumn(setting, columnsByRef, dataset.Columns);
+            if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+            {
+                continue;
+            }
+            var stats = await BarChartQueryService.AggregateAsync(matching, reader, new Dictionary<string, ChartCategory>(), false, seriesId, column.Id);
+            var tooltip = new List<(ChartTooltipColumn, DatasetColumn, Dictionary<(string Category, string Series), BarStats>)> { (setting, column, stats) };
+            for (var s = 0; s < series.Count; s++)
+            {
+                for (var c = 0; c < orderedCategoryKeys.Count; c++)
+                {
+                    series[s].Boxes[c]?.TooltipLines.AddRange(
+                        BarChartQueryService.TooltipLines(tooltip, orderedCategoryKeys[c], orderedSeriesKeys[s], Aggregate.Average));
+                }
+            }
+        }
+
         var orderedCategories = orderedCategoryKeys.Select(key => reader.Label(categories[key])).ToList();
 
         return new BoxPlotQueryResultDto

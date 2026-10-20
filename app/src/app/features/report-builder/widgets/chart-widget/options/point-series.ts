@@ -224,7 +224,8 @@ export class PointSeries {
         value: [p.x, p.y],
         tooltipLines: p.tooltipLines,
         size: p.size,
-        ...(border ? { itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
+        // An outlined point also turns into a triangle, so its status isn't carried by colour alone.
+        ...(border ? { symbol: 'triangle', itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
       };
     });
   }

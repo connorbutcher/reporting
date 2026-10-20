@@ -11,7 +11,13 @@ import { ReferenceSeries } from './reference-series';
 
 const columns: DatasetColumn[] = [
   { id: 'region', name: 'Region', type: 'string', order: 0, configuration: { kind: 'text' } },
-  { id: 'price', name: 'Price', type: 'double', order: 1, configuration: { kind: 'numeric', prefix: '£' } },
+  {
+    id: 'price',
+    name: 'Price',
+    type: 'double',
+    order: 1,
+    configuration: { kind: 'numeric', prefix: '£' },
+  },
 ] as DatasetColumn[];
 
 const config = (over: Partial<BarChartWidgetConfig> = {}): BarChartWidgetConfig => ({
@@ -42,7 +48,11 @@ const data = (series: BarChartQueryResult['series']): BarChartQueryResult => ({
 });
 
 type AnySeries = { name?: string; data?: unknown[]; markLine?: unknown; stack?: string };
-type AnyAxis = { name?: string; inverse?: boolean; axisLabel?: { formatter?: (v: number) => string } };
+type AnyAxis = {
+  name?: string;
+  inverse?: boolean;
+  axisLabel?: { formatter?: (v: number) => string };
+};
 const seriesOf = (option: ReturnType<typeof BarOption.build>) => option?.series as AnySeries[];
 
 describe('BarOption', () => {
@@ -60,14 +70,23 @@ describe('BarOption', () => {
   });
 
   it('names a measure axis by its aggregate and column', () => {
-    const option = BarOption.build(config(), data([{ label: '', values: [1, 2] }]), columns, new Map());
+    const option = BarOption.build(
+      config(),
+      data([{ label: '', values: [1, 2] }]),
+      columns,
+      new Map(),
+    );
 
     expect((option?.yAxis as AnyAxis).name).toBe('Sum of Price');
   });
 
   it('hangs reference lines on their own series, not on a data series the legend can hide', () => {
     const option = BarOption.build(
-      config({ guideLines: [{ id: 'g', axis: 'y', value: 5, label: 'Target' }] as BarChartWidgetConfig['guideLines'] }),
+      config({
+        guideLines: [
+          { id: 'g', axis: 'y', value: 5, label: 'Target' },
+        ] as BarChartWidgetConfig['guideLines'],
+      }),
       data([{ label: '', values: [1, 2] }]),
       columns,
       new Map(),

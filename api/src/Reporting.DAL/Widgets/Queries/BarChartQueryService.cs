@@ -188,7 +188,7 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
     /// <paramref name="categories"/>. Only rows carrying a number feed a non-count measure, so a
     /// category with none simply doesn't appear for it.
     /// </summary>
-    private static async Task<Dictionary<(string Category, string Series), BarStats>> AggregateAsync(
+    internal static async Task<Dictionary<(string Category, string Series), BarStats>> AggregateAsync(
         IQueryable<DatasetRow> matching,
         ChartCategoryReader reader,
         Dictionary<string, ChartCategory> categories,
@@ -253,7 +253,7 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
     }
 
     /// <summary>One bar's tooltip lines — each tooltip column's reduced value with its prefix/suffix, blanks skipped.</summary>
-    private static List<string> TooltipLines(
+    internal static List<string> TooltipLines(
         List<(ChartTooltipColumn Setting, DatasetColumn Column, Dictionary<(string Category, string Series), BarStats> Stats)> tooltipStats,
         string category,
         string series,

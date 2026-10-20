@@ -130,6 +130,7 @@ export class ChartQuery {
         includePoints: config.showPoints,
         toleranceBands: config.toleranceBands,
         categoryGrouping: config.categoryGrouping ?? null,
+        tooltipColumns,
       });
     }
 
@@ -169,6 +170,7 @@ export class ChartQuery {
         normalize: config.normalize,
         cumulative: config.cumulative,
         toleranceBands: config.toleranceBands,
+        tooltipColumns,
         ...overrides,
       });
 

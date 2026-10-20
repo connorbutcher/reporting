@@ -531,5 +531,14 @@ public enum ControlChartMode
     XBarS,
 
     /// <summary>Individual values and their moving ranges, one point per row (subgroups of one).</summary>
-    Individuals
+    Individuals,
+
+    /// <summary>
+    /// Attribute chart: each subgroup's proportion of defective units. The value column marks a
+    /// defective unit with any non-zero value (1) and a good one with 0. No second chart.
+    /// </summary>
+    P,
+
+    /// <summary>Attribute chart: each subgroup's number of defective units — best with equal-sized subgroups.</summary>
+    Np
 }

@@ -20,5 +20,7 @@ export class PanelXBarROptionsComponent {
     { label: 'X̄-R (mean and range)', value: 'xBarR' },
     { label: 'X̄-S (mean and std dev)', value: 'xBarS' },
     { label: 'I-MR (individuals)', value: 'individuals' },
+    { label: 'p (proportion defective)', value: 'p' },
+    { label: 'np (number defective)', value: 'np' },
   ];
 }
