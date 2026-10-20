@@ -62,7 +62,8 @@ export class OutlineSeverity {
 
   /** An outlined mark: the series colour as fill, bordered in the crossed zone's colour. */
   public static itemStyle(seriesColor: string, borderColor: string): OutlineItemStyle {
-    return { color: seriesColor, borderColor, borderWidth: 2 };
+    // The dashed border carries the warning for readers who can't tell the colours apart.
+    return { color: seriesColor, borderColor, borderWidth: 2.5, borderType: 'dashed' };
   }
 
   /**

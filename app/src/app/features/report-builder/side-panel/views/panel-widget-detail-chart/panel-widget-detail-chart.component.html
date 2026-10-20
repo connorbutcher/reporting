@@ -10,4 +10,6 @@
 
 @if (isPointChart()) {
   <app-panel-chart-tooltip-columns [chart]="chart()" />
+} @else if (hasGroupedTooltip()) {
+  <app-panel-chart-tooltip-columns [chart]="chart()" [grouped]="true" />
 }

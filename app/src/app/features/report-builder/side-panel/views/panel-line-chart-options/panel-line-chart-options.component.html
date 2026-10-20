@@ -1,3 +1,29 @@
+<label class="panel-field">
+  <span class="panel-field-label">Points per X value</span>
+  <p-select
+    [options]="aggregates"
+    [ngModel]="chart().aggregate()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().aggregate.set($event.value ?? null)"
+  />
+</label>
+@if (chart().aggregate() && xIsDate()) {
+  <label class="panel-field">
+    <span class="panel-field-label">Group dates by</span>
+    <p-select
+      [options]="groupings"
+      [ngModel]="chart().xGrouping()"
+      optionLabel="label"
+      optionValue="value"
+      appendTo="body"
+      fluid
+      (onChange)="chart().xGrouping.set($event.value ?? null)"
+    />
+  </label>
+}
 <div class="panel-inline-field">
   <p-checkbox
     [binary]="true"

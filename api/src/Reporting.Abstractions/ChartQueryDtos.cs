@@ -17,6 +17,12 @@ public class ChartQueryDto
 
     /// <summary>Fits a least-squares trend line per series, when both axes are numeric/date.</summary>
     public bool ShowTrendLine { get; set; }
+
+    /// <summary>Reduces every row sharing an X value (per series) to one point; null plots the raw rows.</summary>
+    public Aggregate? Aggregate { get; set; }
+
+    /// <summary>Buckets a date X by period before aggregating; ignored without <see cref="Aggregate"/>.</summary>
+    public DateGrouping? XGrouping { get; set; }
 }
 
 public class ChartPointDto
@@ -120,4 +126,7 @@ public class ChartQueryResultDto : ChartResultCountsDto
 
     /// <summary>True when more points matched than were returned, so the client can say the plot is a subset.</summary>
     public bool Truncated { get; set; }
+
+    /// <summary>True when a truncated chart was thinned evenly across its X range rather than cut off.</summary>
+    public bool Sampled { get; set; }
 }

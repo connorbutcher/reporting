@@ -60,7 +60,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         {
             return empty;
         }
-        var categoryId = categoryColumn.Id;
+        var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
 
         var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
         if (valueColumn is null)
@@ -74,22 +74,19 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
 
-        var (projected, truncated, scannedCount) = await ScanAndProjectAsync(matching, categoryId, seriesId, valueId);
+        var (projected, truncated, scannedCount) = await ScanAndProjectAsync(matching, reader, seriesId, valueId);
 
         // Values grouped by (category, series) to summarise one box at a time.
         var valuesByKey = projected
             .GroupBy(p => (p.Category, p.Series))
             .ToDictionary(group => group.Key, group => group.Select(item => item.Value).ToList());
 
-        var numeric = categoryColumn.Type is DatasetColumnType.Int or DatasetColumnType.Double;
-        var date = categoryColumn.Type is DatasetColumnType.DateTime;
-        var naturalOrder = CategoryOrdering.NaturalOrder(projected, numeric, date);
-        var categoryDates = CategoryOrdering.CategoryDates(projected, date);
-        var categoryDateConfig = date ? categoryColumn.GetConfig() as DateColumnConfig : null;
+        var categories = projected.Select(p => p.CategoryValue).DistinctBy(c => c.Key).ToDictionary(c => c.Key);
+        var naturalOrder = reader.NaturalOrder(categories.Values).Select(c => c.Key).ToList();
 
         var sort = dto.Sort ?? new ChartSort();
         var orderedCategoryKeys = await CategorySorting.OrderedCategoryKeysAsync(
-            matching, categoryId, valueId, projected, naturalOrder, sort, columnsByRef);
+            matching, reader, valueId, projected, naturalOrder, sort, columnsByRef);
         var categoryIndex = orderedCategoryKeys
             .Select((key, position) => (key, position))
             .ToDictionary(entry => entry.key, entry => entry.position);
@@ -104,15 +101,34 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
             .Select(seriesKey => BuildBoxPlotSeries(seriesKey, orderedCategoryKeys, categoryIndex, valuesByKey, seriesColumn, dto))
             .ToList();
 
-        var orderedCategories = orderedCategoryKeys
-            .Select(key => CategoryLabels.Format(key, categoryDates, categoryDateConfig))
-            .ToList();
+        // Tooltip columns are averaged over each box's rows (category × series), in SQL.
+        foreach (var setting in dto.TooltipColumns)
+        {
+            var column = BarChartQueryService.ResolveTooltipColumn(setting, columnsByRef, dataset.Columns);
+            if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+            {
+                continue;
+            }
+            var stats = await BarChartQueryService.AggregateAsync(matching, reader, new Dictionary<string, ChartCategory>(), false, seriesId, column.Id);
+            var tooltip = new List<(ChartTooltipColumn, DatasetColumn, Dictionary<(string Category, string Series), BarStats>)> { (setting, column, stats) };
+            for (var s = 0; s < series.Count; s++)
+            {
+                for (var c = 0; c < orderedCategoryKeys.Count; c++)
+                {
+                    series[s].Boxes[c]?.TooltipLines.AddRange(
+                        BarChartQueryService.TooltipLines(tooltip, orderedCategoryKeys[c], orderedSeriesKeys[s], Aggregate.Average));
+                }
+            }
+        }
+
+        var orderedCategories = orderedCategoryKeys.Select(key => reader.Label(categories[key])).ToList();
 
         return new BoxPlotQueryResultDto
         {
             Id = resolved.Id,
             Name = resolved.Name,
             Categories = orderedCategories,
+            CategoryDetails = orderedCategoryKeys.Select(key => reader.Detail(categories[key])).ToList(),
             Series = series,
             ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
             TotalRowCount = totalRowCount,
@@ -131,10 +147,11 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
     /// numeric measure on every row.
     /// </summary>
     private static async Task<(List<GroupedValueProjection> Projected, bool Truncated, int ScannedCount)> ScanAndProjectAsync(
-        IQueryable<DatasetRow> matching, int categoryId, int seriesId, int valueId)
+        IQueryable<DatasetRow> matching, ChartCategoryReader reader, int seriesId, int valueId)
     {
         // Only rows carrying a numeric measure can feed a box; a category with none simply
         // doesn't appear, matching bar's non-count behaviour.
+        var categoryId = reader.Column.Id;
         var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
 
         var scanned = await rowsQuery
@@ -156,9 +173,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         var projected = scanned
             .Select(r => new GroupedValueProjection
             {
-                Category = r.Category?.StringValue ?? "",
-                SortNumber = r.Category?.NumberValue,
-                SortDate = r.Category?.DateValue,
+                CategoryValue = reader.Read(r.Category?.StringValue, r.Category?.NumberValue, r.Category?.DateValue),
                 Series = (r.Series ?? "").Trim(),
                 Value = r.Value ?? 0d
             })
@@ -194,7 +209,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
                 outliers.Add(new BoxOutlierDto { CategoryIndex = categoryIndex[categoryKey], Value = value });
             }
         }
-        return new BoxPlotSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Boxes = boxes, Outliers = outliers };
+        return new BoxPlotSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Drill = SeriesLabels.Drill(seriesColumn, seriesKey), Boxes = boxes, Outliers = outliers };
     }
 
     /// <summary>
@@ -241,8 +256,10 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
                 upperFence = q3 + factorFloor * iqr;
             }
             // Whiskers stop at the most extreme values still inside the fences.
-            low = values.First(value => value >= lowerFence);
-            high = values.Last(value => value <= upperFence);
+            // A fence tighter than the data (a small σ factor around a bimodal group) can leave no
+            // value inside it; the whiskers then never reach into the box, so they can't invert.
+            low = Math.Min(values.First(value => value >= lowerFence), q1);
+            high = Math.Max(values.Last(value => value <= upperFence), q3);
             foreach (var value in values)
             {
                 if (value < lowerFence || value > upperFence)

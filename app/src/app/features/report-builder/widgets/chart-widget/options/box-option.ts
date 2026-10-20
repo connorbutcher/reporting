@@ -7,15 +7,18 @@ import {
   ScatterSeriesOption,
   TooltipCallbackParams,
 } from './chart-option.types';
+import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
 import { OutlineSeverity } from './outline-zone';
+import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
+import { TooltipHtml } from './tooltip-html';
 
 /** What the box tooltip needs beyond the summary: the value formatting and the optional engineering extras. */
 interface BoxTooltipContext {
@@ -81,6 +84,8 @@ export class BoxOption {
       nameLocation: 'middle' as const,
       nameGap: ChartScale.nameGap(ChartScale.longestLen(categories), categoryRotate, categoryOrientation),
       axisLabel: { ...categoryScale.axisLabel, rotate: categoryRotate },
+      // Read a horizontal chart top-down, so a sorted chart leads with its first category.
+      ...(horizontal ? { inverse: true } : {}),
     };
     const valueScale = ChartScale.numericAxis(
       false,
@@ -121,7 +126,7 @@ export class BoxOption {
       });
     }
 
-    const boxSeries = resolved.map(({ series: s, name, color }, i): BoxplotSeriesOption => ({
+    const boxSeries = resolved.map(({ series: s, name, color }): BoxplotSeriesOption => ({
       name,
       type: 'boxplot',
       // One item per category so grouped series stay aligned; an all-NaN item is echarts' empty
@@ -136,14 +141,12 @@ export class BoxOption {
             color,
             borderColor: border ?? color,
             borderWidth: border ? 2.5 : 1.5,
+            // Dashed when out of spec, so the warning isn't carried by colour alone.
+            ...(border ? { borderType: 'dashed' as const } : {}),
             opacity: showPoints ? 0.35 : 1,
           },
         };
       }),
-      ...(i === 0 && marks.length > 0
-        ? { markLine: { silent: true, symbol: 'none', data: marks } }
-        : {}),
-      ...(i === 0 && areas.length > 0 ? { markArea: { silent: true, data: areas } } : {}),
     }));
 
     const overlays: ScatterSeriesOption[] = [];
@@ -233,23 +236,36 @@ export class BoxOption {
       spec,
     };
 
+    const reference = ReferenceSeries.build(marks, areas);
+    const zoom = CategoryZoom.enabled(config.zoom, categories.length);
+
     return {
-      grid: { left: 56, right: 20, top: showLegend ? 40 : 20, bottom: 56, containLabel: true, outerBoundsContain: 'all' },
+      grid: {
+        left: 56,
+        right: zoom && horizontal ? 40 : 20,
+        top: showLegend ? 40 : 20,
+        bottom: zoom && !horizontal ? 76 : 56,
+        containLabel: true,
+        outerBoundsContain: 'all',
+      },
+      ...(zoom ? { dataZoom: CategoryZoom.dataZoom(horizontal) } : {}),
       tooltip: {
         trigger: 'item',
+        appendToBody: true,
+        confine: true,
         formatter: (params: TooltipCallbackParams) => BoxOption.tooltip(params, boxByKey, tooltipContext),
       },
       ...(showLegend ? { legend: { top: 0, data: resolved.map((r) => r.name), type: 'scroll' } } : {}),
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
       // Boxes first, then points, then the emphasis marks (outliers, mean, n) on top.
-      series: [...boxSeries, ...overlays],
+      series: [...boxSeries, ...overlays, ...(reference ? [reference] : [])],
     };
   }
 
   /**
    * The item tooltip. A box shows its five-number summary and row count, plus — when enabled —
-   * its mean and σ and the process capability (Cp/Cpk) against the spec band. The overlays name
+   * its mean and σ and the process performance (Pp/Ppk) against the spec band. The overlays name
    * themselves through the callback's `seriesId`, so a mean/outlier/point shows just its value.
    */
   private static tooltip(
@@ -276,8 +292,9 @@ export class BoxOption {
       const capability = ctx.showCapability ? BoxOption.capability(box, ctx.spec) : null;
       const body = lines.join('<br/>');
       return (
-        `<strong>${param.seriesName || 'Box'}</strong><br/>${body}<br/>n = ${box.count}` +
-        (capability ? `<br/>${capability}` : '')
+        `<strong>${TooltipHtml.escape(param.seriesName || 'Box')}</strong><br/>${body}<br/>n = ${box.count}` +
+        (capability ? `<br/>${capability}` : '') +
+        (box.tooltipLines ?? []).map((line) => `<br/>${TooltipHtml.escape(line)}`).join('')
       );
     }
 
@@ -291,15 +308,16 @@ export class BoxOption {
   }
 
   /**
-   * Process capability against a spec band: Cp = (USL − LSL) / 6σ measures the spread against the
-   * tolerance width; Cpk additionally penalises being off-centre. Null when σ is zero (a degenerate
-   * box) so we never divide by it.
+   * Process performance against a spec band: Pp = (USL − LSL) / 6σ measures the spread against the
+   * tolerance width; Ppk additionally penalises being off-centre. σ here is the overall sample
+   * standard deviation, which makes these the performance indices (Pp/Ppk) — capability (Cp/Cpk)
+   * would need the within-subgroup σ. Null when σ is zero (a degenerate box) so we never divide by it.
    */
   private static capability(box: Box, spec: ResolvedToleranceBand | null): string | null {
     if (!spec || spec.min === null || spec.max === null || box.stdDev <= 0) return null;
-    const cp = (spec.max - spec.min) / (6 * box.stdDev);
-    const cpk = Math.min(spec.max - box.mean, box.mean - spec.min) / (3 * box.stdDev);
-    return `Cp: ${cp.toFixed(2)} · Cpk: ${cpk.toFixed(2)}`;
+    const pp = (spec.max - spec.min) / (6 * box.stdDev);
+    const ppk = Math.min(spec.max - box.mean, box.mean - spec.min) / (3 * box.stdDev);
+    return `Pp: ${pp.toFixed(2)} · Ppk: ${ppk.toFixed(2)}`;
   }
 
   /** The single value-axis spec band (both bounds resolved) capability is measured against, else null. */

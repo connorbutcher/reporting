@@ -77,11 +77,12 @@ export class PointSeries {
     mainName: string,
     color: string,
     yAxisIndex: number | null,
+    xIsDate = false,
   ): LineSeriesOption | null {
     const trend = series.trendLine;
     if (!trend) return null;
 
-    const stats = PointSeries.trendStatsText(trend);
+    const stats = PointSeries.trendStatsText(trend, xIsDate);
 
     return {
       type: 'line',
@@ -108,10 +109,23 @@ export class PointSeries {
     };
   }
 
-  /** The fit stats text drawn at a trend line's end and on its hover tooltip. */
-  public static trendStatsText(trend: NonNullable<ChartSeriesResult['trendLine']>): string {
-    return `Slope: ${trend.slope.toFixed(2)} · R²: ${trend.rSquared.toFixed(2)}`;
+  /**
+   * The fit stats text drawn at a trend line's end and on its hover tooltip. On a date X the fit runs
+   * on epoch milliseconds, so the slope is rescaled to per day (per month over long spans) and says so.
+   * The slope keeps three significant figures, so a small but real trend never prints as 0.00.
+   */
+  public static trendStatsText(trend: NonNullable<ChartSeriesResult['trendLine']>, xIsDate = false): string {
+    let slope = trend.slope;
+    let unit = '';
+    if (xIsDate) {
+      const day = 86_400_000;
+      const perMonth = Math.abs(trend.x2 - trend.x1) > 2 * 365 * day;
+      slope *= perMonth ? 30.4375 * day : day;
+      unit = perMonth ? ' / month' : ' / day';
+    }
+    return `Slope: ${PointSeries.significant(slope)}${unit} · R²: ${trend.rSquared.toFixed(2)}`;
   }
+
 
   /**
    * One pin-shaped marker per widget comment anchored to this chart, grouped into a series per Y
@@ -186,14 +200,14 @@ export class PointSeries {
    * {@link ChartScale.nameGap} for axis names — echarts can't size this itself since it lays the
    * label out after the grid rect is fixed.
    */
-  public static trendLabelReserve(series: readonly ChartSeriesResult[]): number {
+  public static trendLabelReserve(series: readonly ChartSeriesResult[], xIsDate = false): number {
     const CHAR_W = 6.5; // ~px per char at the endLabel's 11px font (proportional; erring wide)
     const DISTANCE = 6; // the endLabel's own `distance` from its point
     const MARGIN = 10; // breathing room past the text
     let maxLen = 0;
     for (const s of series) {
       if (!s.trendLine) continue;
-      const len = PointSeries.trendStatsText(s.trendLine).length;
+      const len = PointSeries.trendStatsText(s.trendLine, xIsDate).length;
       if (len > maxLen) maxLen = len;
     }
     return maxLen === 0 ? 0 : Math.round(maxLen * CHAR_W + DISTANCE + MARGIN);
@@ -210,8 +224,14 @@ export class PointSeries {
         value: [p.x, p.y],
         tooltipLines: p.tooltipLines,
         size: p.size,
-        ...(border ? { itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
+        // An outlined point also turns into a triangle, so its status isn't carried by colour alone.
+        ...(border ? { symbol: 'triangle', itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
       };
     });
+  }
+
+  private static significant(value: number): string {
+    if (value === 0 || !Number.isFinite(value)) return '0';
+    return Number(value.toPrecision(3)).toLocaleString('en-US', { maximumFractionDigits: 10 });
   }
 }

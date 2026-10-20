@@ -33,6 +33,8 @@ export interface ScatterPoint {
   size?: number | null;
   /** Per-point override, set only for points outlined as out of tolerance. */
   itemStyle?: OutlineItemStyle;
+  /** An outlined point's marker shape, so its status doesn't rest on colour alone. */
+  symbol?: 'triangle';
 }
 
 /** Maps a bubble point's raw size value to its marker's pixel diameter; a missing value falls back to a default. */

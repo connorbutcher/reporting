@@ -11,8 +11,12 @@
 <app-panel-chart-sort
   [sort]="chart().sort()"
   [columns]="chart().schema()?.columns ?? []"
+  [categoryColumnId]="chart().xColumnId()"
+  [grouping]="chart().categoryGrouping()"
+  [showTopN]="true"
   defaultLabel="Category order"
   (sortChange)="chart().sort.set($event)"
+  (groupingChange)="chart().categoryGrouping.set($event)"
 />
 
 <div class="panel-inline-field">
@@ -54,4 +58,23 @@
     />
     <label for="chart-area-fill">Area fill</label>
   </div>
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="chart-connect-nulls"
+      [ngModel]="chart().connectNulls()"
+      (onChange)="chart().connectNulls.set($event.checked)"
+    />
+    <label for="chart-connect-nulls">Connect lines across missing categories</label>
+  </div>
 }
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-category-zoom"
+    [ngModel]="chart().zoom()"
+    (onChange)="chart().zoom.set($event.checked)"
+  />
+  <label for="chart-category-zoom">Zoom &amp; pan slider when there are over 20 categories</label>
+</div>

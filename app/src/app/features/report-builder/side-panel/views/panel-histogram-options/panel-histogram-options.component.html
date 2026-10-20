@@ -84,6 +84,18 @@
   <label for="hist-cumulative">Cumulative</label>
 </div>
 
+@if (!chart().cumulative()) {
+  <div class="panel-inline-field">
+    <p-checkbox
+      [binary]="true"
+      inputId="hist-normal-curve"
+      [ngModel]="chart().showNormalCurve()"
+      (onChange)="chart().showNormalCurve.set($event.checked)"
+    />
+    <label for="hist-normal-curve">Overlay a fitted normal curve</label>
+  </div>
+}
+
 <div class="panel-inline-field">
   <p-checkbox
     [binary]="true"

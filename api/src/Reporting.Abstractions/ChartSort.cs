@@ -42,4 +42,13 @@ public class ChartSort
     public SortAggregate Aggregate { get; set; } = SortAggregate.Sum;
 
     public bool Descending { get; set; }
+
+    /// <summary>
+    /// Keeps only the first N categories in this order (bar and combination charts); null keeps
+    /// every category. Ignored by the other chart kinds.
+    /// </summary>
+    public int? Limit { get; set; }
+
+    /// <summary>With <see cref="Limit"/>, rolls the categories past the limit into one "Other" category.</summary>
+    public bool ShowOther { get; set; }
 }

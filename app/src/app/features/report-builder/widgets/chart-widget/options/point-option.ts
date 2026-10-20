@@ -1,7 +1,8 @@
+import { ChartZoomMemory } from '../chart-zoom';
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import { ChartGuideLine, chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
 import { ChartQueryResult, ChartSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
-import { ECOption, LabelCallbackParams, MarkAreaData, MarkLineData, TooltipCallbackParams } from './chart-option.types';
+import { ECOption, LabelCallbackParams, TooltipCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -20,6 +21,7 @@ import {
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
 import { OutlineSeverity } from './outline-zone';
+import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
@@ -153,51 +155,22 @@ export class PointOption {
     const leftCount = axes.filter((a) => a.side === 'left').length;
     const rightCount = axes.filter((a) => a.side === 'right').length;
 
-    // markLine/markArea coordinates read against the axis of the series they hang on. A Y band
-    // hangs on a series plotted on its target axis; an X band rides the first series (index 0).
-    const marksBySeries = new Map<number, { marks: MarkLineData; areas: MarkAreaData }>();
-    const hangBands = (seriesIdx: number, axisBands: ResolvedToleranceBand[]): void => {
-      const marks = ToleranceMarks.lines(axisBands, axisKeyFor);
-      const areas = ToleranceMarks.areas(axisBands, axisKeyFor);
-      if (marks.length === 0 && areas.length === 0) return;
-      const existing = marksBySeries.get(seriesIdx);
-      if (existing) {
-        existing.marks.push(...marks);
-        existing.areas.push(...areas);
-      } else {
-        marksBySeries.set(seriesIdx, { marks, areas });
-      }
-    };
-    for (const [k, indices] of indicesByAxis) {
-      hangBands(indices[0], bands.filter((b) => b.axis === 'y' && bandAxisIndex(b) === k));
-    }
-    if (series.length > 0) {
-      hangBands(0, bands.filter((b) => b.axis === 'x'));
-    }
-
-    // Guide lines hang on a series the same way tolerance bands do.
+    // Reference lines and zones ride one carrier series per Y axis (X marks with the primary), so
+    // their coordinates read against the right scale and hiding a data series never hides them.
     const guideLines = config.guideLines ?? [];
     const guideLineYAxisId = new Map(guideLines.map((l) => [l.id, l.yAxisId ?? null]));
     const guideLineAxisIndex = (line: ChartGuideLine): number =>
       line.axis === 'x' ? 0 : chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
-    const hangGuideLines = (seriesIdx: number, axisLines: ChartGuideLine[]): void => {
-      const marks = GuideLineMarks.lines(axisLines, axisKeyFor);
-      const areas = GuideLineMarks.areas(axisLines, axisKeyFor);
-      if (marks.length === 0 && areas.length === 0) return;
-      const existing = marksBySeries.get(seriesIdx);
-      if (existing) {
-        existing.marks.push(...marks);
-        existing.areas.push(...areas);
-      } else {
-        marksBySeries.set(seriesIdx, { marks, areas });
-      }
-    };
-    for (const [k, indices] of indicesByAxis) {
-      hangGuideLines(indices[0], guideLines.filter((l) => l.axis === 'y' && guideLineAxisIndex(l) === k));
-    }
-    if (series.length > 0) {
-      hangGuideLines(0, guideLines.filter((l) => l.axis === 'x'));
-    }
+    const referenceSeries = axes.flatMap((_, k) => {
+      const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
+      const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
+      const reference = ReferenceSeries.build(
+        [...ToleranceMarks.lines(axisBands, axisKeyFor), ...GuideLineMarks.lines(axisLines, axisKeyFor)],
+        [...ToleranceMarks.areas(axisBands, axisKeyFor), ...GuideLineMarks.areas(axisLines, axisKeyFor)],
+        multiAxis ? { yAxisIndex: k } : {},
+      );
+      return reference ? [reference] : [];
+    });
 
     // One out-of-tolerance test per Y axis, memoised and shared by every series on that axis —
     // tolerance bands and outlined guide lines both contribute zones, worst-wins.
@@ -223,7 +196,7 @@ export class PointOption {
     const topReserved = showLegendNow || colorByValue;
     // A trend line's end-of-line stats text sits past the last point on the grid's trailing edge;
     // reserve enough room there that it stays on-canvas instead of getting clipped.
-    const trendReserve = config.showTrendLine ? PointSeries.trendLabelReserve(series) : 0;
+    const trendReserve = config.showTrendLine ? PointSeries.trendLabelReserve(series, xIsDate) : 0;
 
     return {
       // Date axes are plotted from UTC-epoch millis and labelled in UTC, so lay time axes out
@@ -286,7 +259,7 @@ export class PointOption {
                     { type: 'slider' as const, xAxisIndex: 0, height: 20, bottom: 12 },
                   ]
                 : []),
-              ...(config.zoomY ? [{ type: 'inside' as const, yAxisIndex: 0 }] : []),
+              ...(config.zoomY ? [{ type: 'inside' as const, yAxisIndex: 0, id: ChartZoomMemory.VALUE_ZOOM_ID }] : []),
             ],
           }
         : {}),
@@ -311,7 +284,6 @@ export class PointOption {
           // per-point outline (the value colour already conveys where a mark sits).
           const outlineColor = colorByValue ? () => null : outlineFor(axisK);
           const formatY = onPrimary ? formatYPrimary : formatYOther;
-          const hung = marksBySeries.get(i);
           const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
           const mainName = s.label || config.title || 'Series';
           const main = {
@@ -330,16 +302,13 @@ export class PointOption {
                 }
               : {}),
             ...(yAxisIndex !== null ? { yAxisIndex } : {}),
-            ...(hung && hung.marks.length > 0
-              ? { markLine: { silent: true, symbol: 'none', data: hung.marks } }
-              : {}),
-            ...(hung && hung.areas.length > 0 ? { markArea: { silent: true, data: hung.areas } } : {}),
           };
           // Shares `mainName` rather than a name of its own, so it draws without a separate legend
           // entry but still toggles off along with the series it fits.
-          const trend = config.showTrendLine ? PointSeries.trendLine(s, mainName, color, yAxisIndex) : null;
+          const trend = config.showTrendLine ? PointSeries.trendLine(s, mainName, color, yAxisIndex, xIsDate) : null;
           return trend ? [main, trend] : [main];
         }),
+        ...referenceSeries,
         ...PointSeries.anchorMarkers(commentAnchors, multiAxis, axes.length),
         ...PointSeries.highlightMarker(highlightedAnchor, multiAxis, axes.length),
       ],

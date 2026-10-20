@@ -11,8 +11,22 @@
 <app-panel-chart-sort
   [sort]="chart().sort()"
   [columns]="chart().schema()?.columns ?? []"
+  [categoryColumnId]="chart().xColumnId()"
+  [grouping]="chart().categoryGrouping()"
+  [showTopN]="true"
   defaultLabel="Category order"
   (sortChange)="chart().sort.set($event)"
+  (groupingChange)="chart().categoryGrouping.set($event)"
 />
 
 <app-panel-bar-chart-options [chart]="chart()" />
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-category-zoom"
+    [ngModel]="chart().zoom()"
+    (onChange)="chart().zoom.set($event.checked)"
+  />
+  <label for="chart-category-zoom">Zoom &amp; pan slider when there are over 20 categories</label>
+</div>

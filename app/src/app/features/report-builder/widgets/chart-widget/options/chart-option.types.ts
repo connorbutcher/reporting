@@ -6,11 +6,13 @@ import type {
   ScatterSeriesOption,
 } from 'echarts/charts';
 import type {
+  AriaComponentOption,
   DataZoomComponentOption,
   GridComponentOption,
   LegendComponentOption,
   MarkAreaComponentOption,
   MarkLineComponentOption,
+  TitleComponentOption,
   TooltipComponentOption,
   VisualMapComponentOption,
 } from 'echarts/components';
@@ -43,6 +45,8 @@ export type ECOption = ComposeOption<
   | MarkLineComponentOption
   | MarkAreaComponentOption
   | VisualMapComponentOption
+  | AriaComponentOption
+  | TitleComponentOption
 >;
 
 /** The two point-chart series kinds; a bar chart uses {@link BarSeriesOption}. */
@@ -95,6 +99,8 @@ export interface OutlineItemStyle {
   color: string;
   borderColor: string;
   borderWidth: number;
+  /** Dashed, so an outlined mark differs in shape as well as colour. */
+  borderType: 'dashed';
 }
 
 /** The data-item element types for tolerance mark lines and shaded areas. */

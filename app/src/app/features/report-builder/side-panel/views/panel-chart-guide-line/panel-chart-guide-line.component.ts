@@ -7,6 +7,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { ChartAxis, LineDashStyle, LineDirection, chartAxisDisplayName } from '../../../../../core/models/report';
+import { XBarRChartWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelGroupComponent } from '../../panel-group.component';
@@ -70,6 +71,8 @@ export class PanelChartGuideLineComponent {
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
     if (!chart) return AXIS_OPTIONS;
+    // A control chart's X axis is its subgroups, with no numeric scale to place a line on.
+    if (chart instanceof XBarRChartWidgetModel) return AXIS_OPTIONS.filter((o) => o.value === 'y');
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
     const options = AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),

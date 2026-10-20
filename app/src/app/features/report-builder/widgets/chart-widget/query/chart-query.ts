@@ -1,8 +1,11 @@
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
+import { DatasetColumn } from '../../../../../core/models/dataset';
 import { FilterGroup } from '../../../../../core/models/filter';
 import {
   ChartSeriesBinding,
+  ChartSort,
+  ChartTooltipColumn,
   ChartWidgetConfig,
   barValueColumnIds,
   histogramValueColumnIds,
@@ -12,6 +15,7 @@ import {
   BarChartQueryResult,
   BarSeriesResult,
   BoxPlotQueryResult,
+  ChartCategoryDetail,
   ChartQueryResult,
   ChartRowCounts,
   ChartSeriesResult,
@@ -51,16 +55,21 @@ export class ChartQuery {
    *
    * `cache`, when supplied, memoizes each binding's response by its full request so editing one
    * binding doesn't refetch the others. It is pruned to the current binding set each call.
+   *
+   * `columns` is the axis-defining (first bound) dataset's schema, which the tooltip columns were
+   * picked from; each is sent with its name so other datasets can resolve their own column of it.
    */
   public static build(
     api: DatasetApiService,
     config: ChartWidgetConfig,
     bindingFilters: Record<string, FilterGroup | null> | null,
     cache?: Map<string, ChartQueryResult>,
+    columns: readonly DatasetColumn[] = [],
   ): Observable<
     ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult
   > | null {
     const bindings = readChartBindings(config);
+    const tooltipColumns = ChartQuery.namedTooltipColumns(config.tooltipColumns, columns);
 
     if (config.type === 'barChart' || config.type === 'comboChart') {
       // A combo chart shares the bar chart's aggregate-per-category data model — bars and lines
@@ -83,6 +92,8 @@ export class ChartQuery {
               seriesColumnId: binding.seriesColumnId,
               toleranceBands: config.toleranceBands,
               sort: config.sort,
+              categoryGrouping: config.categoryGrouping ?? null,
+              tooltipColumns,
             })
             .pipe(
               map((result): BarChartPart => ({ binding, result })),
@@ -99,7 +110,7 @@ export class ChartQuery {
         map((results) => {
           const ok = results.filter((r): r is BarChartPart => r !== null);
           if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-          return { ...ChartQuery.mergeBar(ok), failedBindingCount: results.length - ok.length };
+          return { ...ChartQuery.mergeBar(ok, config.sort), failedBindingCount: results.length - ok.length };
         }),
       );
     }
@@ -118,6 +129,8 @@ export class ChartQuery {
         sort: config.sort,
         includePoints: config.showPoints,
         toleranceBands: config.toleranceBands,
+        categoryGrouping: config.categoryGrouping ?? null,
+        tooltipColumns,
       });
     }
 
@@ -131,6 +144,10 @@ export class ChartQuery {
         valueColumnId: primary.yColumnId,
         sort: config.sort,
         toleranceBands: config.toleranceBands,
+        categoryGrouping: config.categoryGrouping ?? null,
+        mode: config.mode ?? 'xBarR',
+        baselineSubgroups: config.baselineSubgroups ?? null,
+        runRules: config.runRules ?? false,
       });
     }
 
@@ -153,6 +170,7 @@ export class ChartQuery {
         normalize: config.normalize,
         cumulative: config.cumulative,
         toleranceBands: config.toleranceBands,
+        tooltipColumns,
         ...overrides,
       });
 
@@ -210,9 +228,9 @@ export class ChartQuery {
       );
     }
 
-    // Tooltip columns are chosen from the axis-defining dataset's schema (the first bound
-    // binding), so they only make sense there — other datasets don't have those column ids.
-    const axisBindingId = bindings.find((b) => b.datasetId)?.id;
+    // A line chart can reduce every row sharing an X value to one point.
+    const aggregate = config.type === 'lineChart' ? (config.aggregate ?? null) : null;
+    const xGrouping = aggregate ? (config.type === 'lineChart' ? (config.xGrouping ?? null) : null) : null;
 
     const wanted = new Set<string>();
     const parts = bindings
@@ -226,9 +244,12 @@ export class ChartQuery {
           seriesColumnId: binding.seriesColumnId,
           sizeColumnId: binding.sizeColumnId ?? null,
           toleranceBands: config.toleranceBands,
-          tooltipColumns: binding.id === axisBindingId ? config.tooltipColumns : [],
+          // Picked from the first dataset's schema; other datasets resolve them by name.
+          tooltipColumns,
           sort: binding.sort ?? null,
           showTrendLine: config.showTrendLine ?? false,
+          aggregate,
+          xGrouping,
         };
         const key = `${binding.datasetId}|${JSON.stringify(request)}`;
         wanted.add(key);
@@ -316,7 +337,50 @@ export class ChartQuery {
       ...ChartQuery.sumRowCounts(parts),
       totalPoints,
       truncated,
+      sampled: parts.some((p) => p.result.sampled),
     };
+  }
+
+  /** The tooltip columns, each tagged with its column's name so another dataset can resolve it. */
+  private static namedTooltipColumns(
+    tooltipColumns: readonly ChartTooltipColumn[] | undefined,
+    columns: readonly DatasetColumn[],
+  ): ChartTooltipColumn[] {
+    return (tooltipColumns ?? []).map((t) => ({
+      ...t,
+      columnName: columns.find((c) => c.id === t.columnId)?.name ?? t.columnName,
+    }));
+  }
+
+  /**
+   * The order a merged category axis takes. A default (natural) sort is re-applied across every
+   * dataset's categories — numbers and dates by value, text alphabetically, blank then "Other" last —
+   * so a category only one dataset has lands in its natural place, not at the end. A column sort's
+   * metric exists only on the primary dataset, so its order leads and the rest follow, as the server
+   * sinks categories with no metric.
+   */
+  private static mergedCategoryOrder(
+    categories: string[],
+    details: (ChartCategoryDetail | undefined)[],
+    sort: ChartSort | undefined,
+  ): number[] {
+    const indices = categories.map((_, i) => i);
+    if (sort?.by === 'column') return indices;
+    const rank = (d: ChartCategoryDetail | undefined): number => (d?.isOther ? 2 : d?.isBlank ? 1 : 0);
+    const sorted = [...indices].sort((a, b) => {
+      const da = details[a];
+      const db = details[b];
+      const byRank = rank(da) - rank(db);
+      if (byRank !== 0) return byRank;
+      if (da?.sortNumber != null && db?.sortNumber != null) return da.sortNumber - db.sortNumber;
+      const ta = da?.sortText ?? categories[a];
+      const tb = db?.sortText ?? categories[b];
+      return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
+    });
+    if (!sort?.descending) return sorted;
+    // Descending reverses the real categories but keeps blank and "Other" at the end.
+    const real = sorted.filter((i) => rank(details[i]) === 0).reverse();
+    return [...real, ...sorted.filter((i) => rank(details[i]) !== 0)];
   }
 
   /**
@@ -327,21 +391,28 @@ export class ChartQuery {
    * composed legend label — binding · measure · split — carrying only the parts that actually vary.
    * Colliding labels are suffixed so the legend and colour palette can still tell them apart.
    */
-  private static mergeBar(parts: BarChartPart[]): BarChartQueryResult {
+  private static mergeBar(parts: BarChartPart[], sort?: ChartSort): BarChartQueryResult {
     const first = parts[0].result;
     const multiBinding = parts.length > 1;
 
-    // Union the categories, preserving the first binding's order and appending any new ones.
-    const categories: string[] = [];
-    const categoryIndex = new Map<string, number>();
+    // Union the categories (first binding's order first), then — with several datasets — re-sort
+    // the union so categories only a later dataset has don't simply trail at the end.
+    const unionCategories: string[] = [];
+    const unionDetails: (ChartCategoryDetail | undefined)[] = [];
+    const seenCategories = new Set<string>();
     for (const { result } of parts) {
-      for (const category of result.categories) {
-        if (!categoryIndex.has(category)) {
-          categoryIndex.set(category, categories.length);
-          categories.push(category);
-        }
-      }
+      result.categories.forEach((category, i) => {
+        if (seenCategories.has(category)) return;
+        seenCategories.add(category);
+        unionCategories.push(category);
+        unionDetails.push(result.categoryDetails?.[i]);
+      });
     }
+    const order = multiBinding
+      ? ChartQuery.mergedCategoryOrder(unionCategories, unionDetails, sort)
+      : unionCategories.map((_, i) => i);
+    const categories = order.map((i) => unionCategories[i]);
+    const categoryDetails = order.map((i) => unionDetails[i] ?? {});
 
     const series: BarSeriesResult[] = parts.flatMap(({ binding, result }) => {
       const base = binding.label.trim() || result.name;
@@ -361,14 +432,24 @@ export class ChartQuery {
         // Nothing varies (one binding, one measure, no split): fall back to a sensible single name.
         const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
+        const reindex = <T>(values: readonly T[] | undefined, missing: T): T[] =>
+          categories.map((category) => {
+            const i = localIndex.get(category);
+            return i === undefined ? missing : (values?.[i] ?? missing);
+          });
         return {
           label,
           bindingId: binding.id,
           valueColumnId: s.valueColumnId,
-          values: categories.map((category) => {
-            const i = localIndex.get(category);
-            return i === undefined ? null : (s.values[i] ?? null);
-          }),
+          drill: s.drill ?? null,
+          values: reindex(s.values, null),
+          rowCounts: reindex(s.rowCounts, null),
+          tooltipLines: reindex(s.tooltipLines, [] as string[]),
+          // Drill conditions name this binding's own dataset's columns, so each series keeps its own.
+          categoryDrills: reindex(
+            result.categoryDetails?.map((d) => d.drill ?? null),
+            null as FilterGroup | null,
+          ),
         };
       });
     });
@@ -388,6 +469,7 @@ export class ChartQuery {
       id: first.id,
       name: first.name,
       categories,
+      categoryDetails,
       series,
       // Bands resolve against the primary binding's dataset, matching the schema the panel offers.
       toleranceBands: first.toleranceBands,
@@ -424,7 +506,7 @@ export class ChartQuery {
         // Nothing varies (one binding, one column, no split): fall back to a sensible single name.
         const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
-        return { values: s.values, label };
+        return { ...s, label, bindingId: binding.id };
       });
     });
 

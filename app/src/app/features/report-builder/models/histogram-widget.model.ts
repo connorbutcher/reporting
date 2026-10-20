@@ -35,6 +35,8 @@ export class HistogramWidgetModel extends ChartWidgetModel {
   public readonly cumulative = signal(false);
   /** Draws bars horizontally (bins down the Y axis) rather than as vertical columns. */
   public readonly horizontal = signal(false);
+  /** Overlays a fitted normal curve per series. */
+  public readonly showNormalCurve = signal(false);
 
   constructor(widget: HistogramWidget, sources: ModelSources) {
     super(widget, sources);
@@ -46,6 +48,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
     this.normalize.set(widget.config.normalize ?? 'count');
     this.cumulative.set(widget.config.cumulative ?? false);
     this.horizontal.set(widget.config.horizontal ?? false);
+    this.showNormalCurve.set(widget.config.showNormalCurve ?? false);
   }
 
   public override toDto(): HistogramWidget {
@@ -61,6 +64,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
       normalize: this.normalize(),
       cumulative: this.cumulative(),
       horizontal: this.horizontal(),
+      showNormalCurve: this.showNormalCurve(),
     };
     return { ...this.geometryDto(), type: 'histogram', config };
   }

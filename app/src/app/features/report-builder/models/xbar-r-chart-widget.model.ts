@@ -5,6 +5,8 @@ import {
   DEFAULT_XBAR_R_CHART_CONFIG,
   XBarRChartWidget,
   XBarRChartWidgetConfig,
+  ControlChartMode,
+  DateGrouping,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
@@ -23,11 +25,23 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
   /** Colours a subgroup's mean or range red when it falls outside its control limits. */
   public readonly highlightOutOfControl = signal(true);
+  /** Buckets a date subgroup column by period; null groups by the exact date. */
+  public readonly categoryGrouping = signal<DateGrouping | null>(null);
+  /** Which pair of control charts to draw. */
+  public readonly mode = signal<ControlChartMode>('xBarR');
+  /** Holds the limits computed from the first N points; null uses every point. */
+  public readonly baselineSubgroups = signal<number | null>(null);
+  /** Also flags the Nelson run rules, not just points beyond the limits. */
+  public readonly runRules = signal(false);
 
   constructor(widget: XBarRChartWidget, sources: ModelSources) {
     super(widget, sources);
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
     this.highlightOutOfControl.set(widget.config.highlightOutOfControl ?? true);
+    this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
+    this.mode.set(widget.config.mode ?? 'xBarR');
+    this.baselineSubgroups.set(widget.config.baselineSubgroups ?? null);
+    this.runRules.set(widget.config.runRules ?? false);
   }
 
   public override toDto(): XBarRChartWidget {
@@ -37,6 +51,10 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
       ...this.chartConfigBaseDto(),
       sort: this.sort(),
       highlightOutOfControl: this.highlightOutOfControl(),
+      categoryGrouping: this.categoryGrouping(),
+      mode: this.mode(),
+      baselineSubgroups: this.baselineSubgroups(),
+      runRules: this.runRules(),
     };
     return { ...this.geometryDto(), type: 'xbarRChart', config };
   }

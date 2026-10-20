@@ -45,7 +45,10 @@ export class ChartCountBar {
         ? points.series.reduce((n, s) => n + s.points.length, 0)
         : (result.scannedRowCount ?? 0);
       const of = points ? (points.totalPoints ?? shown) : matched;
-      label = `Showing first ${shown.toLocaleString()} of ${of.toLocaleString()} ${points ? 'points' : 'rows'}`;
+      // A line chart thins its points evenly across the X range; anything else keeps the first ones.
+      label = points?.sampled
+        ? `Showing ${shown.toLocaleString()} of ${of.toLocaleString()} points, sampled evenly`
+        : `Showing first ${shown.toLocaleString()} of ${of.toLocaleString()} ${points ? 'points' : 'rows'}`;
     } else if (matched !== total) {
       label = `Showing ${matched.toLocaleString()} of ${total.toLocaleString()} rows`;
       icon = 'pi-filter';
@@ -53,6 +56,9 @@ export class ChartCountBar {
       label = `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
     }
 
+    // A histogram with a fixed range leaves out the values outside it, and says how many.
+    const excluded = (result as HistogramQueryResult).excludedCount ?? 0;
+    if (excluded > 0) label += ` · ${excluded.toLocaleString()} outside the bin range`;
     if (failed > 0) label += ` · ${failed} series couldn’t load`;
     return { label, icon, warning: !!result.truncated || failed > 0 };
   }

@@ -1,8 +1,35 @@
+<label class="panel-field">
+  <span class="panel-field-label">Chart type</span>
+  <p-select
+    [options]="modes"
+    [ngModel]="chart().mode()"
+    optionLabel="label"
+    optionValue="value"
+    appendTo="body"
+    fluid
+    (onChange)="chart().mode.set($event.value)"
+  />
+</label>
+@if (chart().mode() === 'individuals') {
+  <p class="panel-hint">Plots every row in subgroup order, with a moving-range chart below.</p>
+} @else if (chart().mode() === 'p' || chart().mode() === 'np') {
+  <p class="panel-hint">
+    Each row is one unit: a value of 1 (any non-zero) in the value column marks it defective, and 0
+    marks it good.
+    @if (chart().mode() === 'np') {
+      An np chart reads best when every subgroup has the same number of units.
+    }
+  </p>
+}
+
 <app-panel-chart-sort
   [sort]="chart().sort()"
   [columns]="chart().schema()?.columns ?? []"
+  [categoryColumnId]="chart().xColumnId()"
+  [grouping]="chart().categoryGrouping()"
   defaultLabel="Subgroup order"
   (sortChange)="chart().sort.set($event)"
+  (groupingChange)="chart().categoryGrouping.set($event)"
 />
 
 <div class="panel-inline-field">
@@ -13,4 +40,40 @@
     (onChange)="chart().highlightOutOfControl.set($event.checked)"
   />
   <label for="xbar-r-highlight">Highlight out-of-control subgroups</label>
+</div>
+
+<label class="panel-field">
+  <span class="panel-field-label">Calculate limits from the first</span>
+  <p-inputnumber
+    [ngModel]="chart().baselineSubgroups()"
+    (ngModelChange)="chart().baselineSubgroups.set($event && $event > 0 ? $event : null)"
+    [min]="2"
+    [maxFractionDigits]="0"
+    placeholder="All points"
+    [suffix]="chart().mode() === 'individuals' ? ' points' : ' subgroups'"
+    fluid
+  />
+</label>
+<p class="panel-hint">
+  Holding limits from a baseline keeps them fixed when later data or filters change.
+</p>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="xbar-r-run-rules"
+    [ngModel]="chart().runRules()"
+    (onChange)="chart().runRules.set($event.checked)"
+  />
+  <label for="xbar-r-run-rules">Flag run rules (Nelson rules 2–5)</label>
+</div>
+
+<div class="panel-inline-field">
+  <p-checkbox
+    [binary]="true"
+    inputId="chart-category-zoom"
+    [ngModel]="chart().zoom()"
+    (onChange)="chart().zoom.set($event.checked)"
+  />
+  <label for="chart-category-zoom">Zoom &amp; pan slider when there are over 20 subgroups</label>
 </div>

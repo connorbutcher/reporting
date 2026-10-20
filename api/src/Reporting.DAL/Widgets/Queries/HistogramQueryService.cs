@@ -105,15 +105,59 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             max = dataMax;
         }
 
-        var edges = BinEdges(allValues, min, max, dto.BinMode, dto.BinCount, dto.BinWidth);
+        var edges = BinEdges(allValues, min, max, dto.BinMode, dto.BinCount, dto.BinWidth, fixedStart: dto.RangeMin is not null);
         var bins = BuildBins(edges);
         var binWidth = edges[1] - edges[0];
+
+        // A fixed range zooms in: values outside it are left out (and counted) rather than piled
+        // into the end bins, which would inflate them. An auto-fit range holds every value anyway.
+        var excluded = 0;
+        if (dto.RangeMin is not null || dto.RangeMax is not null)
+        {
+            for (var m = 0; m < perMeasure.Count; m++)
+            {
+                var inRange = perMeasure[m].Projected.Where(p => p.Value >= min && p.Value <= max).ToList();
+                excluded += perMeasure[m].Projected.Count - inRange.Count;
+                perMeasure[m] = (perMeasure[m].Column, inRange);
+            }
+        }
 
         // One set of series per measure, measure-major so a measure's split series sit together —
         // mirrors a bar chart's measure-major series ordering.
         var series = perMeasure
             .SelectMany(measure => SeriesForMeasure(measure.Column, measure.Projected, edges, bins.Count, binWidth, dto, seriesColumn))
             .ToList();
+
+        // Tooltip columns: each one averaged over the rows in each bin of each series.
+        var fixedRange = dto.RangeMin is not null || dto.RangeMax is not null;
+        foreach (var setting in dto.TooltipColumns)
+        {
+            var column = BarChartQueryService.ResolveTooltipColumn(setting, columnsByRef, dataset.Columns);
+            if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+            {
+                continue;
+            }
+            foreach (var measure in measures)
+            {
+                var averages = await BinAveragesAsync(matching, seriesId, measure.Id, column.Id, edges, bins.Count, fixedRange ? (min, max) : null);
+                foreach (var seriesDto in series.Where(s => s.ValueColumnId == measure.RefId))
+                {
+                    var perBin = averages.GetValueOrDefault(seriesDto.Key);
+                    if (seriesDto.TooltipLines.Count == 0)
+                    {
+                        seriesDto.TooltipLines = bins.Select(_ => new List<string>()).ToList();
+                    }
+                    for (var b = 0; b < bins.Count; b++)
+                    {
+                        if (perBin is not null && perBin[b].Count > 0)
+                        {
+                            var formatted = CellFormatter.Number(perBin[b].Sum / perBin[b].Count, column.GetConfig() as NumericColumnConfig);
+                            seriesDto.TooltipLines[b].Add($"{setting.Prefix}{formatted}{setting.Suffix}");
+                        }
+                    }
+                }
+            }
+        }
 
         return new HistogramQueryResultDto
         {
@@ -125,7 +169,8 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             TotalRowCount = totalRowCount,
             MatchedRowCount = matchedRowCount,
             Truncated = truncated,
-            ScannedRowCount = scannedCount
+            ScannedRowCount = scannedCount,
+            ExcludedCount = excluded
         };
     }
 
@@ -183,6 +228,46 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         return (projected, truncated, scanned.Count);
     }
 
+    /// <summary>
+    /// The average of a tooltip column over the rows in each bin, per series key: one capped scan of
+    /// (series, binned value, tooltip value), bucketed in memory with the same edges as the bars.
+    /// </summary>
+    private static async Task<Dictionary<string, (double Sum, int Count)[]>> BinAveragesAsync(
+        IQueryable<DatasetRow> matching, int seriesId, int valueId, int tooltipId, List<double> edges, int binCount, (double Min, double Max)? range)
+    {
+        var scanned = await matching
+            .Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null)
+                && r.Cells.Any(c => c.ColumnId == tooltipId && c.NumberValue != null))
+            .OrderBy(r => r.Id)
+            .Take(MaxHistogramScanRows)
+            .Select(r => new
+            {
+                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
+                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault(),
+                Tooltip = r.Cells.Where(c => c.ColumnId == tooltipId).Select(c => c.NumberValue).FirstOrDefault()
+            })
+            .ToListAsync();
+
+        var averages = new Dictionary<string, (double Sum, int Count)[]>();
+        foreach (var row in scanned)
+        {
+            var value = row.Value ?? 0d;
+            if (range is { } r && (value < r.Min || value > r.Max))
+            {
+                continue;
+            }
+            var key = (row.Series ?? "").Trim();
+            if (!averages.TryGetValue(key, out var perBin))
+            {
+                perBin = new (double, int)[binCount];
+                averages[key] = perBin;
+            }
+            var bin = BinIndex(value, edges, binCount);
+            perBin[bin] = (perBin[bin].Sum + (row.Tooltip ?? 0d), perBin[bin].Count + 1);
+        }
+        return averages;
+    }
+
     /// <summary>The client-facing bins for a set of edges — each one's range and its axis label.</summary>
     private static List<HistogramBinDto> BuildBins(List<double> edges)
     {
@@ -215,6 +300,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     {
         var counts = new double[binCount];
         var total = 0;
+        var seriesValues = new List<double>();
         foreach (var (key, value) in projected)
         {
             if (key != seriesKey)
@@ -222,8 +308,10 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
                 continue;
             }
             counts[BinIndex(value, edges, binCount)]++;
+            seriesValues.Add(value);
             total++;
         }
+        var mean = total > 0 ? seriesValues.Average() : 0d;
 
         var values = new List<double>(binCount);
         var running = 0d;
@@ -239,7 +327,16 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             values.Add(dto.Cumulative ? running : shown);
         }
 
-        return new HistogramSeriesDto { Label = SeriesLabels.Format(seriesColumn, seriesKey), Values = values };
+        return new HistogramSeriesDto
+        {
+            Key = seriesKey,
+            Label = SeriesLabels.Format(seriesColumn, seriesKey),
+            Drill = SeriesLabels.Drill(seriesColumn, seriesKey),
+            Values = values,
+            Mean = mean,
+            StdDev = Statistics.StdDev(seriesValues, mean),
+            Count = total
+        };
     }
 
     /// <summary>The bin a value falls into: the first bin at or below the lowest edge, the last at
@@ -262,27 +359,43 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
 
     /// <summary>
     /// The ascending bin edges spanning [<paramref name="min"/>, <paramref name="max"/>]. A fixed
-    /// count divides the range evenly; a fixed width tiles bins across it; Auto picks a count with
-    /// the Freedman–Diaconis rule (falling back to Sturges when the IQR is zero). A degenerate range
-    /// (all values equal) yields a single unit-wide bin. The bin count is capped either way.
+    /// count divides the range evenly; a fixed width tiles bins of exactly that width, starting on a
+    /// multiple of it (or on a fixed range's start) so edges read as round numbers, with the last bin
+    /// running past the maximum if need be; Auto picks a count with the Freedman–Diaconis rule
+    /// (falling back to Sturges when the IQR is zero). A degenerate range (all values equal) yields a
+    /// single unit-wide bin. The bin count is capped either way — for a fixed width by widening the bins.
     /// </summary>
     private static List<double> BinEdges(
-        List<double> values, double min, double max, HistogramBinMode mode, int binCount, double binWidth)
+        List<double> values, double min, double max, HistogramBinMode mode, int binCount, double binWidth, bool fixedStart = false)
     {
         // All values equal (or a collapsed range): one bin, widened to a unit so it draws.
-        if (max <= min)
+        if (max <= min && !(mode == HistogramBinMode.Width && binWidth > 0))
         {
             return new List<double> { min, min + 1 };
         }
 
+        if (mode == HistogramBinMode.Width && binWidth > 0)
+        {
+            var width = binWidth;
+            var start = fixedStart ? min : Math.Floor(min / width) * width;
+            var widthCount = Math.Max(1, (int)Math.Ceiling((max - start) / width));
+            // A value sitting exactly on the last edge still belongs in the last bin, so no extra bin for it.
+            if (widthCount > MaxHistogramBins)
+            {
+                widthCount = MaxHistogramBins;
+                width = (max - start) / widthCount;
+            }
+            var widthEdges = new List<double>(widthCount + 1);
+            for (var i = 0; i <= widthCount; i++)
+            {
+                widthEdges.Add(start + i * width);
+            }
+            return widthEdges;
+        }
+
         var range = max - min;
         int count;
-        if (mode == HistogramBinMode.Width)
-        {
-            var width = binWidth > 0 ? binWidth : range;
-            count = (int)Math.Ceiling(range / width);
-        }
-        else if (mode == HistogramBinMode.Count)
+        if (mode == HistogramBinMode.Count)
         {
             count = binCount;
         }

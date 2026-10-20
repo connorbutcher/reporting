@@ -6,6 +6,7 @@ import {
   ChartSort,
   DEFAULT_BAR_CHART_CONFIG,
   DEFAULT_CHART_SORT,
+  DateGrouping,
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
@@ -28,6 +29,12 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   public readonly horizontal = signal(false);
   /** How the bars are ordered along the category axis. */
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  /** Buckets a date category by period; null groups by the exact date. */
+  public readonly categoryGrouping = signal<DateGrouping | null>(null);
+  /** Stacks bars as shares of their category's total (100% stacked). */
+  public readonly percentStacked = signal(false);
+  /** Prints each stack's total above it. */
+  public readonly showStackTotals = signal(false);
 
   /**
    * Whether the chart can produce more than one series — from several overlaid datasets, a
@@ -47,6 +54,9 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     this.horizontal.set(widget.config.horizontal);
     // Charts saved before this existed default to the chart's own natural order.
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
+    this.percentStacked.set(widget.config.percentStacked ?? false);
+    this.showStackTotals.set(widget.config.showStackTotals ?? false);
   }
 
   /** Count summarises row counts, so it needs no measure column. */
@@ -63,6 +73,9 @@ export class BarChartWidgetModel extends ChartWidgetModel {
       stacked: this.stacked(),
       horizontal: this.horizontal(),
       sort: this.sort(),
+      categoryGrouping: this.categoryGrouping(),
+      percentStacked: this.percentStacked(),
+      showStackTotals: this.showStackTotals(),
     };
     return { ...this.geometryDto(), type: 'barChart', config };
   }

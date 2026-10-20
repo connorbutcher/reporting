@@ -1,4 +1,4 @@
-import { ChartToleranceBand, HistogramBinMode, HistogramNormalize } from '../report';
+import { ChartToleranceBand, ChartTooltipColumn, HistogramBinMode, HistogramNormalize } from '../report';
 import { FilterGroup } from '../filter';
 import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 
@@ -20,6 +20,8 @@ export interface HistogramQueryRequest {
   normalize: HistogramNormalize;
   cumulative: boolean;
   toleranceBands: ChartToleranceBand[];
+  /** Extra numeric columns averaged over each bin's rows, for its tooltip. */
+  tooltipColumns?: ChartTooltipColumn[];
 }
 
 /** One bin of a histogram: its half-open value range and a ready-made axis label. */
@@ -42,8 +44,18 @@ export interface HistogramSeriesResult {
   valueColumnId?: string | null;
   /** The measure column's display name, for composing a multi-measure legend label. */
   valueColumnLabel?: string;
+  /** Client-side, after merging: the binding this series came from. */
+  bindingId?: string;
   /** One value per bin in {@link HistogramQueryResult.bins} order — a count, frequency, or density. */
   values: number[];
+  /** The series' own mean, σ and in-range count, for a fitted normal curve. */
+  mean?: number;
+  stdDev?: number;
+  count?: number;
+  /** Conditions selecting this series' rows (its split value), for drill-through; null with no split. */
+  drill?: FilterGroup | null;
+  /** Each bin's tooltip column lines, aligned with `values`. */
+  tooltipLines?: string[][];
 }
 
 export interface HistogramQueryResult extends ChartRowCounts, PartialChartLoad {
@@ -52,5 +64,7 @@ export interface HistogramQueryResult extends ChartRowCounts, PartialChartLoad {
   /** The bins, in ascending order — the shared category axis every series aligns to. */
   bins: HistogramBin[];
   series: HistogramSeriesResult[];
+  /** Values left out because they fell outside a fixed range. */
+  excludedCount?: number;
   toleranceBands: ResolvedToleranceBand[];
 }
