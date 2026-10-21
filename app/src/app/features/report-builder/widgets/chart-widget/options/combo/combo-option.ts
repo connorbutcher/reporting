@@ -10,7 +10,8 @@ import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { YAXisComponentOption } from 'echarts';
 import { ECOption } from '../types/ec-option';
 import { LabelCallbackParams } from '../types/label-callback-params';
-import { BarOption } from '../bar/bar-option';
+import { BarTooltip } from '../bar/bar-tooltip';
+import { BarValues } from '../bar/bar-values';
 import { CategoryZoom } from '../axes/category-zoom';
 import { ChartColumns } from '../format/chart-columns';
 import { ChartFormat } from '../format/chart-format';
@@ -88,12 +89,12 @@ export class ComboOption {
     const seriesConfigs = new Map(
       rawSeries.map((s) => [
         s,
-        isCount ? undefined : (BarOption.seriesNumericConfig(s, columns) ?? valueConfig),
+        isCount ? undefined : (BarValues.seriesNumericConfig(s, columns) ?? valueConfig),
       ]),
     );
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
     const primaryValueLabel =
-      axes[0].label.trim() || BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null);
+      axes[0].label.trim() || BarValues.measureLabel(config.aggregate, valueColumn?.name ?? null);
 
     const showLegend = series.length > 1 && config.showLegend;
     const showGridLines = config.showGridLines ?? true;
@@ -165,7 +166,7 @@ export class ComboOption {
       const reference = ReferenceSeries.build(marks, areas, multiAxis ? { yAxisIndex: k } : {});
       if (reference) referenceSeries.push(reference);
     }
-    const seriesByName = new Map(rawSeries.map((s) => [BarOption.seriesName(s, config.title), s]));
+    const seriesByName = new Map(rawSeries.map((s) => [BarValues.seriesName(s, config.title), s]));
     const zoom = CategoryZoom.enabled(config.zoom, categories.length);
 
     return {
@@ -182,13 +183,13 @@ export class ComboOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, seriesConfigs, false),
+        formatter: (raw: unknown) => BarTooltip.format(raw, seriesByName, seriesConfigs, false),
       },
       ...(showLegend
         ? {
             legend: {
               top: 0,
-              data: series.map((s) => BarOption.seriesName(s.result, config.title)),
+              data: series.map((s) => BarValues.seriesName(s.result, config.title)),
               type: 'scroll',
             },
           }
@@ -201,7 +202,7 @@ export class ComboOption {
           const outline = outlineByAxis.get(s.axisIndex) ?? OutlineSeverity.forValue([]);
           const numericConfig = seriesConfigs.get(s.result);
           const base = {
-            name: BarOption.seriesName(s.result, config.title),
+            name: BarValues.seriesName(s.result, config.title),
             ...(multiAxis ? { yAxisIndex: Math.min(s.axisIndex, axes.length - 1) } : {}),
             ...(config.showValueLabels
               ? {

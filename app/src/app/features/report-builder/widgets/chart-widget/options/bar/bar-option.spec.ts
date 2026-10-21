@@ -7,6 +7,7 @@ import {
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import { BarOption } from './bar-option';
+import { BarValues } from './bar-values';
 import { ReferenceSeries } from '../marks/reference-series';
 
 const columns: DatasetColumn[] = [
@@ -124,7 +125,7 @@ describe('BarOption', () => {
       columns,
       new Map(),
     );
-    const totals = seriesOf(option).filter((s) => s.name?.startsWith(BarOption.TOTAL_PREFIX));
+    const totals = seriesOf(option).filter((s) => s.name?.startsWith(BarValues.TOTAL_PREFIX));
 
     expect(totals).toHaveLength(1);
     expect(totals[0].stack).toBe('a');
