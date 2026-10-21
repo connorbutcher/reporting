@@ -460,8 +460,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** A coordinate shown in the comment composer's anchor chip — exact enough to recognise the point, not a formatted axis tick. */
   private static formatAnchorLabel(x: number, y: number): string {
-    const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-    return `${format(x)}, ${format(y)}`;
+    return [x, y].map((n) => (Number.isInteger(n) ? String(n) : n.toFixed(1))).join(', ');
   }
 
   /** One "View data" cell as text: numbers to a readable precision, flags as Yes/No. */

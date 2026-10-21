@@ -25,6 +25,7 @@ import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
 import { TooltipHtml } from './tooltip-html';
 import { BoxTooltipContext } from './types/box-tooltip-context';
+import { AxisKey } from './types/axis-key';
 
 /** Builds the box-and-whisker echarts option: a category axis with one box per category, per series. */
 export class BoxOption {
@@ -57,16 +58,16 @@ export class BoxOption {
 
     // The value axis is whichever one isn't holding the categories, so reference lines and
     // fills land on the measure regardless of orientation.
-    const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis') as 'xAxis' | 'yAxis';
+    const valueAxisKey: AxisKey = horizontal ? 'xAxis' : 'yAxis';
     const bands = data?.toleranceBands ?? [];
     const guideLines = config.guideLines ?? [];
     const marks = [
-      ...ToleranceMarks.lines(bands, valueAxisKey),
-      ...GuideLineMarks.lines(guideLines, valueAxisKey),
+      ...ToleranceMarks.lines(bands, () => valueAxisKey),
+      ...GuideLineMarks.lines(guideLines, () => valueAxisKey),
     ];
     const areas = [
-      ...ToleranceMarks.areas(bands, valueAxisKey),
-      ...GuideLineMarks.areas(guideLines, valueAxisKey),
+      ...ToleranceMarks.areas(bands, () => valueAxisKey),
+      ...GuideLineMarks.areas(guideLines, () => valueAxisKey),
     ];
     // Boxes whose whiskers breach an outlined spec band or guide line are bordered in the crossed one's colour.
     const outline = OutlineSeverity.forExtent([
@@ -285,23 +286,24 @@ export class BoxOption {
     ctx: BoxTooltipContext,
   ): string {
     const param = Array.isArray(params) ? params[0] : params;
-    const num = (value: number) => ChartFormat.numeric(value, ctx.config);
 
     if (param.seriesType === 'boxplot') {
       const box = boxByKey.get(`${param.seriesName}#${param.dataIndex}`);
       if (!box) return '';
-      const lines = [
-        `Maximum: ${num(box.max)}`,
-        `Upper quartile: ${num(box.q3)}`,
-        `Median: ${num(box.median)}`,
-        `Lower quartile: ${num(box.q1)}`,
-        `Minimum: ${num(box.min)}`,
+      const summary: [label: string, value: number][] = [
+        ['Maximum', box.max],
+        ['Upper quartile', box.q3],
+        ['Median', box.median],
+        ['Lower quartile', box.q1],
+        ['Minimum', box.min],
       ];
       if (ctx.showMean || ctx.showCapability) {
-        lines.push(`Mean: ${num(box.mean)}`, `Std dev: ${num(box.stdDev)}`);
+        summary.push(['Mean', box.mean], ['Std dev', box.stdDev]);
       }
       const capability = ctx.showCapability ? BoxOption.capability(box, ctx.spec) : null;
-      const body = lines.join('<br/>');
+      const body = summary
+        .map(([label, value]) => `${label}: ${ChartFormat.numeric(value, ctx.config)}`)
+        .join('<br/>');
       return (
         `<strong>${TooltipHtml.escape(param.seriesName || 'Box')}</strong><br/>${body}<br/>n = ${box.count}` +
         (capability ? `<br/>${capability}` : '') +
@@ -313,9 +315,10 @@ export class BoxOption {
     const value = param.value as [number, number];
     const measure = ctx.horizontal ? value[0] : value[1];
     const id = param.seriesId ?? '';
-    if (id.startsWith('mean:')) return `Mean: ${num(measure)}`;
-    if (id.startsWith('outlier:')) return `Outlier: ${num(measure)}`;
-    return num(measure);
+    const shown = ChartFormat.numeric(measure, ctx.config);
+    if (id.startsWith('mean:')) return `Mean: ${shown}`;
+    if (id.startsWith('outlier:')) return `Outlier: ${shown}`;
+    return shown;
   }
 
   /**
@@ -351,21 +354,12 @@ export class BoxOption {
     series: BoxPlotQueryResult['series'],
     config: NumericColumnConfig | undefined,
   ): number {
-    let min = Infinity;
-    let max = -Infinity;
-    const consider = (v: number) => {
-      if (v < min) min = v;
-      if (v > max) max = v;
-    };
-    for (const s of series) {
-      for (const box of s.boxes) {
-        if (box) {
-          consider(box.min);
-          consider(box.max);
-        }
-      }
-      for (const o of s.outliers) consider(o.value);
-    }
+    const values = series.flatMap((s) => [
+      ...s.boxes.flatMap((box) => (box ? [box.min, box.max] : [])),
+      ...s.outliers.map((o) => o.value),
+    ]);
+    const min = values.reduce((low, v) => (v < low ? v : low), Infinity);
+    const max = values.reduce((high, v) => (v > high ? v : high), -Infinity);
     if (!Number.isFinite(min)) return 0;
     return Math.max(
       ChartFormat.numeric(min, config).length,

@@ -28,14 +28,17 @@ export class GuideLineMarks {
       const color = line.color ?? GuideLineMarks.DEFAULT_COLOR;
       const label = line.label.trim() || GuideLineMarks.formatValue(line.value);
 
-      const mark = (value: number): MarkLineData[number] => ({
-        ...GuideLineMarks.onAxis(axisKey, value),
-        label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
-        lineStyle: { color, type: line.dashStyle ?? 'dashed', width: 1.5 },
-      });
-
-      entries.push(mark(line.value));
-      if (line.valueTo !== null && line.valueTo !== undefined) entries.push(mark(line.valueTo));
+      const values =
+        line.valueTo !== null && line.valueTo !== undefined
+          ? [line.value, line.valueTo]
+          : [line.value];
+      for (const value of values) {
+        entries.push({
+          ...GuideLineMarks.onAxis(axisKey, value),
+          label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
+          lineStyle: { color, type: line.dashStyle ?? 'dashed', width: 1.5 },
+        });
+      }
     }
 
     return entries;

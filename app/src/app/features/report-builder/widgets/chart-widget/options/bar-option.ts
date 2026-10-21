@@ -10,6 +10,7 @@ import type { BarSeriesOption } from 'echarts/charts';
 import { ECOption } from './types/ec-option';
 import { LabelCallbackParams } from './types/label-callback-params';
 import { CategoryZoom } from './category-zoom';
+import { AxisKey } from './types/axis-key';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -67,11 +68,12 @@ export class BarOption {
         ];
     const valueColumn = measureIds.length === 1 ? ChartColumns.byId(columns, measureIds[0]) : null;
     const valueConfig = ChartFormat.numericConfig(valueColumn);
-    const seriesConfig = (s: BarSeriesResult): NumericColumnConfig | undefined =>
-      isCount
-        ? undefined
-        : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ??
-          valueConfig);
+    const seriesConfigs = new Map(
+      series.map((s) => [
+        s,
+        isCount ? undefined : (BarOption.seriesNumericConfig(s, columns) ?? valueConfig),
+      ]),
+    );
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
     // A bar chart uses only the primary value axis; its label, interval, and rotation live there.
     const valueAxisConfig = readChartAxes(config)[0];
@@ -87,42 +89,31 @@ export class BarOption {
     const horizontal = config.horizontal;
     const showGridLines = config.showGridLines ?? true;
     const stacked = config.stacked || percent;
-    const stackOf = (s: BarSeriesResult) => s.bindingId ?? 'total';
 
     // 100% stacked: each bar becomes its share of its stack's total in that category.
     const stackTotals = new Map<string, number[]>();
     if (stacked) {
       for (const s of series) {
-        const totals = stackTotals.get(stackOf(s)) ?? categories.map(() => 0);
+        const stack = BarOption.stackOf(s);
+        const totals = stackTotals.get(stack) ?? categories.map(() => 0);
         s.values.forEach((v, c) => (totals[c] += v ?? 0));
-        stackTotals.set(stackOf(s), totals);
+        stackTotals.set(stack, totals);
       }
     }
-    const plotted = (s: BarSeriesResult): (number | null)[] =>
-      percent
-        ? s.values.map((v, c) => {
-            const total = stackTotals.get(stackOf(s))?.[c] ?? 0;
-            return v === null || total === 0 ? null : (v / total) * 100;
-          })
-        : s.values;
-    const formatPercent = (v: number) =>
-      `${ChartFormat.numeric(v, { kind: 'numeric', decimals: 1 })}%`;
-    const formatValue = (s: BarSeriesResult) => (v: number) =>
-      percent ? formatPercent(v) : ChartFormat.numeric(v, seriesConfig(s));
 
     // The value axis is whichever one isn't holding the categories, so reference lines and
     // fills land on the measure regardless of orientation. Percent bars aren't on the measure's
     // scale, so reference lines don't apply to them.
-    const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis');
+    const valueAxisKey: AxisKey = horizontal ? 'xAxis' : 'yAxis';
     const bands = percent ? [] : (data?.toleranceBands ?? []);
     const guideLines = percent ? [] : (config.guideLines ?? []);
     const marks = [
-      ...ToleranceMarks.lines(bands, valueAxisKey),
-      ...GuideLineMarks.lines(guideLines, valueAxisKey),
+      ...ToleranceMarks.lines(bands, () => valueAxisKey),
+      ...GuideLineMarks.lines(guideLines, () => valueAxisKey),
     ];
     const areas = [
-      ...ToleranceMarks.areas(bands, valueAxisKey),
-      ...GuideLineMarks.areas(guideLines, valueAxisKey),
+      ...ToleranceMarks.areas(bands, () => valueAxisKey),
+      ...GuideLineMarks.areas(guideLines, () => valueAxisKey),
     ];
     // A bar's bands and outlined guide lines both test against the one value axis, worst-wins.
     const outlineColor = OutlineSeverity.forValue([
@@ -180,25 +171,20 @@ export class BarOption {
       splitLine: { show: showGridLines },
     };
 
-    const colorOf = (s: BarSeriesResult, i: number): string => {
+    const dataSeries = series.map((s, i): BarSeriesOption => {
       // A binding's colour override applies only when it yields a single series; once it splits
       // (several measures or a colour-by column) each series keeps its own palette colour.
       const binding = s.bindingId ? bindingsById.get(s.bindingId) : undefined;
       const single = (s.bindingId ? (seriesPerBinding.get(s.bindingId) ?? 1) : series.length) === 1;
       const override = single ? (binding?.color ?? null) : null;
-      return override ?? SeriesColors.forSeries(colors, s.label, i);
-    };
-    const seriesName = (s: BarSeriesResult) => s.label || config.title || 'Series';
-
-    const dataSeries = series.map((s, i): BarSeriesOption => {
-      const color = colorOf(s, i);
-      const format = formatValue(s);
+      const color = override ?? SeriesColors.forSeries(colors, s.label, i);
+      const numericConfig = seriesConfigs.get(s);
       return {
-        name: seriesName(s),
+        name: BarOption.seriesName(s, config.title),
         type: 'bar',
         // Stacking piles each binding's own series into one column, so several overlaid
         // datasets stand as side-by-side stacks rather than all collapsing into one.
-        ...(stacked ? { stack: stackOf(s) } : {}),
+        ...(stacked ? { stack: BarOption.stackOf(s) } : {}),
         itemStyle: { color },
         ...(config.showValueLabels
           ? {
@@ -207,12 +193,14 @@ export class BarOption {
                 // Stacked segments label inside, so neighbouring segments' labels don't collide.
                 position: stacked ? 'inside' : horizontal ? 'right' : 'top',
                 formatter: (p: LabelCallbackParams) =>
-                  typeof p.value === 'number' ? format(p.value) : '',
+                  typeof p.value === 'number'
+                    ? BarOption.formatValue(p.value, percent, numericConfig)
+                    : '',
               },
             }
           : {}),
         // A bar outside an outlined band is bordered in the crossed limit's colour.
-        data: plotted(s).map((v) => {
+        data: BarOption.plotted(s, percent, stackTotals).map((v) => {
           const border = v !== null ? outlineColor(v) : null;
           return border ? { value: v, itemStyle: OutlineSeverity.itemStyle(color, border) } : v;
         }),
@@ -244,7 +232,7 @@ export class BarOption {
 
     const reference = ReferenceSeries.build(marks, areas);
     const zoom = CategoryZoom.enabled(config.zoom, categories.length);
-    const seriesByName = new Map(series.map((s) => [seriesName(s), s]));
+    const seriesByName = new Map(series.map((s) => [BarOption.seriesName(s, config.title), s]));
 
     return {
       grid: {
@@ -260,9 +248,17 @@ export class BarOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, formatValue, percent),
+        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, seriesConfigs, percent),
       },
-      ...(showLegend ? { legend: { top: 0, data: series.map(seriesName), type: 'scroll' } } : {}),
+      ...(showLegend
+        ? {
+            legend: {
+              top: 0,
+              data: series.map((s) => BarOption.seriesName(s, config.title)),
+              type: 'scroll',
+            },
+          }
+        : {}),
       ...(zoom ? { dataZoom: CategoryZoom.dataZoom(horizontal) } : {}),
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
@@ -277,7 +273,7 @@ export class BarOption {
   public static tooltip(
     raw: unknown,
     seriesByName: Map<string, BarSeriesResult>,
-    formatValue: (s: BarSeriesResult) => (v: number) => string,
+    seriesConfigs: Map<BarSeriesResult, NumericColumnConfig | undefined>,
     percent: boolean,
   ): string {
     const params = (Array.isArray(raw) ? raw : [raw]) as {
@@ -295,12 +291,10 @@ export class BarOption {
       const value =
         typeof p.value === 'number' ? p.value : (p.value as { value?: unknown } | null)?.value;
       if (!s || typeof value !== 'number') continue;
-      const format = formatValue(s);
+      const formatted = BarOption.formatValue(value, percent, seriesConfigs.get(s));
       const actual = s.values[p.dataIndex];
       const shown =
-        percent && actual != null
-          ? `${format(value)} (${ChartFormat.numeric(actual)})`
-          : format(value);
+        percent && actual != null ? `${formatted} (${ChartFormat.numeric(actual)})` : formatted;
       const color = typeof p.color === 'string' ? p.color : '';
       lines.push(
         `${color ? TooltipHtml.marker(color) : ''}${TooltipHtml.escape(p.seriesName ?? '')}: <strong>${TooltipHtml.escape(shown)}</strong>`,
@@ -321,6 +315,47 @@ export class BarOption {
     if (aggregate === 'count') return 'Count of rows';
     const name = BarOption.aggregateLabel(aggregate);
     return measure ? `${name} of ${measure}` : name;
+  }
+
+  /** A series' own measure format, when its value column has one. */
+  public static seriesNumericConfig(
+    s: BarSeriesResult,
+    columns: DatasetColumn[],
+  ): NumericColumnConfig | undefined {
+    return ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null));
+  }
+
+  public static formatValue(
+    value: number,
+    percent: boolean,
+    config: NumericColumnConfig | undefined,
+  ): string {
+    return percent
+      ? `${ChartFormat.numeric(value, { kind: 'numeric', decimals: 1 })}%`
+      : ChartFormat.numeric(value, config);
+  }
+
+  public static seriesName(s: BarSeriesResult, chartTitle: string): string {
+    return s.label || chartTitle || 'Series';
+  }
+
+  /** Each binding's series stack together, so overlaid datasets stand side by side. */
+  private static stackOf(s: BarSeriesResult): string {
+    return s.bindingId ?? 'total';
+  }
+
+  /** The values drawn for a series: raw, or each as a share of its stack's category total when 100% stacked. */
+  private static plotted(
+    s: BarSeriesResult,
+    percent: boolean,
+    stackTotals: Map<string, number[]>,
+  ): (number | null)[] {
+    if (!percent) return s.values;
+    const totals = stackTotals.get(BarOption.stackOf(s));
+    return s.values.map((v, c) => {
+      const total = totals?.[c] ?? 0;
+      return v === null || total === 0 ? null : (v / total) * 100;
+    });
   }
 
   /**

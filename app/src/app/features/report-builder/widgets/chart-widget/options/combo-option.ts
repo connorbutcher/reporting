@@ -1,16 +1,11 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import {
-  ChartGuideLine,
   ComboChartWidgetConfig,
   chartAxisIndex,
   readChartAxes,
   readChartBindings,
 } from '../../../../../core/models/report';
-import {
-  BarChartQueryResult,
-  BarSeriesResult,
-  ResolvedToleranceBand,
-} from '../../../../../core/models/widget-query';
+import { BarChartQueryResult } from '../../../../../core/models/widget-query';
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { YAXisComponentOption } from 'echarts';
 import { ECOption } from './types/ec-option';
@@ -95,13 +90,12 @@ export class ComboOption {
     const valueColumn =
       primaryMeasures.length === 1 ? ChartColumns.byId(columns, primaryMeasures[0]) : null;
     const valueConfig = ChartFormat.numericConfig(valueColumn);
-    const seriesConfig = (s: BarSeriesResult): NumericColumnConfig | undefined =>
-      isCount
-        ? undefined
-        : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ??
-          valueConfig);
-    const formatValue = (s: BarSeriesResult) => (v: number) =>
-      ChartFormat.numeric(v, seriesConfig(s));
+    const seriesConfigs = new Map(
+      rawSeries.map((s) => [
+        s,
+        isCount ? undefined : (BarOption.seriesNumericConfig(s, columns) ?? valueConfig),
+      ]),
+    );
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
     const primaryValueLabel =
       axes[0].label.trim() || BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null);
@@ -147,19 +141,29 @@ export class ComboOption {
     // an x-band would need a numeric category axis, which this chart never has.)
     const bands = (data?.toleranceBands ?? []).filter((b) => b.axis === 'y');
     const bandYAxisId = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
-    const bandAxisIndex = (band: ResolvedToleranceBand): number =>
-      chartAxisIndex(axes, bandYAxisId.get(band.id) ?? null);
+    const bandAxis = new Map(
+      bands.map((b) => [b, chartAxisIndex(axes, bandYAxisId.get(b.id) ?? null)]),
+    );
     const guideLines = (config.guideLines ?? []).filter((l) => l.axis === 'y');
-    const guideLineYAxisId = new Map(guideLines.map((l) => [l.id, l.yAxisId ?? null]));
-    const guideLineAxisIndex = (line: ChartGuideLine): number =>
-      chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
+    const guideLineAxis = new Map(
+      guideLines.map((l) => [l, chartAxisIndex(axes, l.yAxisId ?? null)]),
+    );
 
     // Each axis' reference lines ride their own carrier series, so hiding a data series in the
-    // legend never takes them with it.
+    // legend never takes them with it. One out-of-tolerance test per axis is shared by every
+    // series on it: bands and outlined guide lines on that axis both contribute zones, worst-wins.
     const referenceSeries: LineSeriesOption[] = [];
+    const outlineByAxis = new Map<number, (v: number) => string | null>();
     for (const k of axes.keys()) {
-      const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
-      const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
+      const axisBands = bands.filter((b) => bandAxis.get(b) === k);
+      const axisLines = guideLines.filter((l) => guideLineAxis.get(l) === k);
+      outlineByAxis.set(
+        k,
+        OutlineSeverity.forValue([
+          ...ToleranceOutline.zonesFor(axisBands),
+          ...GuideLineOutline.zonesFor(axisLines),
+        ]),
+      );
       const marks = [
         ...ToleranceMarks.lines(axisBands, () => 'yAxis'),
         ...GuideLineMarks.lines(axisLines, () => 'yAxis'),
@@ -171,24 +175,7 @@ export class ComboOption {
       const reference = ReferenceSeries.build(marks, areas, multiAxis ? { yAxisIndex: k } : {});
       if (reference) referenceSeries.push(reference);
     }
-    // One out-of-tolerance test per axis, shared by every series on it — bands and outlined guide
-    // lines on that axis both contribute zones, worst-wins.
-    const outlineByAxis = new Map<number, (v: number) => string | null>();
-    const outlineFor = (axisK: number): ((v: number) => string | null) => {
-      let outline = outlineByAxis.get(axisK);
-      if (!outline) {
-        const zones = [
-          ...ToleranceOutline.zonesFor(bands.filter((b) => bandAxisIndex(b) === axisK)),
-          ...GuideLineOutline.zonesFor(guideLines.filter((l) => guideLineAxisIndex(l) === axisK)),
-        ];
-        outline = OutlineSeverity.forValue(zones);
-        outlineByAxis.set(axisK, outline);
-      }
-      return outline;
-    };
-
-    const seriesName = (s: BarSeriesResult) => s.label || config.title || 'Series';
-    const seriesByName = new Map(rawSeries.map((s) => [seriesName(s), s]));
+    const seriesByName = new Map(rawSeries.map((s) => [BarOption.seriesName(s, config.title), s]));
     const zoom = CategoryZoom.enabled(config.zoom, categories.length);
 
     return {
@@ -205,20 +192,26 @@ export class ComboOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, formatValue, false),
+        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, seriesConfigs, false),
       },
       ...(showLegend
-        ? { legend: { top: 0, data: series.map((s) => seriesName(s.result)), type: 'scroll' } }
+        ? {
+            legend: {
+              top: 0,
+              data: series.map((s) => BarOption.seriesName(s.result, config.title)),
+              type: 'scroll',
+            },
+          }
         : {}),
       ...(zoom ? { dataZoom: CategoryZoom.dataZoom(false) } : {}),
       xAxis: categoryAxis,
       yAxis: multiAxis ? yAxes : yAxes[0],
       series: [
         ...series.map((s) => {
-          const outline = outlineFor(s.axisIndex);
-          const format = formatValue(s.result);
+          const outline = outlineByAxis.get(s.axisIndex) ?? OutlineSeverity.forValue([]);
+          const numericConfig = seriesConfigs.get(s.result);
           const base = {
-            name: seriesName(s.result),
+            name: BarOption.seriesName(s.result, config.title),
             ...(multiAxis ? { yAxisIndex: Math.min(s.axisIndex, axes.length - 1) } : {}),
             ...(config.showValueLabels
               ? {
@@ -226,7 +219,9 @@ export class ComboOption {
                     show: true,
                     position: 'top' as const,
                     formatter: (p: LabelCallbackParams) =>
-                      typeof p.value === 'number' ? format(p.value) : '',
+                      typeof p.value === 'number'
+                        ? ChartFormat.numeric(p.value, numericConfig)
+                        : '',
                   },
                 }
               : {}),

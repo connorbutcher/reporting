@@ -3,10 +3,17 @@ import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import { FilterGroup } from '../../../../../core/models/filter';
 import {
+  BarChartWidgetConfig,
+  BoxPlotWidgetConfig,
   ChartSeriesBinding,
   ChartSort,
   ChartTooltipColumn,
   ChartWidgetConfig,
+  ComboChartWidgetConfig,
+  HistogramWidgetConfig,
+  LineChartWidgetConfig,
+  ScatterChartWidgetConfig,
+  XBarRChartWidgetConfig,
   barValueColumnIds,
   histogramValueColumnIds,
   readChartBindings,
@@ -60,180 +67,237 @@ export class ChartQuery {
     const bindings = readChartBindings(config);
     const tooltipColumns = ChartQuery.namedTooltipColumns(config.tooltipColumns, columns);
 
-    if (config.type === 'barChart' || config.type === 'comboChart') {
-      // A combo chart shares the bar chart's aggregate-per-category data model — bars and lines
-      // both plot one value per category — so it queries through the very same endpoint and merge;
-      // only the client-side rendering differs. Fan out one aggregate query per bound binding, each
-      // on its own dataset, and align their categories client-side.
-      const needsValue = config.aggregate !== 'count';
-      const parts = bindings
-        .map((binding): Observable<BarChartPart | null> | null => {
-          if (!binding.datasetId || !binding.xColumnId) return null;
-          const valueColumnIds = barValueColumnIds(binding);
-          if (needsValue && valueColumnIds.length === 0) return null;
-
-          return api
-            .queryBarChart(binding.datasetId, {
-              filter: bindingFilters?.[binding.id] ?? null,
-              categoryColumnId: binding.xColumnId,
-              valueColumnIds: needsValue ? valueColumnIds : [],
-              aggregate: config.aggregate,
-              seriesColumnId: binding.seriesColumnId,
-              toleranceBands: config.toleranceBands,
-              sort: config.sort,
-              categoryGrouping: config.categoryGrouping ?? null,
-              tooltipColumns,
-            })
-            .pipe(
-              map((result): BarChartPart => ({ binding, result })),
-              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart;
-              // the merge counts the drop-outs so the widget can say a series is missing.
-              catchError(() => of(null)),
-            );
-        })
-        .filter((part): part is Observable<BarChartPart | null> => part !== null);
-
-      if (parts.length === 0) return null;
-
-      return forkJoin(parts).pipe(
-        map((results) => {
-          const ok = results.filter((r): r is BarChartPart => r !== null);
-          if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-          return {
-            ...ChartQuery.mergeBar(ok, config.sort),
-            failedBindingCount: results.length - ok.length,
-          };
-        }),
-      );
+    switch (config.type) {
+      case 'barChart':
+      case 'comboChart':
+        return ChartQuery.barQuery(api, config, bindings, bindingFilters, tooltipColumns);
+      case 'boxPlot':
+        return ChartQuery.boxPlotQuery(api, config, bindings, bindingFilters, tooltipColumns);
+      case 'xbarRChart':
+        return ChartQuery.xBarRQuery(api, config, bindings, bindingFilters);
+      case 'histogram':
+        return ChartQuery.histogramQuery(api, config, bindings, bindingFilters, tooltipColumns);
+      default:
+        return ChartQuery.pointQuery(api, config, bindings, bindingFilters, tooltipColumns, cache);
     }
+  }
 
-    if (config.type === 'boxPlot') {
-      const primary = bindings[0];
-      if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+  /**
+   * A combo chart shares the bar chart's aggregate-per-category data model, so both query the same
+   * endpoint: one aggregate query per bound binding, with categories aligned client-side.
+   */
+  private static barQuery(
+    api: DatasetApiService,
+    config: BarChartWidgetConfig | ComboChartWidgetConfig,
+    bindings: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    tooltipColumns: ChartTooltipColumn[],
+  ): Observable<BarChartQueryResult> | null {
+    const needsValue = config.aggregate !== 'count';
+    const parts = bindings
+      .map((binding): Observable<BarChartPart | null> | null => {
+        if (!binding.datasetId || !binding.xColumnId) return null;
+        const valueColumnIds = barValueColumnIds(binding);
+        if (needsValue && valueColumnIds.length === 0) return null;
 
-      return api.queryBoxPlot(primary.datasetId, {
-        filter: bindingFilters?.[primary.id] ?? null,
-        categoryColumnId: primary.xColumnId,
-        valueColumnId: primary.yColumnId,
-        seriesColumnId: primary.seriesColumnId,
-        whisker: config.whisker,
-        whiskerFactor: config.whiskerFactor,
-        sort: config.sort,
-        includePoints: config.showPoints,
-        toleranceBands: config.toleranceBands,
-        categoryGrouping: config.categoryGrouping ?? null,
-        tooltipColumns,
-      });
-    }
-
-    if (config.type === 'xbarRChart') {
-      const primary = bindings[0];
-      if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
-
-      return api.queryXBarRChart(primary.datasetId, {
-        filter: bindingFilters?.[primary.id] ?? null,
-        categoryColumnId: primary.xColumnId,
-        valueColumnId: primary.yColumnId,
-        sort: config.sort,
-        toleranceBands: config.toleranceBands,
-        categoryGrouping: config.categoryGrouping ?? null,
-        mode: config.mode ?? 'xBarR',
-        baselineSubgroups: config.baselineSubgroups ?? null,
-        runRules: config.runRules ?? false,
-      });
-    }
-
-    if (config.type === 'histogram') {
-      // Each bound binding overlays its own distribution — its own dataset and column, reading
-      // xColumnId as the value being binned. A single binding queries exactly as before; several
-      // are bound onto one shared set of bin edges (below) so their bars line up on one axis.
-      const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
-      if (bound.length === 0) return null;
-
-      const request = (
-        b: ChartSeriesBinding,
-        overrides?: Partial<HistogramQueryRequest>,
-      ): HistogramQueryRequest => ({
-        filter: bindingFilters?.[b.id] ?? null,
-        valueColumnIds: histogramValueColumnIds(b),
-        seriesColumnId: b.seriesColumnId,
-        binMode: config.binMode,
-        binCount: config.binCount,
-        binWidth: config.binWidth,
-        rangeMin: config.rangeMin,
-        rangeMax: config.rangeMax,
-        normalize: config.normalize,
-        cumulative: config.cumulative,
-        toleranceBands: config.toleranceBands,
-        tooltipColumns,
-        ...overrides,
-      });
-
-      const queryAll = (
-        overridesFor: (b: ChartSeriesBinding) => Partial<HistogramQueryRequest>,
-      ): Observable<(HistogramPart | null)[]> =>
-        forkJoin(
-          bound.map((b) =>
-            api.queryHistogram(b.datasetId!, request(b, overridesFor(b))).pipe(
-              map((result): HistogramPart => ({ binding: b, result })),
-              // Isolate one binding's failure so a bad dataset drops out instead of blanking the chart.
-              catchError(() => of(null)),
-            ),
-          ),
-        );
-
-      const toResult = (results: (HistogramPart | null)[]): HistogramQueryResult => {
-        const ok = results.filter((r): r is HistogramPart => r !== null);
-        if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-        return { ...ChartQuery.mergeHistogram(ok), failedBindingCount: results.length - ok.length };
-      };
-
-      // A lone binding needs no shared range or bin count to agree with — query it exactly as
-      // before. Several only need the extra probe-and-align round trip when something about the
-      // bins would otherwise be decided independently per dataset: an auto-fit range, or Auto mode's
-      // data-driven bin count.
-      const needsSharedEdges =
-        bound.length > 1 &&
-        (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
-
-      if (!needsSharedEdges) {
-        return queryAll(() => ({})).pipe(map(toResult));
-      }
-
-      // Probe pass: each binding's own natural bins, to learn the overall data range (for an
-      // auto-fit bound) and the finest Auto bin count among them. The final pass pins every
-      // binding to that shared range — and, for Auto mode, to that shared count via an explicit
-      // Count override — so every series' edges come out identical.
-      return queryAll(() => ({})).pipe(
-        switchMap((probe) => {
-          const ok = probe.filter(
-            (r): r is HistogramPart => r !== null && r.result.bins.length > 0,
+        return api
+          .queryBarChart(binding.datasetId, {
+            filter: bindingFilters?.[binding.id] ?? null,
+            categoryColumnId: binding.xColumnId,
+            valueColumnIds: needsValue ? valueColumnIds : [],
+            aggregate: config.aggregate,
+            seriesColumnId: binding.seriesColumnId,
+            toleranceBands: config.toleranceBands,
+            sort: config.sort,
+            categoryGrouping: config.categoryGrouping ?? null,
+            tooltipColumns,
+          })
+          .pipe(
+            map((result): BarChartPart => ({ binding, result })),
+            // A failed binding drops out instead of blanking the chart; the merge counts drop-outs.
+            catchError(() => of(null)),
           );
-          if (ok.length === 0) return of(toResult(probe));
+      })
+      .filter((part): part is Observable<BarChartPart | null> => part !== null);
 
-          const rangeMin = config.rangeMin ?? Math.min(...ok.map((r) => r.result.bins[0].lower));
-          const rangeMax =
-            config.rangeMax ??
-            Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
-          const sharedCount = Math.max(...ok.map((r) => r.result.bins.length));
+    if (parts.length === 0) return null;
 
-          const finalOverrides =
-            config.binMode === 'auto'
-              ? { rangeMin, rangeMax, binMode: 'count' as const, binCount: sharedCount }
-              : { rangeMin, rangeMax };
+    return forkJoin(parts).pipe(
+      map((results) => {
+        const ok = results.filter((r): r is BarChartPart => r !== null);
+        if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+        return {
+          ...ChartQuery.mergeBar(ok, config.sort),
+          failedBindingCount: results.length - ok.length,
+        };
+      }),
+    );
+  }
 
-          return queryAll(() => finalOverrides).pipe(map(toResult));
-        }),
-      );
+  private static boxPlotQuery(
+    api: DatasetApiService,
+    config: BoxPlotWidgetConfig,
+    bindings: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    tooltipColumns: ChartTooltipColumn[],
+  ): Observable<BoxPlotQueryResult> | null {
+    const primary = bindings[0];
+    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+
+    return api.queryBoxPlot(primary.datasetId, {
+      filter: bindingFilters?.[primary.id] ?? null,
+      categoryColumnId: primary.xColumnId,
+      valueColumnId: primary.yColumnId,
+      seriesColumnId: primary.seriesColumnId,
+      whisker: config.whisker,
+      whiskerFactor: config.whiskerFactor,
+      sort: config.sort,
+      includePoints: config.showPoints,
+      toleranceBands: config.toleranceBands,
+      categoryGrouping: config.categoryGrouping ?? null,
+      tooltipColumns,
+    });
+  }
+
+  private static xBarRQuery(
+    api: DatasetApiService,
+    config: XBarRChartWidgetConfig,
+    bindings: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+  ): Observable<XBarRChartQueryResult> | null {
+    const primary = bindings[0];
+    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+
+    return api.queryXBarRChart(primary.datasetId, {
+      filter: bindingFilters?.[primary.id] ?? null,
+      categoryColumnId: primary.xColumnId,
+      valueColumnId: primary.yColumnId,
+      sort: config.sort,
+      toleranceBands: config.toleranceBands,
+      categoryGrouping: config.categoryGrouping ?? null,
+      mode: config.mode ?? 'xBarR',
+      baselineSubgroups: config.baselineSubgroups ?? null,
+      runRules: config.runRules ?? false,
+    });
+  }
+
+  /**
+   * Each bound binding overlays its own distribution, reading xColumnId as the value being binned.
+   * Several bindings are bound onto one shared set of bin edges so their bars line up.
+   */
+  private static histogramQuery(
+    api: DatasetApiService,
+    config: HistogramWidgetConfig,
+    bindings: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    tooltipColumns: ChartTooltipColumn[],
+  ): Observable<HistogramQueryResult> | null {
+    const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
+    if (bound.length === 0) return null;
+
+    // Only an auto-fit range or Auto mode's data-driven bin count would let several datasets pick
+    // different bins; otherwise each binding is queried exactly as configured.
+    const needsSharedEdges =
+      bound.length > 1 &&
+      (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
+
+    if (!needsSharedEdges) {
+      return ChartQuery.queryHistograms(
+        api,
+        config,
+        bound,
+        bindingFilters,
+        tooltipColumns,
+        {},
+      ).pipe(map((results) => ChartQuery.histogramResult(results)));
     }
 
+    // Probe each binding's natural bins for the overall range and the finest Auto bin count, then
+    // pin every binding to that shared range (and count, in Auto mode) so their edges match.
+    return ChartQuery.queryHistograms(api, config, bound, bindingFilters, tooltipColumns, {}).pipe(
+      switchMap((probe) => {
+        const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
+        if (ok.length === 0) return of(ChartQuery.histogramResult(probe));
+
+        const rangeMin = config.rangeMin ?? Math.min(...ok.map((r) => r.result.bins[0].lower));
+        const rangeMax =
+          config.rangeMax ??
+          Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
+        const sharedCount = Math.max(...ok.map((r) => r.result.bins.length));
+
+        const finalOverrides =
+          config.binMode === 'auto'
+            ? { rangeMin, rangeMax, binMode: 'count' as const, binCount: sharedCount }
+            : { rangeMin, rangeMax };
+
+        return ChartQuery.queryHistograms(
+          api,
+          config,
+          bound,
+          bindingFilters,
+          tooltipColumns,
+          finalOverrides,
+        ).pipe(map((results) => ChartQuery.histogramResult(results)));
+      }),
+    );
+  }
+
+  /** One histogram query per binding; a failed binding becomes null instead of failing the rest. */
+  private static queryHistograms(
+    api: DatasetApiService,
+    config: HistogramWidgetConfig,
+    bound: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    tooltipColumns: ChartTooltipColumn[],
+    overrides: Partial<HistogramQueryRequest>,
+  ): Observable<(HistogramPart | null)[]> {
+    return forkJoin(
+      bound.map((b) =>
+        api
+          .queryHistogram(b.datasetId!, {
+            filter: bindingFilters?.[b.id] ?? null,
+            valueColumnIds: histogramValueColumnIds(b),
+            seriesColumnId: b.seriesColumnId,
+            binMode: config.binMode,
+            binCount: config.binCount,
+            binWidth: config.binWidth,
+            rangeMin: config.rangeMin,
+            rangeMax: config.rangeMax,
+            normalize: config.normalize,
+            cumulative: config.cumulative,
+            toleranceBands: config.toleranceBands,
+            tooltipColumns,
+            ...overrides,
+          })
+          .pipe(
+            map((result): HistogramPart => ({ binding: b, result })),
+            catchError(() => of(null)),
+          ),
+      ),
+    );
+  }
+
+  private static histogramResult(results: (HistogramPart | null)[]): HistogramQueryResult {
+    const ok = results.filter((r): r is HistogramPart => r !== null);
+    if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+    return { ...ChartQuery.mergeHistogram(ok), failedBindingCount: results.length - ok.length };
+  }
+
+  /**
+   * Point charts fan out one query per bound binding and merge the series client-side. Each
+   * response is cached by its full request, and the cache is pruned to the current bindings.
+   */
+  private static pointQuery(
+    api: DatasetApiService,
+    config: ScatterChartWidgetConfig | LineChartWidgetConfig,
+    bindings: ChartSeriesBinding[],
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    tooltipColumns: ChartTooltipColumn[],
+    cache: Map<string, ChartQueryResult> | undefined,
+  ): Observable<ChartQueryResult> | null {
     // A line chart can reduce every row sharing an X value to one point.
     const aggregate = config.type === 'lineChart' ? (config.aggregate ?? null) : null;
-    const xGrouping = aggregate
-      ? config.type === 'lineChart'
-        ? (config.xGrouping ?? null)
-        : null
-      : null;
+    const xGrouping = aggregate && config.type === 'lineChart' ? (config.xGrouping ?? null) : null;
 
     const wanted = new Set<string>();
     const parts = bindings
@@ -269,8 +333,6 @@ export class ChartQuery {
 
         return source.pipe(
           map((result): ChartQueryPart => ({ binding, result })),
-          // Isolate one binding's failure: a bad dataset drops out (null, filtered in the merge)
-          // instead of blanking the whole overlay.
           catchError(() => of(null)),
         );
       })
@@ -278,7 +340,6 @@ export class ChartQuery {
 
     if (parts.length === 0) return null;
 
-    // Drop cache entries for bindings no longer in play, so the map stays bounded.
     if (cache) for (const key of [...cache.keys()]) if (!wanted.has(key)) cache.delete(key);
 
     return forkJoin(parts).pipe(
@@ -369,12 +430,10 @@ export class ChartQuery {
   ): number[] {
     const indices = categories.map((_, i) => i);
     if (sort?.by === 'column') return indices;
-    const rank = (d: ChartCategoryDetail | undefined): number =>
-      d?.isOther ? 2 : d?.isBlank ? 1 : 0;
     const sorted = [...indices].sort((a, b) => {
       const da = details[a];
       const db = details[b];
-      const byRank = rank(da) - rank(db);
+      const byRank = ChartQuery.categoryRank(da) - ChartQuery.categoryRank(db);
       if (byRank !== 0) return byRank;
       if (da?.sortNumber != null && db?.sortNumber != null) return da.sortNumber - db.sortNumber;
       const ta = da?.sortText ?? categories[a];
@@ -383,8 +442,26 @@ export class ChartQuery {
     });
     if (!sort?.descending) return sorted;
     // Descending reverses the real categories but keeps blank and "Other" at the end.
-    const real = sorted.filter((i) => rank(details[i]) === 0).reverse();
-    return [...real, ...sorted.filter((i) => rank(details[i]) !== 0)];
+    const real = sorted.filter((i) => ChartQuery.categoryRank(details[i]) === 0).reverse();
+    return [...real, ...sorted.filter((i) => ChartQuery.categoryRank(details[i]) !== 0)];
+  }
+
+  /** Re-indexes one binding's per-category values onto the merged axis, filling `missing` for categories it lacks. */
+  private static reindex<T>(
+    categories: readonly string[],
+    localIndex: ReadonlyMap<string, number>,
+    values: readonly T[] | undefined,
+    missing: T,
+  ): T[] {
+    return categories.map((category) => {
+      const i = localIndex.get(category);
+      return i === undefined ? missing : (values?.[i] ?? missing);
+    });
+  }
+
+  /** Real categories sort first, then blank, then "Other". */
+  private static categoryRank(detail: ChartCategoryDetail | undefined): number {
+    return detail?.isOther ? 2 : detail?.isBlank ? 1 : 0;
   }
 
   /**
@@ -437,21 +514,18 @@ export class ChartQuery {
         const label =
           labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
-        const reindex = <T>(values: readonly T[] | undefined, missing: T): T[] =>
-          categories.map((category) => {
-            const i = localIndex.get(category);
-            return i === undefined ? missing : (values?.[i] ?? missing);
-          });
         return {
           label,
           bindingId: binding.id,
           valueColumnId: s.valueColumnId,
           drill: s.drill ?? null,
-          values: reindex(s.values, null),
-          rowCounts: reindex(s.rowCounts, null),
-          tooltipLines: reindex(s.tooltipLines, [] as string[]),
+          values: ChartQuery.reindex(categories, localIndex, s.values, null),
+          rowCounts: ChartQuery.reindex(categories, localIndex, s.rowCounts, null),
+          tooltipLines: ChartQuery.reindex(categories, localIndex, s.tooltipLines, [] as string[]),
           // Drill conditions name this binding's own dataset's columns, so each series keeps its own.
-          categoryDrills: reindex(
+          categoryDrills: ChartQuery.reindex(
+            categories,
+            localIndex,
             result.categoryDetails?.map((d) => d.drill ?? null),
             null as FilterGroup | null,
           ),

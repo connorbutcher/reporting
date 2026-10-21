@@ -5,6 +5,7 @@ import {
   DataTableWidgetModel,
   KpiWidgetModel,
   PivotTableWidgetModel,
+  WidgetModel,
 } from './widget.model';
 import { ReusableFilter } from './reusable-filter';
 
@@ -19,33 +20,41 @@ export class ReusableFilters {
     datasetId: number,
     target: FilterGroupModel,
   ): ReusableFilter[] {
-    const sources: ReusableFilter[] = [];
-    const add = (label: string, group: FilterGroupModel | null | undefined): void => {
-      if (group && group !== target && group.count() > 0) sources.push({ label, group });
-    };
+    const candidates: { label: string; group: FilterGroupModel | undefined }[] = [
+      { label: 'Report filter', group: model.reportFilter(datasetId)?.group },
+      ...model
+        .tabs()
+        .flatMap((tab) => tab.widgets())
+        .flatMap((widget) => ReusableFilters.widgetFilters(widget, datasetId)),
+    ];
+    return candidates.filter(
+      (c): c is ReusableFilter => !!c.group && c.group !== target && c.group.count() > 0,
+    );
+  }
 
-    add('Report filter', model.reportFilter(datasetId)?.group);
-
-    for (const tab of model.tabs()) {
-      for (const widget of tab.widgets()) {
-        if (
-          widget instanceof DataTableWidgetModel ||
-          widget instanceof PivotTableWidgetModel ||
-          widget instanceof KpiWidgetModel
-        ) {
-          if (widget.datasetId() === datasetId) add(widget.label(), widget.filter);
-        } else if (widget instanceof ChartWidgetModel) {
-          // A chart overlays a dataset per binding, so name the series when there's more than one.
-          const many = widget.bindings().length > 1;
-          for (const binding of widget.bindings()) {
-            if (binding.datasetId() !== datasetId) continue;
-            const series = binding.label().trim() || binding.schema()?.name || 'series';
-            add(many ? `${widget.label()} · ${series}` : widget.label(), binding.filter);
-          }
-        }
-      }
+  /** A widget's own filters on the dataset; a chart overlays one per binding, so names the series when there are several. */
+  private static widgetFilters(widget: WidgetModel, datasetId: number): ReusableFilter[] {
+    if (
+      widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel
+    ) {
+      return widget.datasetId() === datasetId
+        ? [{ label: widget.label(), group: widget.filter }]
+        : [];
     }
+    if (!(widget instanceof ChartWidgetModel)) return [];
 
-    return sources;
+    const many = widget.bindings().length > 1;
+    return widget
+      .bindings()
+      .filter((binding) => binding.datasetId() === datasetId)
+      .map((binding) => {
+        const series = binding.label().trim() || binding.schema()?.name || 'series';
+        return {
+          label: many ? `${widget.label()} · ${series}` : widget.label(),
+          group: binding.filter,
+        };
+      });
   }
 }

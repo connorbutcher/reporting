@@ -46,9 +46,10 @@ export class PanelChartSeriesListComponent {
   /** A one-line summary of the series' axes, or what's left to set up. */
   public seriesHint(binding: ChartBindingModel): string {
     if (!binding.datasetId()) return 'Pick a dataset';
-    const columns = binding.schema()?.columns ?? [];
-    const nameOf = (id: string | null) => columns.find((c) => c.id === id)?.name;
-    const x = nameOf(binding.xColumnId());
+    const columnNames = new Map<string | null, string>(
+      (binding.schema()?.columns ?? []).map((c) => [c.id, c.name]),
+    );
+    const x = columnNames.get(binding.xColumnId());
 
     // A bar or combo series groups by a category and can reduce several measures; a point series plots X→Y.
     if (
@@ -58,7 +59,7 @@ export class PanelChartSeriesListComponent {
       if (!x) return 'Choose a category';
       const values = binding
         .barValueColumnIds()
-        .map((id) => nameOf(id))
+        .map((id) => columnNames.get(id))
         .filter((name): name is string => !!name);
       return values.length > 0 ? `${x} → ${values.join(', ')}` : x;
     }
@@ -66,11 +67,11 @@ export class PanelChartSeriesListComponent {
     // A histogram series bins a single column; an optional split-by overlays several within it.
     if (this.chart() instanceof HistogramWidgetModel) {
       if (!x) return 'Choose a column';
-      const splitBy = nameOf(binding.seriesColumnId());
+      const splitBy = columnNames.get(binding.seriesColumnId());
       return splitBy ? `${x} · split by ${splitBy}` : x;
     }
 
-    const y = nameOf(binding.yColumnId());
+    const y = columnNames.get(binding.yColumnId());
     if (!x || !y) return 'Choose X and Y columns';
     return `${x} → ${y}`;
   }

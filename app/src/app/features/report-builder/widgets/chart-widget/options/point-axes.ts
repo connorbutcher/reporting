@@ -17,7 +17,6 @@ export class PointAxes {
   public static buildY(input: YAxesInput): YAXisComponentOption[] {
     const { axes, series, indicesByAxis, seriesColors, yLabel, yConfig, yDateCfg } = input;
     const multiAxis = axes.length > 1;
-    const seriesOnAxis = (k: number) => (indicesByAxis.get(k) ?? []).map((i) => series[i]);
     const sideOrder: Record<'left' | 'right', number> = { left: 0, right: 0 };
 
     return axes.map((axis, k): YAXisComponentOption => {
@@ -25,7 +24,7 @@ export class PointAxes {
       const orderOnSide = sideOrder[axis.side]++;
       const onAxis = indicesByAxis.get(k) ?? [];
       const isDate = isPrimary && input.yPrimaryIsDate;
-      const axisSeries = seriesOnAxis(k);
+      const axisSeries = onAxis.map((i) => series[i]);
       const isText = isPrimary ? input.yPrimaryIsText : PointAxes.firstPointIsText(axisSeries);
       const cats = isText ? PointAxes.categories(axisSeries, 'y') : null;
       const axisColor = multiAxis && onAxis.length === 1 ? seriesColors[onAxis[0]] : null;

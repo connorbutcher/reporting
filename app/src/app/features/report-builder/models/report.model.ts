@@ -85,6 +85,19 @@ export class ReportModel extends EditorNode {
     return model;
   }
 
+  /** The datasets a widget filters: every binding for a chart, the one dataset for a table, pivot or KPI. */
+  private static datasetIdsOf(widget: WidgetModel): (number | null)[] {
+    if (widget instanceof ChartWidgetModel) return widget.bindings().map((b) => b.datasetId());
+    if (
+      widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel
+    ) {
+      return [widget.datasetId()];
+    }
+    return [];
+  }
+
   // --- cross-tab widget lookup & mutation ------------------------------------
   // Per-tab reads (widgets, grid) and adding a widget target the *active* tab, so
   // they live on ReportSession, which owns the active tab. What stays here spans
@@ -194,24 +207,11 @@ export class ReportModel extends EditorNode {
    * own, so an overlaid dataset can be filtered report-wide too.
    */
   readonly usedDatasetIds = computed(() => {
-    const ids: number[] = [];
-    const add = (id: number | null) => {
-      if (id && !ids.includes(id)) ids.push(id);
-    };
-    for (const tab of this.tabs()) {
-      for (const widget of tab.widgets()) {
-        if (widget instanceof ChartWidgetModel) {
-          for (const binding of widget.bindings()) add(binding.datasetId());
-        } else if (
-          widget instanceof DataTableWidgetModel ||
-          widget instanceof PivotTableWidgetModel ||
-          widget instanceof KpiWidgetModel
-        ) {
-          add(widget.datasetId());
-        }
-      }
-    }
-    return ids;
+    const ids = this.tabs()
+      .flatMap((tab) => tab.widgets())
+      .flatMap((widget) => ReportModel.datasetIdsOf(widget))
+      .filter((id): id is number => !!id);
+    return [...new Set(ids)];
   });
 
   reportFilter(datasetId: number): ReportFilterModel | null {

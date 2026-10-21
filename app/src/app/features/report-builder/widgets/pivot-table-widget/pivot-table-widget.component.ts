@@ -419,23 +419,13 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     if (!data) return null;
 
     const columns = this.valueColumns();
-    const blocks = data.columnKeys ?? [];
-    const valueHeader = (c: PivotValueColumn): string => {
-      const label =
-        data.measures.find((m) => Number(m.key.slice(1)) === c.measureIndex)?.label ?? '';
-      if (!this.crossTab()) return label;
-      const block =
-        c.columnKeyIndex === null ? 'Total' : blocks[c.columnKeyIndex].labels.join(' · ');
-      return `${block} – ${label}`;
-    };
-    const header = [...data.rowFields.map((f) => f.label), ...columns.map(valueHeader)];
-    // Raw numeric measure values (not the £/% display) so the CSV drops straight into a spreadsheet.
-    const rowCells = (r: PivotRow): unknown[] => [
-      ...r.dimensions,
-      ...columns.map((c) => r.values[c.valueIndex]?.value ?? ''),
+    const header = [
+      ...data.rowFields.map((f) => f.label),
+      ...columns.map((c) => this.csvValueHeader(data, c)),
     ];
-    const rows = data.rows.map(rowCells);
-    if (data.grandTotal) rows.push(rowCells(data.grandTotal));
+    const rows = [...data.rows, ...(data.grandTotal ? [data.grandTotal] : [])].map((r) =>
+      PivotTableWidgetComponent.csvRow(r, columns),
+    );
     return Csv.fromRows([header, ...rows]);
   }
 
@@ -449,6 +439,23 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   }
   public get error(): Signal<boolean> {
     return this.source.error;
+  }
+
+  /** Raw numeric measure values (not the £/% display), so the CSV drops straight into a spreadsheet. */
+  private static csvRow(row: PivotRow, columns: readonly PivotValueColumn[]): unknown[] {
+    return [...row.dimensions, ...columns.map((c) => row.values[c.valueIndex]?.value ?? '')];
+  }
+
+  /** A value column's CSV heading: its measure, prefixed by its column block in a cross-tab. */
+  private csvValueHeader(data: PivotQueryResult, column: PivotValueColumn): string {
+    const label =
+      data.measures.find((m) => Number(m.key.slice(1)) === column.measureIndex)?.label ?? '';
+    if (!this.crossTab()) return label;
+    const block =
+      column.columnKeyIndex === null
+        ? 'Total'
+        : (data.columnKeys ?? [])[column.columnKeyIndex].labels.join(' · ');
+    return `${block} – ${label}`;
   }
 
   private measureConfig(

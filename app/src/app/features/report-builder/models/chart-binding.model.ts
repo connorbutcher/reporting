@@ -212,16 +212,18 @@ export class ChartBindingModel extends EditorNode {
     if (!schema) return [];
 
     const columnIds = new Set(schema.columns.map((c) => c.id));
-    const missing = (columnId: string | null) => !!columnId && !columnIds.has(columnId);
-
-    const brokenFields: string[] = [];
-    if (missing(this.xColumnId())) brokenFields.push('X axis');
-    if (missing(this.yColumnId())) brokenFields.push('Y axis');
-    if (missing(this.sizeColumnId())) brokenFields.push('size');
-    if (missing(this.seriesColumnId())) brokenFields.push('split-by');
-    if (this.valueColumnIds().some((id) => missing(id))) brokenFields.push('value');
     const sort = this.sort();
-    if (sort?.by === 'column' && missing(sort.columnId)) brokenFields.push('sort');
+    const fields: [label: string, columnIds: readonly (string | null)[]][] = [
+      ['X axis', [this.xColumnId()]],
+      ['Y axis', [this.yColumnId()]],
+      ['size', [this.sizeColumnId()]],
+      ['split-by', [this.seriesColumnId()]],
+      ['value', this.valueColumnIds()],
+      ['sort', sort?.by === 'column' ? [sort.columnId] : []],
+    ];
+    const brokenFields = fields
+      .filter(([, ids]) => ids.some((id) => !!id && !columnIds.has(id)))
+      .map(([label]) => label);
 
     if (brokenFields.length === 0) return [];
 

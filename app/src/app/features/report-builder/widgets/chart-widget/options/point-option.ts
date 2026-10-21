@@ -1,16 +1,11 @@
 import { ChartZoomMemory } from '../chart-zoom';
 import { DatasetColumn } from '../../../../../core/models/dataset';
 import {
-  ChartGuideLine,
   chartAxisIndex,
   readChartAxes,
   readChartBindings,
 } from '../../../../../core/models/report';
-import {
-  ChartQueryResult,
-  ChartSeriesResult,
-  ResolvedToleranceBand,
-} from '../../../../../core/models/widget-query';
+import { ChartQueryResult, ChartSeriesResult } from '../../../../../core/models/widget-query';
 import { ECOption } from './types/ec-option';
 import { LabelCallbackParams } from './types/label-callback-params';
 import { TooltipCallbackParams } from './types/tooltip-callback-params';
@@ -34,6 +29,7 @@ import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
+import { AxisKey } from './types/axis-key';
 
 /** Builds the scatter/line echarts option: value axes with one mark per row, grouped into series. */
 export class PointOption {
@@ -125,13 +121,15 @@ export class PointOption {
     const showSeries = series.length > 1;
 
     const bands = data?.toleranceBands ?? [];
-    const axisKeyFor = (band: { axis: 'x' | 'y' }): 'xAxis' | 'yAxis' =>
-      band.axis === 'x' ? 'xAxis' : 'yAxis';
     // Resolved bands don't carry their target axis, so read it from the config bands they came
     // from; an x-band sits on the shared X axis and is grouped with the primary (index 0).
     const bandYAxisId = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
-    const bandAxisIndex = (band: ResolvedToleranceBand): number =>
-      band.axis === 'x' ? 0 : chartAxisIndex(axes, bandYAxisId.get(band.id) ?? null);
+    const bandAxis = new Map(
+      bands.map((b) => [
+        b,
+        b.axis === 'x' ? 0 : chartAxisIndex(axes, bandYAxisId.get(b.id) ?? null),
+      ]),
+    );
 
     // Each series' presentation comes from its binding's *current* config, so editing it
     // re-renders without a refetch. A colour-by split drops the colour override to keep the
@@ -189,45 +187,41 @@ export class PointOption {
     // Reference lines and zones ride one carrier series per Y axis (X marks with the primary), so
     // their coordinates read against the right scale and hiding a data series never hides them.
     const guideLines = config.guideLines ?? [];
-    const guideLineYAxisId = new Map(guideLines.map((l) => [l.id, l.yAxisId ?? null]));
-    const guideLineAxisIndex = (line: ChartGuideLine): number =>
-      line.axis === 'x' ? 0 : chartAxisIndex(axes, guideLineYAxisId.get(line.id) ?? null);
+    const guideLineAxis = new Map(
+      guideLines.map((l) => [l, l.axis === 'x' ? 0 : chartAxisIndex(axes, l.yAxisId ?? null)]),
+    );
     const referenceSeries = axes.flatMap((_, k) => {
-      const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
-      const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
+      const axisBands = bands.filter((b) => bandAxis.get(b) === k);
+      const axisLines = guideLines.filter((l) => guideLineAxis.get(l) === k);
       const reference = ReferenceSeries.build(
         [
-          ...ToleranceMarks.lines(axisBands, axisKeyFor),
-          ...GuideLineMarks.lines(axisLines, axisKeyFor),
+          ...ToleranceMarks.lines(axisBands, PointOption.axisKeyOf),
+          ...GuideLineMarks.lines(axisLines, PointOption.axisKeyOf),
         ],
         [
-          ...ToleranceMarks.areas(axisBands, axisKeyFor),
-          ...GuideLineMarks.areas(axisLines, axisKeyFor),
+          ...ToleranceMarks.areas(axisBands, PointOption.axisKeyOf),
+          ...GuideLineMarks.areas(axisLines, PointOption.axisKeyOf),
         ],
         multiAxis ? { yAxisIndex: k } : {},
       );
       return reference ? [reference] : [];
     });
 
-    // One out-of-tolerance test per Y axis, memoised and shared by every series on that axis —
+    // One out-of-tolerance test per Y axis in use, shared by every series on that axis —
     // tolerance bands and outlined guide lines both contribute zones, worst-wins.
-    const outlineByAxis = new Map<number, (x: Coord, y: Coord) => string | null>();
-    const outlineFor = (axisK: number): ((x: Coord, y: Coord) => string | null) => {
-      let outline = outlineByAxis.get(axisK);
-      if (!outline) {
-        const zones = [
+    const outlineByAxis = new Map(
+      [...new Set(seriesAxisIndex)].map((k) => [
+        k,
+        OutlineSeverity.forPoints([
           ...ToleranceOutline.zonesFor(
-            bands.filter((b) => b.axis === 'x' || bandAxisIndex(b) === axisK),
+            bands.filter((b) => b.axis === 'x' || bandAxis.get(b) === k),
           ),
           ...GuideLineOutline.zonesFor(
-            guideLines.filter((l) => l.axis === 'x' || guideLineAxisIndex(l) === axisK),
+            guideLines.filter((l) => l.axis === 'x' || guideLineAxis.get(l) === k),
           ),
-        ];
-        outline = OutlineSeverity.forPoints(zones);
-        outlineByAxis.set(axisK, outline);
-      }
-      return outline;
-    };
+        ]),
+      ]),
+    );
 
     // A zoom slider needs room below the axis; leave the tighter margin when off.
     const zoom = config.zoom ?? true;
@@ -332,7 +326,9 @@ export class PointOption {
           const onPrimary = axisK === 0;
           // Colour-by-value drives the fill from the visualMap, so drop the per-series colour and the
           // per-point outline (the value colour already conveys where a mark sits).
-          const outlineColor = colorByValue ? () => null : outlineFor(axisK);
+          const outlineColor = colorByValue
+            ? () => null
+            : (outlineByAxis.get(axisK) ?? (() => null));
           const formatY = onPrimary ? formatYPrimary : formatYOther;
           const yAxisIndex = multiAxis ? Math.min(axisK, axes.length - 1) : null;
           const mainName = s.label || config.title || 'Series';
@@ -364,6 +360,11 @@ export class PointOption {
         ...PointSeries.highlightMarker(highlightedAnchor, multiAxis, axes.length),
       ],
     };
+  }
+
+  /** X-axis marks bind to the X axis, everything else to the Y axis. */
+  private static axisKeyOf(item: { axis: 'x' | 'y' }): AxisKey {
+    return item.axis === 'x' ? 'xAxis' : 'yAxis';
   }
 
   /**

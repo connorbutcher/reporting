@@ -24,17 +24,18 @@ export class ToleranceMarks {
       const hasConcession = band.concessionLower !== null || band.concessionUpper !== null;
       const minMaxColor = hasConcession ? '#d97706' : '#dc2626';
 
-      const line = (value: number, label: string, color: string): MarkLineData[number] => ({
-        ...ToleranceMarks.onAxis(axisKey, value),
-        label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
-        lineStyle: { color, type: 'dashed', width: 1.5 },
-      });
-
-      entries.push(line(band.min, 'Min', minMaxColor), line(band.max, 'Max', minMaxColor));
+      entries.push(
+        ToleranceMarks.line(axisKey, band.min, 'Min', minMaxColor),
+        ToleranceMarks.line(axisKey, band.max, 'Max', minMaxColor),
+      );
       if (band.concessionLower !== null)
-        entries.push(line(band.concessionLower, 'Concession lower', '#dc2626'));
+        entries.push(
+          ToleranceMarks.line(axisKey, band.concessionLower, 'Concession lower', '#dc2626'),
+        );
       if (band.concessionUpper !== null)
-        entries.push(line(band.concessionUpper, 'Concession upper', '#dc2626'));
+        entries.push(
+          ToleranceMarks.line(axisKey, band.concessionUpper, 'Concession upper', '#dc2626'),
+        );
     }
 
     return entries;
@@ -51,20 +52,54 @@ export class ToleranceMarks {
       if (!band.fill || band.min === null || band.max === null) continue;
 
       const axisKey = axisKeyFor(band);
-      // A region is a [from, to] pair; the fill colour rides on the first edge.
-      const region = (from: number, to: number, color: string): MarkAreaData[number] => [
-        { ...ToleranceMarks.onAxis(axisKey, from), itemStyle: { color } },
-        ToleranceMarks.onAxis(axisKey, to),
-      ];
-
-      areas.push(region(band.min, band.max, ToleranceMarks.IN_SPEC_FILL));
+      areas.push(ToleranceMarks.region(axisKey, band.min, band.max, ToleranceMarks.IN_SPEC_FILL));
       if (band.concessionLower !== null)
-        areas.push(region(band.concessionLower, band.min, ToleranceMarks.CONCESSION_FILL));
+        areas.push(
+          ToleranceMarks.region(
+            axisKey,
+            band.concessionLower,
+            band.min,
+            ToleranceMarks.CONCESSION_FILL,
+          ),
+        );
       if (band.concessionUpper !== null)
-        areas.push(region(band.max, band.concessionUpper, ToleranceMarks.CONCESSION_FILL));
+        areas.push(
+          ToleranceMarks.region(
+            axisKey,
+            band.max,
+            band.concessionUpper,
+            ToleranceMarks.CONCESSION_FILL,
+          ),
+        );
     }
 
     return areas;
+  }
+
+  private static line(
+    axisKey: AxisKey,
+    value: number,
+    label: string,
+    color: string,
+  ): MarkLineData[number] {
+    return {
+      ...ToleranceMarks.onAxis(axisKey, value),
+      label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
+      lineStyle: { color, type: 'dashed', width: 1.5 },
+    };
+  }
+
+  /** A shaded [from, to] region; the fill colour rides on the first edge. */
+  private static region(
+    axisKey: AxisKey,
+    from: number,
+    to: number,
+    color: string,
+  ): MarkAreaData[number] {
+    return [
+      { ...ToleranceMarks.onAxis(axisKey, from), itemStyle: { color } },
+      ToleranceMarks.onAxis(axisKey, to),
+    ];
   }
 
   /** Pins a value to the chosen axis as a typed `{ xAxis }` or `{ yAxis }` fragment. */

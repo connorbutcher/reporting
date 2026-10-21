@@ -116,12 +116,12 @@ export class HistogramOption {
 
     const reference = ReferenceSeries.build(marks, areas);
     const names = series.map((s) => s.label || config.title || 'Series');
-    const colorOf = (label: string, i: number): string => {
-      // A colour override applies only to a single, unsplit distribution; once a series column
-      // splits it, each series keeps its own palette colour.
-      const override = series.length === 1 ? (primary?.color ?? null) : null;
-      return override ?? SeriesColors.forSeries(colors, label, i);
-    };
+    // A colour override applies only to a single, unsplit distribution; once a series column
+    // splits it, each series keeps its own palette colour.
+    const override = series.length === 1 ? (primary?.color ?? null) : null;
+    const seriesColors = series.map(
+      (s, i) => override ?? SeriesColors.forSeries(colors, s.label, i),
+    );
 
     // A fitted normal curve per distribution, on the same scale as its bars: sampled at each bin's
     // centre and smoothed between them. A cumulative chart has no bell to fit.
@@ -139,8 +139,8 @@ export class HistogramOption {
                     symbol: 'none',
                     silent: true,
                     tooltip: { show: false },
-                    lineStyle: { color: colorOf(s.label, i), width: 2, type: 'dashed' as const },
-                    itemStyle: { color: colorOf(s.label, i) },
+                    lineStyle: { color: seriesColors[i], width: 2, type: 'dashed' as const },
+                    itemStyle: { color: seriesColors[i] },
                     z: 3,
                     data: values,
                   },
@@ -194,7 +194,7 @@ export class HistogramOption {
       yAxis: horizontal ? binAxis : countAxis,
       series: [
         ...series.map((s, i): BarSeriesOption | LineSeriesOption => {
-          const color = colorOf(s.label, i);
+          const color = seriesColors[i];
 
           const label = config.showValueLabels
             ? {
@@ -279,17 +279,14 @@ export class HistogramOption {
     const binWidth = bins[0].upper - bins[0].lower;
     if (!(binWidth > 0)) return [];
 
-    const toIndex = (v: number): number => (v - firstLower) / binWidth - 0.5;
-    const at = (v: number | null): number | null => (v === null ? null : toIndex(v));
-
     return bands
       .filter((band) => band.axis === 'x')
       .map((band) => ({
         ...band,
-        min: at(band.min),
-        max: at(band.max),
-        concessionLower: at(band.concessionLower),
-        concessionUpper: at(band.concessionUpper),
+        min: HistogramOption.toBinIndex(band.min, firstLower, binWidth),
+        max: HistogramOption.toBinIndex(band.max, firstLower, binWidth),
+        concessionLower: HistogramOption.toBinIndex(band.concessionLower, firstLower, binWidth),
+        concessionUpper: HistogramOption.toBinIndex(band.concessionUpper, firstLower, binWidth),
       }));
   }
 
@@ -307,18 +304,31 @@ export class HistogramOption {
     const binWidth = bins[0].upper - bins[0].lower;
     if (!(binWidth > 0)) return [];
 
-    const toIndex = (v: number): number => (v - firstLower) / binWidth - 0.5;
-
     return lines
       .filter((line) => line.axis === 'x')
       .map((line) => ({
         ...line,
-        value: toIndex(line.value),
+        value: HistogramOption.toBinIndex(line.value, firstLower, binWidth),
         valueTo:
           line.valueTo === null || line.valueTo === undefined
             ? line.valueTo
-            : toIndex(line.valueTo),
+            : HistogramOption.toBinIndex(line.valueTo, firstLower, binWidth),
       }));
+  }
+
+  /** A value's fractional position on the bin category axis; null stays null. */
+  private static toBinIndex(value: number, firstLower: number, binWidth: number): number;
+  private static toBinIndex(
+    value: number | null,
+    firstLower: number,
+    binWidth: number,
+  ): number | null;
+  private static toBinIndex(
+    value: number | null,
+    firstLower: number,
+    binWidth: number,
+  ): number | null {
+    return value === null ? null : (value - firstLower) / binWidth - 0.5;
   }
 
   /**

@@ -50,18 +50,8 @@ export class CanvasGridComponent {
       const columns = this.session.gridColumns();
       if (!el) return;
 
-      const measure = () => {
-        const width = el.clientWidth;
-        // clientWidth includes the grid's own padding only if box-sizing adds it;
-        // the grid has none, so this is the track area. Subtract the gaps between
-        // columns and divide by the count to get one column's width.
-        const columnWidth =
-          columns > 0 ? (width - (columns - 1) * GridLayout.GRID_GAP) / columns : 0;
-        this.session.columnWidth.set(Math.max(0, columnWidth));
-      };
-
-      measure();
-      const observer = new ResizeObserver(measure);
+      this.measureColumnWidth(el, columns);
+      const observer = new ResizeObserver(() => this.measureColumnWidth(el, columns));
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });
@@ -74,5 +64,12 @@ export class CanvasGridComponent {
   /** Clicking empty canvas drops the selection. */
   protected onCanvasPointerDown(event: PointerEvent): void {
     if (event.target === event.currentTarget) this.selection.clear();
+  }
+
+  /** One column's width: the grid has no padding, so its client width less the gaps is the track area. */
+  private measureColumnWidth(el: HTMLElement, columns: number): void {
+    const columnWidth =
+      columns > 0 ? (el.clientWidth - (columns - 1) * GridLayout.GRID_GAP) / columns : 0;
+    this.session.columnWidth.set(Math.max(0, columnWidth));
   }
 }

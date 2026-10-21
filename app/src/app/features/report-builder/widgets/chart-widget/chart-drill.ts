@@ -26,8 +26,6 @@ export class ChartDrill {
     const index = click.dataIndex;
     if (!data || index == null || index < 0) return null;
     const bindings = readChartBindings(config);
-    const filterFor = (bindingId: string | undefined) =>
-      bindingId ? (bindingFilters?.[bindingId] ?? null) : null;
 
     switch (config.type) {
       case 'barChart':
@@ -44,7 +42,11 @@ export class ChartDrill {
         return {
           datasetId: binding.datasetId,
           path: ChartDrill.path(bar.categories[index], series.label),
-          filter: combineFilters(filterFor(binding.id), category, series.drill ?? null),
+          filter: combineFilters(
+            ChartDrill.bindingFilter(bindingFilters, binding.id),
+            category,
+            series.drill ?? null,
+          ),
         };
       }
       case 'boxPlot': {
@@ -58,7 +60,11 @@ export class ChartDrill {
         return {
           datasetId: primary.datasetId,
           path: ChartDrill.path(box.categories[index], series?.label ?? ''),
-          filter: combineFilters(filterFor(primary.id), category, series?.drill ?? null),
+          filter: combineFilters(
+            ChartDrill.bindingFilter(bindingFilters, primary.id),
+            category,
+            series?.drill ?? null,
+          ),
         };
       }
       case 'histogram': {
@@ -83,7 +89,11 @@ export class ChartDrill {
         return {
           datasetId: binding.datasetId,
           path: ChartDrill.path(bin.label, series.label),
-          filter: combineFilters(filterFor(binding.id), range, series.drill ?? null),
+          filter: combineFilters(
+            ChartDrill.bindingFilter(bindingFilters, binding.id),
+            range,
+            series.drill ?? null,
+          ),
         };
       }
       case 'xbarRChart': {
@@ -94,12 +104,19 @@ export class ChartDrill {
         return {
           datasetId: primary.datasetId,
           path: [control.categories[index]],
-          filter: combineFilters(filterFor(primary.id), category),
+          filter: combineFilters(ChartDrill.bindingFilter(bindingFilters, primary.id), category),
         };
       }
       default:
         return null;
     }
+  }
+
+  private static bindingFilter(
+    bindingFilters: Record<string, FilterGroup | null> | null,
+    bindingId: string | undefined,
+  ): FilterGroup | null {
+    return bindingId ? (bindingFilters?.[bindingId] ?? null) : null;
   }
 
   private static path(category: string, series: string): string[] {
