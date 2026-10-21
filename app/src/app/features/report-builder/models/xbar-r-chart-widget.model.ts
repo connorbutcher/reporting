@@ -64,42 +64,36 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
     if (!this.datasetId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noDataset`,
-          severity: 'warning',
-          title: `${name} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noDataset',
+          'warning',
+          `${name} has no dataset`,
+          'Pick a dataset so the chart has something to plot.',
+        ),
       ];
     }
 
     if (!this.xColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noCategory`,
-          severity: 'warning',
-          title: `${name} has no subgroup`,
-          detail: 'Pick the column that identifies each subgroup/sample.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noCategory',
+          'warning',
+          `${name} has no subgroup`,
+          'Pick the column that identifies each subgroup/sample.',
+        ),
       ];
     }
 
     if (!this.yColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noValue`,
-          severity: 'warning',
-          title: `${name} has no value`,
-          detail: 'Pick the measurement column each subgroup’s mean and range summarise.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noValue',
+          'warning',
+          `${name} has no value`,
+          'Pick the measurement column each subgroup’s mean and range summarise.',
+        ),
       ];
     }
 

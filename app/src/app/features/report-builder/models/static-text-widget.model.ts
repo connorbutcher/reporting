@@ -43,14 +43,12 @@ export class StaticTextWidgetModel extends WidgetModel {
     if (this.content().trim().length > 0) return [];
 
     return [
-      {
-        id: `${this.id}:noContent`,
-        severity: 'warning',
-        title: `${this.label()} has no text`,
-        detail: 'Add the text this widget should show.',
-        widgetId: this.id,
-        view: { kind: 'widget', widgetId: this.id },
-      },
+      this.issue(
+        'noContent',
+        'warning',
+        `${this.label()} has no text`,
+        'Add the text this widget should show.',
+      ),
     ];
   }
 }

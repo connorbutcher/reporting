@@ -14,6 +14,7 @@ import { ModelSources } from './sources/model-sources';
 import { SchemaSource } from './sources/schema-source';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';
+import { PanelView } from '../side-panel/panel-view';
 import { ValidationIssue } from './validation-issue';
 
 export class DataTableWidgetModel extends WidgetModel {
@@ -166,69 +167,69 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const name = this.label();
-
-    const seen = new Set<string>();
-    if (this.columns().some((c) => !seen.add(c.columnId))) {
-      issues.push({
-        id: `${this.id}:duplicateColumn`,
-        severity: 'error',
-        title: `${name} has a duplicated column`,
-        detail: 'The same dataset column has been added more than once.',
-        widgetId: this.id,
-        view: { kind: 'widgetColumns', widgetId: this.id },
-      });
-    }
-
+    const duplicate = this.duplicateColumnIssue();
     if (!this.datasetId()) {
-      issues.push({
-        id: `${this.id}:noDataset`,
-        severity: 'warning',
-        title: `${name} has no dataset`,
-        detail: 'Pick a dataset so the table has something to show.',
-        widgetId: this.id,
-        view: { kind: 'widget', widgetId: this.id },
-      });
-      return issues;
+      const noDataset = this.issue(
+        'noDataset',
+        'warning',
+        `${this.label()} has no dataset`,
+        'Pick a dataset so the table has something to show.',
+      );
+      return duplicate ? [duplicate, noDataset] : [noDataset];
     }
+    return [duplicate, this.noColumnsIssue(), this.sortColumnIssue()].filter(
+      (issue): issue is ValidationIssue => !!issue,
+    );
+  }
 
-    if (this.columns().length === 0) {
-      issues.push({
-        id: `${this.id}:noColumns`,
-        severity: 'warning',
-        title: `${name} has no columns`,
-        detail: 'Add the columns you want the table to show.',
-        widgetId: this.id,
-        view: { kind: 'widgetColumns', widgetId: this.id },
-      });
-    }
+  private duplicateColumnIssue(): ValidationIssue | null {
+    const seen = new Set<string>();
+    if (!this.columns().some((c) => !seen.add(c.columnId))) return null;
+    return this.issue(
+      'duplicateColumn',
+      'error',
+      `${this.label()} has a duplicated column`,
+      'The same dataset column has been added more than once.',
+      this.columnsView(),
+    );
+  }
 
+  private noColumnsIssue(): ValidationIssue | null {
+    if (this.columns().length > 0) return null;
+    return this.issue(
+      'noColumns',
+      'warning',
+      `${this.label()} has no columns`,
+      'Add the columns you want the table to show.',
+      this.columnsView(),
+    );
+  }
+
+  /** Sorting by a hidden column is a warning; sorting by a column the dataset no longer has is broken. */
+  private sortColumnIssue(): ValidationIssue | null {
     const sortColumnId = this.sortColumnId();
-    if (sortColumnId && !this.columns().some((c) => c.columnId === sortColumnId)) {
-      // Sorting by a hidden column is fine; sorting by a column the dataset no longer has is broken.
-      const schema = this.schema();
-      if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
-        issues.push({
-          id: `${this.id}:sortColumnMissing`,
-          severity: 'error',
-          title: `${name} sorts by a column that no longer exists`,
-          detail: 'That dataset column was removed. Pick a different sort column.',
-          widgetId: this.id,
-          view: { kind: 'widgetColumns', widgetId: this.id },
-        });
-      } else {
-        issues.push({
-          id: `${this.id}:sortColumn`,
-          severity: 'warning',
-          title: `${name} sorts by a column it doesn't show`,
-          detail: 'Add that column back, or sort by one that is displayed.',
-          widgetId: this.id,
-          view: { kind: 'widgetColumns', widgetId: this.id },
-        });
-      }
-    }
+    if (!sortColumnId || this.column(sortColumnId)) return null;
 
-    return issues;
+    const schema = this.schema();
+    if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
+      return this.issue(
+        'sortColumnMissing',
+        'error',
+        `${this.label()} sorts by a column that no longer exists`,
+        'That dataset column was removed. Pick a different sort column.',
+        this.columnsView(),
+      );
+    }
+    return this.issue(
+      'sortColumn',
+      'warning',
+      `${this.label()} sorts by a column it doesn't show`,
+      'Add that column back, or sort by one that is displayed.',
+      this.columnsView(),
+    );
+  }
+
+  private columnsView(): PanelView {
+    return { kind: 'widgetColumns', widgetId: this.id };
   }
 }

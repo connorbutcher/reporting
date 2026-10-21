@@ -1,7 +1,10 @@
 import { Signal, computed, signal } from '@angular/core';
 import { Widget, WidgetType } from '../../../core/models/report';
 import { GridRect } from '../grid/grid-rect';
+import { PanelView } from '../side-panel/panel-view';
 import { EditorNode } from './editor-node';
+import { IssueSeverity } from './issue-severity';
+import { ValidationIssue } from './validation-issue';
 
 export abstract class WidgetModel extends EditorNode {
   public readonly id: string;
@@ -55,5 +58,16 @@ export abstract class WidgetModel extends EditorNode {
 
   public baseConfigDto() {
     return { title: this.title(), showTitle: this.showTitle() };
+  }
+
+  /** An issue keyed under this widget; clicking it opens `view`, the widget's settings by default. */
+  public issue(
+    key: string,
+    severity: IssueSeverity,
+    title: string,
+    detail: string,
+    view: PanelView = { kind: 'widget', widgetId: this.id },
+  ): ValidationIssue {
+    return { id: `${this.id}:${key}`, severity, title, detail, widgetId: this.id, view };
   }
 }

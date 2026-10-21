@@ -74,42 +74,36 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     if (!this.datasetId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noDataset`,
-          severity: 'warning',
-          title: `${name} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noDataset',
+          'warning',
+          `${name} has no dataset`,
+          'Pick a dataset so the chart has something to plot.',
+        ),
       ];
     }
 
     if (!this.xColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noCategory`,
-          severity: 'warning',
-          title: `${name} has no category`,
-          detail: 'Pick a category column to group the boxes by.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noCategory',
+          'warning',
+          `${name} has no category`,
+          'Pick a category column to group the boxes by.',
+        ),
       ];
     }
 
     if (!this.yColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noValue`,
-          severity: 'warning',
-          title: `${name} has no value`,
-          detail: 'Pick a value column whose spread each box summarises.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noValue',
+          'warning',
+          `${name} has no value`,
+          'Pick a value column whose spread each box summarises.',
+        ),
       ];
     }
 

@@ -87,38 +87,37 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     const name = this.label();
     const bindings = this.bindings();
     const multi = bindings.length > 1;
-    const view = { kind: 'widget', widgetId: this.id } as const;
     const issues: ValidationIssue[] = [...this.sharedChartIssues()];
 
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (series ${i + 1})` : name;
       if (!binding.datasetId()) {
-        issues.push({
-          id: `${this.id}:noDataset:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view,
-        });
+        issues.push(
+          this.issue(
+            `noDataset:${binding.id}`,
+            'warning',
+            `${where} has no dataset`,
+            'Pick a dataset so the chart has something to plot.',
+          ),
+        );
       } else if (!binding.xColumnId()) {
-        issues.push({
-          id: `${this.id}:noCategory:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no category`,
-          detail: 'Pick a category column to group by.',
-          widgetId: this.id,
-          view,
-        });
+        issues.push(
+          this.issue(
+            `noCategory:${binding.id}`,
+            'warning',
+            `${where} has no category`,
+            'Pick a category column to group by.',
+          ),
+        );
       } else if (this.needsValue() && binding.barValueColumnIds().length === 0) {
-        issues.push({
-          id: `${this.id}:noValue:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no value`,
-          detail: `Pick a value column for the ${this.aggregate()} to summarise.`,
-          widgetId: this.id,
-          view,
-        });
+        issues.push(
+          this.issue(
+            `noValue:${binding.id}`,
+            'warning',
+            `${where} has no value`,
+            `Pick a value column for the ${this.aggregate()} to summarise.`,
+          ),
+        );
       }
     });
 

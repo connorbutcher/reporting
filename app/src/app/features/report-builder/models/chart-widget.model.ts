@@ -286,23 +286,23 @@ export abstract class ChartWidgetModel extends WidgetModel {
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (dataset ${i + 1})` : name;
       if (!binding.datasetId()) {
-        issues.push({
-          id: `${this.id}:noDataset:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noDataset:${binding.id}`,
+            'warning',
+            `${where} has no dataset`,
+            'Pick a dataset so the chart has something to plot.',
+          ),
+        );
       } else if (!binding.xColumnId() || !binding.yColumnId()) {
-        issues.push({
-          id: `${this.id}:noAxes:${binding.id}`,
-          severity: 'warning',
-          title: `${where} is missing an axis`,
-          detail: 'Pick both an X and a Y column to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noAxes:${binding.id}`,
+            'warning',
+            `${where} is missing an axis`,
+            'Pick both an X and a Y column to plot.',
+          ),
+        );
       }
     });
 
@@ -320,15 +320,14 @@ export abstract class ChartWidgetModel extends WidgetModel {
     if (schema) {
       const columnIds = new Set(schema.columns.map((c) => c.id));
       if (this.tooltipColumns().some((c) => !columnIds.has(c.columnId))) {
-        issues.push({
-          id: `${this.id}:tooltipMissingColumn`,
-          severity: 'error',
-          title: `${this.label()} shows a tooltip column that no longer exists`,
-          detail:
+        issues.push(
+          this.issue(
+            'tooltipMissingColumn',
+            'error',
+            `${this.label()} shows a tooltip column that no longer exists`,
             'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+          ),
+        );
       }
     }
 
@@ -348,14 +347,15 @@ export abstract class ChartWidgetModel extends WidgetModel {
       ].filter((id): id is string => !!id);
 
       if (pointers.some((id) => !columnIds.has(id))) {
-        issues.push({
-          id: `${this.id}:tolerance:${band.id}:missingColumn`,
-          severity: 'error',
-          title: `${this.label()}'s tolerance band points at a removed column`,
-          detail: `"${bandSchema.name}" no longer has one of the columns this band uses. Re-point it or remove the band.`,
-          widgetId: this.id,
-          view: { kind: 'chartToleranceBand', widgetId: this.id, bandId: band.id },
-        });
+        issues.push(
+          this.issue(
+            `tolerance:${band.id}:missingColumn`,
+            'error',
+            `${this.label()}'s tolerance band points at a removed column`,
+            `"${bandSchema.name}" no longer has one of the columns this band uses. Re-point it or remove the band.`,
+            { kind: 'chartToleranceBand', widgetId: this.id, bandId: band.id },
+          ),
+        );
       }
     }
 

@@ -213,73 +213,71 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const name = this.label();
-    const view = { kind: 'widget', widgetId: this.id } as const;
-
     if (!this.datasetId()) {
-      issues.push({
-        id: `${this.id}:noDataset`,
-        severity: 'warning',
-        title: `${name} has no dataset`,
-        detail: 'Pick a dataset so the pivot has something to summarise.',
-        widgetId: this.id,
-        view,
-      });
-      return issues;
+      return [
+        this.issue(
+          'noDataset',
+          'warning',
+          `${this.label()} has no dataset`,
+          'Pick a dataset so the pivot has something to summarise.',
+        ),
+      ];
     }
+    return [
+      this.noMeasuresIssue(),
+      this.measureColumnIssue(),
+      this.removedFieldIssue(),
+      this.removedMeasureColumnIssue(),
+    ].filter((issue): issue is ValidationIssue => !!issue);
+  }
 
-    if (this.measures().length === 0) {
-      issues.push({
-        id: `${this.id}:noMeasures`,
-        severity: 'warning',
-        title: `${name} has no measures`,
-        detail: 'Add at least one measure (a value column and how to summarise it).',
-        widgetId: this.id,
-        view,
-      });
+  private noMeasuresIssue(): ValidationIssue | null {
+    if (this.measures().length > 0) return null;
+    return this.issue(
+      'noMeasures',
+      'warning',
+      `${this.label()} has no measures`,
+      'Add at least one measure (a value column and how to summarise it).',
+    );
+  }
+
+  private measureColumnIssue(): ValidationIssue | null {
+    if (!this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) return null;
+    return this.issue(
+      'measureNoColumn',
+      'warning',
+      `${this.label()} has a measure with no column`,
+      'Pick a value column for each measure other than Count.',
+    );
+  }
+
+  private removedFieldIssue(): ValidationIssue | null {
+    const columnIds = this.schemaColumnIds();
+    const fields = [...this.rowFields(), ...this.columnFields()];
+    if (!columnIds || fields.every((id) => columnIds.has(id))) return null;
+    return this.issue(
+      'missingRowField',
+      'error',
+      `${this.label()} groups by a column that no longer exists`,
+      'A dimension column was removed from the dataset. Remove it or replace it with another.',
+    );
+  }
+
+  private removedMeasureColumnIssue(): ValidationIssue | null {
+    const columnIds = this.schemaColumnIds();
+    if (!columnIds || !this.measures().some((m) => m.columnId && !columnIds.has(m.columnId))) {
+      return null;
     }
+    return this.issue(
+      'missingMeasureColumn',
+      'error',
+      `${this.label()} has a measure whose column no longer exists`,
+      "A measure's value column was removed from the dataset. Pick a new one.",
+    );
+  }
 
-    if (this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) {
-      issues.push({
-        id: `${this.id}:measureNoColumn`,
-        severity: 'warning',
-        title: `${name} has a measure with no column`,
-        detail: 'Pick a value column for each measure other than Count.',
-        widgetId: this.id,
-        view,
-      });
-    }
-
-    // Catches columns that were picked but have since been removed from the dataset.
+  private schemaColumnIds(): ReadonlySet<string> | null {
     const schema = this.schema();
-    if (schema) {
-      const columnIds = new Set(schema.columns.map((c) => c.id));
-
-      if ([...this.rowFields(), ...this.columnFields()].some((id) => !columnIds.has(id))) {
-        issues.push({
-          id: `${this.id}:missingRowField`,
-          severity: 'error',
-          title: `${name} groups by a column that no longer exists`,
-          detail:
-            'A dimension column was removed from the dataset. Remove it or replace it with another.',
-          widgetId: this.id,
-          view,
-        });
-      }
-
-      if (this.measures().some((m) => m.columnId && !columnIds.has(m.columnId))) {
-        issues.push({
-          id: `${this.id}:missingMeasureColumn`,
-          severity: 'error',
-          title: `${name} has a measure whose column no longer exists`,
-          detail: "A measure's value column was removed from the dataset. Pick a new one.",
-          widgetId: this.id,
-          view,
-        });
-      }
-    }
-
-    return issues;
+    return schema ? new Set(schema.columns.map((c) => c.id)) : null;
   }
 }

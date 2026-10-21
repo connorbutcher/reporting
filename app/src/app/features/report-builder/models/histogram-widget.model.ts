@@ -75,23 +75,23 @@ export class HistogramWidgetModel extends ChartWidgetModel {
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (series ${i + 1})` : name;
       if (!binding.datasetId()) {
-        issues.push({
-          id: `${this.id}:noDataset:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noDataset:${binding.id}`,
+            'warning',
+            `${where} has no dataset`,
+            'Pick a dataset so the chart has something to plot.',
+          ),
+        );
       } else if (binding.histogramValueColumnIds().length === 0) {
-        issues.push({
-          id: `${this.id}:noValue:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no value`,
-          detail: 'Pick a numeric column whose distribution the histogram bins.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noValue:${binding.id}`,
+            'warning',
+            `${where} has no value`,
+            'Pick a numeric column whose distribution the histogram bins.',
+          ),
+        );
       }
     });
 
