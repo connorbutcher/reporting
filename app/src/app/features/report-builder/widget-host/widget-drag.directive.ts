@@ -1,5 +1,5 @@
 import { Directive, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, clamp, rectsOverlap } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
 import { GridPreview } from '../grid/grid-preview';
 import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
@@ -75,12 +75,12 @@ export class WidgetDragDirective {
     this.dragOffset.set({ x: dx, y: dy });
 
     // Column width is measured live (columns fill the canvas); rows are a fixed height.
-    const columnStep = this.session.columnWidth() + GRID_GAP;
-    const rowStep = ROW_HEIGHT + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
+    const rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
 
     // Clamp the group as a unit so its members keep their relative positions.
     const deltaCols = this.clampGroupDelta(
-      columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0,
+      columnStep > GridLayout.GRID_GAP ? Math.round(dx / columnStep) : 0,
       'x',
     );
     const deltaRows = this.clampGroupDelta(Math.round(dy / rowStep), 'y');
@@ -128,7 +128,7 @@ export class WidgetDragDirective {
       min = Math.max(min, -start);
       max = Math.min(max, limit - size - start);
     }
-    return clamp(delta, min, max);
+    return GridLayout.clamp(delta, min, max);
   }
 
   private groupCollides(dx: number, dy: number): boolean {
@@ -137,7 +137,7 @@ export class WidgetDragDirective {
 
     return this.dragGroup.some(({ widget, origin }) => {
       const rect: GridRect = { x: origin.x + dx, y: origin.y + dy, w: widget.w(), h: widget.h() };
-      return others.some((other) => rectsOverlap(rect, other.rect()));
+      return others.some((other) => GridLayout.rectsOverlap(rect, other.rect()));
     });
   }
 

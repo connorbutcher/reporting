@@ -4,12 +4,12 @@ import { MarkLineData } from './types/mark-line-data';
 import { AxisKey } from './types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
-// Translucent so plotted marks stay readable through the shading.
-const IN_SPEC_FILL = 'rgba(22, 163, 74, 0.10)';
-const CONCESSION_FILL = 'rgba(217, 119, 6, 0.13)';
-
 /** Reference lines and shaded zones drawn from resolved tolerance bands. */
 export class ToleranceMarks {
+  // Translucent so plotted marks stay readable through the shading.
+  private static readonly IN_SPEC_FILL = 'rgba(22, 163, 74, 0.10)';
+  private static readonly CONCESSION_FILL = 'rgba(217, 119, 6, 0.13)';
+
   /** Dashed line entries for every band's bounds, coloured by what crossing them means. */
   public static lines(
     bands: readonly ResolvedToleranceBand[],
@@ -57,11 +57,11 @@ export class ToleranceMarks {
         ToleranceMarks.onAxis(axisKey, to),
       ];
 
-      areas.push(region(band.min, band.max, IN_SPEC_FILL));
+      areas.push(region(band.min, band.max, ToleranceMarks.IN_SPEC_FILL));
       if (band.concessionLower !== null)
-        areas.push(region(band.concessionLower, band.min, CONCESSION_FILL));
+        areas.push(region(band.concessionLower, band.min, ToleranceMarks.CONCESSION_FILL));
       if (band.concessionUpper !== null)
-        areas.push(region(band.max, band.concessionUpper, CONCESSION_FILL));
+        areas.push(region(band.max, band.concessionUpper, ToleranceMarks.CONCESSION_FILL));
     }
 
     return areas;

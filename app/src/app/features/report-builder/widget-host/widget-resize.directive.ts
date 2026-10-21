@@ -1,5 +1,5 @@
 import { Directive, DestroyRef, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, clamp, rectsOverlap } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
 import { GridPreview } from '../grid/grid-preview';
 import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
@@ -60,18 +60,22 @@ export class WidgetResizeDirective {
     const widget = this.widget();
     const dx = event.clientX - this.startPointer.x;
     const dy = event.clientY - this.startPointer.y;
-    const columnStep = this.session.columnWidth() + GRID_GAP;
-    const deltaCols = columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0;
-    const deltaRows = Math.round(dy / (ROW_HEIGHT + GRID_GAP));
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
+    const deltaCols = columnStep > GridLayout.GRID_GAP ? Math.round(dx / columnStep) : 0;
+    const deltaRows = Math.round(dy / (GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP));
 
     const candidateW =
       this.direction === 'bottom'
         ? widget.w()
-        : clamp(this.startCell.w + deltaCols, 1, this.session.gridColumns() - widget.x());
+        : GridLayout.clamp(
+            this.startCell.w + deltaCols,
+            1,
+            this.session.gridColumns() - widget.x(),
+          );
     const candidateH =
       this.direction === 'right'
         ? widget.h()
-        : clamp(this.startCell.h + deltaRows, 1, this.session.gridRows() - widget.y());
+        : GridLayout.clamp(this.startCell.h + deltaRows, 1, this.session.gridRows() - widget.y());
     const candidate: GridRect = { x: widget.x(), y: widget.y(), w: candidateW, h: candidateH };
 
     this.pending = candidate;
@@ -94,10 +98,10 @@ export class WidgetResizeDirective {
 
   /** The pixel footprint of a w×h span: cells plus the gaps between them. */
   private pixelSize(w: number, h: number): { width: number; height: number } {
-    const columnStep = this.session.columnWidth() + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
     return {
-      width: Math.max(0, w * columnStep - GRID_GAP),
-      height: h * (ROW_HEIGHT + GRID_GAP) - GRID_GAP,
+      width: Math.max(0, w * columnStep - GridLayout.GRID_GAP),
+      height: h * (GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP) - GridLayout.GRID_GAP,
     };
   }
 
@@ -107,7 +111,7 @@ export class WidgetResizeDirective {
     if (candidate.y + candidate.h > this.session.gridRows()) return true;
 
     const siblings = this.session.model()?.siblingsOf(this.widget().id) ?? [];
-    return siblings.some((other) => rectsOverlap(candidate, other.rect()));
+    return siblings.some((other) => GridLayout.rectsOverlap(candidate, other.rect()));
   }
 
   private cleanupListeners(): void {

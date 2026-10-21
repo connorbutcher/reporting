@@ -23,7 +23,7 @@ import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
 import { OutlineSeverity } from './outline-severity';
-import { AXIS_OFFSET } from './point-types';
+import { PointChartConstants } from './point-chart-constants';
 import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
@@ -193,8 +193,8 @@ export class ComboOption {
 
     return {
       grid: {
-        left: 56 + Math.max(0, leftCount - 1) * AXIS_OFFSET,
-        right: 20 + rightCount * AXIS_OFFSET,
+        left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,
+        right: 20 + rightCount * PointChartConstants.AXIS_OFFSET,
         top: showLegend ? 40 : 20,
         bottom: zoom ? 76 : 56,
         containLabel: true,
@@ -334,7 +334,7 @@ export class ComboOption {
         nameGap: ChartScale.nameGap(longest, rotate, 'y'),
         ...(axisColor ? { nameTextStyle: { color: axisColor } } : {}),
         position: axis.side,
-        ...(orderOnSide > 0 ? { offset: orderOnSide * AXIS_OFFSET } : {}),
+        ...(orderOnSide > 0 ? { offset: orderOnSide * PointChartConstants.AXIS_OFFSET } : {}),
         ...(!isPrimary || axisColor
           ? { axisLine: { show: true, ...(axisColor ? { lineStyle: { color: axisColor } } : {}) } }
           : {}),

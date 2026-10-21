@@ -15,27 +15,12 @@ import {
   Widget,
   WidgetType,
 } from '../../../core/models/report';
-import { clamp, rectsOverlap } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
 import { EditorNode } from './editor-node';
-import { WidgetModel, widgetModelFromDto } from './widget.model';
+import { WidgetModel } from './widget.model';
+import { WidgetModelFactory } from './widget-model-factory';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './sources/model-sources';
-
-const MIN_GRID_SIZE = 1;
-// Columns fill the canvas width, so a fine column count is normal now; rows can
-// run long since the report scrolls vertically.
-const MAX_GRID_SIZE = 200;
-
-/**
- * The grid a brand-new (or unspecified) tab falls back to. Exported so the store
- * and the settings panel default to the same size the model does, instead of each
- * repeating the literals.
- */
-export const DEFAULT_GRID_COLUMNS = 48;
-export const DEFAULT_GRID_ROWS = 30;
-// Sized for the default ~48-column grid: roughly a quarter width, a useful height.
-const DEFAULT_WIDGET_W = 12;
-const DEFAULT_WIDGET_H = 8;
 
 /**
  * One tab of a report: its own grid and the widgets on it. Owns the grid geometry
@@ -44,11 +29,26 @@ const DEFAULT_WIDGET_H = 8;
  * widget itself; report-level concerns (filters, name) live on {@link ReportModel}.
  */
 export class TabModel extends EditorNode {
+  /**
+   * The grid a brand-new (or unspecified) tab falls back to. Exported so the store
+   * and the settings panel default to the same size the model does, instead of each
+   * repeating the literals.
+   */
+  public static readonly DEFAULT_GRID_COLUMNS = 48;
+  public static readonly DEFAULT_GRID_ROWS = 30;
+  private static readonly MIN_GRID_SIZE = 1;
+  // Columns fill the canvas width, so a fine column count is normal now; rows can
+  // run long since the report scrolls vertically.
+  private static readonly MAX_GRID_SIZE = 200;
+  // Sized for the default ~48-column grid: roughly a quarter width, a useful height.
+  private static readonly DEFAULT_WIDGET_W = 12;
+  private static readonly DEFAULT_WIDGET_H = 8;
+
   readonly id: string;
   readonly name = signal('');
   readonly order = signal(0);
-  readonly gridColumns = signal(DEFAULT_GRID_COLUMNS);
-  readonly gridRows = signal(DEFAULT_GRID_ROWS);
+  readonly gridColumns = signal(TabModel.DEFAULT_GRID_COLUMNS);
+  readonly gridRows = signal(TabModel.DEFAULT_GRID_ROWS);
   readonly widgets = signal<readonly WidgetModel[]>([]);
 
   constructor(
@@ -61,7 +61,7 @@ export class TabModel extends EditorNode {
     this.order.set(tab.order);
     this.gridColumns.set(tab.columns);
     this.gridRows.set(tab.rows);
-    this.widgets.set(tab.widgets.map((w) => widgetModelFromDto(w, sources)));
+    this.widgets.set(tab.widgets.map((w) => WidgetModelFactory.fromDto(w, sources)));
   }
 
   widget(widgetId: string): WidgetModel | null {
@@ -70,23 +70,32 @@ export class TabModel extends EditorNode {
 
   setGridColumns(value: number): void {
     if (!Number.isFinite(value)) return;
-    this.gridColumns.set(clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE));
+    this.gridColumns.set(
+      GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
+    );
   }
 
   setGridRows(value: number): void {
     if (!Number.isFinite(value)) return;
-    this.gridRows.set(clamp(Math.round(value), MIN_GRID_SIZE, MAX_GRID_SIZE));
+    this.gridRows.set(
+      GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
+    );
   }
 
   /** Adds an empty widget in the first free space; the user configures it after. */
   addWidget(type: WidgetType): WidgetModel {
-    const slot = this.findFreeSlot(DEFAULT_WIDGET_W, DEFAULT_WIDGET_H);
-    this.growRowsFor(slot.y, DEFAULT_WIDGET_H);
-    const base = { id: crypto.randomUUID(), ...slot, w: DEFAULT_WIDGET_W, h: DEFAULT_WIDGET_H };
+    const slot = this.findFreeSlot(TabModel.DEFAULT_WIDGET_W, TabModel.DEFAULT_WIDGET_H);
+    this.growRowsFor(slot.y, TabModel.DEFAULT_WIDGET_H);
+    const base = {
+      id: crypto.randomUUID(),
+      ...slot,
+      w: TabModel.DEFAULT_WIDGET_W,
+      h: TabModel.DEFAULT_WIDGET_H,
+    };
 
     const dto: Widget = this.emptyWidgetDto(type, base);
 
-    const widget = widgetModelFromDto(dto, this.sources);
+    const widget = WidgetModelFactory.fromDto(dto, this.sources);
     this.widgets.update((widgets) => [...widgets, widget]);
     return widget;
   }
@@ -178,7 +187,10 @@ export class TabModel extends EditorNode {
     // lands exactly on top of what it was copied from.
     const slot = this.findFreeSlot(dto.w, dto.h);
     this.growRowsFor(slot.y, dto.h);
-    const copy = widgetModelFromDto({ ...dto, id: crypto.randomUUID(), ...slot }, this.sources);
+    const copy = WidgetModelFactory.fromDto(
+      { ...dto, id: crypto.randomUUID(), ...slot },
+      this.sources,
+    );
 
     // Sits straight after the original so the list order matches the canvas.
     this.widgets.update((widgets) => {
@@ -201,7 +213,7 @@ export class TabModel extends EditorNode {
     for (let y = 0; y + h <= this.gridRows(); y++) {
       for (let x = 0; x + w <= this.gridColumns(); x++) {
         const candidate = { x, y, w, h };
-        if (!taken.some((rect) => rectsOverlap(candidate, rect))) return { x, y };
+        if (!taken.some((rect) => GridLayout.rectsOverlap(candidate, rect))) return { x, y };
       }
     }
 
@@ -265,7 +277,7 @@ export class TabModel extends EditorNode {
     widgets.forEach((widget, index) => {
       const overlapping = widgets
         .slice(0, index)
-        .find((other) => rectsOverlap(widget.rect(), other.rect()));
+        .find((other) => GridLayout.rectsOverlap(widget.rect(), other.rect()));
       if (!overlapping) return;
 
       issues.push({

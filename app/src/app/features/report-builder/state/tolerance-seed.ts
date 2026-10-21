@@ -1,4 +1,4 @@
-import { ToleranceMatch } from '../../../core/models/report/index';
+import { ToleranceMatch } from '../../../core/models/report';
 
 /** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
 export interface ToleranceSeed {

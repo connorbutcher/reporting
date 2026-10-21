@@ -4,15 +4,15 @@ import { MarkLineData } from './types/mark-line-data';
 import { AxisKey } from './types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
-// A neutral tone, deliberately distinct from tolerance's red/amber so the two kinds of line
-// read as different things at a glance.
-const DEFAULT_COLOR = '#4f46e5';
-// Translucent, in the same indigo family as the default line colour, so a shaded guide
-// region reads as "the same kind of thing" as a plain guide line rather than a spec band.
-const DEFAULT_FILL = 'rgba(79, 70, 229, 0.10)';
-
 /** Reference lines (and optional shaded regions) drawn from fixed values and their captions — the simpler alternative to a tolerance band. */
 export class GuideLineMarks {
+  // A neutral tone, deliberately distinct from tolerance's red/amber so the two kinds of line
+  // read as different things at a glance.
+  private static readonly DEFAULT_COLOR = '#4f46e5';
+  // Translucent, in the same indigo family as the default line colour, so a shaded guide
+  // region reads as "the same kind of thing" as a plain guide line rather than a spec band.
+  private static readonly DEFAULT_FILL = 'rgba(79, 70, 229, 0.10)';
+
   /**
    * One dashed line entry per guide line edge — one for a single value, two (start and end,
    * both captioned) when `valueTo` turns it into a region.
@@ -25,7 +25,7 @@ export class GuideLineMarks {
 
     for (const line of lines) {
       const axisKey = axisKeyFor(line);
-      const color = line.color ?? DEFAULT_COLOR;
+      const color = line.color ?? GuideLineMarks.DEFAULT_COLOR;
       const label = line.label.trim() || GuideLineMarks.formatValue(line.value);
 
       const mark = (value: number): MarkLineData[number] => ({
@@ -53,7 +53,10 @@ export class GuideLineMarks {
 
       const axisKey = axisKeyFor(line);
       areas.push([
-        { ...GuideLineMarks.onAxis(axisKey, line.value), itemStyle: { color: DEFAULT_FILL } },
+        {
+          ...GuideLineMarks.onAxis(axisKey, line.value),
+          itemStyle: { color: GuideLineMarks.DEFAULT_FILL },
+        },
         GuideLineMarks.onAxis(axisKey, line.valueTo),
       ]);
     }

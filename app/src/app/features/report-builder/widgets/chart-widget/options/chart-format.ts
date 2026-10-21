@@ -5,13 +5,13 @@ import {
   NumericColumnConfig,
 } from '../../../../../core/models/dataset';
 
-const DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
-
 /**
  * Number/date formatting that mirrors the server's CellFormatter, so axis ticks and
  * tooltips read the same as the dataset's table cells.
  */
 export class ChartFormat {
+  private static readonly DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
+
   public static numericConfig(
     column: DatasetColumn | null | undefined,
   ): NumericColumnConfig | undefined {
@@ -42,12 +42,12 @@ export class ChartFormat {
    * date-only value by up to a day. Pair with echarts' `useUTC`.
    */
   public static date(millis: number, config?: DateColumnConfig): string {
-    const pattern = config?.dateFormat || DEFAULT_DATE_FORMAT;
+    const pattern = config?.dateFormat || ChartFormat.DEFAULT_DATE_FORMAT;
     try {
       return formatDate(millis, pattern, 'en-US', 'UTC');
     } catch {
       // A bad custom pattern shouldn't blank the tick/tooltip.
-      return formatDate(millis, DEFAULT_DATE_FORMAT, 'en-US', 'UTC');
+      return formatDate(millis, ChartFormat.DEFAULT_DATE_FORMAT, 'en-US', 'UTC');
     }
   }
 }

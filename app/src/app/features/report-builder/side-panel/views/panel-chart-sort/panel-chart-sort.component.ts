@@ -12,39 +12,6 @@ import {
   SortAggregate,
 } from '../../../../../core/models/report';
 
-/** The aggregates a column type can be reduced by — text has no sum/average/median/spread, and
- * summing dates has no meaning either. */
-function aggregateOptionsFor(
-  type: DatasetColumnType | null,
-): { label: string; value: SortAggregate }[] {
-  if (type === 'string') {
-    return [
-      { label: 'First (A–Z)', value: 'min' },
-      { label: 'Last (A–Z)', value: 'max' },
-      { label: 'Count', value: 'count' },
-    ];
-  }
-  if (type === 'dateTime') {
-    return [
-      { label: 'Earliest', value: 'min' },
-      { label: 'Latest', value: 'max' },
-      { label: 'Average', value: 'average' },
-      { label: 'Median', value: 'median' },
-      { label: 'Spread (IQR)', value: 'spread' },
-      { label: 'Count', value: 'count' },
-    ];
-  }
-  return [
-    { label: 'Sum', value: 'sum' },
-    { label: 'Average', value: 'average' },
-    { label: 'Count', value: 'count' },
-    { label: 'Minimum', value: 'min' },
-    { label: 'Maximum', value: 'max' },
-    { label: 'Median', value: 'median' },
-    { label: 'Spread (IQR)', value: 'spread' },
-  ];
-}
-
 /**
  * A chart's order control, shared by every chart kind that can be sorted: category-grouping
  * charts (bar, combo, box plot) sort their chart-wide category order; a point chart (scatter,
@@ -115,7 +82,9 @@ export class PanelChartSortComponent {
     return columnId ? (this.columns().find((c) => c.id === columnId)?.type ?? null) : null;
   });
 
-  public readonly aggregateOptions = computed(() => aggregateOptionsFor(this.selectedColumnType()));
+  public readonly aggregateOptions = computed(() =>
+    PanelChartSortComponent.aggregateOptionsFor(this.selectedColumnType()),
+  );
 
   /**
    * Shown next to the aggregate picker for text/date columns, where "first"/"last" (earliest/
@@ -133,6 +102,39 @@ export class PanelChartSortComponent {
     { label: 'Descending', value: true },
   ];
 
+  /** The aggregates a column type can be reduced by — text has no sum/average/median/spread, and
+   * summing dates has no meaning either. */
+  private static aggregateOptionsFor(
+    type: DatasetColumnType | null,
+  ): { label: string; value: SortAggregate }[] {
+    if (type === 'string') {
+      return [
+        { label: 'First (A–Z)', value: 'min' },
+        { label: 'Last (A–Z)', value: 'max' },
+        { label: 'Count', value: 'count' },
+      ];
+    }
+    if (type === 'dateTime') {
+      return [
+        { label: 'Earliest', value: 'min' },
+        { label: 'Latest', value: 'max' },
+        { label: 'Average', value: 'average' },
+        { label: 'Median', value: 'median' },
+        { label: 'Spread (IQR)', value: 'spread' },
+        { label: 'Count', value: 'count' },
+      ];
+    }
+    return [
+      { label: 'Sum', value: 'sum' },
+      { label: 'Average', value: 'average' },
+      { label: 'Count', value: 'count' },
+      { label: 'Minimum', value: 'min' },
+      { label: 'Maximum', value: 'max' },
+      { label: 'Median', value: 'median' },
+      { label: 'Spread (IQR)', value: 'spread' },
+    ];
+  }
+
   public setBy(by: ChartSortBy): void {
     this.sortChange.emit({ ...this.resolved(), by });
   }
@@ -143,7 +145,7 @@ export class PanelChartSortComponent {
     // The new column may not support the previously-picked aggregate (e.g. switching from a
     // numeric column's "Sum" to a text one) — fall back to its first valid aggregate instead of
     // carrying over a now-meaningless choice.
-    const validValues = aggregateOptionsFor(type).map((o) => o.value);
+    const validValues = PanelChartSortComponent.aggregateOptionsFor(type).map((o) => o.value);
     const aggregate = validValues.includes(resolved.aggregate)
       ? resolved.aggregate
       : validValues[0];

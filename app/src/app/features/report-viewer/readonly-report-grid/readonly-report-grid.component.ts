@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, Signal, computed, inject, input, output } from '@angular/core';
-import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
+import { GridLayout } from '../../report-builder/grid/grid-layout';
 import {
   ReportRevisionContent,
   Tab,
@@ -35,8 +35,8 @@ export class ReadonlyReportGridComponent {
   /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
   readonly tab = input.required<Tab>();
 
-  protected readonly rowHeight = ROW_HEIGHT;
-  protected readonly gridGap = GRID_GAP;
+  protected readonly rowHeight = GridLayout.ROW_HEIGHT;
+  protected readonly gridGap = GridLayout.GRID_GAP;
 
   /**
    * Session overrides from the viewer's filter panel. Page filters are keyed by

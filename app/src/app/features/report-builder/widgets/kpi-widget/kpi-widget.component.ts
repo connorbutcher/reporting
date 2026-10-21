@@ -7,48 +7,12 @@ import {
   KpiHistoryPoint,
   KpiQueryResult,
 } from '../../../../core/models/widget-query';
-import { toCsv } from '../csv.util';
-import { resolveWidgetFilter } from '../effective-filter';
+import { Csv } from '../csv';
+import { EffectiveFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
-
-const SPARKLINE_WIDTH = 100;
-const SPARKLINE_HEIGHT = 28;
-
-/** A short word for what the figure is being measured against, for the trend caption. */
-function comparisonCaption(config: KpiWidgetConfig): string {
-  switch (config.comparisonMode) {
-    case 'fixedTarget':
-      return 'target';
-    case 'previousPeriod':
-      return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
-    default:
-      return '';
-  }
-}
-
-/** An SVG `<polyline>` points string tracing a trailing history, normalized into a fixed viewBox. Gaps (null buckets) are simply skipped, so the line draws straight across them. */
-function sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
-  const present = history.map((h) => h.value).filter((v): v is number => v !== null);
-  if (present.length < 2) return null;
-
-  const min = Math.min(...present);
-  const max = Math.max(...present);
-  const span = max - min || 1;
-  const stepX = history.length > 1 ? SPARKLINE_WIDTH / (history.length - 1) : 0;
-
-  const points = history
-    .map((point, index) => (point.value === null ? null : { x: index * stepX, y: point.value }))
-    .filter((p): p is { x: number; y: number } => p !== null)
-    .map(
-      (p) =>
-        `${p.x.toFixed(1)},${(SPARKLINE_HEIGHT - ((p.y - min) / span) * SPARKLINE_HEIGHT).toFixed(1)}`,
-    );
-
-  return points.length >= 2 ? points.join(' ') : null;
-}
 
 /**
  * One headline number reduced from a dataset: a plain aggregate, or the count/percent of rows
@@ -63,6 +27,9 @@ function sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
   styleUrl: './kpi-widget.component.scss',
 })
 export class KpiWidgetComponent extends DataWidgetBase {
+  private static readonly SPARKLINE_WIDTH = 100;
+  private static readonly SPARKLINE_HEIGHT = 28;
+
   public readonly config = input.required<KpiWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -98,7 +65,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
   public readonly comparisonLabel = computed(() => {
     const result = this.source.result();
     if (!result || result.comparisonDisplayValue === null) return null;
-    const caption = comparisonCaption(this.config());
+    const caption = KpiWidgetComponent.comparisonCaption(this.config());
     const pct = result.deltaPercent;
     const pctText = pct !== null ? ` (${pct > 0 ? '+' : ''}${pct.toFixed(0)}%)` : '';
     return `vs ${caption} — ${result.comparisonDisplayValue}${pctText}`;
@@ -121,7 +88,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
   /** An SVG polyline for the trailing-history sparkline; null when there's nothing to plot. */
   public readonly sparklinePath = computed(() => {
     if (!this.config().showSparkline) return null;
-    return sparklinePoints(this.source.result()?.history ?? []);
+    return KpiWidgetComponent.sparklinePoints(this.source.result()?.history ?? []);
   });
 
   public readonly isTruncated = computed(() => !!this.source.result()?.truncated);
@@ -150,7 +117,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
   private readonly datasetApi = inject(DatasetApiService);
 
   private readonly effectiveFilter = computed(() =>
-    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
+    EffectiveFilter.resolve(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
 
   private readonly source = new WidgetDataSource<KpiQueryResult>({
@@ -260,6 +227,40 @@ export class KpiWidgetComponent extends DataWidgetBase {
     });
   }
 
+  /** A short word for what the figure is being measured against, for the trend caption. */
+  private static comparisonCaption(config: KpiWidgetConfig): string {
+    switch (config.comparisonMode) {
+      case 'fixedTarget':
+        return 'target';
+      case 'previousPeriod':
+        return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
+      default:
+        return '';
+    }
+  }
+
+  /** An SVG `<polyline>` points string tracing a trailing history, normalized into a fixed viewBox. Gaps (null buckets) are simply skipped, so the line draws straight across them. */
+  private static sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
+    const present = history.map((h) => h.value).filter((v): v is number => v !== null);
+    if (present.length < 2) return null;
+
+    const min = Math.min(...present);
+    const max = Math.max(...present);
+    const span = max - min || 1;
+    const stepX =
+      history.length > 1 ? KpiWidgetComponent.SPARKLINE_WIDTH / (history.length - 1) : 0;
+
+    const points = history
+      .map((point, index) => (point.value === null ? null : { x: index * stepX, y: point.value }))
+      .filter((p): p is { x: number; y: number } => p !== null)
+      .map(
+        (p) =>
+          `${p.x.toFixed(1)},${(KpiWidgetComponent.SPARKLINE_HEIGHT - ((p.y - min) / span) * KpiWidgetComponent.SPARKLINE_HEIGHT).toFixed(1)}`,
+      );
+
+    return points.length >= 2 ? points.join(' ') : null;
+  }
+
   /** Retries the last query after a load failure. */
   public retry(): void {
     this.source.error.set(false);
@@ -276,12 +277,12 @@ export class KpiWidgetComponent extends DataWidgetBase {
     const data = this.source.result();
     if (!data) return null;
     if (data.groups) {
-      return toCsv([
+      return Csv.fromRows([
         ['Group', 'Value'],
         ...data.groups.map((g) => [g.label, g.displayValue ?? '']),
       ]);
     }
-    return toCsv([
+    return Csv.fromRows([
       ['Value', 'Comparison'],
       [data.displayValue ?? '', data.comparisonDisplayValue ?? ''],
     ]);

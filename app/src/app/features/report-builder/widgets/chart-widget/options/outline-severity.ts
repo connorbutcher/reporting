@@ -1,11 +1,12 @@
 import { OutlineItemStyle } from './types/outline-item-style';
-import { OutlineZone } from './types/outline-zone';
-
-const OUTLINE_CONCESSION = '#d97706'; // orange: past the warn bound, still inside the fail bound
-const OUTLINE_FAIL = '#dc2626'; // red: past the fail bound (or past warn, when there's no milder tier)
+import { OutlineZone } from './types/outline-zone'; // red: past the fail bound (or past warn, when there's no milder tier)
 
 /** Classifies plotted values against a set of outline zones — tolerance bands, guide lines, or both. */
 export class OutlineSeverity {
+  private static readonly OUTLINE_CONCESSION = '#d97706';
+  // orange: past the warn bound, still inside the fail bound
+  private static readonly OUTLINE_FAIL = '#dc2626';
+
   /**
    * Outline colour for a plotted point across every zone, or null when it's in spec on all of
    * them. Each zone is tested on its own axis; a category value is never outlined. Most severe wins.
@@ -62,14 +63,15 @@ export class OutlineSeverity {
    * in a tolerance band's concession shoulder.
    */
   private static colorFor(value: number, zone: OutlineZone): string | null {
-    if (value < zone.failLow || value > zone.failHigh) return OUTLINE_FAIL;
-    if (value < zone.warnLow || value > zone.warnHigh) return OUTLINE_CONCESSION;
+    if (value < zone.failLow || value > zone.failHigh) return OutlineSeverity.OUTLINE_FAIL;
+    if (value < zone.warnLow || value > zone.warnHigh) return OutlineSeverity.OUTLINE_CONCESSION;
     return null;
   }
 
   /** The more severe of two outline colours (red beats orange beats none). */
   private static worse(a: string | null, b: string | null): string | null {
-    if (a === OUTLINE_FAIL || b === OUTLINE_FAIL) return OUTLINE_FAIL;
+    if (a === OutlineSeverity.OUTLINE_FAIL || b === OutlineSeverity.OUTLINE_FAIL)
+      return OutlineSeverity.OUTLINE_FAIL;
     return a ?? b;
   }
 }

@@ -6,10 +6,6 @@ import { LoggerService } from '../../../core/services/logger.service';
 import { UndoHistory } from '../models/undo-history';
 import { ReportSession } from './report-session';
 
-const SAVE_DEBOUNCE_MS = 250;
-/** Long enough that a burst of typing collapses into one undo step. */
-const HISTORY_DEBOUNCE_MS = 400;
-
 /**
  * Keeps the server draft and the undo stack in step with the edited model, so
  * no one else has to think about persistence timing. Watching the model tree, it
@@ -22,6 +18,10 @@ const HISTORY_DEBOUNCE_MS = 400;
  */
 @Injectable()
 export class ReportAutosave {
+  private static readonly SAVE_DEBOUNCE_MS = 250;
+  /** Long enough that a burst of typing collapses into one undo step. */
+  private static readonly HISTORY_DEBOUNCE_MS = 400;
+
   private readonly session = inject(ReportSession);
   private readonly reportApi = inject(ReportApiService);
   private readonly logger = inject(LoggerService);
@@ -66,7 +66,7 @@ export class ReportAutosave {
     });
 
     this.historyQueue
-      .pipe(debounceTime(HISTORY_DEBOUNCE_MS), takeUntilDestroyed())
+      .pipe(debounceTime(ReportAutosave.HISTORY_DEBOUNCE_MS), takeUntilDestroyed())
       .subscribe(() => {
         const current = model();
         if (current) this.history.capture(current.serialized());
@@ -76,7 +76,7 @@ export class ReportAutosave {
     // switchMap drops superseded writes rather than racing them.
     this.saveQueue
       .pipe(
-        debounceTime(SAVE_DEBOUNCE_MS),
+        debounceTime(ReportAutosave.SAVE_DEBOUNCE_MS),
         // A broken report is never written; the effect above re-queues once fixed.
         filter(() => model()?.isValid() ?? false),
         tap(() => this.saving.set(true)),

@@ -14,7 +14,8 @@ import { FilterApiService } from '../../../core/api/filter-api.service';
 import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
 import { UrlFragmentService } from '../../../core/services/url-fragment.service';
-import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, ReportModel } from '../models/report.model';
+import { ReportModel } from '../models/report.model';
+import { TabModel } from '../models/tab.model';
 import { ValidationIssue } from '../models/validation-issue';
 import {
   ChartWidgetModel,
@@ -146,8 +147,10 @@ export class ReportSession {
   // the placement verbs act on. Reading it directly keeps ReportModel out of the
   // per-tab business — it just holds the tabs and the report-level state.
   readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
-  readonly gridColumns = computed(() => this.activeTab()?.gridColumns() ?? DEFAULT_GRID_COLUMNS);
-  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? DEFAULT_GRID_ROWS);
+  readonly gridColumns = computed(
+    () => this.activeTab()?.gridColumns() ?? TabModel.DEFAULT_GRID_COLUMNS,
+  );
+  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? TabModel.DEFAULT_GRID_ROWS);
 
   setGridColumns(value: number): void {
     this.activeTab()?.setGridColumns(value);

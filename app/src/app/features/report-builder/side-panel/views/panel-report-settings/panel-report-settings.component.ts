@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from '../../../models/report.model';
+import { TabModel } from '../../../models/tab.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
@@ -14,8 +14,8 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelReportSettingsComponent {
   static readonly title = 'Tab settings';
 
-  protected readonly defaultColumns = DEFAULT_GRID_COLUMNS;
-  protected readonly defaultRows = DEFAULT_GRID_ROWS;
+  protected readonly defaultColumns = TabModel.DEFAULT_GRID_COLUMNS;
+  protected readonly defaultRows = TabModel.DEFAULT_GRID_ROWS;
 
   private readonly session = inject(ReportSession);
 

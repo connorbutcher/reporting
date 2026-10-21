@@ -1,4 +1,4 @@
-import { DatasetCountResult } from '../../../../core/models/filter/index';
+import { DatasetCountResult } from '../../../../core/models/filter';
 
 export type MatchState =
   | { state: 'idle' }

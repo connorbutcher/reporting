@@ -1,4 +1,4 @@
-import { DataTableWidgetConfig } from '../../../core/models/report/index';
+import { DataTableWidgetConfig } from '../../../core/models/report';
 
 /** The presentation options for a table, independent of which data it shows. */
 export type TableAppearanceDto = Pick<

@@ -1,4 +1,4 @@
-import { FilterGroup } from '../../../../core/models/filter/index';
+import { FilterGroup } from '../../../../core/models/filter';
 
 /** What a pivot hands the drill-through view: the dataset, a heading, and the filter selecting the rows behind a cell. */
 export interface DrillThroughDialogData {

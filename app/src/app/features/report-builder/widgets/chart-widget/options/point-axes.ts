@@ -3,7 +3,7 @@ import { ChartSeriesResult } from '../../../../../core/models/widget-query';
 import type { YAXisComponentOption } from 'echarts';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
-import { AXIS_OFFSET } from './point-types';
+import { PointChartConstants } from './point-chart-constants';
 import { YAxesInput } from './types/y-axes-input';
 
 /** Builds the Y axis definitions for a point chart, and the category labels a text axis carries. */
@@ -58,7 +58,7 @@ export class PointAxes {
         nameGap: ChartScale.nameGap(longest, rotate, 'y'),
         ...(axisColor ? { nameTextStyle: { color: axisColor } } : {}),
         position: axis.side,
-        ...(orderOnSide > 0 ? { offset: orderOnSide * AXIS_OFFSET } : {}),
+        ...(orderOnSide > 0 ? { offset: orderOnSide * PointChartConstants.AXIS_OFFSET } : {}),
         // Secondary axes show their line to anchor the added scale; a single-series axis is
         // drawn in that series' colour. Split lines stay on the primary to avoid competing grids.
         ...(!isPrimary || axisColor

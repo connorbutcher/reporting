@@ -11,78 +11,92 @@ import {
   OperatorDescriptor,
 } from '../../../../../core/models/filter';
 import { FilterContext } from '../filter-context';
+import { ContextOptions } from './context-options';
 
-export const column = (id: string, type: DatasetColumnType = 'string', name = id): DatasetColumn =>
-  ({ id, name, type, order: 0, configuration: {} }) as unknown as DatasetColumn;
+/** Builders for filter model specs. */
+export class FilterFixtures {
+  /** Operators per column type, shaped like the server's catalogue. */
+  public static readonly CATALOGUE = {
+    string: [
+      FilterFixtures.op('equals', 1),
+      FilterFixtures.op('notEquals', 1),
+      FilterFixtures.op('in', 1, 'list'),
+      FilterFixtures.op('isEmpty', 0, 'none'),
+    ],
+    int: [
+      FilterFixtures.op('equals', 1, 'number'),
+      FilterFixtures.op('between', 2, 'number'),
+      FilterFixtures.op('inTolerance', 0, 'none'),
+      FilterFixtures.op('outOfTolerance', 0, 'none'),
+    ],
+    double: [FilterFixtures.op('equals', 1, 'number'), FilterFixtures.op('inTolerance', 0, 'none')],
+    bool: [FilterFixtures.op('isTrue', 0, 'none')],
+    dateTime: [
+      FilterFixtures.op('greaterThan', 1, 'date'),
+      FilterFixtures.op('inLastDays', 1, 'number'),
+    ],
+  } as unknown as OperatorCatalogue;
 
-export const schemaOf = (columns: DatasetColumn[], id = 7, name = 'Dataset'): DatasetSchema =>
-  ({ id, name, columns }) as unknown as DatasetSchema;
+  public static column(id: string, type: DatasetColumnType = 'string', name = id): DatasetColumn {
+    return { id, name, type, order: 0, configuration: {} } as unknown as DatasetColumn;
+  }
 
-const op = (
-  value: OperatorDescriptor['value'],
-  operandCount: number,
-  operandKind: OperatorDescriptor['operandKind'] = 'text',
-): OperatorDescriptor => ({ value, label: value, operandCount, operandKind });
+  public static schemaOf(columns: DatasetColumn[], id = 7, name = 'Dataset'): DatasetSchema {
+    return { id, name, columns } as unknown as DatasetSchema;
+  }
 
-/** Operators per column type, shaped like the server's catalogue. */
-export const CATALOGUE = {
-  string: [op('equals', 1), op('notEquals', 1), op('in', 1, 'list'), op('isEmpty', 0, 'none')],
-  int: [
-    op('equals', 1, 'number'),
-    op('between', 2, 'number'),
-    op('inTolerance', 0, 'none'),
-    op('outOfTolerance', 0, 'none'),
-  ],
-  double: [op('equals', 1, 'number'), op('inTolerance', 0, 'none')],
-  bool: [op('isTrue', 0, 'none')],
-  dateTime: [op('greaterThan', 1, 'date'), op('inLastDays', 1, 'number')],
-} as unknown as OperatorCatalogue;
+  /** A filter context whose signals a test can change. */
+  public static contextOf(options: ContextOptions = {}): FilterContext & {
+    schemaSignal: ReturnType<typeof signal<DatasetSchema | null>>;
+  } {
+    const schema = signal<DatasetSchema | null>(
+      options.schema === undefined
+        ? FilterFixtures.schemaOf(
+            options.columns ?? [FilterFixtures.column('a'), FilterFixtures.column('b', 'int')],
+          )
+        : options.schema,
+    );
+    return {
+      schemaSignal: schema,
+      schema: schema as Signal<DatasetSchema | null>,
+      catalogue: signal(
+        options.catalogue === undefined ? FilterFixtures.CATALOGUE : options.catalogue,
+      ),
+      columns: options.scope ? signal(options.scope) : undefined,
+      tolerantColumns: options.tolerant ? signal(new Set(options.tolerant)) : undefined,
+      ownerId: 'owner',
+      widgetId: options.widgetId,
+    };
+  }
 
-export interface ContextOptions {
-  columns?: DatasetColumn[];
-  /** Null leaves the schema pending. */
-  schema?: DatasetSchema | null;
-  catalogue?: OperatorCatalogue | null;
-  scope?: DatasetColumn[];
-  tolerant?: string[];
-  widgetId?: string;
+  public static condition(
+    columnId: string,
+    operator: FilterCondition['operator'] = 'equals',
+    values: string[] = [],
+    enabled?: boolean,
+  ): FilterCondition {
+    return {
+      kind: 'condition',
+      columnId,
+      operator,
+      values,
+      ...(enabled === undefined ? {} : { enabled }),
+    };
+  }
+
+  public static groupOf(join: 'and' | 'or', ...children: FilterGroup['children']): FilterGroup {
+    return {
+      kind: 'group',
+      join,
+      children,
+    };
+  }
+
+  private static op(
+    value: OperatorDescriptor['value'],
+    operandCount: number,
+    operandKind: OperatorDescriptor['operandKind'] = 'text',
+  ): OperatorDescriptor {
+    return { value, label: value, operandCount, operandKind };
+  }
 }
-
-/** A filter context whose signals a test can change. */
-export function contextOf(options: ContextOptions = {}): FilterContext & {
-  schemaSignal: ReturnType<typeof signal<DatasetSchema | null>>;
-} {
-  const schema = signal<DatasetSchema | null>(
-    options.schema === undefined
-      ? schemaOf(options.columns ?? [column('a'), column('b', 'int')])
-      : options.schema,
-  );
-  return {
-    schemaSignal: schema,
-    schema: schema as Signal<DatasetSchema | null>,
-    catalogue: signal(options.catalogue === undefined ? CATALOGUE : options.catalogue),
-    columns: options.scope ? signal(options.scope) : undefined,
-    tolerantColumns: options.tolerant ? signal(new Set(options.tolerant)) : undefined,
-    ownerId: 'owner',
-    widgetId: options.widgetId,
-  };
-}
-
-export const condition = (
-  columnId: string,
-  operator: FilterCondition['operator'] = 'equals',
-  values: string[] = [],
-  enabled?: boolean,
-): FilterCondition => ({
-  kind: 'condition',
-  columnId,
-  operator,
-  values,
-  ...(enabled === undefined ? {} : { enabled }),
-});
-
-export const groupOf = (join: 'and' | 'or', ...children: FilterGroup['children']): FilterGroup => ({
-  kind: 'group',
-  join,
-  children,
-});

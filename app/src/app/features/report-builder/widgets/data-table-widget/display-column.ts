@@ -1,5 +1,5 @@
-import { DatasetColumn } from '../../../../core/models/dataset/index';
-import { Aggregate, ColumnAlign, FormatRule } from '../../../../core/models/report/index';
+import { DatasetColumn } from '../../../../core/models/dataset';
+import { Aggregate, ColumnAlign, FormatRule } from '../../../../core/models/report';
 
 /** A dataset column paired with the widget's settings for it. */
 export interface DisplayColumn {

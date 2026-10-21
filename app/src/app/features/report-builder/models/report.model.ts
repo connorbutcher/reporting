@@ -8,7 +8,7 @@ import {
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter';
-import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS, TabModel } from './tab.model';
+import { TabModel } from './tab.model';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
@@ -21,7 +21,6 @@ import { ModelSources } from './sources/model-sources';
 
 // Re-exported so the store and settings panel keep importing the grid defaults
 // from here, unaware they now originate on the tab.
-export { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from './tab.model';
 
 /**
  * The report being edited. Owns its tabs, the report-level filters, and the name.
@@ -138,8 +137,8 @@ export class ReportModel extends EditorNode {
       id: crypto.randomUUID(),
       name: `Tab ${this.tabs().length + 1}`,
       order,
-      columns: DEFAULT_GRID_COLUMNS,
-      rows: DEFAULT_GRID_ROWS,
+      columns: TabModel.DEFAULT_GRID_COLUMNS,
+      rows: TabModel.DEFAULT_GRID_ROWS,
       widgets: [],
     };
     const tab = new TabModel(dto, this.sources);

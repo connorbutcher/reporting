@@ -18,7 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { firstValueFrom } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
+import { DatasetColumn } from '../../../../core/models/dataset';
 import { FilterGroup } from '../../../../core/models/filter';
 import {
   DataTableColumnSetting,
@@ -32,22 +32,17 @@ import {
   TableRowResult,
 } from '../../../../core/models/widget-query';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { toCsv } from '../csv.util';
-import { FORMAT_STYLE_CLASS, dataBarPercent, matchFormatRule } from '../format-rules';
+import { Csv } from '../csv';
+import { FormatRules } from '../format-rules/format-rules';
 import { RowDetailDialogComponent } from '../row-detail-dialog/row-detail-dialog.component';
 import { RowDetailDialogData } from '../row-detail-dialog/row-detail-dialog-data';
-import { resolveWidgetFilter } from '../effective-filter';
+import { EffectiveFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 import { DisplayColumn } from './display-column';
-
-/**
- * How many rows a scrolling (non-paginated) table fetches at a time. The table holds a placeholder
- * for every matched row and fills windows in as the reader scrolls to them, so there is no row cap.
- */
-export const SCROLL_WINDOW = 200;
+import { ColumnTypes } from '../../models/column-types';
 
 @Component({
   selector: 'app-data-table-widget',
@@ -65,6 +60,12 @@ export const SCROLL_WINDOW = 200;
   },
 })
 export class DataTableWidgetComponent extends DataWidgetBase {
+  /**
+   * How many rows a scrolling (non-paginated) table fetches at a time. The table holds a placeholder
+   * for every matched row and fills windows in as the reader scrolls to them, so there is no row cap.
+   */
+  public static readonly SCROLL_WINDOW = 200;
+
   readonly config = input.required<DataTableWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   readonly datasetVersion = input(0);
@@ -96,7 +97,7 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
   /** Report-level and widget-level filters, as the single tree sent to the API. */
   private readonly effectiveFilter = computed(() =>
-    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
+    EffectiveFilter.resolve(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
 
   /**
@@ -135,7 +136,10 @@ export class DataTableWidgetComponent extends DataWidgetBase {
             datasetId,
             this.request(this.first(), this.config().rowsPerPage || 10),
           )
-        : this.datasetApi.queryTable(datasetId, this.request(0, SCROLL_WINDOW));
+        : this.datasetApi.queryTable(
+            datasetId,
+            this.request(0, DataTableWidgetComponent.SCROLL_WINDOW),
+          );
     },
   });
 
@@ -163,7 +167,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     );
     result.rows.forEach((row, i) => (rows[i] = row));
     for (const [index, windowRows] of this.windows()) {
-      windowRows.forEach((row, i) => (rows[index * SCROLL_WINDOW + i] = row));
+      windowRows.forEach(
+        (row, i) => (rows[index * DataTableWidgetComponent.SCROLL_WINDOW + i] = row),
+      );
     }
     return rows;
   });
@@ -239,11 +245,11 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       .map(({ setting, column }, index) => ({
         column,
         header: setting.header?.trim() || column.name,
-        align: setting.align ?? (isNumeric(column.type) ? 'right' : 'left'),
+        align: setting.align ?? (ColumnTypes.isNumeric(column.type) ? 'right' : 'left'),
         sortable: setting.sortable !== false,
         width: setting.width,
         wrap: !!setting.wrap,
-        dataBars: !!setting.dataBars && isNumeric(column.type),
+        dataBars: !!setting.dataBars && ColumnTypes.isNumeric(column.type),
         formatRules: setting.formatRules ?? [],
         total: setting.total ?? null,
         frozen: index < frozen,
@@ -346,7 +352,7 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       this.first.set(0);
       if (!sortChanged) {
         const from = event.first ?? 0;
-        const to = event.last ?? from + (event.rows ?? SCROLL_WINDOW);
+        const to = event.last ?? from + (event.rows ?? DataTableWidgetComponent.SCROLL_WINDOW);
         this.loadWindows(from, to);
         return;
       }
@@ -373,8 +379,8 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
     const last = Math.min(to, result.matchedRowCount) - 1;
     for (
-      let index = Math.floor(from / SCROLL_WINDOW);
-      index <= Math.floor(last / SCROLL_WINDOW);
+      let index = Math.floor(from / DataTableWidgetComponent.SCROLL_WINDOW);
+      index <= Math.floor(last / DataTableWidgetComponent.SCROLL_WINDOW);
       index++
     ) {
       // Window 0 is the first query's own rows.
@@ -383,7 +389,13 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       const generation = this.windowGeneration;
       this.windowsInFlight.add(index);
       this.datasetApi
-        .queryTable(datasetId, this.request(index * SCROLL_WINDOW, SCROLL_WINDOW))
+        .queryTable(
+          datasetId,
+          this.request(
+            index * DataTableWidgetComponent.SCROLL_WINDOW,
+            DataTableWidgetComponent.SCROLL_WINDOW,
+          ),
+        )
         .subscribe({
           next: (window) => {
             if (generation !== this.windowGeneration) return;
@@ -420,8 +432,8 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     const classes: string[] = [];
     const tolerance = this.toleranceClass(cell);
     if (tolerance) classes.push(tolerance);
-    const style = matchFormatRule(cell?.value, col.formatRules);
-    if (style) classes.push(FORMAT_STYLE_CLASS[style]);
+    const style = FormatRules.match(cell?.value, col.formatRules);
+    if (style) classes.push(FormatRules.STYLE_CLASS[style]);
     if (col.wrap) classes.push(this.config().paginator ? 'wrap' : 'wrap-clamped');
     if (col.dataBars) classes.push('has-bar');
     return classes.join(' ');
@@ -431,7 +443,7 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   protected barPercent(col: DisplayColumn, cell: TableCell | undefined): number | null {
     if (!col.dataBars) return null;
     const stats = this.columnStats()[col.column.id];
-    return dataBarPercent(cell?.value, stats?.min, stats?.max);
+    return FormatRules.dataBarPercent(cell?.value, stats?.min, stats?.max);
   }
 
   /** The words a screen reader hears for a cell's tolerance band, which sighted readers get from its colour. */
@@ -546,7 +558,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     }
 
     const header = cols.map((c) => c.header);
-    const body = result.rows.map((row) => cols.map((c) => csvValue(row.cells[c.column.id])));
+    const body = result.rows.map((row) =>
+      cols.map((c) => Csv.fromTableCell(row.cells[c.column.id])),
+    );
     if (this.config().showTotals && result.totals && cols.some((c) => c.total)) {
       body.push(
         cols.map(
@@ -554,28 +568,10 @@ export class DataTableWidgetComponent extends DataWidgetBase {
         ),
       );
     }
-    return toCsv([header, ...body]);
+    return Csv.fromRows([header, ...body]);
   }
 
   protected exportName(): string {
     return this.config().title?.trim() || 'table';
   }
-}
-
-export function isNumeric(type: DatasetColumnType): boolean {
-  return type === 'int' || type === 'double';
-}
-
-/**
- * A cell's value for a CSV: numbers as plain numbers, dates as `yyyy-MM-dd HH:mm:ss` (or just the day
- * at midnight), which spreadsheets read as dates, and anything else as its displayed text.
- */
-export function csvValue(cell: TableCell | undefined): unknown {
-  const value = cell?.value;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
-    const [day, time] = value.slice(0, 19).split('T');
-    return time === '00:00:00' ? day : `${day} ${time}`;
-  }
-  return cell?.displayValue ?? '';
 }

@@ -1,5 +1,5 @@
-import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report/index';
-import { BarSeriesResult } from '../../../../../../core/models/widget-query/index';
+import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report';
+import { BarSeriesResult } from '../../../../../../core/models/widget-query';
 
 /** One resolved series ready to draw: its query result plus the axis, render kind, and styling it plots with. */
 export interface ComboSeries {

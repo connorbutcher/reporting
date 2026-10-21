@@ -17,24 +17,6 @@ import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
-  { label: 'Y axis', value: 'y' },
-  { label: 'X axis', value: 'x' },
-];
-
-const DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
-  { label: 'Solid', value: 'solid' },
-  { label: 'Dashed', value: 'dashed' },
-  { label: 'Dotted', value: 'dotted' },
-];
-
-const DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
-  { label: 'Above the line', value: 'above' },
-  { label: 'Below the line', value: 'below' },
-];
-
-const DEFAULT_COLOR = '#4f46e5';
-
 /**
  * A single dashed line drawn at a fixed value on an axis, captioned with a label — the
  * lightweight alternative to a tolerance band for marking a target, a cap, or any other
@@ -55,11 +37,26 @@ const DEFAULT_COLOR = '#4f46e5';
   templateUrl: './panel-chart-guide-line.component.html',
 })
 export class PanelChartGuideLineComponent {
+  private static readonly AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
+    { label: 'Y axis', value: 'y' },
+    { label: 'X axis', value: 'x' },
+  ];
+  private static readonly DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
+    { label: 'Solid', value: 'solid' },
+    { label: 'Dashed', value: 'dashed' },
+    { label: 'Dotted', value: 'dotted' },
+  ];
+  private static readonly DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
+    { label: 'Above the line', value: 'above' },
+    { label: 'Below the line', value: 'below' },
+  ];
+  private static readonly DEFAULT_COLOR = '#4f46e5';
+
   public static readonly title = 'Guide line';
 
-  public readonly dashOptions = DASH_OPTIONS;
-  public readonly directionOptions = DIRECTION_OPTIONS;
-  public readonly defaultColor = DEFAULT_COLOR;
+  public readonly dashOptions = PanelChartGuideLineComponent.DASH_OPTIONS;
+  public readonly directionOptions = PanelChartGuideLineComponent.DIRECTION_OPTIONS;
+  public readonly defaultColor = PanelChartGuideLineComponent.DEFAULT_COLOR;
 
   /** "the range"/"the line" so the outline checkbox's label matches whichever shape the line currently is. */
   public readonly outlineLabel = computed(() => {
@@ -75,14 +72,15 @@ export class PanelChartGuideLineComponent {
    */
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return AXIS_OPTIONS;
+    if (!chart) return PanelChartGuideLineComponent.AXIS_OPTIONS;
     // A control chart's X axis is its subgroups, with no numeric scale to place a line on.
-    if (chart instanceof XBarRChartWidgetModel) return AXIS_OPTIONS.filter((o) => o.value === 'y');
+    if (chart instanceof XBarRChartWidgetModel)
+      return PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) => o.value === 'y');
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
-    const options = AXIS_OPTIONS.filter((o) =>
+    const options = PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
     );
-    return options.length ? options : AXIS_OPTIONS;
+    return options.length ? options : PanelChartGuideLineComponent.AXIS_OPTIONS;
   });
 
   public readonly line = computed(() => {

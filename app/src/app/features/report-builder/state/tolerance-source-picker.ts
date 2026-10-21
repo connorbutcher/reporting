@@ -4,6 +4,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset';
 import { FixedToleranceConfig, ToleranceConfig } from '../../../core/models/report';
 import { ToleranceSeed } from './tolerance-seed';
+import { ColumnTypes } from '../models/column-types';
 
 /**
  * Picks a limits dataset, a spec row in it, and which of that row's columns
@@ -40,7 +41,7 @@ export class ToleranceSourcePicker {
   private readonly sourceData = signal<DatasetData | null>(null);
 
   readonly numericColumns = computed(
-    () => this.sourceSchema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
+    () => this.sourceSchema()?.columns.filter((c) => ColumnTypes.isNumeric(c.type)) ?? [],
   );
 
   /** Every column of the limits dataset — an identifier can be text, a number or a date. */

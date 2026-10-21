@@ -2,7 +2,8 @@ import { Component, computed, inject, input } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { MenuModule } from 'primeng/menu';
 import { FilterGroupModel } from '../../../models/filter';
-import { ReusableFilter, reusableFiltersFor } from '../../../models/filter-reuse';
+import { ReusableFilters } from '../../../models/reusable-filters';
+import { ReusableFilter } from '../../../models/reusable-filter';
 import { ReportSession } from '../../../state/report-session';
 
 /**
@@ -30,7 +31,7 @@ export class PanelFilterReuseComponent {
     const model = this.session.model();
     const datasetId = this.datasetId();
     if (!model || datasetId === null) return [];
-    return reusableFiltersFor(model, datasetId, this.target());
+    return ReusableFilters.find(model, datasetId, this.target());
   });
 
   public readonly copyMenu = computed<MenuItem[]>(() =>

@@ -14,11 +14,7 @@ import { FilterGroupModel } from './filter';
 import { WidgetModel } from './widget-model-base';
 import { ModelSources } from './sources/model-sources';
 import { ValidationIssue } from './validation-issue';
-
-/** Numeric column types an aggregate other than Count can reduce. */
-function isNumeric(type: DatasetColumn['type']): boolean {
-  return type === 'int' || type === 'double';
-}
+import { ColumnTypes } from './column-types';
 
 /**
  * A pivot / aggregation table. It binds a single dataset (like the data table), grouping rows by its
@@ -77,7 +73,9 @@ export class PivotTableWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.columns = computed(() => this.schema()?.columns ?? []);
-    this.numericColumns = computed(() => this.columns().filter((c) => isNumeric(c.type)));
+    this.numericColumns = computed(() =>
+      this.columns().filter((c) => ColumnTypes.isNumeric(c.type)),
+    );
     this.availableRowFields = computed(() => {
       const used = new Set([...this.rowFields(), ...this.columnFields()]);
       return this.columns().filter((c) => !used.has(c.id));
@@ -181,7 +179,8 @@ export class PivotTableWidgetModel extends WidgetModel {
     }
     const measure = this.measures().find((m) => m.id === id);
     const column = measure?.columnId ? this.columns().find((c) => c.id === measure.columnId) : null;
-    const keepsColumn = aggregate === 'countDistinct' || !column || isNumeric(column.type);
+    const keepsColumn =
+      aggregate === 'countDistinct' || !column || ColumnTypes.isNumeric(column.type);
     this.updateMeasure(id, keepsColumn ? { aggregate } : { aggregate, columnId: null });
   }
 

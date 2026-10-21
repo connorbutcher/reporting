@@ -19,15 +19,6 @@ import { ToleranceMarks } from './tolerance-marks';
 import { TooltipHtml } from './tooltip-html';
 import { SubgroupTooltipContext } from './types/subgroup-tooltip-context';
 
-// In-control points/line stay blue; a point breaching its own control limits turns red — the same
-// alarm colour tolerance bands use for an out-of-spec value, since both mean "something's wrong
-// with this one". The limit lines themselves are violet, kept deliberately clear of red/amber so
-// they never read as a spec band when a tolerance band is overlaid on the same X-bar axis.
-const IN_CONTROL_COLOR = '#2563eb';
-const OUT_OF_CONTROL_COLOR = '#dc2626';
-const CENTER_LINE_COLOR = '#475569';
-const LIMIT_LINE_COLOR = '#7c3aed';
-
 /**
  * Builds the Xbar-R echarts option: two stacked grids sharing one category (subgroup) axis — the
  * X-bar (mean) chart on top, the R (range) chart below — each with its own centre line and
@@ -35,11 +26,20 @@ const LIMIT_LINE_COLOR = '#7c3aed';
  * they can differ per subgroup when subgroup sizes aren't all equal.
  */
 export class XBarROption {
+  // In-control points/line stay blue; a point breaching its own control limits turns red — the same
+  // alarm colour tolerance bands use for an out-of-spec value, since both mean "something's wrong
+  // with this one". The limit lines themselves are violet, kept deliberately clear of red/amber so
+  // they never read as a spec band when a tolerance band is overlaid on the same X-bar axis.
+  private static readonly IN_CONTROL_COLOR = '#2563eb';
+  private static readonly OUT_OF_CONTROL_COLOR = '#dc2626';
+  private static readonly CENTER_LINE_COLOR = '#475569';
+  private static readonly LIMIT_LINE_COLOR = '#7c3aed';
+
   /** An out-of-control point: red and a larger triangle, so its status isn't carried by colour alone. */
   private static readonly OUT_OF_CONTROL_POINT = {
     symbol: 'triangle',
     symbolSize: 11,
-    itemStyle: { color: OUT_OF_CONTROL_COLOR },
+    itemStyle: { color: XBarROption.OUT_OF_CONTROL_COLOR },
   };
 
   /** What each Nelson rule means, for the tooltip. */
@@ -165,11 +165,15 @@ export class XBarROption {
         ? [
             {
               xAxis: baselineCount - 1,
-              lineStyle: { color: CENTER_LINE_COLOR, type: 'dotted' as const, width: 1.25 },
+              lineStyle: {
+                color: XBarROption.CENTER_LINE_COLOR,
+                type: 'dotted' as const,
+                width: 1.25,
+              },
               label: {
                 formatter: 'Limits baseline',
                 position: 'insideEndTop' as const,
-                color: CENTER_LINE_COLOR,
+                color: XBarROption.CENTER_LINE_COLOR,
                 fontSize: 10,
               },
             },
@@ -212,8 +216,8 @@ export class XBarROption {
       yAxisIndex: 0,
       symbol: 'circle',
       symbolSize: 7,
-      lineStyle: { color: IN_CONTROL_COLOR, width: 1.5 },
-      itemStyle: { color: IN_CONTROL_COLOR },
+      lineStyle: { color: XBarROption.IN_CONTROL_COLOR, width: 1.5 },
+      itemStyle: { color: XBarROption.IN_CONTROL_COLOR },
       data: subgroups.map((s) => ({
         value: s.mean,
         ...(highlight && s.meanOutOfControl ? XBarROption.OUT_OF_CONTROL_POINT : {}),
@@ -228,8 +232,8 @@ export class XBarROption {
       yAxisIndex: 1,
       symbol: 'circle',
       symbolSize: 7,
-      lineStyle: { color: IN_CONTROL_COLOR, width: 1.5 },
-      itemStyle: { color: IN_CONTROL_COLOR },
+      lineStyle: { color: XBarROption.IN_CONTROL_COLOR, width: 1.5 },
+      itemStyle: { color: XBarROption.IN_CONTROL_COLOR },
       // A subgroup of one (or the first individual) has no range: leave a gap rather than plot 0.
       data: subgroups.map((s) => ({
         value: s.hasRange === false ? null : s.range,
@@ -383,8 +387,13 @@ export class XBarROption {
         symbol: 'none',
         silent: true,
         tooltip: { show: false },
-        lineStyle: { color: LIMIT_LINE_COLOR, type: 'dashed', width: 1.25 },
-        endLabel: { show: true, formatter: label, color: LIMIT_LINE_COLOR, fontSize: 10 },
+        lineStyle: { color: XBarROption.LIMIT_LINE_COLOR, type: 'dashed', width: 1.25 },
+        endLabel: {
+          show: true,
+          formatter: label,
+          color: XBarROption.LIMIT_LINE_COLOR,
+          fontSize: 10,
+        },
         data: subgroups.map((s) => s[field]),
       },
     ];
@@ -406,8 +415,8 @@ export class XBarROption {
       symbol: 'none',
       silent: true,
       tooltip: { show: false },
-      lineStyle: { color: CENTER_LINE_COLOR, width: 1.25 },
-      endLabel: { show: true, formatter: 'CL', color: CENTER_LINE_COLOR, fontSize: 10 },
+      lineStyle: { color: XBarROption.CENTER_LINE_COLOR, width: 1.25 },
+      endLabel: { show: true, formatter: 'CL', color: XBarROption.CENTER_LINE_COLOR, fontSize: 10 },
       data: new Array(categoryCount).fill(value),
     };
   }

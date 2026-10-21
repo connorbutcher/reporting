@@ -1,5 +1,5 @@
-import { FilterGroup } from '../../../../core/models/filter/index';
-import { Widget } from '../../../../core/models/report/index';
+import { FilterGroup } from '../../../../core/models/filter';
+import { Widget } from '../../../../core/models/report';
 import { WidgetOutputHandler } from '../widget-output-handler';
 
 /**

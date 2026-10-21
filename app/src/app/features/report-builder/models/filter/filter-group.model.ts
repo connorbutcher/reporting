@@ -5,7 +5,7 @@ import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
 import { FilterConditionModel } from './filter-condition.model';
 import { FilterContext } from './filter-context';
-import { toConditionModels } from './filter-group-nodes';
+import { FilterGroupNodes } from './filter-group-nodes';
 
 /** A set of conditions joined by AND or OR. */
 export class FilterGroupModel extends EditorNode {
@@ -48,7 +48,7 @@ export class FilterGroupModel extends EditorNode {
   ) {
     super();
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditionModels(dto, context));
+    this.children.set(FilterGroupNodes.toConditionModels(dto, context));
   }
 
   public setJoin(join: FilterJoin): void {
@@ -81,7 +81,7 @@ export class FilterGroupModel extends EditorNode {
   /** Rebuilds from a stored filter, leaving that filter's own conditions untouched. */
   public replaceWith(dto: FilterGroup | null): void {
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditionModels(dto, this.context, { clone: true }));
+    this.children.set(FilterGroupNodes.toConditionModels(dto, this.context, { clone: true }));
   }
 
   /** Null when empty, so an untouched filter never narrows anything. */

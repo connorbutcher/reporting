@@ -40,7 +40,7 @@ import { ComboOption } from './options/combo-option';
 import { ECOption } from './options/types/ec-option';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
-import { COMMENT_ANCHOR_SERIES_NAME } from './options/point-types';
+import { PointChartConstants } from './options/point-chart-constants';
 import { ChartCommentAnchor } from './options/types/chart-comment-anchor';
 import { CommentAnchorPoint } from './options/types/comment-anchor-point';
 import { SeriesPalette } from './options/series-palette';
@@ -121,7 +121,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
     const limit = 500;
     return {
       header,
-      rows: rows.slice(0, limit).map((row) => row.map((cell) => dataCellText(cell))),
+      rows: rows
+        .slice(0, limit)
+        .map((row) => row.map((cell) => ChartWidgetComponent.dataCellText(cell))),
       hidden: Math.max(0, rows.length - limit),
     };
   });
@@ -456,6 +458,19 @@ export class ChartWidgetComponent extends DataWidgetBase {
     });
   }
 
+  /** A coordinate shown in the comment composer's anchor chip — exact enough to recognise the point, not a formatted axis tick. */
+  private static formatAnchorLabel(x: number, y: number): string {
+    const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+    return `${format(x)}, ${format(y)}`;
+  }
+
+  /** One "View data" cell as text: numbers to a readable precision, flags as Yes/No. */
+  private static dataCellText(cell: string | number | boolean): string {
+    if (typeof cell === 'number') return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    if (typeof cell === 'boolean') return cell ? 'Yes' : 'No';
+    return cell;
+  }
+
   /** Re-runs the query after a load error. */
   public retry(): void {
     this.source.error.set(false);
@@ -503,7 +518,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
       return;
     }
 
-    if (event.seriesName === COMMENT_ANCHOR_SERIES_NAME) {
+    if (event.seriesName === PointChartConstants.COMMENT_ANCHOR_SERIES_NAME) {
       const anchor = (event.data as CommentAnchorPoint | undefined)?.anchor;
       if (!anchor) return;
       comments.open(widgetId);
@@ -523,7 +538,12 @@ export class ChartWidgetComponent extends DataWidgetBase {
     const clicked = Array.isArray(series) ? series[event.seriesIndex ?? -1] : undefined;
     const yAxisIndex =
       clicked && 'yAxisIndex' in clicked ? (clicked.yAxisIndex as number | undefined) : undefined;
-    comments.pickAnchor(widgetId, { x, y, yAxisIndex, label: formatAnchorLabel(x, y) });
+    comments.pickAnchor(widgetId, {
+      x,
+      y,
+      yAxisIndex,
+      label: ChartWidgetComponent.formatAnchorLabel(x, y),
+    });
   }
 
   /**
@@ -606,17 +626,4 @@ export class ChartWidgetComponent extends DataWidgetBase {
   private zoomKey(): string | null {
     return this.widgetId() ?? (this.config().title?.trim() || null);
   }
-}
-
-/** A coordinate shown in the comment composer's anchor chip — exact enough to recognise the point, not a formatted axis tick. */
-function formatAnchorLabel(x: number, y: number): string {
-  const format = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  return `${format(x)}, ${format(y)}`;
-}
-
-/** One "View data" cell as text: numbers to a readable precision, flags as Yes/No. */
-function dataCellText(cell: string | number | boolean): string {
-  if (typeof cell === 'number') return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
-  if (typeof cell === 'boolean') return cell ? 'Yes' : 'No';
-  return cell;
 }

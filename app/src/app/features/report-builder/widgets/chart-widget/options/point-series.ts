@@ -6,7 +6,7 @@ import type {
 } from 'echarts/charts';
 import { PointSeriesOption } from './types/point-series-option';
 import { OutlineSeverity } from './outline-severity';
-import { COMMENT_ANCHOR_SERIES_NAME } from './point-types';
+import { PointChartConstants } from './point-chart-constants';
 import { ChartCommentAnchor } from './types/chart-comment-anchor';
 import { Coord } from './types/coord';
 import { PointChartConfig } from './types/point-chart-config';
@@ -14,11 +14,11 @@ import { ScatterPoint } from './types/scatter-point';
 import { SeriesStyle } from './types/series-style';
 import { SizeScale } from './types/size-scale';
 
-/** The fixed colour every comment-anchor marker draws in — distinct from any series' own palette colour. */
-const ANCHOR_COLOR = '#152a55';
-
 /** The per-kind echarts series options and the plotted points for a point chart. */
 export class PointSeries {
+  /** The fixed colour every comment-anchor marker draws in — distinct from any series' own palette colour. */
+  private static readonly ANCHOR_COLOR = '#152a55';
+
   /**
    * The echarts series options specific to one point-chart kind — its type and per-kind styling.
    * Name, colour, data and mark lines are shared by the caller. `sizeScale`, when a scatter series
@@ -156,11 +156,11 @@ export class PointSeries {
 
     return [...byAxis.entries()].map(([axisK, group]) => ({
       type: 'scatter' as const,
-      name: COMMENT_ANCHOR_SERIES_NAME,
+      name: PointChartConstants.COMMENT_ANCHOR_SERIES_NAME,
       data: group.map((anchor) => ({ value: [anchor.x, anchor.y] as [number, number], anchor })),
       symbol: 'pin',
       symbolSize: 26,
-      itemStyle: { color: ANCHOR_COLOR },
+      itemStyle: { color: PointSeries.ANCHOR_COLOR },
       legendHoverLink: false,
       tooltip: { formatter: () => 'Click to view this comment' },
       z: 10,
@@ -185,10 +185,10 @@ export class PointSeries {
     return [
       {
         type: 'effectScatter',
-        name: COMMENT_ANCHOR_SERIES_NAME,
+        name: PointChartConstants.COMMENT_ANCHOR_SERIES_NAME,
         data: [[point.x, point.y]],
         symbolSize: 30,
-        itemStyle: { color: ANCHOR_COLOR, opacity: 0.35 },
+        itemStyle: { color: PointSeries.ANCHOR_COLOR, opacity: 0.35 },
         rippleEffect: { scale: 3, brushType: 'stroke' },
         silent: true,
         z: 9,

@@ -16,11 +16,7 @@ import { FilterGroupModel } from './filter';
 import { WidgetModel } from './widget-model-base';
 import { ModelSources } from './sources/model-sources';
 import { ValidationIssue } from './validation-issue';
-
-/** Numeric column types an aggregate other than Count can reduce. */
-function isNumeric(type: DatasetColumn['type']): boolean {
-  return type === 'int' || type === 'double';
-}
+import { ColumnTypes } from './column-types';
 
 /**
  * A single headline number reduced from a dataset: either a plain aggregate over a column, or the
@@ -118,7 +114,9 @@ export class KpiWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.columns = computed(() => this.schema()?.columns ?? []);
-    this.numericColumns = computed(() => this.columns().filter((c) => isNumeric(c.type)));
+    this.numericColumns = computed(() =>
+      this.columns().filter((c) => ColumnTypes.isNumeric(c.type)),
+    );
     this.dateColumns = computed(() => this.columns().filter((c) => c.type === 'dateTime'));
     this.toleranceSchema = computed(() => {
       const sourceId = this.tolerance()?.sourceDatasetId;

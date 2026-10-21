@@ -20,7 +20,7 @@ import { ChartScale } from './chart-scale';
 import { PointAxes } from './point-axes';
 import { PointSeries } from './point-series';
 import { PointTooltip } from './point-tooltip';
-import { AXIS_OFFSET } from './point-types';
+import { PointChartConstants } from './point-chart-constants';
 import { ChartCommentAnchor } from './types/chart-comment-anchor';
 import { Coord } from './types/coord';
 import { PointChartConfig } from './types/point-chart-config';
@@ -35,16 +35,21 @@ import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
 
-// A perceptual-ish, colourblind-safe blue→red ramp for the colour-by-value scale (RdYlBu, reversed).
-const VALUE_COLOR_SCALE = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61', '#d7191c'];
-
-// A bubble's pixel diameter range; unbound points (or a series with no size column) keep the
-// chart's fixed pointSize instead.
-const MIN_BUBBLE_PX = 8;
-const MAX_BUBBLE_PX = 40;
-
 /** Builds the scatter/line echarts option: value axes with one mark per row, grouped into series. */
 export class PointOption {
+  // A perceptual-ish, colourblind-safe blue→red ramp for the colour-by-value scale (RdYlBu, reversed).
+  private static readonly VALUE_COLOR_SCALE = [
+    '#2c7bb6',
+    '#abd9e9',
+    '#ffffbf',
+    '#fdae61',
+    '#d7191c',
+  ];
+  // A bubble's pixel diameter range; unbound points (or a series with no size column) keep the
+  // chart's fixed pointSize instead.
+  private static readonly MIN_BUBBLE_PX = 8;
+  private static readonly MAX_BUBBLE_PX = 40;
+
   /** Null until there's a dataset and both axes are bound. */
   public static build(
     config: PointChartConfig,
@@ -239,8 +244,8 @@ export class PointOption {
       // in UTC too — otherwise tick boundaries fall on the viewer's local midnights.
       useUTC: true,
       grid: {
-        left: 56 + Math.max(0, leftCount - 1) * AXIS_OFFSET,
-        right: 20 + rightCount * AXIS_OFFSET + trendReserve,
+        left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,
+        right: 20 + rightCount * PointChartConstants.AXIS_OFFSET + trendReserve,
         top: topReserved ? 40 : 20,
         bottom: zoom ? 76 : 48,
         containLabel: true,
@@ -288,7 +293,7 @@ export class PointOption {
               left: 'center',
               top: 0,
               text: [formatYPrimary(yExtent.max), formatYPrimary(yExtent.min)],
-              inRange: { color: VALUE_COLOR_SCALE },
+              inRange: { color: PointOption.VALUE_COLOR_SCALE },
             },
           }
         : {}),
@@ -400,9 +405,12 @@ export class PointOption {
 
     return (size) => {
       if (typeof size !== 'number') return fallbackPointSize;
-      if (max === min) return (MIN_BUBBLE_PX + MAX_BUBBLE_PX) / 2;
+      if (max === min) return (PointOption.MIN_BUBBLE_PX + PointOption.MAX_BUBBLE_PX) / 2;
       const t = (size - min) / (max - min);
-      return MIN_BUBBLE_PX + Math.sqrt(t) * (MAX_BUBBLE_PX - MIN_BUBBLE_PX);
+      return (
+        PointOption.MIN_BUBBLE_PX +
+        Math.sqrt(t) * (PointOption.MAX_BUBBLE_PX - PointOption.MIN_BUBBLE_PX)
+      );
     };
   }
 

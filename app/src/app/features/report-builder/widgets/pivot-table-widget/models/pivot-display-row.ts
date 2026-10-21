@@ -1,5 +1,5 @@
-import { FilterGroup } from '../../../../../core/models/filter/index';
-import { PivotRow } from '../../../../../core/models/widget-query/index';
+import { FilterGroup } from '../../../../../core/models/filter';
+import { PivotRow } from '../../../../../core/models/widget-query';
 
 /** A row flattened for display, aligned to the dimension and value columns. */
 export interface PivotDisplayRow {

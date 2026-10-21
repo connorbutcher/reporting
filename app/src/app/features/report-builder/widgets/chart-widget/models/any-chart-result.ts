@@ -4,7 +4,7 @@ import {
   ChartQueryResult,
   HistogramQueryResult,
   XBarRChartQueryResult,
-} from '../../../../../core/models/widget-query/index';
+} from '../../../../../core/models/widget-query';
 
 export type AnyChartResult =
   | ChartQueryResult

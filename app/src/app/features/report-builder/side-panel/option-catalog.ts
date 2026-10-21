@@ -1,21 +1,14 @@
-/**
- * Shared option lists for the side panel's select controls, so the same choice
- * isn't spelled out (and kept in sync) in more than one panel. Panel-specific
- * lists still live with their panel; only genuinely shared ones belong here.
- */
+import { SelectOption } from './select-option';
 
-/** A label/value pair for PrimeNG select and select-button controls. */
-export interface SelectOption<T> {
-  label: string;
-  value: T;
+/** Select options shared by more than one side-panel view; view-specific lists stay with their view. */
+export class OptionCatalog {
+  /**
+   * Left / Centre / Right — the horizontal-alignment choices shared by the column
+   * and text panels. Text alignment adds "Justify" on top of these (see its panel).
+   */
+  public static readonly HORIZONTAL_ALIGN: SelectOption<'left' | 'center' | 'right'>[] = [
+    { label: 'Left', value: 'left' },
+    { label: 'Centre', value: 'center' },
+    { label: 'Right', value: 'right' },
+  ];
 }
-
-/**
- * Left / Centre / Right — the horizontal-alignment choices shared by the column
- * and text panels. Text alignment adds "Justify" on top of these (see its panel).
- */
-export const HORIZONTAL_ALIGN_OPTIONS: SelectOption<'left' | 'center' | 'right'>[] = [
-  { label: 'Left', value: 'left' },
-  { label: 'Centre', value: 'center' },
-  { label: 'Right', value: 'right' },
-];

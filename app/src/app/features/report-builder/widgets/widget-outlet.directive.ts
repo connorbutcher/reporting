@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { FilterGroup } from '../../../core/models/filter';
 import { Widget, WidgetType } from '../../../core/models/report';
-import { WIDGET_COMPONENTS } from './widget-component.registry';
+import { WidgetComponentRegistry } from './widget-component.registry';
 import { WidgetExportBase } from './widget-export-base';
 import { WidgetOutputHandler } from './widget-output-handler';
 
@@ -88,7 +88,7 @@ export class WidgetOutletDirective {
     this.clearOutputSubscriptions();
     this.ref?.destroy();
 
-    const component = WIDGET_COMPONENTS[type];
+    const component = WidgetComponentRegistry.COMPONENTS[type];
     this.ref = this.viewContainer.createComponent(component);
 
     const mirror = reflectComponentType(component);

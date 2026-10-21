@@ -8,12 +8,6 @@ import { TableDensity } from '../../../../../core/models/report';
 import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-const DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
-  { label: 'Compact', value: 'compact' },
-  { label: 'Normal', value: 'normal' },
-  { label: 'Roomy', value: 'comfortable' },
-];
-
 @Component({
   selector: 'app-panel-table-appearance',
   imports: [
@@ -27,10 +21,16 @@ const DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
   templateUrl: './panel-table-appearance.component.html',
 })
 export class PanelTableAppearanceComponent {
+  private static readonly DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
+    { label: 'Compact', value: 'compact' },
+    { label: 'Normal', value: 'normal' },
+    { label: 'Roomy', value: 'comfortable' },
+  ];
+
   static readonly title = 'Appearance';
 
   private readonly session = inject(ReportSession);
-  protected readonly densityOptions = DENSITY_OPTIONS;
+  protected readonly densityOptions = PanelTableAppearanceComponent.DENSITY_OPTIONS;
 
   protected readonly appearance = computed(
     () => this.session.selectedTableWidget()?.appearance ?? null,

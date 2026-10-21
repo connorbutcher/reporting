@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { WidgetType, widgetFragment } from '../../../core/models/report';
 import { UrlFragmentService } from '../../../core/services/url-fragment.service';
-import { fitsWithoutCollision } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
 import { WidgetModel } from '../models/widget.model';
 import { PanelNavigation } from './panel-navigation';
 import { ReportSession } from './report-session';
@@ -70,7 +70,14 @@ export class WidgetCommands {
       rect: { x: widget.x() + dx, y: widget.y() + dy, w: widget.w(), h: widget.h() },
     }));
 
-    if (!fitsWithoutCollision(targets, others, this.session.gridColumns(), this.session.gridRows()))
+    if (
+      !GridLayout.fitsWithoutCollision(
+        targets,
+        others,
+        this.session.gridColumns(),
+        this.session.gridRows(),
+      )
+    )
       return;
 
     for (const { widget, rect } of targets) widget.moveTo(rect.x, rect.y);

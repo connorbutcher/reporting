@@ -10,11 +10,6 @@ import { PanelNavigation } from '../../../state/panel-navigation';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
-  { label: 'Y axis', value: 'y' },
-  { label: 'X axis', value: 'x' },
-];
-
 /**
  * One dashed reference-line pair (min/max, optionally concession bounds) for
  * a chart, resolved against one row of a separate limits dataset — the chart
@@ -34,6 +29,11 @@ const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
   providers: [ToleranceSourcePicker],
 })
 export class PanelChartToleranceBandComponent {
+  private static readonly AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
+    { label: 'Y axis', value: 'y' },
+    { label: 'X axis', value: 'x' },
+  ];
+
   public static readonly title = 'Tolerance band';
 
   public readonly datasets = inject(ReportSession).datasets;
@@ -46,12 +46,12 @@ export class PanelChartToleranceBandComponent {
    */
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return AXIS_OPTIONS;
+    if (!chart) return PanelChartToleranceBandComponent.AXIS_OPTIONS;
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
-    const options = AXIS_OPTIONS.filter((o) =>
+    const options = PanelChartToleranceBandComponent.AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
     );
-    return options.length ? options : AXIS_OPTIONS;
+    return options.length ? options : PanelChartToleranceBandComponent.AXIS_OPTIONS;
   });
 
   public readonly band = computed(() => {

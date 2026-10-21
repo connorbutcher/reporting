@@ -1,5 +1,5 @@
 import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT } from '../../grid.util';
+import { GridLayout } from '../../grid/grid-layout';
 import { GridPreview } from '../../grid/grid-preview';
 import { ReportLifecycle } from '../../state/report-lifecycle';
 import { ReportSession } from '../../state/report-session';
@@ -31,16 +31,16 @@ export class CanvasGridComponent {
   protected readonly gridColumns = this.session.gridColumns;
   protected readonly gridRows = this.session.gridRows;
 
-  protected readonly rowHeight = ROW_HEIGHT;
-  protected readonly gridGap = GRID_GAP;
+  protected readonly rowHeight = GridLayout.ROW_HEIGHT;
+  protected readonly gridGap = GridLayout.GRID_GAP;
   protected readonly dropPreview = signal<GridPreview | null>(null);
 
   private readonly gridEl = viewChild<ElementRef<HTMLElement>>('grid');
 
   /** Fixed vertical pitch between rows; horizontal pitch is measured (see below). */
-  protected readonly rowStep = ROW_HEIGHT + GRID_GAP;
+  protected readonly rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
   /** Horizontal pitch between columns, from the measured column width. */
-  protected readonly columnStep = computed(() => this.session.columnWidth() + GRID_GAP);
+  protected readonly columnStep = computed(() => this.session.columnWidth() + GridLayout.GRID_GAP);
 
   constructor() {
     // Measure the column width from the live grid, re-running whenever the column
@@ -55,7 +55,8 @@ export class CanvasGridComponent {
         // clientWidth includes the grid's own padding only if box-sizing adds it;
         // the grid has none, so this is the track area. Subtract the gaps between
         // columns and divide by the count to get one column's width.
-        const columnWidth = columns > 0 ? (width - (columns - 1) * GRID_GAP) / columns : 0;
+        const columnWidth =
+          columns > 0 ? (width - (columns - 1) * GridLayout.GRID_GAP) / columns : 0;
         this.session.columnWidth.set(Math.max(0, columnWidth));
       };
 

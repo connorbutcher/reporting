@@ -1,4 +1,4 @@
-import { XBarRSubgroup } from '../../../../../../core/models/widget-query/index';
+import { XBarRSubgroup } from '../../../../../../core/models/widget-query';
 
 /** What the subgroup tooltip needs beyond its value: which chart it's on and how to format it. */
 export interface SubgroupTooltipContext {

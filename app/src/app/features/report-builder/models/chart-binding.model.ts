@@ -13,6 +13,7 @@ import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './sources/model-sources';
+import { ColumnTypes } from './column-types';
 
 /**
  * One dataset's contribution to a chart: its dataset, axes, per-value split, and row filter,
@@ -116,7 +117,7 @@ export class ChartBindingModel extends EditorNode {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.numericColumns = computed(
-      () => this.schema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
+      () => this.schema()?.columns.filter((c) => ColumnTypes.isNumeric(c.type)) ?? [],
     );
     this.axisColumns = computed(
       () =>

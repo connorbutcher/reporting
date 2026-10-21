@@ -6,27 +6,9 @@ import { SelectButtonModule } from 'primeng/selectbutton';
 import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../../../core/models/report';
 import { StaticTextWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
-import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
+import { OptionCatalog } from '../../option-catalog';
+import { SelectOption } from '../../select-option';
 import { PanelGroupComponent } from '../../panel-group.component';
-
-const FONT_WEIGHT_OPTIONS: SelectOption<TextFontWeight>[] = [
-  { label: 'Normal', value: 'normal' },
-  { label: 'Medium', value: 'medium' },
-  { label: 'Semibold', value: 'semibold' },
-  { label: 'Bold', value: 'bold' },
-];
-
-// The shared Left/Centre/Right, plus Justify which only text supports.
-const TEXT_ALIGN_OPTIONS: SelectOption<TextAlign>[] = [
-  ...HORIZONTAL_ALIGN_OPTIONS,
-  { label: 'Justify', value: 'justify' },
-];
-
-const VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
-  { label: 'Top', value: 'top' },
-  { label: 'Middle', value: 'middle' },
-  { label: 'Bottom', value: 'bottom' },
-];
 
 @Component({
   selector: 'app-panel-text-style',
@@ -41,13 +23,30 @@ const VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
   styleUrl: './panel-text-style.component.scss',
 })
 export class PanelTextStyleComponent {
+  private static readonly FONT_WEIGHT_OPTIONS: SelectOption<TextFontWeight>[] = [
+    { label: 'Normal', value: 'normal' },
+    { label: 'Medium', value: 'medium' },
+    { label: 'Semibold', value: 'semibold' },
+    { label: 'Bold', value: 'bold' },
+  ];
+  // The shared Left/Centre/Right, plus Justify which only text supports.
+  private static readonly TEXT_ALIGN_OPTIONS: SelectOption<TextAlign>[] = [
+    ...OptionCatalog.HORIZONTAL_ALIGN,
+    { label: 'Justify', value: 'justify' },
+  ];
+  private static readonly VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
+    { label: 'Top', value: 'top' },
+    { label: 'Middle', value: 'middle' },
+    { label: 'Bottom', value: 'bottom' },
+  ];
+
   static readonly title = 'Style';
 
   private readonly session = inject(ReportSession);
 
-  protected readonly fontWeightOptions = FONT_WEIGHT_OPTIONS;
-  protected readonly textAlignOptions = TEXT_ALIGN_OPTIONS;
-  protected readonly verticalAlignOptions = VERTICAL_ALIGN_OPTIONS;
+  protected readonly fontWeightOptions = PanelTextStyleComponent.FONT_WEIGHT_OPTIONS;
+  protected readonly textAlignOptions = PanelTextStyleComponent.TEXT_ALIGN_OPTIONS;
+  protected readonly verticalAlignOptions = PanelTextStyleComponent.VERTICAL_ALIGN_OPTIONS;
 
   protected readonly widget = computed(() => {
     const widget = this.session.selectedWidget();

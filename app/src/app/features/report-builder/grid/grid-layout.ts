@@ -1,0 +1,39 @@
+import { GridRect } from './grid-rect';
+
+/** Snap and collision maths for the report grid. */
+export class GridLayout {
+  /**
+   * Rows are a fixed, short height so cells read as wide rectangles; columns instead
+   * stretch to fill the canvas width (see the grid template), so the report never
+   * scrolls horizontally. The live column width is measured at runtime and shared
+   * through the store for the drag/resize snap maths.
+   */
+  public static readonly ROW_HEIGHT = 24;
+
+  public static readonly GRID_GAP = 6;
+
+  public static rectsOverlap(a: GridRect, b: GridRect): boolean {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  public static clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  /** Whether every target rect stays in bounds and clear of every other widget's footprint. */
+  public static fitsWithoutCollision(
+    targets: readonly { rect: GridRect }[],
+    others: readonly { rect(): GridRect }[],
+    gridColumns: number,
+    gridRows: number,
+  ): boolean {
+    return targets.every(
+      ({ rect }) =>
+        rect.x >= 0 &&
+        rect.y >= 0 &&
+        rect.x + rect.w <= gridColumns &&
+        rect.y + rect.h <= gridRows &&
+        !others.some((other) => GridLayout.rectsOverlap(rect, other.rect())),
+    );
+  }
+}

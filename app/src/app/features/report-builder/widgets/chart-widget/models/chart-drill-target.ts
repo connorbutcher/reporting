@@ -1,4 +1,4 @@
-import { FilterGroup } from '../../../../../core/models/filter/index';
+import { FilterGroup } from '../../../../../core/models/filter';
 
 /** What clicking a mark on a grouping chart opens: the rows behind it, from one binding's dataset. */
 export interface ChartDrillTarget {

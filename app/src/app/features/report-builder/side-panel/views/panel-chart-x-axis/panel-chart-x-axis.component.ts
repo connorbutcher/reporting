@@ -12,6 +12,7 @@ import {
   ComboChartWidgetModel,
 } from '../../../models/widget.model';
 import { PanelGroupComponent } from '../../panel-group.component';
+import { ColumnTypes } from '../../../models/column-types';
 
 /**
  * The shared X axis editor: label, tick-label rotation and interval, and — for a numeric
@@ -56,7 +57,7 @@ export class PanelChartXAxisComponent {
   public readonly xIsNumeric = computed(() => {
     const chart = this.chart();
     const column = chart.axisColumns().find((c) => c.id === chart.xColumnId());
-    return column?.type === 'int' || column?.type === 'double';
+    return ColumnTypes.isNumeric(column?.type);
   });
 
   /** Falls back to the bound X column's own name once one is chosen. */

@@ -7,7 +7,7 @@ import {
   HistogramQueryResult,
   XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
-import { toCsv } from '../csv.util';
+import { Csv } from '../csv';
 import { ChartColumns } from './options/chart-columns';
 import { ChartFormat } from './options/chart-format';
 import { XBarROption } from './options/xbar-r-option';
@@ -24,7 +24,7 @@ export class ChartExport {
     data: AnyChartResult,
     columns: DatasetColumn[],
   ): string {
-    return toCsv(ChartExport.table(config, data, columns));
+    return Csv.fromRows(ChartExport.table(config, data, columns));
   }
 
   public static table(

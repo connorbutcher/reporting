@@ -20,30 +20,10 @@ import { TableColumnModel } from '../../../models/table-column.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { DatasetSchema } from '../../../state/dataset-schema';
-import { HORIZONTAL_ALIGN_OPTIONS, SelectOption } from '../../option-catalog';
+import { OptionCatalog } from '../../option-catalog';
+import { SelectOption } from '../../select-option';
 import { PanelGroupComponent } from '../../panel-group.component';
-
-const DATE_FORMAT_PATTERNS = [
-  'dd/MM/yyyy',
-  'MM/dd/yyyy',
-  'yyyy-MM-dd',
-  'd MMM yyyy',
-  'd MMMM yyyy',
-  'dd/MM/yyyy HH:mm',
-];
-
-/**
- * A preview of each date pattern, labelled with a sample. The sample is the 31st
- * of December in the *current* year: fixed to the 31st so day/month can't be read
- * as month/day, but the year tracks today so the previews never look stale.
- */
-export const DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
-  const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
-  return DATE_FORMAT_PATTERNS.map((value) => ({
-    label: formatDate(sample, value, 'en-US'),
-    value,
-  }));
-})();
+import { ColumnTypes } from '../../../models/column-types';
 
 @Component({
   selector: 'app-panel-column-settings',
@@ -61,6 +41,27 @@ export const DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
   templateUrl: './panel-column-settings.component.html',
 })
 export class PanelColumnSettingsComponent {
+  /**
+   * A preview of each date pattern, labelled with a sample. The sample is the 31st
+   * of December in the *current* year: fixed to the 31st so day/month can't be read
+   * as month/day, but the year tracks today so the previews never look stale.
+   */
+  public static readonly DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
+    const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
+    return PanelColumnSettingsComponent.DATE_FORMAT_PATTERNS.map((value) => ({
+      label: formatDate(sample, value, 'en-US'),
+      value,
+    }));
+  })();
+  private static readonly DATE_FORMAT_PATTERNS = [
+    'dd/MM/yyyy',
+    'MM/dd/yyyy',
+    'yyyy-MM-dd',
+    'd MMM yyyy',
+    'd MMMM yyyy',
+    'dd/MM/yyyy HH:mm',
+  ];
+
   /** Fallback heading; the chrome shows the selected column's own label when there is one. */
   static readonly title = 'Column';
 
@@ -68,8 +69,8 @@ export class PanelColumnSettingsComponent {
   private readonly navigation = inject(PanelNavigation);
   private readonly schema = inject(DatasetSchema);
 
-  protected readonly dateFormats = DATE_FORMAT_OPTIONS;
-  protected readonly alignOptions = HORIZONTAL_ALIGN_OPTIONS;
+  protected readonly dateFormats = PanelColumnSettingsComponent.DATE_FORMAT_OPTIONS;
+  protected readonly alignOptions = OptionCatalog.HORIZONTAL_ALIGN;
 
   private readonly table = this.session.selectedTableWidget;
 
@@ -133,7 +134,7 @@ export class PanelColumnSettingsComponent {
   });
 
   protected isNumeric(column: DatasetColumn): boolean {
-    return column.type === 'int' || column.type === 'double';
+    return ColumnTypes.isNumeric(column.type);
   }
 
   protected toleranceSummary(column: TableColumnModel): string {

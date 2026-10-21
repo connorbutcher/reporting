@@ -1,4 +1,4 @@
-import { FilterGroup } from '../../../../core/models/filter/index';
+import { FilterGroup } from '../../../../core/models/filter';
 
 export interface CountKey {
   datasetId: number;

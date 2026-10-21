@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { FilterGroup } from '../../../../core/models/filter';
 import { FilterGroupModel } from './filter-group.model';
 import { ReportFilterModel } from './report-filter.model';
-import { column, condition, contextOf, groupOf, schemaOf } from './testing/filter-fixtures';
+import { FilterFixtures } from './testing/filter-fixtures';
 
-const build = (dto: FilterGroup | null = null, options: Parameters<typeof contextOf>[0] = {}) =>
-  new FilterGroupModel(dto, contextOf(options));
+const build = (
+  dto: FilterGroup | null = null,
+  options: Parameters<typeof FilterFixtures.contextOf>[0] = {},
+) => new FilterGroupModel(dto, FilterFixtures.contextOf(options));
 
 describe('FilterGroupModel', () => {
   describe('construction', () => {
@@ -18,7 +20,11 @@ describe('FilterGroupModel', () => {
 
     it('reads the join and conditions from a dto', () => {
       const model = build(
-        groupOf('or', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])),
+        FilterFixtures.groupOf(
+          'or',
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('b', 'equals', ['1']),
+        ),
       );
 
       expect(model.join()).toBe('or');
@@ -27,13 +33,13 @@ describe('FilterGroupModel', () => {
 
     it('flattens nested groups to their conditions rather than dropping them', () => {
       const model = build(
-        groupOf(
+        FilterFixtures.groupOf(
           'and',
-          condition('a', 'equals', ['1']),
-          groupOf(
+          FilterFixtures.condition('a', 'equals', ['1']),
+          FilterFixtures.groupOf(
             'or',
-            condition('b', 'equals', ['2']),
-            groupOf('and', condition('c', 'equals', ['3'])),
+            FilterFixtures.condition('b', 'equals', ['2']),
+            FilterFixtures.groupOf('and', FilterFixtures.condition('c', 'equals', ['3'])),
           ),
         ),
       );
@@ -66,7 +72,14 @@ describe('FilterGroupModel', () => {
     });
 
     it('removes by index, and clears', () => {
-      const model = build(groupOf('and', condition('a'), condition('b'), condition('a')));
+      const model = build(
+        FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a'),
+          FilterFixtures.condition('b'),
+          FilterFixtures.condition('a'),
+        ),
+      );
 
       model.removeAt(1);
       expect(model.children().map((c) => c.columnId())).toEqual(['a', 'a']);
@@ -84,8 +97,8 @@ describe('FilterGroupModel', () => {
     });
 
     it('replaceWith rebuilds from a dto without sharing its conditions', () => {
-      const source = groupOf('or', condition('a', 'equals', ['x']));
-      const model = build(groupOf('and', condition('b')));
+      const source = FilterFixtures.groupOf('or', FilterFixtures.condition('a', 'equals', ['x']));
+      const model = build(FilterFixtures.groupOf('and', FilterFixtures.condition('b')));
 
       model.replaceWith(source);
       model.children()[0].setValue(0, 'changed');
@@ -96,7 +109,7 @@ describe('FilterGroupModel', () => {
     });
 
     it('replaceWith(null) empties it', () => {
-      const model = build(groupOf('or', condition('a')));
+      const model = build(FilterFixtures.groupOf('or', FilterFixtures.condition('a')));
 
       model.replaceWith(null);
 
@@ -115,13 +128,15 @@ describe('FilterGroupModel', () => {
     });
 
     it('offers only the scoped columns', () => {
-      const scoped = build(null, { scope: [column('b', 'int')] });
+      const scoped = build(null, { scope: [FilterFixtures.column('b', 'int')] });
 
       expect(scoped.columns().map((c) => c.id)).toEqual(['b']);
     });
 
     it('still lists a column a condition uses after it left the scope', () => {
-      const scoped = build(groupOf('and', condition('a')), { scope: [column('b', 'int')] });
+      const scoped = build(FilterFixtures.groupOf('and', FilterFixtures.condition('a')), {
+        scope: [FilterFixtures.column('b', 'int')],
+      });
 
       expect(scoped.columns().map((c) => c.id)).toEqual(['a', 'b']);
     });
@@ -146,12 +161,12 @@ describe('FilterGroupModel', () => {
   describe('counts', () => {
     it('counts all conditions, the switched-on ones, and those on removed columns', () => {
       const model = build(
-        groupOf(
+        FilterFixtures.groupOf(
           'and',
-          condition('a', 'equals', ['x']),
-          condition('a', 'equals', ['y'], false),
-          condition('gone', 'equals', ['z']),
-          condition('gone', 'equals', ['z'], false),
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('a', 'equals', ['y'], false),
+          FilterFixtures.condition('gone', 'equals', ['z']),
+          FilterFixtures.condition('gone', 'equals', ['z'], false),
         ),
       );
 
@@ -164,12 +179,12 @@ describe('FilterGroupModel', () => {
   describe('projections', () => {
     const mixed = () =>
       build(
-        groupOf(
+        FilterFixtures.groupOf(
           'or',
-          condition('a', 'equals', ['x']),
-          condition('a', 'equals', [], undefined),
-          condition('a', 'equals', ['off'], false),
-          condition('gone', 'equals', ['z']),
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('a', 'equals', [], undefined),
+          FilterFixtures.condition('a', 'equals', ['off'], false),
+          FilterFixtures.condition('gone', 'equals', ['z']),
         ),
       );
 
@@ -180,11 +195,15 @@ describe('FilterGroupModel', () => {
     });
 
     it('toQueryDto keeps only enabled, complete conditions on columns that exist', () => {
-      expect(mixed().toQueryDto()).toEqual(groupOf('or', condition('a', 'equals', ['x'])));
+      expect(mixed().toQueryDto()).toEqual(
+        FilterFixtures.groupOf('or', FilterFixtures.condition('a', 'equals', ['x'])),
+      );
     });
 
     it('toQueryDto is null when nothing qualifies', () => {
-      expect(build(groupOf('and', condition('a', 'equals'))).toQueryDto()).toBeNull();
+      expect(
+        build(FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals'))).toQueryDto(),
+      ).toBeNull();
     });
 
     it('toCompleteDto keeps every finished condition, enabled or not, missing column or not', () => {
@@ -196,14 +215,22 @@ describe('FilterGroupModel', () => {
     });
 
     it('toCompleteDto is null when nothing is finished', () => {
-      expect(build(groupOf('and', condition('a', 'equals'))).toCompleteDto()).toBeNull();
+      expect(
+        build(
+          FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals')),
+        ).toCompleteDto(),
+      ).toBeNull();
     });
   });
 
   describe('as an editor node', () => {
     it('rolls its conditions’ issues up, and raises none of its own', () => {
       const model = build(
-        groupOf('and', condition('a', 'equals'), condition('gone', 'equals', ['x'])),
+        FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals'),
+          FilterFixtures.condition('gone', 'equals', ['x']),
+        ),
       );
 
       expect(model.ownIssues()).toEqual([]);
@@ -214,7 +241,9 @@ describe('FilterGroupModel', () => {
     });
 
     it('snapshots as its dto', () => {
-      const model = build(groupOf('and', condition('a', 'equals', ['x'])));
+      const model = build(
+        FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x'])),
+      );
 
       expect(model.snapshotValue()).toEqual(model.toDto());
     });
@@ -223,26 +252,32 @@ describe('FilterGroupModel', () => {
 
 describe('ReportFilterModel', () => {
   const build = (dto: FilterGroup | null, schemaName = 'Bearings') =>
-    new ReportFilterModel(7, dto, contextOf({ schema: schemaOf([column('a')], 7, schemaName) }));
+    new ReportFilterModel(
+      7,
+      dto,
+      FilterFixtures.contextOf({
+        schema: FilterFixtures.schemaOf([FilterFixtures.column('a')], 7, schemaName),
+      }),
+    );
 
   it('has no dto while its group is empty', () => {
     expect(build(null).toDto()).toBeNull();
   });
 
   it('carries the dataset id with its filter', () => {
-    const filter = groupOf('and', condition('a', 'equals', ['x']));
+    const filter = FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x']));
 
     expect(build(filter).toDto()).toEqual({ datasetId: 7, filter });
   });
 
   it('names its dataset, or says it is unknown while the schema is pending', () => {
     expect(build(null).datasetName()).toBe('Bearings');
-    const pending = new ReportFilterModel(7, null, contextOf({ schema: null }));
+    const pending = new ReportFilterModel(7, null, FilterFixtures.contextOf({ schema: null }));
     expect(pending.datasetName()).toBe('Unknown dataset');
   });
 
   it('rolls its group’s issues up', () => {
-    const model = build(groupOf('and', condition('a', 'equals')));
+    const model = build(FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals')));
 
     expect(model.issues()).toHaveLength(1);
     expect(model.ownIssues()).toEqual([]);

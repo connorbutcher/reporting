@@ -10,7 +10,8 @@ import {
   TableRowResult,
 } from '../../../../core/models/widget-query';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { DataTableWidgetComponent, SCROLL_WINDOW, csvValue } from './data-table-widget.component';
+import { DataTableWidgetComponent } from './data-table-widget.component';
+import { Csv } from '../csv';
 
 const row = (i: number): TableRowResult => ({
   id: `r${i}`,
@@ -103,23 +104,34 @@ describe('DataTableWidgetComponent', () => {
   it('holds a placeholder for every matched row and fills the first window', async () => {
     const table = await render();
 
-    expect(lastRequest()).toMatchObject({ skip: 0, take: SCROLL_WINDOW });
+    expect(lastRequest()).toMatchObject({ skip: 0, take: DataTableWidgetComponent.SCROLL_WINDOW });
     expect(table.rows().length).toBe(matched);
     expect(table.rows()[0]?.id).toBe('r0');
-    expect(table.rows()[SCROLL_WINDOW]).toBeUndefined();
+    expect(table.rows()[DataTableWidgetComponent.SCROLL_WINDOW]).toBeUndefined();
   });
 
   it('fetches the windows a reader scrolls to, once each', async () => {
     const table = await render();
     queryTable.mockClear();
 
-    table.onLazyLoad({ first: 2 * SCROLL_WINDOW + 10, last: 2 * SCROLL_WINDOW + 40 });
-    table.onLazyLoad({ first: 2 * SCROLL_WINDOW + 20, last: 2 * SCROLL_WINDOW + 50 });
+    table.onLazyLoad({
+      first: 2 * DataTableWidgetComponent.SCROLL_WINDOW + 10,
+      last: 2 * DataTableWidgetComponent.SCROLL_WINDOW + 40,
+    });
+    table.onLazyLoad({
+      first: 2 * DataTableWidgetComponent.SCROLL_WINDOW + 20,
+      last: 2 * DataTableWidgetComponent.SCROLL_WINDOW + 50,
+    });
     await vi.advanceTimersByTimeAsync(0);
 
     expect(queryTable).toHaveBeenCalledTimes(1);
-    expect(lastRequest()).toMatchObject({ skip: 2 * SCROLL_WINDOW, take: SCROLL_WINDOW });
-    expect(table.rows()[2 * SCROLL_WINDOW + 10]?.id).toBe(`r${2 * SCROLL_WINDOW + 10}`);
+    expect(lastRequest()).toMatchObject({
+      skip: 2 * DataTableWidgetComponent.SCROLL_WINDOW,
+      take: DataTableWidgetComponent.SCROLL_WINDOW,
+    });
+    expect(table.rows()[2 * DataTableWidgetComponent.SCROLL_WINDOW + 10]?.id).toBe(
+      `r${2 * DataTableWidgetComponent.SCROLL_WINDOW + 10}`,
+    );
   });
 
   it('pages a paginated table one page at a time', async () => {
@@ -183,16 +195,22 @@ describe('DataTableWidgetComponent', () => {
   });
 });
 
-describe('csvValue', () => {
+describe('Csv.fromTableCell', () => {
   it('writes numbers raw and dates in a form spreadsheets read', () => {
-    expect(csvValue({ displayValue: '£1,234.50', value: 1234.5, tolerance: 'none' })).toBe(1234.5);
-    expect(
-      csvValue({ displayValue: '05/01/2026', value: '2026-01-05T00:00:00', tolerance: 'none' }),
-    ).toBe('2026-01-05');
-    expect(csvValue({ displayValue: 'x', value: '2026-01-05T14:30:00Z', tolerance: 'none' })).toBe(
-      '2026-01-05 14:30:00',
+    expect(Csv.fromTableCell({ displayValue: '£1,234.50', value: 1234.5, tolerance: 'none' })).toBe(
+      1234.5,
     );
-    expect(csvValue({ displayValue: 'Yes', value: true, tolerance: 'none' })).toBe('Yes');
-    expect(csvValue(undefined)).toBe('');
+    expect(
+      Csv.fromTableCell({
+        displayValue: '05/01/2026',
+        value: '2026-01-05T00:00:00',
+        tolerance: 'none',
+      }),
+    ).toBe('2026-01-05');
+    expect(
+      Csv.fromTableCell({ displayValue: 'x', value: '2026-01-05T14:30:00Z', tolerance: 'none' }),
+    ).toBe('2026-01-05 14:30:00');
+    expect(Csv.fromTableCell({ displayValue: 'Yes', value: true, tolerance: 'none' })).toBe('Yes');
+    expect(Csv.fromTableCell(undefined)).toBe('');
   });
 });

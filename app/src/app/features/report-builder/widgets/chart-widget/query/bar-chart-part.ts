@@ -1,5 +1,5 @@
-import { ChartSeriesBinding } from '../../../../../core/models/report/index';
-import { BarChartQueryResult } from '../../../../../core/models/widget-query/index';
+import { ChartSeriesBinding } from '../../../../../core/models/report';
+import { BarChartQueryResult } from '../../../../../core/models/widget-query';
 
 /** One binding's bar-chart response, tagged with the binding it came from. */
 export interface BarChartPart {

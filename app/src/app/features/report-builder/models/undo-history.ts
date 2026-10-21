@@ -1,9 +1,6 @@
 import { computed, signal } from '@angular/core';
 import { ReportRevisionContent } from '../../../core/models/report';
 
-/** Plenty for a working session without holding on to unbounded memory. */
-const MAX_ENTRIES = 60;
-
 /**
  * A linear undo stack of whole-report snapshots, each a serialized JSON string.
  *
@@ -14,6 +11,9 @@ const MAX_ENTRIES = 60;
  * rather than one per keystroke.
  */
 export class UndoHistory {
+  /** Plenty for a working session without holding on to unbounded memory. */
+  private static readonly MAX_ENTRIES = 60;
+
   private readonly entries = signal<string[]>([]);
   private readonly index = signal(-1);
 
@@ -37,7 +37,7 @@ export class UndoHistory {
 
     // A new edit after undoing discards the redo branch.
     const kept = entries.slice(0, index + 1);
-    const trimmed = [...kept, json].slice(-MAX_ENTRIES);
+    const trimmed = [...kept, json].slice(-UndoHistory.MAX_ENTRIES);
     this.entries.set(trimmed);
     this.index.set(trimmed.length - 1);
   }

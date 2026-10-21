@@ -1,4 +1,4 @@
-import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report/index';
+import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report';
 
 /**
  * One series' presentation, resolved live from its binding's current config so appearance

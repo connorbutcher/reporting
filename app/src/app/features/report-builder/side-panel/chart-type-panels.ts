@@ -1,5 +1,5 @@
 import { Type } from '@angular/core';
-import { WidgetType } from '../../../core/models/report/index';
+import { WidgetType } from '../../../core/models/report';
 
 /**
  * A chart's type mapped to the panel component that edits one facet of it (its data

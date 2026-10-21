@@ -3,7 +3,7 @@ import {
   BoxPlotQueryResult,
   HistogramQueryResult,
   XBarRChartQueryResult,
-} from '../../../../../core/models/widget-query/index';
+} from '../../../../../core/models/widget-query';
 
 export type GroupingResult =
   BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult;

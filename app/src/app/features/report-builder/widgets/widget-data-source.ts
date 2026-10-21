@@ -4,8 +4,6 @@ import { EMPTY, Subject, catchError, debounceTime, merge, switchMap } from 'rxjs
 import { DatasetColumn } from '../../../core/models/dataset';
 import { WidgetDataSourceOptions } from './widget-data-source-options';
 
-const DEFAULT_DEBOUNCE_MS = 300;
-
 /**
  * The shared data engine behind the table and chart widgets: it loads a
  * dataset's schema and runs the debounced, cancel-on-supersede query pipeline,
@@ -19,6 +17,8 @@ const DEFAULT_DEBOUNCE_MS = 300;
  * or constructor) so its effect and subscription are torn down with the widget.
  */
 export class WidgetDataSource<T> {
+  private static readonly DEFAULT_DEBOUNCE_MS = 300;
+
   /** Discrete interactions reload immediately. */
   private readonly interactionQueue = new Subject<void>();
   /** Typing a filter value settles into one request instead of one per keystroke. */
@@ -53,7 +53,9 @@ export class WidgetDataSource<T> {
 
     merge(
       this.interactionQueue,
-      this.filterQueue.pipe(debounceTime(options.debounceMs ?? DEFAULT_DEBOUNCE_MS)),
+      this.filterQueue.pipe(
+        debounceTime(options.debounceMs ?? WidgetDataSource.DEFAULT_DEBOUNCE_MS),
+      ),
     )
       .pipe(
         switchMap(() => {

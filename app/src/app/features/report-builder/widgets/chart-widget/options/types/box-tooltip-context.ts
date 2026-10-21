@@ -1,5 +1,5 @@
-import { NumericColumnConfig } from '../../../../../../core/models/dataset/index';
-import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query/index';
+import { NumericColumnConfig } from '../../../../../../core/models/dataset';
+import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query';
 
 /** What the box tooltip needs beyond the summary: the value formatting and the optional engineering extras. */
 export interface BoxTooltipContext {

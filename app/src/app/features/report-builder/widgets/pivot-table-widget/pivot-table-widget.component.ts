@@ -15,9 +15,9 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup, combineFilters } from '../../../../core/models/filter';
 import { FormatRule, PivotTableWidgetConfig } from '../../../../core/models/report';
 import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query';
-import { toCsv } from '../csv.util';
-import { resolveWidgetFilter } from '../effective-filter';
-import { FORMAT_STYLE_CLASS, dataBarPercent, matchFormatRule } from '../format-rules';
+import { Csv } from '../csv';
+import { EffectiveFilter } from '../effective-filter';
+import { FormatRules } from '../format-rules/format-rules';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
@@ -227,7 +227,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   private readonly viewSort = signal<PivotSort | null | undefined>(undefined);
 
   private readonly effectiveFilter = computed(() =>
-    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
+    EffectiveFilter.resolve(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
 
   private readonly source = new WidgetDataSource<PivotQueryResult>({
@@ -365,8 +365,8 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   /** The value cell's highlight from its measure's first matching conditional-format rule. */
   public valueClass(column: PivotValueColumn, row: PivotDisplayRow): string | null {
     const rules: FormatRule[] | undefined = this.measureConfig(column.measureIndex)?.formatRules;
-    const style = matchFormatRule(row.values[column.valueIndex]?.value, rules);
-    return style ? FORMAT_STYLE_CLASS[style] : null;
+    const style = FormatRules.match(row.values[column.valueIndex]?.value, rules);
+    return style ? FormatRules.STYLE_CLASS[style] : null;
   }
 
   /** How long a value's data bar is, as a percentage of its column's range; null for no bar. */
@@ -374,7 +374,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     if (row.isSubtotal) return null;
     const range = this.valueRanges().get(column.valueIndex);
     return range
-      ? dataBarPercent(row.values[column.valueIndex]?.value, range.min, range.max)
+      ? FormatRules.dataBarPercent(row.values[column.valueIndex]?.value, range.min, range.max)
       : null;
   }
 
@@ -436,7 +436,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     ];
     const rows = data.rows.map(rowCells);
     if (data.grandTotal) rows.push(rowCells(data.grandTotal));
-    return toCsv([header, ...rows]);
+    return Csv.fromRows([header, ...rows]);
   }
 
   protected exportName(): string {

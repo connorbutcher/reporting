@@ -3,7 +3,7 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { DatasetCountResult, FilterGroup, combineFilters } from '../../../../../core/models/filter';
 import { FilterGroupModel } from '../../../models/filter';
-import { liveMatchCount } from '../live-match-count';
+import { LiveMatchCount } from '../live-match-count';
 import { MatchState } from '../match-state';
 
 /** "Matches N of M rows" for the filter being edited, folded together with whatever else already narrows the dataset. */
@@ -20,7 +20,7 @@ export class FilterMatchCountComponent {
 
   // The key is inlined so it stays a closure over the inputs: reading toQueryDto() tracks every
   // condition, operator and value, so the count re-runs as the filter is edited.
-  public readonly match = liveMatchCount(
+  public readonly match = LiveMatchCount.create(
     computed(() => {
       const group = this.group();
       const datasetId = group.datasetId();

@@ -8,9 +8,9 @@ import {
 } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
-import { findProblem, problemCue, problemIssue } from './filter-condition-problem';
+import { ConditionProblems } from './condition-problems';
 import { FilterContext } from './filter-context';
-import { offerableOperators } from './offerable-operators';
+import { OfferableOperators } from './offerable-operators';
 
 /** One `column operator value(s)` test. */
 export class FilterConditionModel extends EditorNode {
@@ -33,7 +33,7 @@ export class FilterConditionModel extends EditorNode {
     const type = this.schemaColumn()?.type;
     const catalogue = this.context.catalogue();
     if (!type || !catalogue) return [];
-    return offerableOperators(catalogue[type] ?? [], this.isTolerant(), this.operator());
+    return OfferableOperators.of(catalogue[type] ?? [], this.isTolerant(), this.operator());
   });
 
   /** Drives how many operand inputs to render. */
@@ -57,12 +57,12 @@ export class FilterConditionModel extends EditorNode {
   /** Why this row isn't narrowing the data; null when fine or disabled. */
   public readonly problem = computed(() => {
     const problem = this.currentProblem();
-    return problem && problemCue(problem);
+    return problem && ConditionProblems.cue(problem);
   });
 
   private readonly currentProblem = computed(() =>
     this.enabled()
-      ? findProblem({
+      ? ConditionProblems.find({
           columnMissing: this.columnMissing(),
           toleranceMissing: TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant(),
           complete: this.isComplete(),
@@ -145,7 +145,7 @@ export class FilterConditionModel extends EditorNode {
     const problem = this.currentProblem();
     if (!problem) return [];
     return [
-      problemIssue(
+      ConditionProblems.issue(
         problem,
         `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`,
         this.context,
