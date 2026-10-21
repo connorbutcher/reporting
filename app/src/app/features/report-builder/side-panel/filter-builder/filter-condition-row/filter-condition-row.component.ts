@@ -8,7 +8,7 @@ import { FilterConditionModel } from '../../../models/filter';
 import { ColumnValueLists } from '../column-value-lists';
 import { OperandInput } from '../operand-input';
 
-/** One condition: enable toggle, column, operator and operands, with the reason it isn't narrowing when it isn't. */
+/** One condition row, with the reason it isn't narrowing when it isn't. */
 @Component({
   selector: 'app-filter-condition-row',
   imports: [FormsModule, ButtonModule, MultiSelectModule, SelectModule, ToggleSwitchModule],
@@ -58,7 +58,7 @@ export class FilterConditionRowComponent {
   private readonly lists = inject(ColumnValueLists);
 
   constructor() {
-    // Fetches on demand as the row comes to need a value picker, so a filter without one fetches nothing.
+    // Fetch values only once the row needs a value picker.
     effect(() => {
       const datasetId = this.datasetId();
       if (datasetId !== null && this.pickFromValues())

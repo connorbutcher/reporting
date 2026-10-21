@@ -19,7 +19,7 @@ export class PanelAddColumnComponent {
 
   protected readonly search = signal('');
 
-  /** Columns still available, narrowed by the search box. */
+  /** Available columns, narrowed by the search box. */
   protected readonly matches = computed(() => {
     const available = this.table()?.availableColumns() ?? [];
     const term = this.search().trim().toLowerCase();
@@ -34,7 +34,7 @@ export class PanelAddColumnComponent {
 
   protected add(columnId: string): void {
     this.table()?.addColumn(columnId);
-    // Straight back to the list so several columns can be added in a row.
+    // Back to the list so several columns can be added in a row.
     this.navigation.back();
   }
 

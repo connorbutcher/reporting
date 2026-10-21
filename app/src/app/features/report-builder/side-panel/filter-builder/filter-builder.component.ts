@@ -8,10 +8,7 @@ import { ColumnValueLists } from './column-value-lists';
 import { FilterConditionRowComponent } from './filter-condition-row/filter-condition-row.component';
 import { FilterMatchCountComponent } from './filter-match-count/filter-match-count.component';
 
-/**
- * Edits one group of filter conditions: a widget's own filter or a report-level one, whichever
- * group model it's handed. Operators come from the server's catalogue, so it only offers what the server accepts.
- */
+/** Edits one filter group, a widget's or a report-level one, offering only the server's operators. */
 @Component({
   selector: 'app-filter-builder',
   imports: [
@@ -27,9 +24,8 @@ import { FilterMatchCountComponent } from './filter-match-count/filter-match-cou
 })
 export class FilterBuilderComponent {
   public readonly group = input.required<FilterGroupModel>();
-  /** Explains what this filter scopes. */
   public readonly hint = input<string>('');
-  /** Whatever else already narrows this dataset (see {@link FilterMatchCountComponent.additionalFilter}). */
+  /** What else already narrows this dataset (see {@link FilterMatchCountComponent.additionalFilter}). */
   public readonly additionalFilter = input<FilterGroup | null>(null);
 
   public readonly joinOptions = [

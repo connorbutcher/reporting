@@ -5,7 +5,7 @@ import { TabModel } from '../../../models/tab.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** Grid size for the active tab — each tab is its own surface, so this is per-tab. */
+/** The active tab's grid size. */
 @Component({
   selector: 'app-panel-report-settings',
   imports: [FormsModule, InputNumberModule, PanelGroupComponent],

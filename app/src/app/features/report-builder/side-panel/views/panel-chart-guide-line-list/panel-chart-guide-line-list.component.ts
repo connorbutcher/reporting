@@ -6,7 +6,6 @@ import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The "Guide lines" group of the chart detail panel: lists each line and adds new ones. */
 @Component({
   selector: 'app-panel-chart-guide-line-list',
   imports: [ButtonModule, PanelGroupComponent],
@@ -17,7 +16,7 @@ export class PanelChartGuideLineListComponent {
 
   private readonly navigation = inject(PanelNavigation);
 
-  /** Adds a line and jumps straight to it, rather than leaving the user to find it in the list. */
+  /** Adds a line and opens it. */
   public addGuideLine(): void {
     const chart = this.chart();
     const lineId = chart.addGuideLine();

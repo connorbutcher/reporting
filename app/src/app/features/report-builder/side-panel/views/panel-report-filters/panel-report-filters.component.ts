@@ -4,7 +4,7 @@ import { FilterBuilderComponent } from '../../filter-builder/filter-builder.comp
 import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
 import { DatasetChip } from './dataset-chip';
 
-/** Report-level filters, one per dataset, applied to every widget bound to that dataset. */
+/** Report-level filters, one per dataset, applied to every widget on that dataset. */
 @Component({
   selector: 'app-panel-report-filters',
   imports: [FilterBuilderComponent, PanelFilterReuseComponent],
@@ -16,7 +16,7 @@ export class PanelReportFiltersComponent {
 
   public readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
 
-  /** The dataset on screen; defaults to the first in use. */
+  /** Defaults to the first dataset in use. */
   public readonly activeDatasetId = computed(
     () => this.selectedDatasetId() ?? this.datasetIds()[0] ?? null,
   );
@@ -43,7 +43,7 @@ export class PanelReportFiltersComponent {
   private readonly selectedDatasetId = signal<number | null>(null);
 
   constructor() {
-    // Creating the filter is a write, so it happens here rather than in a computed.
+    // Creating the filter is a write, so it can't happen in a computed.
     effect(() => {
       const datasetId = this.activeDatasetId();
       const model = this.session.model();

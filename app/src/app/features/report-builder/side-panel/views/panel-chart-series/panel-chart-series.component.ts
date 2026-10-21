@@ -23,12 +23,7 @@ import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.component';
 
-/**
- * One data series' full configuration — its dataset, axes, colour-by split, style,
- * assigned Y axis, draw order, and row filter. Reached from the series list on the
- * chart detail panel, so the list stays a scannable summary rather than a stack of
- * long cards.
- */
+/** One data series' configuration, opened from the chart's series list. */
 @Component({
   selector: 'app-panel-chart-series',
   imports: [
@@ -44,65 +39,55 @@ import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.co
 export class PanelChartSeriesComponent {
   public static readonly title = 'Data series';
 
-  /** The datasets on this report, for the data-source picker. */
   public readonly datasets = inject(ReportSession).datasets;
   public readonly chart = inject(ReportSession).selectedChartWidget;
 
-  /** The binding this screen configures, or null once it's been removed. */
+  /** Null once removed. */
   public readonly binding = computed(() => {
     const id = this.bindingId();
     return id ? (this.chart()?.binding(id) ?? null) : null;
   });
 
-  /** Line-only options (line style, the 'None' marker) show for a line chart, or a combo line series. */
+  /** Line-only options show for a line chart or a combo line series. */
   public readonly isLine = computed(() => this.chart() instanceof LineChartWidgetModel);
 
-  /** Bubble sizing is scatter-only — a varying marker size over a connected line reads poorly. */
+  /** Bubble sizing is scatter-only. */
   public readonly isScatter = computed(() => this.chart() instanceof ScatterChartWidgetModel);
 
-  /** The model narrowed to a bar chart, so a bar series shows a category + measures instead of X/Y. */
   public readonly barChart = computed(() => {
     const chart = this.chart();
     return chart instanceof BarChartWidgetModel ? chart : null;
   });
 
-  /** The model narrowed to a combination chart — like a bar for data binding, but with a per-series render type. */
   public readonly comboChart = computed(() => {
     const chart = this.chart();
     return chart instanceof ComboChartWidgetModel ? chart : null;
   });
 
-  /** Whether this series belongs to a bar chart — it picks several measures, not a single Y. */
   public readonly isBar = computed(() => !!this.barChart());
 
-  /** Whether this series belongs to a combination chart, whose series pick their own bar/line type. */
   public readonly isCombo = computed(() => !!this.comboChart());
 
-  /** Bar and combo bind the same way — a category and one or more measures, not a single X/Y pair. */
+  /** Bar and combo bind a category and measures, not an X/Y pair. */
   public readonly isBarLike = computed(() => this.isBar() || this.isCombo());
 
-  /** Whether this series belongs to a histogram — it bins a single column, with no Y, marker, or axis. */
+  /** A histogram bins one column, with no Y, marker or axis. */
   public readonly isHistogram = computed(() => this.chart() instanceof HistogramWidgetModel);
 
-  /** Bars/lines whose aggregate is Count need no measure, so the value picker is hidden. */
+  /** Count needs no measure, so the value picker hides. */
   public readonly needsValue = computed(
     () => this.barChart()?.needsValue() ?? this.comboChart()?.needsValue() ?? true,
   );
 
-  /** How a combo series can be drawn, for the per-series type picker. */
   public readonly renderAsOptions: { label: string; value: ChartSeriesRenderAs }[] = [
     { label: 'Bars', value: 'bar' },
     { label: 'Line', value: 'line' },
   ];
 
-  /** The last series can't be removed, so a chart always keeps one. */
+  /** The last series can't be removed. */
   public readonly canRemove = computed(() => (this.chart()?.bindings().length ?? 0) > 1);
 
-  /**
-   * Per-series marker shapes; null keeps the chart kind's default. 'None' is offered
-   * only on a line chart (it hides markers but keeps the line) — on a scatter it
-   * would blank the series, so it's dropped there.
-   */
+  /** Null keeps the chart's default marker. 'None' is line-only, since on a scatter it blanks the series. */
   public readonly symbolOptions = computed<{ label: string; value: ChartSymbol | null }[]>(() => {
     const shapes: { label: string; value: ChartSymbol | null }[] = [
       { label: 'Default', value: null },
@@ -114,17 +99,15 @@ export class PanelChartSeriesComponent {
     return this.isLine() || this.isCombo() ? [...shapes, { label: 'None', value: 'none' }] : shapes;
   });
 
-  /** Per-series line dash for line charts. */
   public readonly dashOptions: { label: string; value: LineDashStyle }[] = [
     { label: 'Solid', value: 'solid' },
     { label: 'Dashed', value: 'dashed' },
     { label: 'Dotted', value: 'dotted' },
   ];
 
-  /** The default swatch colour shown when a series switches from palette to a custom colour. */
+  /** The starting swatch when a series switches to a custom colour. */
   public readonly defaultColor = '#2f6fed';
 
-  /** The chart's Y axes as picker options, for assigning this series to one. */
   public readonly axisOptions = computed(() =>
     (this.chart()?.yAxes() ?? []).map((axis, i) => ({
       label: chartAxisDisplayName(axis, i),
@@ -132,7 +115,7 @@ export class PanelChartSeriesComponent {
     })),
   );
 
-  /** The id treated as "the primary axis", so a series on it is stored as null. */
+  /** A series on the primary axis is stored as null. */
   public readonly primaryAxisId = computed(() => this.chart()?.yAxes()[0]?.id ?? null);
 
   private readonly navigation = inject(PanelNavigation);
@@ -146,31 +129,24 @@ export class PanelChartSeriesComponent {
     this.navigation.navigate(view);
   }
 
-  /** Whether a series is drawn as a line — a point line chart, or a combo series set to 'line'. */
   public isLineSeries(binding: ChartBindingModel): boolean {
     return this.isLine() || (this.isCombo() && binding.renderAs() === 'line');
   }
 
-  /** Markers (and the 'None' option) apply to point charts and combo line series, never to bars or bins. */
+  /** Point charts and combo line series only. */
   public showMarker(binding: ChartBindingModel): boolean {
     if (this.isHistogram()) return false;
     return !this.isBarLike() || this.isLineSeries(binding);
   }
 
-  /**
-   * Adds or removes one measure from a bar series. Checking appends (so the series order follows
-   * the order the user picked); unchecking drops it. Mirrors the first into yColumnId via the model.
-   */
+  /** Checking appends, so series order follows pick order. */
   public toggleValueColumn(binding: ChartBindingModel, columnId: string, checked: boolean): void {
     const current = binding.barValueColumnIds();
     const next = checked ? [...current, columnId] : current.filter((id) => id !== columnId);
     binding.setValueColumnIds(next);
   }
 
-  /**
-   * Adds or removes one column from a histogram series. Checking appends (so the series order
-   * follows the order the user picked); unchecking drops it.
-   */
+  /** Checking appends, so series order follows pick order. */
   public toggleHistogramValueColumn(
     binding: ChartBindingModel,
     columnId: string,
@@ -181,7 +157,7 @@ export class PanelChartSeriesComponent {
     binding.setHistogramValueColumnIds(next);
   }
 
-  /** Removes this series and steps back to the list. */
+  /** Removes this series and returns to the list. */
   public removeSeries(): void {
     const chart = this.chart();
     const id = this.bindingId();

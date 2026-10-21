@@ -21,7 +21,6 @@ export class PanelRootComponent {
 
   protected readonly widgetCount = computed(() => this.session.widgets().length);
 
-  /** Conditions across every dataset's report-level filter. */
   protected readonly reportFilterSummary = computed(() => {
     const filters = this.session.model()?.filters() ?? [];
     const count = filters.reduce((n, f) => n + f.group.count(), 0);

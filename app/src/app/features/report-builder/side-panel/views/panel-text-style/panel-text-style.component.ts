@@ -29,7 +29,7 @@ export class PanelTextStyleComponent {
     { label: 'Semibold', value: 'semibold' },
     { label: 'Bold', value: 'bold' },
   ];
-  // The shared Left/Centre/Right, plus Justify which only text supports.
+  // Text alone supports Justify.
   private static readonly TEXT_ALIGN_OPTIONS: SelectOption<TextAlign>[] = [
     ...OptionCatalog.HORIZONTAL_ALIGN,
     { label: 'Justify', value: 'justify' },

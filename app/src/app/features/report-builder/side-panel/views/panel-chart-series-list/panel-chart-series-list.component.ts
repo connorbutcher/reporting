@@ -12,12 +12,7 @@ import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/**
- * The "Data series" group of the chart detail panel: a scannable row per dataset
- * overlaid on the chart, each drilling into its own {@link PanelChartSeriesComponent}
- * screen, plus a button to add another. Keeps the detail panel from becoming a
- * stack of long per-series cards.
- */
+/** The chart's "Data series" group: a row per dataset, each opening its own screen, plus "Add". */
 @Component({
   selector: 'app-panel-chart-series-list',
   imports: [ButtonModule, PanelGroupComponent],
@@ -29,14 +24,14 @@ export class PanelChartSeriesListComponent {
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  /** Adds a series and jumps straight into it, rather than leaving the user to find it in the list. */
+  /** Adds a series and opens it. */
   public addSeries(): void {
     const chart = this.chart();
     const bindingId = chart.addBinding();
     this.navigation.navigate({ kind: 'chartSeries', widgetId: chart.id, bindingId });
   }
 
-  /** The dataset name for a series, or a prompt when it isn't bound yet. */
+  /** The dataset name, or a prompt when unbound. */
   public seriesLabel(binding: ChartBindingModel): string {
     const id = binding.datasetId();
     if (!id) return 'New series';
@@ -51,7 +46,7 @@ export class PanelChartSeriesListComponent {
     );
     const x = columnNames.get(binding.xColumnId());
 
-    // A bar or combo series groups by a category and can reduce several measures; a point series plots X→Y.
+    // Bar and combo series group by a category with several measures; point series plot X→Y.
     if (
       this.chart() instanceof BarChartWidgetModel ||
       this.chart() instanceof ComboChartWidgetModel
@@ -64,7 +59,7 @@ export class PanelChartSeriesListComponent {
       return values.length > 0 ? `${x} → ${values.join(', ')}` : x;
     }
 
-    // A histogram series bins a single column; an optional split-by overlays several within it.
+    // A histogram bins one column, optionally split.
     if (this.chart() instanceof HistogramWidgetModel) {
       if (!x) return 'Choose a column';
       const splitBy = columnNames.get(binding.seriesColumnId());

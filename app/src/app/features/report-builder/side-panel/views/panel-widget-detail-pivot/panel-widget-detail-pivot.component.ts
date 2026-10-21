@@ -19,7 +19,6 @@ import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { FormatRulesEditorComponent } from '../../format-rules-editor/format-rules-editor.component';
 
-/** The pivot branch of the widget-detail panel: dataset, row and column dimensions, measures, and filters. */
 @Component({
   selector: 'app-panel-widget-detail-pivot',
   imports: [
@@ -38,7 +37,6 @@ import { FormatRulesEditorComponent } from '../../format-rules-editor/format-rul
 export class PanelWidgetDetailPivotComponent {
   public readonly pivot = input.required<PivotTableWidgetModel>();
 
-  /** The aggregate options offered per measure, in menu order. */
   public readonly aggregates: { label: string; value: PivotAggregate }[] = [
     { label: 'Sum', value: 'sum' },
     { label: 'Average', value: 'average' },
@@ -49,14 +47,13 @@ export class PanelWidgetDetailPivotComponent {
     { label: 'Max', value: 'max' },
   ];
 
-  /** How a measure's value is shown. */
   public readonly showAsOptions: { label: string; value: PivotShowAs }[] = [
     { label: 'Value', value: 'value' },
     { label: '% of column total', value: 'percentOfTotal' },
     { label: '% of parent group', value: 'percentOfParent' },
   ];
 
-  /** Period choices for a date field; null groups by the exact value. */
+  /** Null groups by exact value. */
   public readonly groupings: { label: string; value: DateGrouping | null }[] = [
     { label: 'Exact value', value: null },
     { label: 'Day', value: 'day' },
@@ -66,20 +63,19 @@ export class PanelWidgetDetailPivotComponent {
     { label: 'Year', value: 'year' },
   ];
 
-  /** Sort direction options for the measure sort. */
   public readonly directions: { label: string; value: boolean }[] = [
     { label: 'Descending', value: true },
     { label: 'Ascending', value: false },
   ];
 
-  /** Column id → name, so a chosen row field renders its column name. */
+  /** Column id to name, for chosen fields. */
   public readonly columnName = computed(() => {
     const map = new Map<string, string>();
     for (const column of this.pivot().columns()) map.set(column.id, column.name);
     return map;
   });
 
-  /** Ids of the date columns, which offer a period grouping when used as a field. */
+  /** Date columns offer period grouping as a field. */
   public readonly dateColumns = computed(
     () =>
       new Set(
@@ -90,7 +86,7 @@ export class PanelWidgetDetailPivotComponent {
       ),
   );
 
-  /** Sort-by choices: the dimension order, then each measure by its (derived) header. */
+  /** Dimension order, then each measure by its header. */
   public readonly sortOptions = computed(() => {
     const names = this.columnName();
     const options: { label: string; value: string | null }[] = [
@@ -113,7 +109,7 @@ export class PanelWidgetDetailPivotComponent {
     if (columnId) this.pivot().addColumnField(columnId);
   }
 
-  /** A distinct count reads any column; the other aggregates need a number. */
+  /** Distinct count reads any column; other aggregates need a number. */
   public measureColumns(measure: PivotMeasure): DatasetColumn[] {
     return measure.aggregate === 'countDistinct'
       ? this.pivot().columns()
@@ -124,12 +120,11 @@ export class PanelWidgetDetailPivotComponent {
     this.navigation.navigate(view);
   }
 
-  /** The datasets on this report, for the data-source picker. */
   public get datasets(): Signal<DatasetSummary[]> {
     return this.session.datasets;
   }
 
-  /** A measure's header: its own label, else the derived "Count" / "Sum of Column". */
+  /** Its own label, else "Count" or "Sum of Column". */
   private measureLabel(measure: PivotMeasure, names: Map<string, string>): string {
     if (measure.label.trim()) return measure.label.trim();
     if (measure.aggregate === 'count') return 'Count';

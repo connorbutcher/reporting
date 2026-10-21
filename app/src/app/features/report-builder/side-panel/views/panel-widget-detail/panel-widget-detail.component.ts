@@ -37,7 +37,7 @@ import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/pane
   styleUrl: './panel-widget-detail.component.scss',
 })
 export class PanelWidgetDetailComponent {
-  /** Fallback heading; the chrome shows the selected widget's own name when there is one. */
+  /** Fallback heading; the chrome shows the widget's own name when there is one. */
   static readonly title = 'Widget';
 
   private readonly session = inject(ReportSession);

@@ -12,11 +12,7 @@ import { PanelHistogramAppearanceComponent } from '../panel-histogram-appearance
 import { PanelPointChartAppearanceComponent } from '../panel-point-chart-appearance/panel-point-chart-appearance.component';
 import { PanelXBarRAppearanceComponent } from '../panel-xbar-r-appearance/panel-xbar-r-appearance.component';
 
-/**
- * The "Appearance" group of the chart detail panel: the legend and gridline toggles that
- * every chart shares, then the type-specific options created in place for the current
- * chart kind.
- */
+/** The chart's "Appearance" group: shared legend and gridline toggles, then the type-specific options. */
 @Component({
   selector: 'app-panel-chart-appearance',
   imports: [FormsModule, CheckboxModule, PanelGroupComponent, ChartTypePanelDirective],

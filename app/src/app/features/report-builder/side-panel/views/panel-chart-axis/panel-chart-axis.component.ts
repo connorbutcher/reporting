@@ -4,11 +4,7 @@ import { ReportSession } from '../../../state/report-session';
 import { PanelChartXAxisComponent } from '../panel-chart-x-axis/panel-chart-x-axis.component';
 import { PanelChartYAxisComponent } from '../panel-chart-y-axis/panel-chart-y-axis.component';
 
-/**
- * The axis screen reached from the chart detail panel's axes list. A thin dispatcher: it
- * resolves which axis the navigation targets — the shared X axis or one value (Y) axis —
- * and hands the chart to the matching editor, so neither editor carries the other's fields.
- */
+/** Opens the X axis or a value axis editor, depending on which axis the navigation targets. */
 @Component({
   selector: 'app-panel-chart-axis',
   imports: [PanelChartXAxisComponent, PanelChartYAxisComponent],
@@ -19,10 +15,9 @@ export class PanelChartAxisComponent {
 
   public readonly chart = inject(ReportSession).selectedChartWidget;
 
-  /** Whether this screen edits the shared X axis (vs a value axis). */
   public readonly isX = computed(() => this.view()?.axis === 'x');
 
-  /** The value axis being edited with its position, or null for the X axis / once removed. */
+  /** Null for the X axis, or once the axis is removed. */
   public readonly yAxis = computed(() => {
     const view = this.view();
     const chart = this.chart();

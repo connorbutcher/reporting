@@ -24,13 +24,9 @@ import { PanelDescriptor } from './registry/panel-descriptor';
 
 export class PanelComponentRegistry {
   /**
-   * The single place to wire a new side-panel screen. As a mapped type over every
-   * `PanelView['kind']`, adding a member to {@link PanelView} without a row here is
-   * a compile error, and each row's `parent` is type-checked against its own view
-   * (so `columnSettings` can read `view.columnId`, while `root` has no such field).
-   *
-   * Every panel component reads what it needs from the shared store, so none take
-   * inputs — which is why the chrome can render them with a plain `NgComponentOutlet`.
+   * The one place to wire a side-panel screen: a missing row for a {@link PanelView} kind is a compile
+   * error, and each `parent` is typed against its own view. Panels read the shared store and take no
+   * inputs, so the chrome renders them with `NgComponentOutlet`.
    */
   public static readonly VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K> } = {
     root: { component: PanelRootComponent, parent: () => null },
@@ -98,16 +94,11 @@ export class PanelComponentRegistry {
     },
   };
 
-  /** The component that renders a view. */
   public static componentFor(view: PanelView): PanelComponentType {
     return PanelComponentRegistry.VIEWS[view.kind].component;
   }
 
-  /**
-   * The view one step up the breadcrumb hierarchy, or null at the root. The generic
-   * key keeps each view correlated with its own descriptor, so no cast is needed to
-   * hand `view` to the matching `parent`.
-   */
+  /** The view one step up the breadcrumb, or null at the root. */
   public static parentOf<K extends PanelView['kind']>(view: ViewOf<K>): PanelView | null {
     return PanelComponentRegistry.VIEWS[view.kind].parent(view);
   }

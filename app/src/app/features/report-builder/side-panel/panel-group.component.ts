@@ -1,12 +1,6 @@
 import { Component, input } from '@angular/core';
 
-/**
- * A collapsible field group, for panels with more sections than the chart
- * widget's single flat screen comfortably holds. Uses the native
- * `<details>` element, so expand/collapse needs no signal or click handler
- * of its own — the browser owns that state, keyboard and screen readers
- * included.
- */
+/** A collapsible field group on the native `<details>` element, so the browser owns open state and a11y. */
 @Component({
   selector: 'app-panel-group',
   imports: [],
@@ -26,13 +20,8 @@ import { Component, input } from '@angular/core';
 })
 export class PanelGroupComponent {
   readonly label = input.required<string>();
-  /** A short glyph shown before the label, e.g. an icon character. Omitted shows none. */
+  /** A glyph before the label; empty shows none. */
   readonly icon = input('');
-  /**
-   * Whether the group starts expanded. Defaults open; advanced groups a user
-   * rarely touches (axis bounds, tolerance bands, tooltip) pass `false` to start
-   * collapsed and keep a long panel scannable. Only the initial state — once open,
-   * the native `<details>` owns it.
-   */
+  /** The initial state only; rarely used groups pass `false` to keep long panels scannable. */
   readonly open = input(true);
 }

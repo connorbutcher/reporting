@@ -3,7 +3,6 @@ import { FormsModule } from '@angular/forms';
 import { CheckboxModule } from 'primeng/checkbox';
 import { BarChartWidgetModel } from '../../../models/widget.model';
 
-/** The bar-only appearance options (stacked, horizontal). */
 @Component({
   selector: 'app-panel-bar-chart-options',
   imports: [FormsModule, CheckboxModule],

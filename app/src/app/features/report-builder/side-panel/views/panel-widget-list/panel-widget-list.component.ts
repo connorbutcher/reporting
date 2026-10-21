@@ -25,10 +25,7 @@ export class PanelWidgetListComponent {
   protected readonly widgets = this.session.widgets;
   protected readonly selectedWidgetId = this.selection.selectedWidgetId;
 
-  /** Listbox needs plain fields, so each model is flattened into an option. Shows the widget's
-   * *type* (e.g. "Scatter chart") as the secondary line rather than its grid position/size —
-   * raw column/row numbers told a report author nothing they could act on and just duplicated
-   * what's already visible by looking at the canvas. */
+  /** Flattened for the listbox, with the widget type as the secondary line. */
   protected readonly options = computed(() =>
     this.session.widgets().map((widget) => ({
       id: widget.id,
@@ -41,9 +38,8 @@ export class PanelWidgetListComponent {
   );
 
   /**
-   * Clicking the already-active option makes the listbox toggle it off, so
-   * onChange reports null. onClick still names the clicked option, which keeps
-   * opening a single click; onChange covers keyboard selection.
+   * Clicking the active option toggles it off, so onChange reports null; onClick still names the
+   * clicked option, and onChange covers keyboard selection.
    */
   protected open(widgetId: string | null | undefined): void {
     if (widgetId) this.navigation.selectWidget(widgetId);

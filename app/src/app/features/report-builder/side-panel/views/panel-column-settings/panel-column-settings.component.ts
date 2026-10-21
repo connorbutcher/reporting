@@ -41,11 +41,7 @@ import { ColumnTypes } from '../../../models/column-types';
   templateUrl: './panel-column-settings.component.html',
 })
 export class PanelColumnSettingsComponent {
-  /**
-   * A preview of each date pattern, labelled with a sample. The sample is the 31st
-   * of December in the *current* year: fixed to the 31st so day/month can't be read
-   * as month/day, but the year tracks today so the previews never look stale.
-   */
+  /** Each date pattern previewed on 31 December this year, so day and month can't be confused. */
   public static readonly DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
     const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
     return PanelColumnSettingsComponent.DATE_FORMAT_PATTERNS.map((value) => ({
@@ -62,7 +58,7 @@ export class PanelColumnSettingsComponent {
     'dd/MM/yyyy HH:mm',
   ];
 
-  /** Fallback heading; the chrome shows the selected column's own label when there is one. */
+  /** Fallback heading; the chrome shows the column's own label when there is one. */
   static readonly title = 'Column';
 
   private readonly session = inject(ReportSession);
@@ -86,11 +82,7 @@ export class PanelColumnSettingsComponent {
 
   protected readonly schemaColumn = computed(() => this.column()?.schemaColumn() ?? null);
 
-  /**
-   * The selected column's config narrowed to each editable shape. Reading through
-   * these keeps the template type-safe: a mismatched or absent config (the column
-   * changed type, or none loaded yet) reads as that shape's empty default.
-   */
+  /** The column config narrowed to each editable shape; a mismatched or missing config reads as empty. */
   protected readonly numericConfig = computed<NumericColumnConfig>(() => {
     const config = this.schemaColumn()?.configuration;
     return config?.kind === 'numeric' ? config : { kind: 'numeric' };
@@ -106,7 +98,7 @@ export class PanelColumnSettingsComponent {
     return config?.kind === 'bool' ? config : { kind: 'bool' };
   });
 
-  /** Totals on offer: a count on any column, and the numeric aggregates on a number column. */
+  /** Count on any column; numeric aggregates on number columns. */
   protected readonly totalOptions = computed<SelectOption<Aggregate | null>[]>(() => {
     const options: SelectOption<Aggregate | null>[] = [
       { label: 'None', value: null },

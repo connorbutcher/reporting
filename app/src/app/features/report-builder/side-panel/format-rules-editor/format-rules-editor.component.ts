@@ -6,11 +6,7 @@ import { SelectModule } from 'primeng/select';
 import { FormatRule, FormatRuleOperator, FormatRuleStyle } from '../../../../core/models/report';
 import { SelectOption } from '../select-option';
 
-/**
- * Edits a list of conditional-format rules ("when the value is greater than 100, show it red"), shared
- * by a table column's settings and a pivot measure. Rules are checked in order and the first match wins,
- * so the list reads top to bottom as the order they're tried.
- */
+/** Edits conditional-format rules for a table column or pivot measure; the first matching rule wins. */
 @Component({
   selector: 'app-format-rules-editor',
   imports: [FormsModule, ButtonModule, InputTextModule, SelectModule],
@@ -18,7 +14,7 @@ import { SelectOption } from '../select-option';
   styleUrl: './format-rules-editor.component.scss',
 })
 export class FormatRulesEditorComponent {
-  /** Comparison choices, with whether each takes one operand, two, or none. */
+  /** With how many operands each takes. */
   private static readonly OPERATORS: (SelectOption<FormatRuleOperator> & {
     operands: 0 | 1 | 2;
   })[] = [

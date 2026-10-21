@@ -7,7 +7,6 @@ import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The box plot's data source: its dataset, the category/value/split columns, and its row filter. */
 @Component({
   selector: 'app-panel-box-plot-source',
   imports: [FormsModule, SelectModule, PanelGroupComponent],
@@ -16,7 +15,6 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelBoxPlotSourceComponent {
   public readonly chart = input.required<BoxPlotWidgetModel>();
 
-  /** The datasets on this report, for the data-source picker. */
   public readonly datasets = inject(ReportSession).datasets;
 
   private readonly navigation = inject(PanelNavigation);

@@ -8,7 +8,7 @@ import { PanelComponentRegistry } from './panel-component.registry';
 import { Crumb } from './crumb';
 import { PanelView } from './panel-view';
 
-/** Chrome for the side panel: history controls, breadcrumb, and the current view. */
+/** The side panel chrome: history controls, breadcrumb and the current view. */
 @Component({
   selector: 'app-report-side-panel',
   imports: [NgComponentOutlet, ButtonModule, DividerModule],
@@ -16,7 +16,6 @@ import { PanelView } from './panel-view';
   styleUrl: './report-side-panel.component.scss',
 })
 export class ReportSidePanelComponent {
-  /** Stands in for the ancestors hidden between the first and last couple of crumbs. */
   private static readonly ELLIPSIS = 'ellipsis' as const;
   /** Above this many ancestors, the middle of the trail collapses behind "…". */
   private static readonly COLLAPSE_THRESHOLD = 4;
@@ -26,29 +25,25 @@ export class ReportSidePanelComponent {
 
   protected readonly ellipsis = ReportSidePanelComponent.ELLIPSIS;
 
-  /** The component to render for the current view — replaces a per-kind template switch. */
   protected readonly currentPanel = computed(() =>
     PanelComponentRegistry.componentFor(this.navigation.view()),
   );
 
-  // Narrow pass-throughs so the template binds only to this component's own API,
-  // never to the navigation service directly.
   protected readonly canGoBack = this.navigation.canGoBack;
   protected readonly canGoForward = this.navigation.canGoForward;
 
-  /** User asked to see the collapsed middle of the trail for the current screen. */
+  /** The user expanded the collapsed trail for this screen. */
   private readonly expanded = signal(false);
 
   constructor() {
-    // A fresh screen starts collapsed again — an expansion from three levels
-    // ago isn't relevant once the user has navigated somewhere new.
+    // Each new screen starts collapsed.
     effect(() => {
       this.navigation.view();
       this.expanded.set(false);
     });
   }
 
-  /** Every ancestor of the current view, root first, not including the current view itself. */
+  /** Root first, excluding the current view. */
   protected readonly ancestors = computed(() => {
     const chain: PanelView[] = [];
     let parent = PanelComponentRegistry.parentOf(this.navigation.view());
@@ -59,11 +54,7 @@ export class ReportSidePanelComponent {
     return chain;
   });
 
-  /**
-   * What the breadcrumb actually renders: the full trail once it's short
-   * enough or the user has asked to see it all, otherwise root plus the
-   * couple of steps nearest the current screen, with the rest behind "…".
-   */
+  /** The full trail when short or expanded, else root, "…" and the two nearest steps. */
   protected readonly crumbs = computed<Crumb[]>(() => {
     const all = this.ancestors();
     if (all.length <= ReportSidePanelComponent.COLLAPSE_THRESHOLD || this.expanded()) return all;
@@ -72,11 +63,7 @@ export class ReportSidePanelComponent {
 
   protected readonly title = computed(() => this.labelFor(this.navigation.view()));
 
-  /**
-   * A stable, collision-free key for `@for` tracking. Built field by field — not
-   * from `Object.values`, whose ordering isn't guaranteed — and prefixed by kind,
-   * so two different views can never collapse to the same key.
-   */
+  /** A collision-free `@for` key, built field by field since `Object.values` order isn't guaranteed. */
   private static viewKey(view: PanelView): string {
     const parts: string[] = [view.kind];
     if ('widgetId' in view) parts.push(view.widgetId);
@@ -107,12 +94,7 @@ export class ReportSidePanelComponent {
     this.navigation.forward();
   }
 
-  /**
-   * The heading for a view. Each panel names itself through its `static title`
-   * (see {@link PANEL_VIEWS}); the two data-derived screens refine that default
-   * with the live widget/column name, falling back to the panel's own title
-   * when there's no selection to show.
-   */
+  /** A panel's `static title`, refined with the live widget or column name for the two data-driven screens. */
   protected labelFor(view: PanelView): string {
     const fallback = PanelComponentRegistry.VIEWS[view.kind].component.title;
     switch (view.kind) {

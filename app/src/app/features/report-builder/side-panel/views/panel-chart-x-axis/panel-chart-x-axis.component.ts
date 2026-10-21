@@ -14,11 +14,7 @@ import {
 import { PanelGroupComponent } from '../../panel-group.component';
 import { ColumnTypes } from '../../../models/column-types';
 
-/**
- * The shared X axis editor: label, tick-label rotation and interval, and — for a numeric
- * point chart — its bounds and log scale. Reached from the axes list on the chart detail
- * panel.
- */
+/** The shared X axis editor; bounds and log scale only for a numeric axis. */
 @Component({
   selector: 'app-panel-chart-x-axis',
   imports: [
@@ -34,16 +30,13 @@ import { ColumnTypes } from '../../../models/column-types';
 export class PanelChartXAxisComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
-  /** The tick-label orientations, for the rotation picker; cleared falls back to the default. */
+  /** Cleared falls back to the default. */
   public readonly axisRotations: { label: string; value: AxisLabelRotation }[] = [
     { label: 'Horizontal', value: 'horizontal' },
     { label: 'Vertical', value: 'vertical' },
   ];
 
-  /**
-   * Bar, combo, and box charts have a categorical X axis, so their bounds, log scale, and the
-   * "fit to data" toggle don't apply. A histogram's X axis is numeric, so those still do.
-   */
+  /** Bar, combo and box charts have a categorical X axis; a histogram's is numeric. */
   public readonly categorical = computed(() => {
     const chart = this.chart();
     return (
@@ -53,14 +46,13 @@ export class PanelChartXAxisComponent {
     );
   });
 
-  /** Bounds and log scale are only meaningful when the X axis is a numeric column. */
   public readonly xIsNumeric = computed(() => {
     const chart = this.chart();
     const column = chart.axisColumns().find((c) => c.id === chart.xColumnId());
     return ColumnTypes.isNumeric(column?.type);
   });
 
-  /** Falls back to the bound X column's own name once one is chosen. */
+  /** The bound X column's name once one is chosen. */
   public xPlaceholder(): string {
     const chart = this.chart();
     return chart.axisColumns().find((c) => c.id === chart.xColumnId())?.name ?? '';

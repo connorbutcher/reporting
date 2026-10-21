@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, Signal, WritableSignal, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 
-/** A column's distinct values, fetched on demand and cached by column id. One builder edits one dataset. */
+/** A column's distinct values, fetched on demand and cached by column id. */
 @Injectable()
 export class ColumnValueLists {
   private readonly api = inject(DatasetApiService);

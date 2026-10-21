@@ -1,9 +1,8 @@
 import { DatasetColumnType } from '../../../../core/models/dataset';
 import { FilterOperator, OperatorDescriptor } from '../../../../core/models/filter';
 
-/** How a filter condition's operand input looks and behaves. */
 export class OperandInput {
-  /** Text operators whose operand is one of the column's values, so are picked rather than typed. */
+  /** Text operators whose operand is picked from the column's values rather than typed. */
   private static readonly VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> =
     new Set<FilterOperator>(['equals', 'notEquals', 'in']);
 
@@ -14,7 +13,6 @@ export class OperandInput {
     return type === 'string' && OperandInput.VALUE_LIST_OPERATORS.has(operator);
   }
 
-  /** The native input type that best fits an operand. */
   public static inputType(descriptor: OperatorDescriptor | null): 'number' | 'date' | 'text' {
     switch (descriptor?.operandKind) {
       case 'number':

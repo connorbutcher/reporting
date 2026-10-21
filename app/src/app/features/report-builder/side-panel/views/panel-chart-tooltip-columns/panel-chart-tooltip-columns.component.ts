@@ -6,7 +6,7 @@ import { SelectModule } from 'primeng/select';
 import { ChartWidgetModel } from '../../../models/widget.model';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The "Tooltip" group of the chart detail panel: extra columns shown when hovering a point or bar. */
+/** The chart's "Tooltip" group: extra columns shown on hover. */
 @Component({
   selector: 'app-panel-chart-tooltip-columns',
   imports: [FormsModule, ButtonModule, InputTextModule, SelectModule, PanelGroupComponent],
@@ -16,7 +16,7 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelChartTooltipColumnsComponent {
   public readonly chart = input.required<ChartWidgetModel>();
 
-  /** A grouping chart (bar, combination, box plot, histogram), whose tooltip columns are summarised per mark rather than read per row. */
+  /** Grouping charts summarise tooltip columns per mark rather than per row. */
   public readonly grouped = input(false);
 
   public tooltipColumnsExhausted(): boolean {

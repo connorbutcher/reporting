@@ -23,9 +23,8 @@ export class LiveMatchCount {
   private static readonly DEBOUNCE_MS = 300;
 
   /**
-   * The live "matches N of M rows" state for a count key (null when there's nothing to count). A
-   * burst of edits makes one request, an unchanged query makes none, counting is server-side, and a
-   * failed count becomes `error` rather than throwing. Call in an injection context.
+   * The live "matches N of M rows" state; null keys count nothing. Bursts of edits make one request and
+   * a failure becomes `error`. Call in an injection context.
    */
   public static create(key: Signal<CountKey | null>, api: DatasetApiService): Signal<MatchState> {
     return toSignal(

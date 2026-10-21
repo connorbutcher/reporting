@@ -7,7 +7,6 @@ import { ControlChartMode } from '../../../../../core/models/report';
 import { XBarRChartWidgetModel } from '../../../models/widget.model';
 import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.component';
 
-/** The control-chart-only options: chart type, subgroup ordering, baseline limits and the out-of-control checks. */
 @Component({
   selector: 'app-panel-xbar-r-options',
   imports: [FormsModule, CheckboxModule, InputNumberModule, SelectModule, PanelChartSortComponent],
