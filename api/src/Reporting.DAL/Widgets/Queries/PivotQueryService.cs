@@ -10,7 +10,7 @@ namespace Reporting.DAL.Widgets;
 /// <summary>
 /// Rows shaped for a pivot / aggregation table: filtered, then grouped by the row fields (nested left
 /// to right) and optionally spread across the column fields, with each cell reduced to one value per
-/// measure. Because the cells are an EAV table, the needed cells are pulled back (capped) and grouped
+/// measure. Because the cells are an EAV table, the needed cells are streamed back (capped) and grouped
 /// in memory into a tree of row groups (see <see cref="PivotNode"/>), which yields detail rows,
 /// subtotals, row totals and the grand total from one pass. Values come back already formatted.
 /// </summary>
@@ -20,7 +20,7 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
     /// Ceiling on rows scanned for one pivot query. Every row must be pulled to be grouped and
     /// reduced in memory, so a runaway dataset is capped here; the response flags that it happened.
     /// </summary>
-    public const int MaxPivotScanRows = 200_000;
+    public const int MaxPivotScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>Ceiling on the number of grouped rows a pivot returns, so a high-cardinality dimension
     /// can't fan out into an unbounded table. Totals still reduce every scanned row.</summary>
@@ -93,21 +93,17 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
             }
         }
 
-        var rows = await matching
-            .OrderBy(r => r.Id)
-            .Take(MaxPivotScanRows)
-            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
-        result.ScannedRowCount = rows.Count;
+        // Streamed rather than buffered: each row is folded into the tree as it arrives and then
+        // dropped, so memory holds the groups, not the rows.
+        var rows = RowCellStream.ReadAsync(matching, neededIds, MaxPivotScanRows);
         result.ScanTruncated = result.MatchedRowCount > MaxPivotScanRows;
 
         var root = new PivotNode(null, 0, string.Empty, null, measures);
         var columnKeys = new Dictionary<string, PivotColumnKey>();
 
-        foreach (var row in rows)
+        await foreach (var cells in rows)
         {
-            var cells = row.Cells.ToDictionary(c => c.ColumnId);
+            result.ScannedRowCount++;
             var inputs = measures.Select(m => MeasureInput(m, cells)).ToArray();
 
             // The column key: every column field's value, joined by a control character (never found in

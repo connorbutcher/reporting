@@ -453,6 +453,38 @@ public class KpiQueryServiceTests : SqliteDbTestBase
     }
 
     [Fact]
+    public async Task Grouped_aggregate_merges_values_that_display_the_same_and_counts_rows_without_a_value()
+    {
+        var valueRef = Guid.NewGuid();
+        var sizeRef = Guid.NewGuid();
+        var dataset = await SeedDatasetAsync("Readings",
+            Col(valueRef, "Value", DatasetColumnType.Double, 0),
+            Col(sizeRef, "Size", DatasetColumnType.Double, 1));
+        var (value, size) = (dataset.Columns[0], dataset.Columns[1]);
+
+        // "5" and "5.0" are one size; the last row has no value but is still a row of that size.
+        AddRow(dataset, (value, 10, null, null), (size, 5, null, "5"));
+        AddRow(dataset, (value, 20, null, null), (size, 5, null, "5.0"));
+        AddRow(dataset, (value, null, null, null), (size, 5, null, "5"));
+        AddRow(dataset, (value, 7, null, null), (size, 8, null, "8"));
+        await Db.SaveChangesAsync();
+
+        KpiQueryDto Grouped(Aggregate aggregate) => new()
+        {
+            ValueSource = KpiValueSource.Aggregate,
+            Aggregate = aggregate,
+            ValueColumnId = valueRef,
+            GroupByColumnId = sizeRef,
+        };
+        var average = await Service().QueryForKpiAsync(dataset.Id, Grouped(Aggregate.Average));
+        var count = await Service().QueryForKpiAsync(dataset.Id, Grouped(Aggregate.Count));
+
+        Assert.Equal([15d, 7d], average!.Groups!.Select(g => g.Value!.Value));
+        Assert.Equal([3d, 1d], count!.Groups!.Select(g => g.Value!.Value));
+        Assert.False(average.Truncated);
+    }
+
+    [Fact]
     public async Task Grouped_tolerance_classifies_each_group_independently()
     {
         var valueRef = Guid.NewGuid();
