@@ -14,8 +14,14 @@ import { ScatterPoint } from './types/scatter-point';
 import { SeriesStyle } from './types/series-style';
 import { SizeScale } from './types/size-scale';
 
+/** Per-kind series options, trend lines, plotted points and comment markers for point charts. */
 export class PointSeries {
   private static readonly ANCHOR_COLOR = '#152a55';
+  /** About px per character of the trend label's 11px font, erring wide. */
+  private static readonly TREND_CHAR_WIDTH = 6.5;
+  /** The trend label's own distance from its point. */
+  private static readonly TREND_LABEL_DISTANCE = 6;
+  private static readonly TREND_LABEL_MARGIN = 10;
 
   /** The per-kind series options; `sizeScale` maps a scatter point's size value to its diameter. */
   public static kindOptions(
@@ -176,16 +182,15 @@ export class PointSeries {
    * after fixing the grid, so it can't size this itself.
    */
   public static trendLabelReserve(series: readonly ChartSeriesResult[], xIsDate = false): number {
-    const CHAR_W = 6.5; // ~px per char at the endLabel's 11px font (proportional; erring wide)
-    const DISTANCE = 6; // the endLabel's own `distance` from its point
-    const MARGIN = 10; // breathing room past the text
     let maxLen = 0;
     for (const s of series) {
       if (!s.trendLine) continue;
       const len = PointSeries.trendStatsText(s.trendLine, xIsDate).length;
       if (len > maxLen) maxLen = len;
     }
-    return maxLen === 0 ? 0 : Math.round(maxLen * CHAR_W + DISTANCE + MARGIN);
+    if (maxLen === 0) return 0;
+    const { TREND_CHAR_WIDTH, TREND_LABEL_DISTANCE, TREND_LABEL_MARGIN } = PointSeries;
+    return Math.round(maxLen * TREND_CHAR_WIDTH + TREND_LABEL_DISTANCE + TREND_LABEL_MARGIN);
   }
 
   public static points(
