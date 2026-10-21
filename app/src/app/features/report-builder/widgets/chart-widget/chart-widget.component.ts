@@ -46,6 +46,7 @@ import { CommentAnchorPoint } from './options/point/types/comment-anchor-point';
 import { SeriesPalette } from './options/colors/series-palette';
 import { XBarROption } from './options/xbar-r/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
+import { ChartQueryKey } from './query/chart-query-key';
 import { AnyChartResult } from './models/any-chart-result';
 
 /** Hosts a chart: inputs, data loading and reloads. Queries live in {@link ChartQuery}, options in the option builders. */
@@ -208,72 +209,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
     () => readChartBindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
   );
 
-  /**
-   * Only the config the server query depends on, so appearance-only edits don't trigger a reload
-   * that would dim the chart.
-   */
-  private readonly queryKey = computed(() => {
-    const config = this.config();
-    const bindings = readChartBindings(config).map((b) => [
-      b.datasetId,
-      b.xColumnId,
-      b.yColumnId,
-      b.valueColumnIds ?? null,
-      b.seriesColumnId,
-      b.sizeColumnId ?? null,
-      // Grouping charts ignore draw order and trend lines server-side, so including them is harmless.
-      b.sort ?? null,
-    ]);
-    const trend = config.showTrendLine ?? false;
-    const aggregate =
-      config.type === 'barChart' || config.type === 'comboChart' ? config.aggregate : null;
-    const barSort = config.type === 'barChart' || config.type === 'comboChart' ? config.sort : null;
-    // Box options that change the response; mean, n, capability and highlighting are render-only.
-    const box =
-      config.type === 'boxPlot'
-        ? { w: config.whisker, f: config.whiskerFactor, s: config.sort, p: config.showPoints }
-        : null;
-    // Every histogram binning option changes the response.
-    const hist =
-      config.type === 'histogram'
-        ? {
-            m: config.binMode,
-            c: config.binCount,
-            w: config.binWidth,
-            lo: config.rangeMin,
-            hi: config.rangeMax,
-            n: config.normalize,
-            cu: config.cumulative,
-          }
-        : null;
-    const grouping = 'categoryGrouping' in config ? (config.categoryGrouping ?? null) : null;
-    const line =
-      config.type === 'lineChart'
-        ? { a: config.aggregate ?? null, g: config.xGrouping ?? null }
-        : null;
-    const control =
-      config.type === 'xbarRChart'
-        ? {
-            s: config.sort,
-            m: config.mode ?? 'xBarR',
-            b: config.baselineSubgroups ?? null,
-            r: config.runRules ?? false,
-          }
-        : null;
-    return JSON.stringify({
-      bindings,
-      trend,
-      aggregate,
-      barSort,
-      box,
-      hist,
-      grouping,
-      line,
-      control,
-      tol: config.toleranceBands,
-      tip: config.tooltipColumns,
-    });
-  });
+  private readonly queryKey = computed(() => ChartQueryKey.of(this.config()));
 
   private readonly queryCache = new Map<string, ChartQueryResult>();
 

@@ -9,6 +9,7 @@ import {
 } from '../../../../core/models/widget-query';
 import { Csv } from '../csv';
 import { EffectiveFilter } from '../effective-filter';
+import { KpiQuery } from './kpi-query';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
@@ -38,14 +39,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   public readonly datasetId = computed(() => this.config().datasetId);
 
-  public readonly configured = computed(() => {
-    const config = this.config();
-    if (!config.datasetId) return false;
-    if (config.valueSource === 'aggregate') {
-      return config.aggregate === 'count' || !!config.valueColumnId;
-    }
-    return !!config.valueColumnId && !!config.tolerance;
-  });
+  public readonly configured = computed(() => KpiQuery.isConfigured(this.config()));
 
   public readonly groups = computed<KpiGroupResult[] | null>(
     () => this.source.result()?.groups ?? null,
@@ -119,45 +113,11 @@ export class KpiWidgetComponent extends DataWidgetBase {
     api: this.datasetApi,
     fetch: () => {
       const config = this.config();
-      if (!config.datasetId) return null;
-      if (
-        config.valueSource === 'aggregate' &&
-        config.aggregate !== 'count' &&
-        !config.valueColumnId
-      ) {
-        return null;
-      }
-      if (
-        config.valueSource === 'toleranceOutOfLimits' &&
-        (!config.valueColumnId || !config.tolerance)
-      ) {
-        return null;
-      }
-
-      return this.datasetApi.queryKpi(config.datasetId, {
-        filter: this.effectiveFilter(),
-        valueSource: config.valueSource,
-        aggregate: config.aggregate,
-        valueColumnId: config.valueColumnId,
-        tolerance: config.tolerance,
-        toleranceStatusMode: config.toleranceStatusMode,
-        showAsPercent: config.showAsPercent,
-        comparisonMode: config.comparisonMode,
-        targetValue: config.targetValue,
-        dateColumnId: config.dateColumnId,
-        periodDays: config.periodDays,
-        direction: config.direction,
-        unitPrefix: config.unitPrefix,
-        unitSuffix: config.unitSuffix,
-        decimalPlaces: config.decimalPlaces,
-        thresholdsEnabled: config.thresholdsEnabled,
-        warningThreshold: config.warningThreshold,
-        criticalThreshold: config.criticalThreshold,
-        showSparkline: config.showSparkline,
-        sparklinePeriods: config.sparklinePeriods,
-        groupByColumnId: config.groupByColumnId,
-        maxGroups: config.maxGroups,
-      });
+      if (!config.datasetId || !KpiQuery.isConfigured(config)) return null;
+      return this.datasetApi.queryKpi(
+        config.datasetId,
+        KpiQuery.request(config, this.effectiveFilter()),
+      );
     },
   });
 
@@ -186,30 +146,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
     effect(() => {
       if (!this.configured()) return;
       this.effectiveFilter();
-      const config = this.config();
-      void [
-        config.valueSource,
-        config.aggregate,
-        config.valueColumnId,
-        config.tolerance,
-        config.toleranceStatusMode,
-        config.showAsPercent,
-        config.comparisonMode,
-        config.targetValue,
-        config.dateColumnId,
-        config.periodDays,
-        config.direction,
-        config.unitPrefix,
-        config.unitSuffix,
-        config.decimalPlaces,
-        config.thresholdsEnabled,
-        config.warningThreshold,
-        config.criticalThreshold,
-        config.showSparkline,
-        config.sparklinePeriods,
-        config.groupByColumnId,
-        config.maxGroups,
-      ];
+      this.config();
 
       untracked(() => {
         this.source.loading.set(true);
