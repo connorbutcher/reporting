@@ -19,23 +19,20 @@ import { ValidationIssue } from './validation-issue';
 import { ColumnTypes } from './column-types';
 
 /**
- * A single headline number reduced from a dataset: either a plain aggregate over a column, or the
- * count/percent of rows failing a tolerance band. Optionally compared against a fixed target or the
- * previous rolling period, with a direction so the client knows whether the trend is good or bad.
- * Binds a single dataset, like the data table and pivot.
+ * A headline number from one dataset: an aggregate over a column, or the count or percent of rows
+ * failing a tolerance band. Optionally compared with a target or the previous period.
  */
 export class KpiWidgetModel extends WidgetModel {
   public override readonly type = 'kpi' as const;
 
-  /** Null until the user binds the widget to a dataset. */
   public readonly datasetId = signal<number | null>(null);
 
   public readonly valueSource = signal<KpiValueSource>('aggregate');
   public readonly aggregate = signal<Aggregate>('sum');
-  /** The aggregated column (aggregate mode, unused for `count`), or the tolerance-checked column (tolerance mode). */
+  /** The aggregated column (unused for Count), or the tolerance-checked column. */
   public readonly valueColumnId = signal<string | null>(null);
 
-  /** Tolerance mode: the band rows are checked against. Null shows no tolerance is configured. */
+  /** Tolerance mode's band; null when none is configured. */
   public readonly tolerance = signal<ToleranceConfig | null>(null);
   public readonly toleranceStatusMode = signal<KpiToleranceStatusMode>('fail');
   public readonly showAsPercent = signal(true);
@@ -50,35 +47,30 @@ export class KpiWidgetModel extends WidgetModel {
   public readonly unitSuffix = signal('');
   public readonly decimalPlaces = signal(1);
 
-  /** Absolute status bands, independent of the trend/comparison. */
+  /** Absolute status bands, independent of the comparison. */
   public readonly thresholdsEnabled = signal(false);
   public readonly warningThreshold = signal<number | null>(null);
   public readonly criticalThreshold = signal<number | null>(null);
 
-  /** A trend line of the value's trailing history, reusing {@link dateColumnId}/{@link periodDays}. */
+  /** Reuses {@link dateColumnId} and {@link periodDays}. */
   public readonly showSparkline = signal(false);
   public readonly sparklinePeriods = signal(8);
 
-  /** Fixed-target mode only: a progress bar toward the target instead of the trend arrow. */
+  /** Fixed-target mode only: a progress bar instead of the trend arrow. */
   public readonly showAsMeter = signal(false);
 
-  /** Set, the widget becomes a row of mini-tiles — one value per distinct value of this column. */
+  /** When set, shows a mini-tile per distinct value of this column. */
   public readonly groupByColumnId = signal<string | null>(null);
   public readonly maxGroups = signal(8);
 
-  /** Rows this widget summarises, narrowed server-side. */
   public readonly filter: FilterGroupModel;
 
-  /** The bound dataset's schema, once loaded. */
   public readonly schema: Signal<DatasetSchema | null>;
-  /** Every column on the bound dataset. */
   public readonly columns: Signal<DatasetColumn[]>;
-  /** Numeric columns, for the value-column picker (Count aside). */
   public readonly numericColumns: Signal<DatasetColumn[]>;
-  /** Date columns, for the previous-period comparison's date-column picker. */
   public readonly dateColumns: Signal<DatasetColumn[]>;
 
-  /** The tolerance's own "limits" dataset schema, once loaded — separate from {@link schema}. */
+  /** The tolerance's own limits dataset, separate from {@link schema}. */
   private readonly toleranceSchema: Signal<DatasetSchema | null>;
 
   constructor(widget: KpiWidget, sources: ModelSources) {
@@ -133,7 +125,7 @@ export class KpiWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice, the tolerance, and the filter. */
+  /** Clears every column choice, the tolerance and the filter. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
@@ -144,7 +136,6 @@ export class KpiWidgetModel extends WidgetModel {
     this.filter.clear();
   }
 
-  /** Switching to Count drops the value column; switching away from aggregate drops nothing extra. */
   public setValueSource(source: KpiValueSource): void {
     this.valueSource.set(source);
     if (source === 'aggregate' && this.aggregate() === 'count') this.valueColumnId.set(null);
@@ -159,17 +150,14 @@ export class KpiWidgetModel extends WidgetModel {
     this.tolerance.set(tolerance);
   }
 
-  /**
-   * Switching comparison mode drops fields the new mode doesn't use. The date column is shared with
-   * the sparkline, so it's only cleared when neither feature needs it any more.
-   */
+  /** Drops fields the new mode doesn't use; the date column stays while the sparkline needs it. */
   public setComparisonMode(mode: KpiComparisonMode): void {
     this.comparisonMode.set(mode);
     if (mode !== 'fixedTarget') this.targetValue.set(null);
     if (mode !== 'previousPeriod' && !this.showSparkline()) this.dateColumnId.set(null);
   }
 
-  /** Turning the sparkline off drops the date column only if the comparison isn't using it too. */
+  /** Keeps the date column while the comparison still uses it. */
   public setShowSparkline(show: boolean): void {
     this.showSparkline.set(show);
     if (!show && this.comparisonMode() !== 'previousPeriod') this.dateColumnId.set(null);
@@ -287,8 +275,7 @@ export class KpiWidgetModel extends WidgetModel {
       });
     }
 
-    // A column reference that was validly picked, but whose dataset has since had that column
-    // removed — the same "still exists?" check TableColumnModel/PivotTableWidgetModel do.
+    // Catches columns that were picked but have since been removed from the dataset.
     const schema = this.schema();
     if (schema) {
       const columnIds = new Set(schema.columns.map((c) => c.id));
@@ -328,9 +315,7 @@ export class KpiWidgetModel extends WidgetModel {
       }
     }
 
-    // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
-    // checked against that dataset's schema rather than this widget's own — same as a table
-    // column's tolerance validation.
+    // Tolerance columns point at the limits dataset, so they're checked against its schema.
     const tolerance = this.tolerance();
     const toleranceSchema = this.toleranceSchema();
     if (tolerance && toleranceSchema) {

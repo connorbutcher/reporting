@@ -11,36 +11,29 @@ import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
 import { SchemaSource } from './sources/schema-source';
 
-/** One column placed on a table, owning how that column is presented. */
 export class TableColumnModel extends EditorNode {
   readonly columnId: string;
 
-  /** Blank falls back to the dataset column's own name. */
+  /** Blank falls back to the dataset column's name. */
   readonly header = signal<string>('');
   readonly width = signal<number | null>(null);
-  /** Null follows the column's type: right for numbers, left otherwise. */
+  /** Null follows the type: right for numbers, left otherwise. */
   readonly align = signal<ColumnAlign | null>(null);
   readonly sortable = signal(true);
-  /** Pass/fail highlighting resolved against a row of a separate limits dataset. Null shows no banding. */
+  /** Pass/fail highlighting against a row of a separate limits dataset; null shows none. */
   readonly tolerance = signal<ToleranceConfig | null>(null);
-  /** The aggregate shown in the totals row; null leaves this column's total blank. */
+  /** The totals-row aggregate; null leaves this column's total blank. */
   readonly total = signal<Aggregate | null>(null);
   readonly wrap = signal(false);
   readonly dataBars = signal(false);
-  /** Conditional highlighting, checked in order; the first rule a value matches wins. */
+  /** Checked in order; the first rule a value matches wins. */
   readonly formatRules = signal<readonly FormatRule[]>([]);
 
-  /** The dataset column this refers to, once the schema has loaded. */
   readonly schemaColumn: Signal<DatasetColumn | null>;
 
-  /** The label actually rendered in the table header. */
   readonly label: Signal<string>;
 
-  /**
-   * The tolerance's own "limits" dataset schema, once loaded — separate from {@link schema},
-   * which is this column's dataset (the one the tolerance's own column, above, belongs to).
-   * Null while the banding is off, pending, or points at nothing yet.
-   */
+  /** The tolerance's own limits dataset; null while banding is off, pending or unset. */
   private readonly toleranceSchema: Signal<DatasetSchema | null>;
 
   constructor(
@@ -108,8 +101,7 @@ export class TableColumnModel extends EditorNode {
   }
 
   protected override ownIssues(): ValidationIssue[] {
-    // Only meaningful once the schema is known; a pending fetch must not look
-    // like a column that has been deleted from the dataset.
+    // A pending schema fetch must not look like a deleted column.
     if (this.schema() && !this.schemaColumn()) {
       return [
         {
@@ -123,9 +115,8 @@ export class TableColumnModel extends EditorNode {
       ];
     }
 
-    // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
-    // so they're checked against that dataset's schema rather than this column's own. A per-row
-    // match adds one column on each side: its identifier in the limits dataset, and the table's own.
+    // Tolerance columns point at the limits dataset, so they're checked against its schema. A per-row
+    // match adds the identifier column on each side.
     const tolerance = this.tolerance();
     const toleranceSchema = this.toleranceSchema();
     if (tolerance && toleranceSchema) {

@@ -39,7 +39,7 @@ export class TableAppearanceModel extends EditorNode {
     this.rowDetails.set(dto.rowDetails ?? true);
   }
 
-  /** A short description of the notable settings, for the panel summary line. */
+  /** The notable settings, for the panel's summary line. */
   summary(): string {
     const parts: string[] = [this.density()];
     if (this.resizableColumns()) parts.push('resizable');

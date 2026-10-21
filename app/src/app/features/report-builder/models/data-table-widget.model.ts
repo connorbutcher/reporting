@@ -19,7 +19,6 @@ import { ValidationIssue } from './validation-issue';
 export class DataTableWidgetModel extends WidgetModel {
   override readonly type = 'dataTable' as const;
 
-  /** Null until the user binds the table to a dataset. */
   readonly datasetId = signal<number | null>(null);
   readonly sortColumnId = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>('asc');
@@ -27,16 +26,12 @@ export class DataTableWidgetModel extends WidgetModel {
   readonly appearance: TableAppearanceModel;
   readonly columns = signal<readonly TableColumnModel[]>([]);
 
-  /** Rows this widget shows, narrowed server-side. */
   readonly filter: FilterGroupModel;
 
-  /** The bound dataset's schema, once loaded. */
   readonly schema: Signal<DatasetSchema | null>;
-  /** Dataset columns not yet placed on the table. */
   readonly availableColumns: Signal<DatasetSchema['columns']>;
 
-  /** Kept so a column added later (see `addColumns`) can build with the same tolerance-schema
-   * look-up its siblings got at construction time. */
+  /** Kept so columns added later get the same tolerance-schema look-up. */
   private readonly schemas: SchemaSource;
 
   constructor(widget: DataTableWidget, sources: ModelSources) {
@@ -61,16 +56,13 @@ export class DataTableWidgetModel extends WidgetModel {
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
       catalogue: sources.catalogue,
-      // A table's filter narrows what that table shows, so it only offers the
-      // columns actually on it — the dataset's other columns belong to the
-      // report-level filter.
+      // A table's filter offers only its own columns; the rest belong to the report filter.
       columns: computed(() =>
         this.columns()
           .map((c) => c.schemaColumn())
           .filter((c): c is NonNullable<typeof c> => !!c),
       ),
-      // The columns on this table that have fixed tolerance banding, so the filter can offer
-      // "in/out of tolerance" on them. A column whose limits are matched per row has no single band.
+      // Columns with fixed banding can be filtered in or out of tolerance; per-row limits have no single band.
       tolerantColumns: computed(
         () =>
           new Set(
@@ -90,7 +82,7 @@ export class DataTableWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice, the sort, and the filter. */
+  /** Clears every column choice, the sort and the filter. */
   setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
@@ -103,7 +95,7 @@ export class DataTableWidgetModel extends WidgetModel {
     this.addColumns([columnId]);
   }
 
-  /** Appends several columns in one step, skipping any already on the table. */
+  /** Skips columns already on the table. */
   addColumns(columnIds: readonly string[]): void {
     const existing = new Set(this.columns().map((c) => c.columnId));
     const added = columnIds
@@ -128,7 +120,7 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.set(columns);
   }
 
-  /** Moves one column to another's position — for a header drag reorder. */
+  /** For a header drag reorder. */
   reorderColumn(draggedColumnId: string, targetColumnId: string): void {
     const columns = [...this.columns()];
     const from = columns.findIndex((c) => c.columnId === draggedColumnId);
@@ -149,7 +141,7 @@ export class DataTableWidgetModel extends WidgetModel {
     this.sortDirection.set(direction);
   }
 
-  /** Applies widths measured after a drag-resize, ignoring unknown columns. */
+  /** Ignores unknown columns. */
   applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
     for (const { columnId, width } of widths) this.column(columnId)?.setWidth(width);
   }
@@ -218,9 +210,7 @@ export class DataTableWidgetModel extends WidgetModel {
 
     const sortColumnId = this.sortColumnId();
     if (sortColumnId && !this.columns().some((c) => c.columnId === sortColumnId)) {
-      // Distinguish "sorts by a column that's valid but just not shown" (fine to leave, or fix
-      // by re-adding it) from "sorts by a column the dataset no longer has at all" (a real
-      // break — the sort can never work again until it's repointed).
+      // Sorting by a hidden column is fine; sorting by a column the dataset no longer has is broken.
       const schema = this.schema();
       if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
         issues.push({

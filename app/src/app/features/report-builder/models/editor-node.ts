@@ -2,40 +2,28 @@ import { Signal, computed, signal } from '@angular/core';
 import { ValidationIssue } from './validation-issue';
 
 /**
- * Base for every node in the report's editing model.
+ * Base for every node in the report's editing model. Each node owns its state as signals, reports
+ * its own issues and serialises itself; validity, dirtiness and issues roll up from its children.
  *
- * Each node owns its own slice of state as signals, reports the problems it
- * knows about, and can serialise itself. Everything a caller usually cares
- * about — is this valid, does it have unsaved changes, what are the problems —
- * is aggregated from the node plus its descendants, so asking the root gives
- * the state of the whole report.
- *
- * Subclasses implement the three hooks as *methods* rather than fields: methods
- * live on the prototype and so are safe to reference from the computeds below,
- * which are created while the base class initialises (before subclass fields).
+ * The hooks are methods, not fields: the computeds below are created while the base class
+ * initialises, before subclass fields exist, but prototype methods are already there.
  */
 export abstract class EditorNode {
-  /** Problems raised by this node alone, not counting its children. */
+  /** Issues raised by this node alone, not its children. */
   protected abstract ownIssues(): ValidationIssue[];
 
-  /** Child nodes whose state rolls up into this one. */
   protected abstract childNodes(): readonly EditorNode[];
 
-  /** The value compared against the last saved state to detect changes. */
+  /** Compared against the last saved state to detect changes. */
   protected abstract snapshotValue(): unknown;
 
   private readonly pristine = signal<string | null>(null);
 
-  /**
-   * This node's state as a comparable string. Defaults to serializing the
-   * snapshot; the root overrides it with a memoized computed so the whole-report
-   * serialization runs once per change and is shared with the undo stack.
-   */
+  /** The root overrides this with a memoized computed shared with the undo stack. */
   protected serialize(): string {
     return JSON.stringify(this.snapshotValue());
   }
 
-  /** This node's problems plus everything below it. */
   readonly issues: Signal<ValidationIssue[]> = computed(() => [
     ...this.ownIssues(),
     ...this.childNodes().flatMap((child) => child.issues()),
@@ -44,14 +32,10 @@ export abstract class EditorNode {
   readonly errors = computed(() => this.issues().filter((issue) => issue.severity === 'error'));
   readonly warnings = computed(() => this.issues().filter((issue) => issue.severity === 'warning'));
 
-  /** Warnings are tolerated; only errors make a subtree invalid. */
+  /** Only errors make a subtree invalid. */
   readonly isValid = computed(() => this.errors().length === 0);
 
-  /**
-   * True when this subtree differs from the last saved state. A parent's
-   * snapshot embeds its children's, so the root is dirty whenever anything
-   * anywhere changed — and reverting an edit clears it again.
-   */
+  /** A parent's snapshot embeds its children's, so reverting an edit clears this again. */
   readonly dirty = computed(() => {
     const pristine = this.pristine();
     return pristine === null || this.serialize() !== pristine;

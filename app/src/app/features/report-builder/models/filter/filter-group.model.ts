@@ -13,7 +13,6 @@ export class FilterGroupModel extends EditorNode {
   public readonly children = signal<readonly FilterConditionModel[]>([]);
 
   public readonly count = computed(() => this.children().length);
-  /** Conditions switched on: what actually narrows the data. */
   public readonly enabledCount = computed(() => this.children().filter((c) => c.enabled()).length);
   /** Switched-on conditions on a removed column, which {@link toQueryDto} leaves out. */
   public readonly missingColumnCount = computed(
@@ -32,7 +31,6 @@ export class FilterGroupModel extends EditorNode {
     return all.filter((c) => allowedIds.has(c.id) || referenced.has(c.id));
   });
 
-  /** Both the schema and the operator catalogue are in. */
   public readonly ready: Signal<boolean> = computed(
     () => !!this.context.schema() && !!this.context.catalogue(),
   );
@@ -55,7 +53,7 @@ export class FilterGroupModel extends EditorNode {
     this.join.set(join);
   }
 
-  /** Adds a condition on the first column this filter may test, or on `columnId`. Null if none is offerable. */
+  /** Uses `columnId`, else the first offerable column; null if none is offerable. */
   public addCondition(columnId?: string): FilterConditionModel | null {
     const offerable = this.columns();
     const column = columnId ? offerable.find((c) => c.id === columnId) : offerable[0];
@@ -89,15 +87,12 @@ export class FilterGroupModel extends EditorNode {
     return this.project(() => true);
   }
 
-  /**
-   * The filter sent to the query endpoint: enabled, complete conditions on columns that exist. The
-   * server rejects an operand-less condition or an unknown column outright, failing the whole widget.
-   */
+  /** Only enabled, complete conditions on existing columns; the server rejects anything else outright. */
   public toQueryDto(): FilterGroup | null {
     return this.project((c) => c.enabled() && c.isComplete() && !c.columnMissing());
   }
 
-  /** Every finished condition, enabled or not: a disabled one can be toggled back on, but a row still being typed isn't state yet. */
+  /** Every finished condition, enabled or not; a row still being typed is left out. */
   public toCompleteDto(): FilterGroup | null {
     return this.project((c) => c.isComplete());
   }

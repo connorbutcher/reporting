@@ -14,42 +14,32 @@ import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './sources/model-sources';
 
 /**
- * A combination chart. It shares the bar chart's data model — categories reduced by an aggregate,
- * one value per category per series — and queries through the very same bar endpoint; what differs
- * is only that each series (binding) draws as bars or as a line, per its {@link renderAs}. Series
- * can also sit on separate value axes, so bars and an overlaid line each read on their own scale.
+ * A combination chart: the bar chart's data model and query, but each binding draws as bars or a
+ * line ({@link renderAs}) and can sit on its own value axis.
  */
 export class ComboChartWidgetModel extends ChartWidgetModel {
   public override readonly type = 'comboChart' as const;
 
   public readonly aggregate = signal<Aggregate>('sum');
-  /** Stacks each binding's *bar* series into one column; line series are never stacked. */
+  /** Stacks bar series per binding; lines never stack. */
   public readonly stacked = signal(false);
-  /** Draws line series with curved rather than straight segments. */
   public readonly smooth = signal(false);
-  /** Whether point markers are drawn along line series. */
   public readonly showPoints = signal(true);
-  /** Shades the area under line series. */
   public readonly areaFill = signal(false);
-  /** How the bars/lines are ordered along the category axis. */
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
-  /** Buckets a date category by period; null groups by the exact date. */
+  /** Buckets a date category by period; null groups by exact date. */
   public readonly categoryGrouping = signal<DateGrouping | null>(null);
-  /** Draws line series straight across categories they have no value for. */
+  /** Draws lines straight across categories with no value. */
   public readonly connectNulls = signal(false);
 
-  /**
-   * Whether the chart can produce more than one bar series to stack — from several overlaid
-   * datasets, a binding's multiple measures, or a colour-by split. The "Stack bars" toggle keys
-   * off it, matching the bar chart.
-   */
+  /** Whether there can be several bar series to stack, as on the bar chart. */
   public readonly multiSeries = computed(() => {
     const bindings = this.bindings();
     if (bindings.length > 1) return true;
     return bindings.some((b) => !!b.seriesColumnId() || b.barValueColumnIds().length > 1);
   });
 
-  /** Whether any series is drawn as a line — gates the line-only appearance options. */
+  /** Gates the line-only appearance options. */
   public readonly hasLineSeries = computed(() =>
     this.bindings().some((b) => b.renderAs() === 'line'),
   );
@@ -61,13 +51,12 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     this.smooth.set(widget.config.smooth);
     this.showPoints.set(widget.config.showPoints);
     this.areaFill.set(widget.config.areaFill);
-    // Charts saved before this existed default to the chart's own natural order.
+    // Older charts default to natural order.
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
     this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
     this.connectNulls.set(widget.config.connectNulls ?? false);
   }
 
-  /** Count summarises row counts, so it needs no measure column — matching the bar chart. */
   public needsValue(): boolean {
     return this.aggregate() !== 'count';
   }
@@ -93,9 +82,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     return widgetTypeDescriptor('comboChart').label;
   }
 
-  // Category maps to xColumnId, measures to the binding's value columns (optional for Count) —
-  // the bar chart's rules. Each series is validated so a half-configured overlaid dataset, which
-  // the bar query would silently skip, still raises a warning, one per series.
+  // The bar chart's rules, checked per binding so a half-configured overlay still warns.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
     const bindings = this.bindings();

@@ -12,8 +12,8 @@ import { ReusableFilter } from './reusable-filter';
 /** Finds filters elsewhere on a report that could seed the one being edited. */
 export class ReusableFilters {
   /**
-   * Every other non-empty filter on the same dataset that could seed `target`: the report filter and
-   * each table, pivot and chart-binding filter. Same dataset only, since a filter names columns by id.
+   * Every other non-empty filter on the same dataset that could seed `target`. Same dataset only, since
+   * a filter names columns by id.
    */
   public static find(
     model: ReportModel,
@@ -32,7 +32,7 @@ export class ReusableFilters {
     );
   }
 
-  /** A widget's own filters on the dataset; a chart overlays one per binding, so names the series when there are several. */
+  /** A chart has one filter per binding, so the series is named when there are several. */
   private static widgetFilters(widget: WidgetModel, datasetId: number): ReusableFilter[] {
     if (
       widget instanceof DataTableWidgetModel ||

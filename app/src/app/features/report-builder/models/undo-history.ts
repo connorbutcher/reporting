@@ -2,16 +2,10 @@ import { computed, signal } from '@angular/core';
 import { ReportRevisionContent } from '../../../core/models/report';
 
 /**
- * A linear undo stack of whole-report snapshots, each a serialized JSON string.
- *
- * The model already memoizes its own serialization ({@link ReportModel.serialized}),
- * so callers pass that string in rather than re-stringifying here — the same value
- * powers the dirty check, so a change is serialized once and shared. Capture is
- * driven on a debounce so a burst of typing collapses into a single undo step
- * rather than one per keystroke.
+ * A linear undo stack of serialized report snapshots. Callers pass in the model's memoized
+ * serialization and capture on a debounce, so a burst of typing is one undo step.
  */
 export class UndoHistory {
-  /** Plenty for a working session without holding on to unbounded memory. */
   private static readonly MAX_ENTRIES = 60;
 
   private readonly entries = signal<string[]>([]);
@@ -20,16 +14,12 @@ export class UndoHistory {
   readonly canUndo = computed(() => this.index() > 0);
   readonly canRedo = computed(() => this.index() < this.entries().length - 1);
 
-  /** Starts a fresh timeline from the given serialized state. */
   reset(serialized: string): void {
     this.entries.set([serialized]);
     this.index.set(0);
   }
 
-  /**
-   * Records a new serialized state. Restoring produces a snapshot identical to
-   * the entry we just moved to, so that case is ignored and undo doesn't get stuck.
-   */
+  /** Ignores a snapshot identical to the current entry, which restoring produces. */
   capture(json: string): void {
     const entries = this.entries();
     const index = this.index();

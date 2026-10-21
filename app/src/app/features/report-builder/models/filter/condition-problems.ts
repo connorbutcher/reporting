@@ -37,7 +37,7 @@ export class ConditionProblems {
     }
   }
 
-  /** The same problem for the Issues panel, so the cue and the panel never disagree. */
+  /** The same problem for the Issues panel, so the cue and panel agree. */
   public static issue(
     problem: ConditionProblem,
     id: string,

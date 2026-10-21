@@ -5,8 +5,8 @@ import { FilterContext } from './filter-context';
 /** Converts stored filter trees into condition models. */
 export class FilterGroupNodes {
   /**
-   * The UI offers one level of grouping, so a stored filter's nested groups are flattened to their
-   * conditions rather than dropped. `clone` deep-copies each first, for a filter also held elsewhere.
+   * The UI offers one level of grouping, so nested groups are flattened to their conditions. `clone`
+   * deep-copies each first, for a filter also held elsewhere.
    */
   public static toConditionModels(
     dto: FilterGroup | null,

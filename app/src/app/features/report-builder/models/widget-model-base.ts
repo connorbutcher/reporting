@@ -3,7 +3,6 @@ import { Widget, WidgetType } from '../../../core/models/report';
 import { GridRect } from '../grid/grid-rect';
 import { EditorNode } from './editor-node';
 
-/** Shared behaviour for anything that can sit on the report grid. */
 export abstract class WidgetModel extends EditorNode {
   readonly id: string;
   readonly x = signal(0);
@@ -15,10 +14,9 @@ export abstract class WidgetModel extends EditorNode {
 
   abstract readonly type: WidgetType;
 
-  /** Title actually shown, falling back to the widget kind. */
+  /** The title shown, falling back to the widget kind. */
   readonly label: Signal<string>;
 
-  /** Current footprint on the grid, for collision and bounds checks. */
   readonly rect: Signal<GridRect>;
 
   protected constructor(widget: Widget) {
@@ -53,7 +51,6 @@ export abstract class WidgetModel extends EditorNode {
     return this.toDto();
   }
 
-  /** Geometry common to both widget kinds. */
   protected geometryDto() {
     return { id: this.id, x: this.x(), y: this.y(), w: this.w(), h: this.h() };
   }

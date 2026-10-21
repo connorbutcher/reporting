@@ -23,24 +23,17 @@ import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './sources/model-sources';
 
 /**
- * One tab of a report: its own grid and the widgets on it. Owns the grid geometry
- * and validates the things only it can see — whether widgets fit the grid and
- * whether any of them collide. Everything widget-specific is validated by the
- * widget itself; report-level concerns (filters, name) live on {@link ReportModel}.
+ * One tab of a report: its grid and widgets. Validates what only it can see, whether widgets fit
+ * the grid and whether any collide; each widget validates itself.
  */
 export class TabModel extends EditorNode {
-  /**
-   * The grid a brand-new (or unspecified) tab falls back to. Exported so the store
-   * and the settings panel default to the same size the model does, instead of each
-   * repeating the literals.
-   */
+  /** The grid size a new tab starts with. */
   public static readonly DEFAULT_GRID_COLUMNS = 48;
   public static readonly DEFAULT_GRID_ROWS = 30;
   private static readonly MIN_GRID_SIZE = 1;
-  // Columns fill the canvas width, so a fine column count is normal now; rows can
-  // run long since the report scrolls vertically.
+  // Columns fill the canvas width and the report scrolls vertically, so both can be large.
   private static readonly MAX_GRID_SIZE = 200;
-  // Sized for the default ~48-column grid: roughly a quarter width, a useful height.
+  // Roughly a quarter of the default 48-column grid.
   private static readonly DEFAULT_WIDGET_W = 12;
   private static readonly DEFAULT_WIDGET_H = 8;
 
@@ -82,7 +75,7 @@ export class TabModel extends EditorNode {
     );
   }
 
-  /** Adds an empty widget in the first free space; the user configures it after. */
+  /** Adds an empty widget in the first free space. */
   addWidget(type: WidgetType): WidgetModel {
     const slot = this.findFreeSlot(TabModel.DEFAULT_WIDGET_W, TabModel.DEFAULT_WIDGET_H);
     this.growRowsFor(slot.y, TabModel.DEFAULT_WIDGET_H);
@@ -100,7 +93,6 @@ export class TabModel extends EditorNode {
     return widget;
   }
 
-  /** A freshly-placed widget of the given type, filled with that type's default config. */
   private emptyWidgetDto(type: WidgetType, base: Omit<Widget, 'type' | 'config'>): Widget {
     switch (type) {
       case 'dataTable':
@@ -177,14 +169,13 @@ export class TabModel extends EditorNode {
     this.widgets.update((widgets) => widgets.filter((w) => !doomed.has(w.id)));
   }
 
-  /** Copies a widget with all of its configuration into the nearest free space. */
+  /** Copies a widget and its configuration into the nearest free space. */
   duplicateWidget(widgetId: string): WidgetModel | null {
     const source = this.widget(widgetId);
     if (!source) return null;
 
     const dto = source.toDto();
-    // Must avoid every existing widget, the original included, or the copy
-    // lands exactly on top of what it was copied from.
+    // Avoid every widget, the original included, or the copy lands on top of it.
     const slot = this.findFreeSlot(dto.w, dto.h);
     this.growRowsFor(slot.y, dto.h);
     const copy = WidgetModelFactory.fromDto(
@@ -192,7 +183,7 @@ export class TabModel extends EditorNode {
       this.sources,
     );
 
-    // Sits straight after the original so the list order matches the canvas.
+    // Insert after the original so list order matches the canvas.
     this.widgets.update((widgets) => {
       const index = widgets.findIndex((w) => w.id === widgetId);
       const next = [...widgets];
@@ -203,9 +194,8 @@ export class TabModel extends EditorNode {
   }
 
   /**
-   * Scans the grid row by row for somewhere the given size fits. Falls back to
-   * directly below everything else, which validation will flag if the grid is
-   * genuinely full rather than silently stacking widgets on top of each other.
+   * The first spot, row by row, where the size fits. Falls back to below everything else, which
+   * validation flags if the grid is genuinely full.
    */
   findFreeSlot(w: number, h: number): { x: number; y: number } {
     const taken = this.widgets().map((widget) => widget.rect());
@@ -220,16 +210,11 @@ export class TabModel extends EditorNode {
     return { x: 0, y: taken.reduce((max, rect) => Math.max(max, rect.y + rect.h), 0) };
   }
 
-  /**
-   * Extends the canvas so a widget placed at the fallback slot still fits.
-   * Growing the grid is far friendlier than handing back a report that fails
-   * validation and blocks saving because one click had nowhere to go.
-   */
+  /** Grows the grid so a widget at the fallback slot fits, rather than failing validation. */
   private growRowsFor(y: number, h: number): void {
     if (y + h > this.gridRows()) this.setGridRows(y + h);
   }
 
-  /** Widgets other than the given one, for collision checks while dragging. */
   siblingsOf(widgetId: string): readonly WidgetModel[] {
     return this.widgets().filter((w) => w.id !== widgetId);
   }
@@ -273,7 +258,7 @@ export class TabModel extends EditorNode {
       });
     }
 
-    // Overlaps are reported once per pair, against the later widget.
+    // Each overlapping pair is reported once, against the later widget.
     widgets.forEach((widget, index) => {
       const overlapping = widgets
         .slice(0, index)

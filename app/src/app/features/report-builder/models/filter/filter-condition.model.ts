@@ -24,7 +24,6 @@ export class FilterConditionModel extends EditorNode {
     () => this.context.schema()?.columns.find((c) => c.id === this.columnId()) ?? null,
   );
 
-  /** The column has tolerance banding in this context. */
   public readonly isTolerant: Signal<boolean> = computed(
     () => this.context.tolerantColumns?.().has(this.columnId()) ?? false,
   );
@@ -36,7 +35,6 @@ export class FilterConditionModel extends EditorNode {
     return OfferableOperators.of(catalogue[type] ?? [], this.isTolerant(), this.operator());
   });
 
-  /** Drives how many operand inputs to render. */
   public readonly descriptor: Signal<OperatorDescriptor | null> = computed(
     () => this.availableOperators().find((o) => o.value === this.operator()) ?? null,
   );
@@ -45,7 +43,7 @@ export class FilterConditionModel extends EditorNode {
     Array.from({ length: this.descriptor()?.operandCount ?? 0 }, (_, i) => i),
   );
 
-  /** The schema has loaded and lacks this column. False while it's pending, so a slow fetch isn't read as a deleted column. */
+  /** False while the schema is pending, so a slow fetch isn't read as a deleted column. */
   public readonly columnMissing = computed(() => !!this.context.schema() && !this.schemaColumn());
 
   /** Reads as complete while operators are unknown, so a pending schema drops nothing. */
@@ -97,7 +95,6 @@ export class FilterConditionModel extends EditorNode {
   }
 
   public setOperator(operator: FilterOperator): void {
-    if (operator === this.operator()) return;
     this.operator.set(operator);
 
     const needed = this.availableOperators().find((o) => o.value === operator)?.operandCount ?? 0;

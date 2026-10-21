@@ -13,34 +13,20 @@ import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
 
-/**
- * A bar chart. It reuses the shared chart base for dataset/series/filter binding,
- * reading `xColumnId` as the category and `yColumnId` as the measure the aggregate
- * reduces. Count needs no measure, so validation only insists on one for the other
- * aggregates.
- */
+/** A bar chart: `xColumnId` is the category and the value columns are the measures. Count needs no measure. */
 export class BarChartWidgetModel extends ChartWidgetModel {
   public override readonly type = 'barChart' as const;
 
   public readonly aggregate = signal<Aggregate>('sum');
-  /** Stacks a category's series bars into one column instead of placing them side by side. */
   public readonly stacked = signal(false);
-  /** Draws bars horizontally (categories down the Y axis) rather than as vertical columns. */
   public readonly horizontal = signal(false);
-  /** How the bars are ordered along the category axis. */
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
-  /** Buckets a date category by period; null groups by the exact date. */
+  /** Buckets a date category by period; null groups by exact date. */
   public readonly categoryGrouping = signal<DateGrouping | null>(null);
-  /** Stacks bars as shares of their category's total (100% stacked). */
   public readonly percentStacked = signal(false);
-  /** Prints each stack's total above it. */
   public readonly showStackTotals = signal(false);
 
-  /**
-   * Whether the chart can produce more than one series — from several overlaid datasets, a
-   * binding's multiple measures, or a colour-by split. Stacking only means something then, so
-   * the "Stack series" toggle keys off it.
-   */
+  /** Whether the chart can have several series (overlays, measures or a split); stacking only applies then. */
   public readonly multiSeries = computed(() => {
     const bindings = this.bindings();
     if (bindings.length > 1) return true;
@@ -52,14 +38,13 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     this.aggregate.set(widget.config.aggregate);
     this.stacked.set(widget.config.stacked);
     this.horizontal.set(widget.config.horizontal);
-    // Charts saved before this existed default to the chart's own natural order.
+    // Older charts default to natural order.
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
     this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
     this.percentStacked.set(widget.config.percentStacked ?? false);
     this.showStackTotals.set(widget.config.showStackTotals ?? false);
   }
 
-  /** Count summarises row counts, so it needs no measure column. */
   public needsValue(): boolean {
     return this.aggregate() !== 'count';
   }
@@ -84,9 +69,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     return widgetTypeDescriptor('barChart').label;
   }
 
-  // Category maps to xColumnId, measures to the binding's value columns; the measure is optional
-  // for Count. Each series (binding) is validated, so a half-configured overlaid dataset — which
-  // ChartQuery.build would silently skip — still raises a warning, one prompt at a time per series.
+  // Every binding is checked, so a half-configured overlay (which the query skips) still warns.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
     const bindings = this.bindings();

@@ -4,12 +4,10 @@ import { KpiWidgetModel } from './kpi-widget.model';
 import { PivotTableWidgetModel } from './pivot-table-widget.model';
 import { WidgetModel } from './widget-model-base';
 
-/** Summarises a widget's own filters for the widget list. */
 export class WidgetFilterSummary {
   /**
-   * How many of a widget's own filter conditions are switched on — the widget list's badge count.
-   * A chart sums across every binding, since each overlaid dataset filters independently. Excludes
-   * the report-level filter, which is shown separately per dataset in the report filters view.
+   * How many of a widget's own filter conditions are on, for the widget list badge. A chart sums every
+   * binding; the report-level filter isn't counted.
    */
   public static count(widget: WidgetModel): number {
     if (

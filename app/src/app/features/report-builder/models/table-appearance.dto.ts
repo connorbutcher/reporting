@@ -1,6 +1,6 @@
 import { DataTableWidgetConfig } from '../../../core/models/report';
 
-/** The presentation options for a table, independent of which data it shows. */
+/** A table's presentation options, independent of its data. */
 export type TableAppearanceDto = Pick<
   DataTableWidgetConfig,
   | 'showColumnHeaders'

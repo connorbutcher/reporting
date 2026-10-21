@@ -65,7 +65,7 @@ export class TextStyleModel extends EditorNode {
     return [];
   }
 
-  /** The panel clamps every one of these, so there is nothing to reject here. */
+  // The panel clamps every value, so nothing needs rejecting here.
   protected override ownIssues(): ValidationIssue[] {
     return [];
   }
