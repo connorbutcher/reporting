@@ -29,12 +29,12 @@ import { PanelGroupComponent } from '../../panel-group.component';
   providers: [ToleranceSourcePicker],
 })
 export class PanelChartToleranceBandComponent {
+  public static readonly title = 'Tolerance band';
+
   private static readonly AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
     { label: 'Y axis', value: 'y' },
     { label: 'X axis', value: 'x' },
   ];
-
-  public static readonly title = 'Tolerance band';
 
   public readonly datasets = inject(ReportSession).datasets;
   public readonly picker = inject(ToleranceSourcePicker);
@@ -80,7 +80,6 @@ export class PanelChartToleranceBandComponent {
   });
 
   private readonly navigation = inject(PanelNavigation);
-
   private readonly chart = inject(ReportSession).selectedChartWidget;
 
   private readonly bandId = computed(() => {

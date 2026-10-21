@@ -15,7 +15,7 @@ export class WidgetCommands {
   private readonly navigation = inject(PanelNavigation);
   private readonly fragments = inject(UrlFragmentService);
 
-  addWidget(type: WidgetType): void {
+  public addWidget(type: WidgetType): void {
     const widget = this.session.addWidget(type);
     if (!widget) return;
     this.selection.select(widget.id);
@@ -24,11 +24,11 @@ export class WidgetCommands {
     this.fragments.navigate(widgetFragment(widget.id));
   }
 
-  removeWidget(widgetId: string): void {
+  public removeWidget(widgetId: string): void {
     this.removeWidgets([widgetId]);
   }
 
-  removeWidgets(widgetIds: readonly string[]): void {
+  public removeWidgets(widgetIds: readonly string[]): void {
     if (widgetIds.length === 0) return;
     this.session.model()?.removeWidgets(widgetIds);
 
@@ -38,7 +38,7 @@ export class WidgetCommands {
   }
 
   /** Selects the copies. */
-  duplicateSelection(): void {
+  public duplicateSelection(): void {
     const model = this.session.model();
     const ids = this.selection.selectedWidgetIds();
     if (!model || ids.length === 0) return;
@@ -51,7 +51,7 @@ export class WidgetCommands {
   }
 
   /** Refuses the move if any widget would collide. */
-  nudgeSelection(dx: number, dy: number): void {
+  public nudgeSelection(dx: number, dy: number): void {
     const widgets = this.session.selectedWidgets();
     if (widgets.length === 0) return;
 
@@ -77,7 +77,7 @@ export class WidgetCommands {
   }
 
   /** Moves the panel `offset` widgets along, without adding history. */
-  stepWidget(offset: number): void {
+  public stepWidget(offset: number): void {
     const widgets = this.session.widgets();
     const index = widgets.findIndex((w) => w.id === this.selection.selectedWidgetId());
     const next = widgets[index + offset];

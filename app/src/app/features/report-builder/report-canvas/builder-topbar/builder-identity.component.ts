@@ -17,7 +17,7 @@ import { ReportSession } from '../../state/report-session';
   ],
 })
 export class BuilderIdentityComponent {
-  private readonly session = inject(ReportSession);
+  public readonly name = computed(() => this.session.model()?.name() ?? 'Report');
 
-  protected readonly name = computed(() => this.session.model()?.name() ?? 'Report');
+  private readonly session = inject(ReportSession);
 }

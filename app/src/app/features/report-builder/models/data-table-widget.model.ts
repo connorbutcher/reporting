@@ -17,19 +17,15 @@ import { TableColumnModel } from './table-column.model';
 import { ValidationIssue } from './validation-issue';
 
 export class DataTableWidgetModel extends WidgetModel {
-  override readonly type = 'dataTable' as const;
-
-  readonly datasetId = signal<number | null>(null);
-  readonly sortColumnId = signal<string | null>(null);
-  readonly sortDirection = signal<SortDirection>('asc');
-
-  readonly appearance: TableAppearanceModel;
-  readonly columns = signal<readonly TableColumnModel[]>([]);
-
-  readonly filter: FilterGroupModel;
-
-  readonly schema: Signal<DatasetSchema | null>;
-  readonly availableColumns: Signal<DatasetSchema['columns']>;
+  public override readonly type = 'dataTable' as const;
+  public readonly datasetId = signal<number | null>(null);
+  public readonly sortColumnId = signal<string | null>(null);
+  public readonly sortDirection = signal<SortDirection>('asc');
+  public readonly appearance: TableAppearanceModel;
+  public readonly columns = signal<readonly TableColumnModel[]>([]);
+  public readonly filter: FilterGroupModel;
+  public readonly schema: Signal<DatasetSchema | null>;
+  public readonly availableColumns: Signal<DatasetSchema['columns']>;
 
   /** Kept so columns added later get the same tolerance-schema look-up. */
   private readonly schemas: SchemaSource;
@@ -83,7 +79,7 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   /** Clears every column choice, the sort and the filter. */
-  setDataset(datasetId: number | null): void {
+  public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.columns.set([]);
@@ -91,12 +87,12 @@ export class DataTableWidgetModel extends WidgetModel {
     this.filter.clear();
   }
 
-  addColumn(columnId: string): void {
+  public addColumn(columnId: string): void {
     this.addColumns([columnId]);
   }
 
   /** Skips columns already on the table. */
-  addColumns(columnIds: readonly string[]): void {
+  public addColumns(columnIds: readonly string[]): void {
     const existing = new Set(this.columns().map((c) => c.columnId));
     const added = columnIds
       .filter((id) => !existing.has(id))
@@ -106,12 +102,12 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.update((columns) => [...columns, ...added]);
   }
 
-  removeColumn(columnId: string): void {
+  public removeColumn(columnId: string): void {
     this.columns.update((columns) => columns.filter((c) => c.columnId !== columnId));
     if (this.sortColumnId() === columnId) this.sortColumnId.set(null);
   }
 
-  moveColumn(index: number, offset: number): void {
+  public moveColumn(index: number, offset: number): void {
     const columns = [...this.columns()];
     const target = index + offset;
     if (target < 0 || target >= columns.length) return;
@@ -121,7 +117,7 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   /** For a header drag reorder. */
-  reorderColumn(draggedColumnId: string, targetColumnId: string): void {
+  public reorderColumn(draggedColumnId: string, targetColumnId: string): void {
     const columns = [...this.columns()];
     const from = columns.findIndex((c) => c.columnId === draggedColumnId);
     const to = columns.findIndex((c) => c.columnId === targetColumnId);
@@ -132,21 +128,21 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.set(columns);
   }
 
-  column(columnId: string): TableColumnModel | null {
+  public column(columnId: string): TableColumnModel | null {
     return this.columns().find((c) => c.columnId === columnId) ?? null;
   }
 
-  setSort(columnId: string, direction: SortDirection): void {
+  public setSort(columnId: string, direction: SortDirection): void {
     this.sortColumnId.set(columnId);
     this.sortDirection.set(direction);
   }
 
   /** Ignores unknown columns. */
-  applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
+  public applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
     for (const { columnId, width } of widths) this.column(columnId)?.setWidth(width);
   }
 
-  override toDto(): DataTableWidget {
+  public override toDto(): DataTableWidget {
     const config: DataTableWidgetConfig = {
       type: 'dataTable',
       ...DEFAULT_TABLE_CONFIG,
@@ -161,15 +157,15 @@ export class DataTableWidgetModel extends WidgetModel {
     return { ...this.geometryDto(), type: 'dataTable', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return 'Table';
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [this.appearance, this.filter, ...this.columns()];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     const name = this.label();
 

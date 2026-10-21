@@ -12,17 +12,15 @@ import { ResizeDirection } from './resize-direction';
   exportAs: 'widgetResize',
 })
 export class WidgetResizeDirective {
-  readonly widget = input.required<WidgetModel>({ alias: 'appWidgetResize' });
+  public readonly widget = input.required<WidgetModel>({ alias: 'appWidgetResize' });
 
   /** The candidate rect, for the canvas overlay. */
-  readonly gridPreview = output<GridPreview | null>();
+  public readonly gridPreview = output<GridPreview | null>();
+  public readonly invalid = signal(false);
+  public readonly previewSize = signal<{ width: number; height: number } | null>(null);
 
   private readonly session = inject(ReportSession);
   private readonly destroyRef = inject(DestroyRef);
-
-  readonly invalid = signal(false);
-  readonly previewSize = signal<{ width: number; height: number } | null>(null);
-
   private direction: ResizeDirection = 'corner';
   private startCell = { w: 0, h: 0 };
   private startPointer = { x: 0, y: 0 };
@@ -34,7 +32,7 @@ export class WidgetResizeDirective {
     this.destroyRef.onDestroy(() => this.cleanupListeners());
   }
 
-  start(event: PointerEvent, direction: ResizeDirection): void {
+  public start(event: PointerEvent, direction: ResizeDirection): void {
     event.preventDefault();
     event.stopPropagation();
 

@@ -12,26 +12,24 @@ import { ValidationIssue } from './validation-issue';
 import { SchemaSource } from './sources/schema-source';
 
 export class TableColumnModel extends EditorNode {
-  readonly columnId: string;
+  public readonly columnId: string;
 
   /** Blank falls back to the dataset column's name. */
-  readonly header = signal<string>('');
-  readonly width = signal<number | null>(null);
+  public readonly header = signal<string>('');
+  public readonly width = signal<number | null>(null);
   /** Null follows the type: right for numbers, left otherwise. */
-  readonly align = signal<ColumnAlign | null>(null);
-  readonly sortable = signal(true);
+  public readonly align = signal<ColumnAlign | null>(null);
+  public readonly sortable = signal(true);
   /** Pass/fail highlighting against a row of a separate limits dataset; null shows none. */
-  readonly tolerance = signal<ToleranceConfig | null>(null);
+  public readonly tolerance = signal<ToleranceConfig | null>(null);
   /** The totals-row aggregate; null leaves this column's total blank. */
-  readonly total = signal<Aggregate | null>(null);
-  readonly wrap = signal(false);
-  readonly dataBars = signal(false);
+  public readonly total = signal<Aggregate | null>(null);
+  public readonly wrap = signal(false);
+  public readonly dataBars = signal(false);
   /** Checked in order; the first rule a value matches wins. */
-  readonly formatRules = signal<readonly FormatRule[]>([]);
-
-  readonly schemaColumn: Signal<DatasetColumn | null>;
-
-  readonly label: Signal<string>;
+  public readonly formatRules = signal<readonly FormatRule[]>([]);
+  public readonly schemaColumn: Signal<DatasetColumn | null>;
+  public readonly label: Signal<string>;
 
   /** The tolerance's own limits dataset; null while banding is off, pending or unset. */
   private readonly toleranceSchema: Signal<DatasetSchema | null>;
@@ -66,15 +64,15 @@ export class TableColumnModel extends EditorNode {
     });
   }
 
-  setWidth(width: number | null): void {
+  public setWidth(width: number | null): void {
     this.width.set(width === null || !Number.isFinite(width) ? null : Math.round(width));
   }
 
-  setTolerance(tolerance: ToleranceConfig | null): void {
+  public setTolerance(tolerance: ToleranceConfig | null): void {
     this.tolerance.set(tolerance);
   }
 
-  toDto(): DataTableColumnSetting {
+  public toDto(): DataTableColumnSetting {
     const header = this.header().trim();
     return {
       columnId: this.columnId,
@@ -92,15 +90,15 @@ export class TableColumnModel extends EditorNode {
     };
   }
 
-  protected override snapshotValue(): unknown {
+  public override snapshotValue(): unknown {
     return this.toDto();
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     // A pending schema fetch must not look like a deleted column.
     if (this.schema() && !this.schemaColumn()) {
       return [

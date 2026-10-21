@@ -23,34 +23,37 @@ import { PanelGroupComponent } from '../../panel-group.component';
   styleUrl: './panel-text-style.component.scss',
 })
 export class PanelTextStyleComponent {
+  public static readonly title = 'Style';
+
   private static readonly FONT_WEIGHT_OPTIONS: SelectOption<TextFontWeight>[] = [
     { label: 'Normal', value: 'normal' },
     { label: 'Medium', value: 'medium' },
     { label: 'Semibold', value: 'semibold' },
     { label: 'Bold', value: 'bold' },
   ];
+
   // Text alone supports Justify.
   private static readonly TEXT_ALIGN_OPTIONS: SelectOption<TextAlign>[] = [
     ...OptionCatalog.HORIZONTAL_ALIGN,
     { label: 'Justify', value: 'justify' },
   ];
+
   private static readonly VERTICAL_ALIGN_OPTIONS: SelectOption<TextVerticalAlign>[] = [
     { label: 'Top', value: 'top' },
     { label: 'Middle', value: 'middle' },
     { label: 'Bottom', value: 'bottom' },
   ];
 
-  static readonly title = 'Style';
+  public readonly fontWeightOptions = PanelTextStyleComponent.FONT_WEIGHT_OPTIONS;
+  public readonly textAlignOptions = PanelTextStyleComponent.TEXT_ALIGN_OPTIONS;
+  public readonly verticalAlignOptions = PanelTextStyleComponent.VERTICAL_ALIGN_OPTIONS;
 
-  private readonly session = inject(ReportSession);
-
-  protected readonly fontWeightOptions = PanelTextStyleComponent.FONT_WEIGHT_OPTIONS;
-  protected readonly textAlignOptions = PanelTextStyleComponent.TEXT_ALIGN_OPTIONS;
-  protected readonly verticalAlignOptions = PanelTextStyleComponent.VERTICAL_ALIGN_OPTIONS;
-
-  protected readonly widget = computed(() => {
+  public readonly widget = computed(() => {
     const widget = this.session.selectedWidget();
     return widget instanceof StaticTextWidgetModel ? widget : null;
   });
-  protected readonly style = computed(() => this.widget()?.style ?? null);
+
+  public readonly style = computed(() => this.widget()?.style ?? null);
+
+  private readonly session = inject(ReportSession);
 }

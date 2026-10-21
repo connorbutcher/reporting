@@ -12,11 +12,11 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-widget-detail-text.component.html',
 })
 export class PanelWidgetDetailTextComponent {
+  public readonly text = input.required<StaticTextWidgetModel>();
+
   private readonly navigation = inject(PanelNavigation);
 
-  readonly text = input.required<StaticTextWidgetModel>();
-
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
   }
 }

@@ -38,60 +38,79 @@ import { PanelWidgetDetailTextComponent } from '../panel-widget-detail-text/pane
 })
 export class PanelWidgetDetailComponent {
   /** Fallback heading; the chrome shows the widget's own name when there is one. */
-  static readonly title = 'Widget';
+  public static readonly title = 'Widget';
+
+  public readonly pivot = computed(() => {
+    const widget = this.session.selectedWidget();
+    return widget instanceof PivotTableWidgetModel ? widget : null;
+  });
+
+  public readonly kpi = computed(() => {
+    const widget = this.session.selectedWidget();
+    return widget instanceof KpiWidgetModel ? widget : null;
+  });
+
+  public readonly text = computed(() => {
+    const widget = this.session.selectedWidget();
+    return widget instanceof StaticTextWidgetModel ? widget : null;
+  });
+
+  public readonly chart = computed(() => {
+    const widget = this.session.selectedWidget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
+
+  public readonly index = computed(() =>
+    this.session.widgets().findIndex((w) => w.id === this.selection.selectedWidgetId()),
+  );
+
+  public readonly hasPrevious = computed(() => this.index() > 0);
+
+  public readonly hasNext = computed(
+    () => this.index() >= 0 && this.index() < this.session.widgets().length - 1,
+  );
 
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly commands = inject(WidgetCommands);
 
-  protected readonly hasMultiSelection = this.selection.hasMultiSelection;
-  protected readonly selectedWidgetIds = this.selection.selectedWidgetIds;
-  protected readonly selectedWidget = this.session.selectedWidget;
-  protected readonly widgets = this.session.widgets;
-
-  protected readonly table = this.session.selectedTableWidget;
-  protected readonly pivot = computed(() => {
-    const widget = this.session.selectedWidget();
-    return widget instanceof PivotTableWidgetModel ? widget : null;
-  });
-  protected readonly kpi = computed(() => {
-    const widget = this.session.selectedWidget();
-    return widget instanceof KpiWidgetModel ? widget : null;
-  });
-  protected readonly text = computed(() => {
-    const widget = this.session.selectedWidget();
-    return widget instanceof StaticTextWidgetModel ? widget : null;
-  });
-  protected readonly chart = computed(() => {
-    const widget = this.session.selectedWidget();
-    return widget instanceof ChartWidgetModel ? widget : null;
-  });
-
-  protected readonly index = computed(() =>
-    this.session.widgets().findIndex((w) => w.id === this.selection.selectedWidgetId()),
-  );
-  protected readonly hasPrevious = computed(() => this.index() > 0);
-  protected readonly hasNext = computed(
-    () => this.index() >= 0 && this.index() < this.session.widgets().length - 1,
-  );
-
-  protected defaultTitle(type: WidgetType): string {
+  public defaultTitle(type: WidgetType): string {
     return widgetTypeDescriptor(type).label;
   }
 
-  protected duplicateSelection(): void {
+  public duplicateSelection(): void {
     this.commands.duplicateSelection();
   }
 
-  protected removeSelection(): void {
+  public removeSelection(): void {
     this.commands.removeWidgets(this.selection.selectedWidgetIds());
   }
 
-  protected removeWidget(widgetId: string): void {
+  public removeWidget(widgetId: string): void {
     this.commands.removeWidget(widgetId);
   }
 
-  protected stepWidget(offset: number): void {
+  public stepWidget(offset: number): void {
     this.commands.stepWidget(offset);
+  }
+
+  public get hasMultiSelection() {
+    return this.selection.hasMultiSelection;
+  }
+
+  public get selectedWidgetIds() {
+    return this.selection.selectedWidgetIds;
+  }
+
+  public get selectedWidget() {
+    return this.session.selectedWidget;
+  }
+
+  public get widgets() {
+    return this.session.widgets;
+  }
+
+  public get table() {
+    return this.session.selectedTableWidget;
   }
 }

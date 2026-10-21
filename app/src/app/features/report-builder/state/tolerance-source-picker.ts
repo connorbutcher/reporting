@@ -15,46 +15,48 @@ import { ColumnTypes } from '../models/column-types';
  */
 @Injectable()
 export class ToleranceSourcePicker {
-  readonly sourceDatasetId = signal<number | null>(null);
-  readonly sourceRowId = signal<string | null>(null);
-  readonly minColumnId = signal<string | null>(null);
-  readonly maxColumnId = signal<string | null>(null);
-  readonly concessionLowerColumnId = signal<string | null>(null);
-  readonly concessionUpperColumnId = signal<string | null>(null);
+  public readonly sourceDatasetId = signal<number | null>(null);
+  public readonly sourceRowId = signal<string | null>(null);
+  public readonly minColumnId = signal<string | null>(null);
+  public readonly maxColumnId = signal<string | null>(null);
+  public readonly concessionLowerColumnId = signal<string | null>(null);
+  public readonly concessionUpperColumnId = signal<string | null>(null);
+
   /** Picks the limits row per data row by matching values. */
-  readonly matchEnabled = signal(false);
+  public readonly matchEnabled = signal(false);
+
   /** The table dataset's column whose value picks the limits row. */
-  readonly matchColumnId = signal<string | null>(null);
+  public readonly matchColumnId = signal<string | null>(null);
+
   /** The limits dataset's column holding the same identifiers. */
-  readonly sourceMatchColumnId = signal<string | null>(null);
-  readonly loadingSource = signal(false);
+  public readonly sourceMatchColumnId = signal<string | null>(null);
+  public readonly loadingSource = signal(false);
 
-  private readonly sourceSchema = signal<DatasetSchema | null>(null);
-  private readonly sourceData = signal<DatasetData | null>(null);
-
-  readonly numericColumns = computed(
+  public readonly numericColumns = computed(
     () => this.sourceSchema()?.columns.filter((c) => ColumnTypes.isNumeric(c.type)) ?? [],
   );
 
   /** Every limits column; an identifier can be text, a number or a date. */
-  readonly sourceColumns = computed(() => this.sourceSchema()?.columns ?? []);
+  public readonly sourceColumns = computed(() => this.sourceSchema()?.columns ?? []);
 
-  readonly rowOptions = computed(() =>
+  public readonly rowOptions = computed(() =>
     (this.sourceData()?.rows ?? []).map((row) => ({ id: row.id, label: this.rowLabel(row) })),
   );
 
-  readonly isComplete = computed(() => {
+  public readonly isComplete = computed(() => {
     const hasBounds = !!this.minColumnId() && !!this.maxColumnId();
     return this.matchEnabled()
       ? hasBounds && !!this.matchColumnId() && !!this.sourceMatchColumnId()
       : hasBounds && !!this.sourceRowId();
   });
 
+  private readonly sourceSchema = signal<DatasetSchema | null>(null);
+  private readonly sourceData = signal<DatasetData | null>(null);
   private readonly datasetApi = inject(DatasetApiService);
   private readonly notify = inject(NotificationService);
 
   /** Seeds from a saved pointer, or clears for none, loading its dataset. */
-  seed(pointer: ToleranceSeed | null): void {
+  public seed(pointer: ToleranceSeed | null): void {
     this.sourceDatasetId.set(pointer?.sourceDatasetId || null);
     this.sourceRowId.set(pointer?.sourceRowId || null);
     this.minColumnId.set(pointer?.minColumnId || null);
@@ -68,7 +70,7 @@ export class ToleranceSourcePicker {
   }
 
   /** Clears the row and column picks; the table-side match column and opt-in stay. */
-  selectDataset(datasetId: number | null): void {
+  public selectDataset(datasetId: number | null): void {
     this.sourceDatasetId.set(datasetId);
     this.sourceRowId.set(null);
     this.sourceMatchColumnId.set(null);
@@ -80,7 +82,7 @@ export class ToleranceSourcePicker {
   }
 
   /** The fixed-row pointer, or the limits plus match when matching is on. Null while incomplete. */
-  toColumnTolerance(): ToleranceConfig | null {
+  public toColumnTolerance(): ToleranceConfig | null {
     if (!this.matchEnabled()) return this.toPointer();
 
     const sourceDatasetId = this.sourceDatasetId();
@@ -104,7 +106,7 @@ export class ToleranceSourcePicker {
   }
 
   /** The fixed-row pointer a chart band uses; null while incomplete. */
-  toPointer(): FixedToleranceConfig | null {
+  public toPointer(): FixedToleranceConfig | null {
     const sourceDatasetId = this.sourceDatasetId();
     const sourceRowId = this.sourceRowId();
     const minColumnId = this.minColumnId();

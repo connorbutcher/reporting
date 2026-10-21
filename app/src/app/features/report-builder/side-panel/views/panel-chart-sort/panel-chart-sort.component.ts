@@ -24,7 +24,6 @@ import {
 export class PanelChartSortComponent {
   /** Null reads as the default. */
   public readonly sort = input.required<ChartSort | null>();
-
   public readonly columns = input.required<DatasetColumn[]>();
 
   /** False for a point chart, where each row is its own point. */
@@ -32,7 +31,6 @@ export class PanelChartSortComponent {
 
   /** What the natural order is called: category order, or X order. */
   public readonly defaultLabel = input('Category order');
-
   public readonly sortChange = output<ChartSort>();
 
   /** A date category can offer period grouping, when {@link grouping} is bound. */
@@ -40,7 +38,6 @@ export class PanelChartSortComponent {
 
   /** Undefined when the chart doesn't group its categories. */
   public readonly grouping = input<DateGrouping | null | undefined>(undefined);
-
   public readonly groupingChange = output<DateGrouping | null>();
 
   /** Bar and combination charts only. */
@@ -69,11 +66,6 @@ export class PanelChartSortComponent {
     { label: 'Column…', value: 'column' },
   ]);
 
-  private readonly selectedColumnType = computed(() => {
-    const columnId = this.resolved().columnId;
-    return columnId ? (this.columns().find((c) => c.id === columnId)?.type ?? null) : null;
-  });
-
   public readonly aggregateOptions = computed(() =>
     PanelChartSortComponent.aggregateOptionsFor(this.selectedColumnType()),
   );
@@ -88,6 +80,11 @@ export class PanelChartSortComponent {
     { label: 'Ascending', value: false },
     { label: 'Descending', value: true },
   ];
+
+  private readonly selectedColumnType = computed(() => {
+    const columnId = this.resolved().columnId;
+    return columnId ? (this.columns().find((c) => c.id === columnId)?.type ?? null) : null;
+  });
 
   /** Text and dates can't be summed or averaged. */
   private static aggregateOptionsFor(

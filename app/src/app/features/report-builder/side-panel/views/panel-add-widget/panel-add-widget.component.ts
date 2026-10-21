@@ -9,13 +9,13 @@ import { WidgetCommands } from '../../../state/widget-commands';
   styleUrl: './panel-add-widget.component.scss',
 })
 export class PanelAddWidgetComponent {
-  static readonly title = 'Add widget';
+  public static readonly title = 'Add widget';
+
+  public readonly groups = widgetTypesByGroup();
 
   private readonly commands = inject(WidgetCommands);
 
-  protected readonly groups = widgetTypesByGroup();
-
-  protected addWidget(type: WidgetType): void {
+  public addWidget(type: WidgetType): void {
     this.commands.addWidget(type);
   }
 }

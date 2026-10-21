@@ -8,9 +8,8 @@ import { Component, input, output } from '@angular/core';
 })
 export class WidgetExportActionsComponent {
   /** Off inside the full screen dialog. */
-  readonly expandable = input(true);
-
-  readonly screenshot = output<void>();
-  readonly exportCsv = output<void>();
-  readonly expand = output<void>();
+  public readonly expandable = input(true);
+  public readonly screenshot = output<void>();
+  public readonly exportCsv = output<void>();
+  public readonly expand = output<void>();
 }

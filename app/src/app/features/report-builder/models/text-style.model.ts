@@ -5,19 +5,19 @@ import { ValidationIssue } from './validation-issue';
 import { TextStyleDto } from './text-style.dto';
 
 export class TextStyleModel extends EditorNode {
-  readonly fontSize = signal(16);
-  readonly fontWeight = signal<TextFontWeight>('normal');
-  readonly italic = signal(false);
-  readonly underline = signal(false);
-  readonly strikethrough = signal(false);
-  readonly lineHeight = signal(1.4);
-  readonly color = signal('#1f2937');
+  public readonly fontSize = signal(16);
+  public readonly fontWeight = signal<TextFontWeight>('normal');
+  public readonly italic = signal(false);
+  public readonly underline = signal(false);
+  public readonly strikethrough = signal(false);
+  public readonly lineHeight = signal(1.4);
+  public readonly color = signal('#1f2937');
   /** Null means transparent. */
-  readonly backgroundColor = signal<string | null>(null);
-  readonly textAlign = signal<TextAlign>('left');
-  readonly verticalAlign = signal<TextVerticalAlign>('top');
-  readonly wrap = signal(true);
-  readonly padding = signal(12);
+  public readonly backgroundColor = signal<string | null>(null);
+  public readonly textAlign = signal<TextAlign>('left');
+  public readonly verticalAlign = signal<TextVerticalAlign>('top');
+  public readonly wrap = signal(true);
+  public readonly padding = signal(12);
 
   constructor(dto: TextStyleDto) {
     super();
@@ -36,11 +36,11 @@ export class TextStyleModel extends EditorNode {
   }
 
   /** Turning the background on needs a colour to start from. */
-  setBackgroundEnabled(enabled: boolean, fallback = '#ffffff'): void {
+  public setBackgroundEnabled(enabled: boolean, fallback = '#ffffff'): void {
     this.backgroundColor.set(enabled ? (this.backgroundColor() ?? fallback) : null);
   }
 
-  toDto(): TextStyleDto {
+  public toDto(): TextStyleDto {
     return {
       fontSize: this.fontSize(),
       fontWeight: this.fontWeight(),
@@ -57,16 +57,16 @@ export class TextStyleModel extends EditorNode {
     };
   }
 
-  protected override snapshotValue(): unknown {
+  public override snapshotValue(): unknown {
     return this.toDto();
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [];
   }
 
   // The panel clamps every value, so nothing needs rejecting here.
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     return [];
   }
 }

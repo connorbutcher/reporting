@@ -17,23 +17,16 @@ import { WidgetHostComponent } from '../../widget-host/widget-host.component';
   styleUrl: './canvas-grid.component.scss',
 })
 export class CanvasGridComponent {
+  public readonly rowHeight = GridLayout.ROW_HEIGHT;
+  public readonly gridGap = GridLayout.GRID_GAP;
+  public readonly dropPreview = signal<GridPreview | null>(null);
+  public readonly rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
+  public readonly columnStep = computed(() => this.session.columnWidth() + GridLayout.GRID_GAP);
+
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly lifecycle = inject(ReportLifecycle);
-
-  protected readonly loading = this.lifecycle.loading;
-  protected readonly widgets = this.session.widgets;
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-
-  protected readonly rowHeight = GridLayout.ROW_HEIGHT;
-  protected readonly gridGap = GridLayout.GRID_GAP;
-  protected readonly dropPreview = signal<GridPreview | null>(null);
-
   private readonly gridEl = viewChild<ElementRef<HTMLElement>>('grid');
-
-  protected readonly rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
-  protected readonly columnStep = computed(() => this.session.columnWidth() + GridLayout.GRID_GAP);
 
   constructor() {
     // Re-measure when the column count changes or the element resizes.
@@ -49,13 +42,29 @@ export class CanvasGridComponent {
     });
   }
 
-  protected onDropPreview(preview: GridPreview | null): void {
+  public onDropPreview(preview: GridPreview | null): void {
     this.dropPreview.set(preview);
   }
 
   /** Clicking empty canvas clears the selection. */
-  protected onCanvasPointerDown(event: PointerEvent): void {
+  public onCanvasPointerDown(event: PointerEvent): void {
     if (event.target === event.currentTarget) this.selection.clear();
+  }
+
+  public get loading() {
+    return this.lifecycle.loading;
+  }
+
+  public get widgets() {
+    return this.session.widgets;
+  }
+
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
   }
 
   /** The grid has no padding, so its client width less the gaps is the track area. */

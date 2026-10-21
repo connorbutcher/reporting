@@ -8,12 +8,11 @@ import { StaticTextWidgetConfig, TextFontWeight } from '../../../../core/models/
   styleUrl: './static-text-widget.component.scss',
 })
 export class StaticTextWidgetComponent {
-  readonly config = input.required<StaticTextWidgetConfig>();
-
-  protected readonly hasContent = computed(() => this.config().content.trim().length > 0);
+  public readonly config = input.required<StaticTextWidgetConfig>();
+  public readonly hasContent = computed(() => this.config().content.trim().length > 0);
 
   /** Colours come from a native colour input, which only yields `#rrggbb`, so nothing needs sanitising. */
-  protected readonly containerStyle = computed(() => {
+  public readonly containerStyle = computed(() => {
     const c = this.config();
     return StaticTextWidgetComponent.joinStyle({
       padding: `${c.padding}px`,
@@ -23,7 +22,7 @@ export class StaticTextWidgetComponent {
     });
   });
 
-  protected readonly contentStyle = computed(() => {
+  public readonly contentStyle = computed(() => {
     const c = this.config();
     const decorations = [c.underline && 'underline', c.strikethrough && 'line-through']
       .filter(Boolean)

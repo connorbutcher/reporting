@@ -4,22 +4,20 @@ import { GridRect } from '../grid/grid-rect';
 import { EditorNode } from './editor-node';
 
 export abstract class WidgetModel extends EditorNode {
-  readonly id: string;
-  readonly x = signal(0);
-  readonly y = signal(0);
-  readonly w = signal(1);
-  readonly h = signal(1);
-  readonly title = signal('');
-  readonly showTitle = signal(true);
-
-  abstract readonly type: WidgetType;
+  public readonly id: string;
+  public readonly x = signal(0);
+  public readonly y = signal(0);
+  public readonly w = signal(1);
+  public readonly h = signal(1);
+  public readonly title = signal('');
+  public readonly showTitle = signal(true);
+  public abstract readonly type: WidgetType;
 
   /** The title shown, falling back to the widget kind. */
-  readonly label: Signal<string>;
+  public readonly label: Signal<string>;
+  public readonly rect: Signal<GridRect>;
 
-  readonly rect: Signal<GridRect>;
-
-  protected constructor(widget: Widget) {
+  constructor(widget: Widget) {
     super();
     this.id = widget.id;
     this.x.set(widget.x);
@@ -33,29 +31,29 @@ export abstract class WidgetModel extends EditorNode {
     this.rect = computed(() => ({ x: this.x(), y: this.y(), w: this.w(), h: this.h() }));
   }
 
-  protected abstract defaultTitle(): string;
+  public abstract defaultTitle(): string;
 
-  moveTo(x: number, y: number): void {
+  public moveTo(x: number, y: number): void {
     this.x.set(Math.max(0, Math.round(x)));
     this.y.set(Math.max(0, Math.round(y)));
   }
 
-  resizeTo(w: number, h: number): void {
+  public resizeTo(w: number, h: number): void {
     this.w.set(Math.max(1, Math.round(w)));
     this.h.set(Math.max(1, Math.round(h)));
   }
 
-  abstract toDto(): Widget;
+  public abstract toDto(): Widget;
 
-  protected override snapshotValue(): unknown {
+  public override snapshotValue(): unknown {
     return this.toDto();
   }
 
-  protected geometryDto() {
+  public geometryDto() {
     return { id: this.id, x: this.x(), y: this.y(), w: this.w(), h: this.h() };
   }
 
-  protected baseConfigDto() {
+  public baseConfigDto() {
     return { title: this.title(), showTitle: this.showTitle() };
   }
 }

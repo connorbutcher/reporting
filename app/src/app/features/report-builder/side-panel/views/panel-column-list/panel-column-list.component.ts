@@ -10,21 +10,24 @@ import { PanelNavigation } from '../../../state/panel-navigation';
   styleUrl: './panel-column-list.component.scss',
 })
 export class PanelColumnListComponent {
-  static readonly title = 'Columns';
+  public static readonly title = 'Columns';
+
+  public readonly widgetId = computed(() => this.table()?.id ?? null);
 
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  protected readonly table = this.session.selectedTableWidget;
-  protected readonly widgetId = computed(() => this.table()?.id ?? null);
-
-  protected openSettings(columnId: string): void {
+  public openSettings(columnId: string): void {
     const widgetId = this.widgetId();
     if (widgetId) this.navigation.navigate({ kind: 'columnSettings', widgetId, columnId });
   }
 
-  protected openAdd(): void {
+  public openAdd(): void {
     const widgetId = this.widgetId();
     if (widgetId) this.navigation.navigate({ kind: 'addColumn', widgetId });
+  }
+
+  public get table() {
+    return this.session.selectedTableWidget;
   }
 }

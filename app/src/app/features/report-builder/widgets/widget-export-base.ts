@@ -10,10 +10,10 @@ export abstract class WidgetExportBase {
   private readonly exportHost: ElementRef<HTMLElement> = inject(ElementRef);
 
   /** The base filename, typically the widget's title. */
-  protected abstract exportName(): string;
+  public abstract exportName(): string;
 
   /** CSV for the widget's data, or null when there's nothing yet. May fetch rows not on screen. */
-  protected abstract exportCsv(): string | null | Promise<string | null>;
+  public abstract exportCsv(): string | null | Promise<string | null>;
 
   public async downloadCsv(): Promise<void> {
     const csv = await this.exportCsv();
@@ -32,13 +32,13 @@ export abstract class WidgetExportBase {
   }
 
   /** Releases the object URL once the download has had a moment to start. */
-  protected downloadBlob(blob: Blob, filename: string): void {
+  public downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     this.downloadUrl(url, filename);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  protected downloadUrl(url: string, filename: string): void {
+  public downloadUrl(url: string, filename: string): void {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = filename;

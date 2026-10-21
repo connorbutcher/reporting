@@ -63,17 +63,130 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   /** Rows per fetch for a scrolling table, which fills windows in as the reader scrolls. */
   public static readonly SCROLL_WINDOW = 200;
 
-  readonly config = input.required<DataTableWidgetConfig>();
-  /** Bumped by the page when column configuration changes, to refetch the schema. */
-  readonly datasetVersion = input(0);
-  /** The report-level filter for this widget's dataset, layered over its own. */
-  readonly reportFilter = input<FilterGroup | null>(null);
-  /** The widget's own filter, supplied by the host so half-typed conditions can be dropped. */
-  readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
+  public readonly config = input.required<DataTableWidgetConfig>();
 
-  readonly sortChange = output<{ columnId: string; direction: SortDirection }>();
-  readonly columnResize = output<{ columnId: string; width: number }[]>();
-  readonly columnReorder = output<{ draggedColumnId: string; targetColumnId: string }>();
+  /** Bumped by the page when column configuration changes, to refetch the schema. */
+  public readonly datasetVersion = input(0);
+
+  /** The report-level filter for this widget's dataset, layered over its own. */
+  public readonly reportFilter = input<FilterGroup | null>(null);
+
+  /** The widget's own filter, supplied by the host so half-typed conditions can be dropped. */
+  public readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
+  public readonly sortChange = output<{ columnId: string; direction: SortDirection }>();
+  public readonly columnResize = output<{ columnId: string; width: number }[]>();
+  public readonly columnReorder = output<{ draggedColumnId: string; targetColumnId: string }>();
+  public readonly datasetId = computed(() => this.config().datasetId);
+
+  /**
+   * The table owns its sort and page once seeded; feeding the saved config back in left it a click
+   * behind. Re-seeded only when the dataset reloads.
+   */
+  public readonly sortField = signal<string | undefined>(undefined);
+  public readonly sortOrder = signal(1);
+  public readonly first = signal(0);
+  public readonly searchText = signal('');
+
+  /**
+   * A paginated table's page, or one entry per matched row for a scrolling table, undefined where
+   * its window hasn't loaded, so the scroller is sized for every row.
+   */
+  public readonly rows = computed<(TableRowResult | undefined)[]>(() => {
+    const result = this.source.result();
+    if (!result) return [];
+    if (this.config().paginator) return result.rows;
+
+    const rows = new Array<TableRowResult | undefined>(
+      Math.max(result.matchedRowCount, result.rows.length),
+    );
+    result.rows.forEach((row, i) => (rows[i] = row));
+    for (const [index, windowRows] of this.windows()) {
+      windowRows.forEach(
+        (row, i) => (rows[index * DataTableWidgetComponent.SCROLL_WINDOW + i] = row),
+      );
+    }
+    return rows;
+  });
+
+  public readonly matchedRowCount = computed(() => this.source.result()?.matchedRowCount ?? 0);
+  public readonly totalRowCount = computed(() => this.source.result()?.totalRowCount ?? 0);
+
+  public readonly isFiltered = computed(
+    () => this.effectiveFilter() !== null || this.searchTerm() !== '',
+  );
+
+  public readonly totals = computed(() => this.source.result()?.totals ?? {});
+
+  public readonly showTotals = computed(
+    () => this.config().showTotals && this.displayColumns().some((c) => c.total),
+  );
+
+  public readonly countLabel = computed(() => {
+    const matched = this.matchedRowCount().toLocaleString();
+    if (this.isFiltered())
+      return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
+    return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
+  });
+
+  public readonly rowDetails = computed(() => this.config().rowDetails !== false);
+
+  public readonly filterLines = computed(() =>
+    this.describeFilters([this.effectiveFilter()], this.source.columns()),
+  );
+
+  public readonly rowHeight = computed(() => {
+    const extraLine = this.wraps() ? 18 : 0;
+    switch (this.config().density) {
+      case 'compact':
+        return 31 + extraLine;
+      case 'comfortable':
+        return 51 + extraLine;
+      default:
+        return 39 + extraLine;
+    }
+  });
+
+  /** A scrolling table needs fixed row heights; a paginated one lets wrapped text grow. */
+  public readonly bodyRowHeight = computed(() =>
+    this.config().paginator && this.wraps() ? null : this.rowHeight(),
+  );
+
+  public readonly displayColumns = computed<DisplayColumn[]>(() => {
+    const byId = new Map(this.source.columns().map((c) => [c.id, c]));
+
+    const frozen = Math.max(0, this.config().frozenColumns ?? 0);
+
+    return this.config()
+      .columns.map((setting) => ({ setting, column: byId.get(setting.columnId) }))
+      .filter(
+        (pair): pair is { setting: DataTableColumnSetting; column: DatasetColumn } => !!pair.column,
+      )
+      .map(({ setting, column }, index) => ({
+        column,
+        header: setting.header?.trim() || column.name,
+        align: setting.align ?? (ColumnTypes.isNumeric(column.type) ? 'right' : 'left'),
+        sortable: setting.sortable !== false,
+        width: setting.width,
+        wrap: !!setting.wrap,
+        dataBars: !!setting.dataBars && ColumnTypes.isNumeric(column.type),
+        formatRules: setting.formatRules ?? [],
+        total: setting.total ?? null,
+        frozen: index < frozen,
+      }));
+  });
+
+  public readonly resizeKey = computed(() => (this.config().resizableColumns ? '-resizable' : ''));
+
+  public readonly density = computed(() => {
+    switch (this.config().density) {
+      case 'compact':
+        return 'small' as const;
+      case 'comfortable':
+        return 'large' as const;
+      default:
+        return undefined;
+    }
+  });
 
   private readonly datasetApi = inject(DatasetApiService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
@@ -82,21 +195,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   private readonly overlay = inject(Overlay);
   private readonly table = viewChild(Table);
 
-  protected readonly datasetId = computed(() => this.config().datasetId);
-
   private readonly effectiveFilter = computed(() =>
     EffectiveFilter.resolve(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
-
-  /**
-   * The table owns its sort and page once seeded; feeding the saved config back in left it a click
-   * behind. Re-seeded only when the dataset reloads.
-   */
-  protected readonly sortField = signal<string | undefined>(undefined);
-  protected readonly sortOrder = signal(1);
-  protected readonly first = signal(0);
-
-  protected readonly searchText = signal('');
 
   private readonly source = new WidgetDataSource<TableQueryResult>({
     datasetId: this.datasetId,
@@ -129,120 +230,19 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
   /** Rows scrolled in after the first window, by window index. */
   private readonly windows = signal<ReadonlyMap<number, TableRowResult[]>>(new Map());
+
   /** Bumped when the first window reloads, so stale window responses are dropped. */
   private windowGeneration = 0;
   private readonly windowsInFlight = new Set<number>();
 
-  protected readonly loading = this.source.loading;
-  protected readonly error = this.source.error;
-
-  /**
-   * A paginated table's page, or one entry per matched row for a scrolling table, undefined where
-   * its window hasn't loaded, so the scroller is sized for every row.
-   */
-  protected readonly rows = computed<(TableRowResult | undefined)[]>(() => {
-    const result = this.source.result();
-    if (!result) return [];
-    if (this.config().paginator) return result.rows;
-
-    const rows = new Array<TableRowResult | undefined>(
-      Math.max(result.matchedRowCount, result.rows.length),
-    );
-    result.rows.forEach((row, i) => (rows[i] = row));
-    for (const [index, windowRows] of this.windows()) {
-      windowRows.forEach(
-        (row, i) => (rows[index * DataTableWidgetComponent.SCROLL_WINDOW + i] = row),
-      );
-    }
-    return rows;
-  });
-
-  protected readonly matchedRowCount = computed(() => this.source.result()?.matchedRowCount ?? 0);
-  protected readonly totalRowCount = computed(() => this.source.result()?.totalRowCount ?? 0);
   private readonly searchTerm = computed(() =>
     this.config().showSearch ? this.searchText().trim() : '',
   );
-  protected readonly isFiltered = computed(
-    () => this.effectiveFilter() !== null || this.searchTerm() !== '',
-  );
 
-  protected readonly totals = computed(() => this.source.result()?.totals ?? {});
   private readonly columnStats = computed(() => this.source.result()?.columnStats ?? {});
-  protected readonly showTotals = computed(
-    () => this.config().showTotals && this.displayColumns().some((c) => c.total),
-  );
-
-  protected readonly countLabel = computed(() => {
-    const matched = this.matchedRowCount().toLocaleString();
-    if (this.isFiltered())
-      return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
-    return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
-  });
-
-  protected readonly rowDetails = computed(() => this.config().rowDetails !== false);
 
   /** A scrolling table gives rows room for two lines when some column wraps. */
   private readonly wraps = computed(() => this.displayColumns().some((c) => c.wrap));
-
-  public readonly filterLines = computed(() =>
-    this.describeFilters([this.effectiveFilter()], this.source.columns()),
-  );
-
-  protected readonly rowHeight = computed(() => {
-    const extraLine = this.wraps() ? 18 : 0;
-    switch (this.config().density) {
-      case 'compact':
-        return 31 + extraLine;
-      case 'comfortable':
-        return 51 + extraLine;
-      default:
-        return 39 + extraLine;
-    }
-  });
-
-  /** A scrolling table needs fixed row heights; a paginated one lets wrapped text grow. */
-  protected readonly bodyRowHeight = computed(() =>
-    this.config().paginator && this.wraps() ? null : this.rowHeight(),
-  );
-
-  protected readonly displayColumns = computed<DisplayColumn[]>(() => {
-    const byId = new Map(this.source.columns().map((c) => [c.id, c]));
-
-    const frozen = Math.max(0, this.config().frozenColumns ?? 0);
-
-    return this.config()
-      .columns.map((setting) => ({ setting, column: byId.get(setting.columnId) }))
-      .filter(
-        (pair): pair is { setting: DataTableColumnSetting; column: DatasetColumn } => !!pair.column,
-      )
-      .map(({ setting, column }, index) => ({
-        column,
-        header: setting.header?.trim() || column.name,
-        align: setting.align ?? (ColumnTypes.isNumeric(column.type) ? 'right' : 'left'),
-        sortable: setting.sortable !== false,
-        width: setting.width,
-        wrap: !!setting.wrap,
-        dataBars: !!setting.dataBars && ColumnTypes.isNumeric(column.type),
-        formatRules: setting.formatRules ?? [],
-        total: setting.total ?? null,
-        frozen: index < frozen,
-      }));
-  });
-
-  protected readonly resizeKey = computed(() =>
-    this.config().resizableColumns ? '-resizable' : '',
-  );
-
-  protected readonly density = computed(() => {
-    switch (this.config().density) {
-      case 'compact':
-        return 'small' as const;
-      case 'comfortable':
-        return 'large' as const;
-      default:
-        return undefined;
-    }
-  });
 
   constructor() {
     super();
@@ -301,7 +301,7 @@ export class DataTableWidgetComponent extends DataWidgetBase {
    * PrimeNG's lazy-table event for sorting, paging and virtual scroll windows. A scrolling table
    * fetches missing windows and reloads whole only on a sort change.
    */
-  protected onLazyLoad(event: TableLazyLoadEvent): void {
+  public onLazyLoad(event: TableLazyLoadEvent): void {
     const columnId = typeof event.sortField === 'string' ? event.sortField : undefined;
     const order = event.sortOrder ?? this.sortOrder();
     const sortChanged = columnId !== this.sortField() || order !== this.sortOrder();
@@ -332,6 +332,155 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     this.source.loading.set(true);
     this.source.error.set(false);
     this.source.reloadNow();
+  }
+
+  public onSearch(text: string): void {
+    this.searchText.set(text);
+  }
+
+  /** Its tolerance band, overridden by the first matching format rule. */
+  public cellClass(col: DisplayColumn, cell: TableCell | undefined): string {
+    const classes: string[] = [];
+    const tolerance = this.toleranceClass(cell);
+    if (tolerance) classes.push(tolerance);
+    const style = FormatRules.match(cell?.value, col.formatRules);
+    if (style) classes.push(FormatRules.STYLE_CLASS[style]);
+    if (col.wrap) classes.push(this.config().paginator ? 'wrap' : 'wrap-clamped');
+    if (col.dataBars) classes.push('has-bar');
+    return classes.join(' ');
+  }
+
+  public barPercent(col: DisplayColumn, cell: TableCell | undefined): number | null {
+    if (!col.dataBars) return null;
+    const stats = this.columnStats()[col.column.id];
+    return FormatRules.dataBarPercent(cell?.value, stats?.min, stats?.max);
+  }
+
+  /** Spoken text for a cell's tolerance band, which sighted readers get from colour. */
+  public toleranceText(cell: TableCell | undefined): string | null {
+    switch (cell?.tolerance) {
+      case 'fail':
+        return 'Out of tolerance';
+      case 'concession':
+        return 'Needs concession';
+      default:
+        return null;
+    }
+  }
+
+  public totalCell(col: DisplayColumn, index: number): string {
+    const total = this.totals()[col.column.id]?.displayValue;
+    if (total) return total;
+    return index === 0 && !col.total ? 'Total' : '';
+  }
+
+  /** Shows every dataset column, not only those on the table. */
+  public openRow(row: TableRowResult | undefined): void {
+    const datasetId = this.datasetId();
+    if (!row || !datasetId || !this.rowDetails()) return;
+
+    const own = new Map(this.config().columns.map((c) => [c.columnId, c]));
+    const fields = this.source.columns().map((column) => {
+      const setting = own.get(column.id) ?? { columnId: column.id };
+      return { setting, label: setting.header?.trim() || column.name };
+    });
+    const order = new Map(this.config().columns.map((c, i) => [c.columnId, i]));
+    fields.sort(
+      (a, b) => (order.get(a.setting.columnId) ?? 1e6) - (order.get(b.setting.columnId) ?? 1e6),
+    );
+
+    this.dialog.open<void, RowDetailDialogData>(RowDetailDialogComponent, {
+      data: {
+        datasetId,
+        rowId: row.id,
+        title: this.config().title?.trim() || 'Row details',
+        fields,
+      },
+      positionStrategy: this.overlay.position().global().right('0').top('0'),
+      height: '100vh',
+      ariaLabelledBy: 'row-detail-title',
+    });
+  }
+
+  public retry(): void {
+    this.source.error.set(false);
+    this.source.loading.set(true);
+    this.source.reloadNow();
+  }
+
+  public onColReorder(event: { dragIndex?: number; dropIndex?: number }): void {
+    const cols = this.displayColumns();
+    const dragged = event.dragIndex != null ? cols[event.dragIndex]?.column.id : undefined;
+    const target = event.dropIndex != null ? cols[event.dropIndex]?.column.id : undefined;
+    if (dragged && target && dragged !== target) {
+      this.columnReorder.emit({ draggedColumnId: dragged, targetColumnId: target });
+    }
+  }
+
+  public onColResize(): void {
+    requestAnimationFrame(() => {
+      const headers = this.host.nativeElement.querySelectorAll<HTMLElement>(
+        'thead th[data-column-id]',
+      );
+      const widths = [...headers].map((th) => ({
+        columnId: th.dataset['columnId'] as string,
+        width: Math.round(th.getBoundingClientRect().width),
+      }));
+      if (widths.length) this.columnResize.emit(widths);
+    });
+  }
+
+  public toleranceClass(cell: TableCell | undefined): string | null {
+    switch (cell?.tolerance) {
+      case 'fail':
+        return 'cell-red';
+      case 'concession':
+        return 'cell-orange';
+      default:
+        return null;
+    }
+  }
+
+  /** Every matched row, fetched afresh with raw values so spreadsheets get numbers and dates. */
+  public async exportCsv(): Promise<string | null> {
+    const datasetId = this.datasetId();
+    const cols = this.displayColumns();
+    if (!datasetId || cols.length === 0) return null;
+
+    const result = await firstValueFrom(this.datasetApi.exportTable(datasetId, this.request(0, 0)));
+    if (result.rows.length < result.matchedRowCount) {
+      this.injector
+        .get(NotificationService)
+        .warn(
+          `Exported the first ${result.rows.length.toLocaleString()} of ${result.matchedRowCount.toLocaleString()} rows.`,
+          'Export limited',
+        );
+    }
+
+    const header = cols.map((c) => c.header);
+    const body = result.rows.map((row) =>
+      cols.map((c) => Csv.fromTableCell(row.cells[c.column.id])),
+    );
+    if (this.config().showTotals && result.totals && cols.some((c) => c.total)) {
+      body.push(
+        cols.map(
+          (c, i) => result.totals![c.column.id]?.value ?? (i === 0 && !c.total ? 'Total' : ''),
+        ),
+      );
+    }
+    return Csv.fromRows([header, ...body]);
+  }
+
+  public exportName(): string {
+    return this.config().title?.trim() || 'table';
+  }
+
+  public get loading() {
+    return this.source.loading;
+  }
+
+  public get error() {
+    return this.source.error;
   }
 
   private loadWindows(from: number, to: number): void {
@@ -380,146 +529,5 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       take,
       columns: this.config().columns,
     };
-  }
-
-  protected onSearch(text: string): void {
-    this.searchText.set(text);
-  }
-
-  /** Its tolerance band, overridden by the first matching format rule. */
-  protected cellClass(col: DisplayColumn, cell: TableCell | undefined): string {
-    const classes: string[] = [];
-    const tolerance = this.toleranceClass(cell);
-    if (tolerance) classes.push(tolerance);
-    const style = FormatRules.match(cell?.value, col.formatRules);
-    if (style) classes.push(FormatRules.STYLE_CLASS[style]);
-    if (col.wrap) classes.push(this.config().paginator ? 'wrap' : 'wrap-clamped');
-    if (col.dataBars) classes.push('has-bar');
-    return classes.join(' ');
-  }
-
-  protected barPercent(col: DisplayColumn, cell: TableCell | undefined): number | null {
-    if (!col.dataBars) return null;
-    const stats = this.columnStats()[col.column.id];
-    return FormatRules.dataBarPercent(cell?.value, stats?.min, stats?.max);
-  }
-
-  /** Spoken text for a cell's tolerance band, which sighted readers get from colour. */
-  protected toleranceText(cell: TableCell | undefined): string | null {
-    switch (cell?.tolerance) {
-      case 'fail':
-        return 'Out of tolerance';
-      case 'concession':
-        return 'Needs concession';
-      default:
-        return null;
-    }
-  }
-
-  protected totalCell(col: DisplayColumn, index: number): string {
-    const total = this.totals()[col.column.id]?.displayValue;
-    if (total) return total;
-    return index === 0 && !col.total ? 'Total' : '';
-  }
-
-  /** Shows every dataset column, not only those on the table. */
-  protected openRow(row: TableRowResult | undefined): void {
-    const datasetId = this.datasetId();
-    if (!row || !datasetId || !this.rowDetails()) return;
-
-    const own = new Map(this.config().columns.map((c) => [c.columnId, c]));
-    const fields = this.source.columns().map((column) => {
-      const setting = own.get(column.id) ?? { columnId: column.id };
-      return { setting, label: setting.header?.trim() || column.name };
-    });
-    const order = new Map(this.config().columns.map((c, i) => [c.columnId, i]));
-    fields.sort(
-      (a, b) => (order.get(a.setting.columnId) ?? 1e6) - (order.get(b.setting.columnId) ?? 1e6),
-    );
-
-    this.dialog.open<void, RowDetailDialogData>(RowDetailDialogComponent, {
-      data: {
-        datasetId,
-        rowId: row.id,
-        title: this.config().title?.trim() || 'Row details',
-        fields,
-      },
-      positionStrategy: this.overlay.position().global().right('0').top('0'),
-      height: '100vh',
-      ariaLabelledBy: 'row-detail-title',
-    });
-  }
-
-  protected retry(): void {
-    this.source.error.set(false);
-    this.source.loading.set(true);
-    this.source.reloadNow();
-  }
-
-  protected onColReorder(event: { dragIndex?: number; dropIndex?: number }): void {
-    const cols = this.displayColumns();
-    const dragged = event.dragIndex != null ? cols[event.dragIndex]?.column.id : undefined;
-    const target = event.dropIndex != null ? cols[event.dropIndex]?.column.id : undefined;
-    if (dragged && target && dragged !== target) {
-      this.columnReorder.emit({ draggedColumnId: dragged, targetColumnId: target });
-    }
-  }
-
-  protected onColResize(): void {
-    requestAnimationFrame(() => {
-      const headers = this.host.nativeElement.querySelectorAll<HTMLElement>(
-        'thead th[data-column-id]',
-      );
-      const widths = [...headers].map((th) => ({
-        columnId: th.dataset['columnId'] as string,
-        width: Math.round(th.getBoundingClientRect().width),
-      }));
-      if (widths.length) this.columnResize.emit(widths);
-    });
-  }
-
-  protected toleranceClass(cell: TableCell | undefined): string | null {
-    switch (cell?.tolerance) {
-      case 'fail':
-        return 'cell-red';
-      case 'concession':
-        return 'cell-orange';
-      default:
-        return null;
-    }
-  }
-
-  /** Every matched row, fetched afresh with raw values so spreadsheets get numbers and dates. */
-  protected async exportCsv(): Promise<string | null> {
-    const datasetId = this.datasetId();
-    const cols = this.displayColumns();
-    if (!datasetId || cols.length === 0) return null;
-
-    const result = await firstValueFrom(this.datasetApi.exportTable(datasetId, this.request(0, 0)));
-    if (result.rows.length < result.matchedRowCount) {
-      this.injector
-        .get(NotificationService)
-        .warn(
-          `Exported the first ${result.rows.length.toLocaleString()} of ${result.matchedRowCount.toLocaleString()} rows.`,
-          'Export limited',
-        );
-    }
-
-    const header = cols.map((c) => c.header);
-    const body = result.rows.map((row) =>
-      cols.map((c) => Csv.fromTableCell(row.cells[c.column.id])),
-    );
-    if (this.config().showTotals && result.totals && cols.some((c) => c.total)) {
-      body.push(
-        cols.map(
-          (c, i) => result.totals![c.column.id]?.value ?? (i === 0 && !c.total ? 'Total' : ''),
-        ),
-      );
-    }
-    return Csv.fromRows([header, ...body]);
-  }
-
-  protected exportName(): string {
-    return this.config().title?.trim() || 'table';
   }
 }

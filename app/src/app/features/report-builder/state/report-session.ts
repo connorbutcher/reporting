@@ -34,7 +34,94 @@ import { ModelSources } from '../models/sources/model-sources';
  */
 @Injectable()
 export class ReportSession {
-  private readonly schemaCache = inject(DatasetSchemaCacheService);
+  public readonly reportId = computed(() => {
+    const raw = this.params()?.get('reportId');
+    return raw ? Number(raw) : null;
+  });
+
+  public readonly model = signal<ReportModel | null>(null);
+
+  /** Static for the server's lifetime, so loaded once. */
+  public readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
+
+  /** One grid column's measured width, which the drag and resize directives snap to. */
+  public readonly columnWidth = signal(0);
+
+  public readonly sources: ModelSources = {
+    schemas: inject(DatasetSchemaCacheService).schemas,
+    catalogue: this.operatorCatalogue.asReadonly(),
+  };
+
+  // The canvas and placement verbs work on the active tab.
+  public readonly widgets = computed<readonly WidgetModel[]>(
+    () => this.activeTab()?.widgets() ?? [],
+  );
+
+  public readonly gridColumns = computed(
+    () => this.activeTab()?.gridColumns() ?? TabModel.DEFAULT_GRID_COLUMNS,
+  );
+
+  public readonly gridRows = computed(
+    () => this.activeTab()?.gridRows() ?? TabModel.DEFAULT_GRID_ROWS,
+  );
+
+  public readonly tabs = computed(() => this.model()?.tabs() ?? []);
+  public readonly activeTabId = computed(() => this.model()?.activeTabId() ?? null);
+  public readonly activeTab = computed(() => this.model()?.activeTab() ?? null);
+  public readonly issues = computed<ValidationIssue[]>(() => this.model()?.issues() ?? []);
+  public readonly errors = computed(() => this.model()?.errors() ?? []);
+  public readonly warnings = computed(() => this.model()?.warnings() ?? []);
+  public readonly isValid = computed(() => this.model()?.isValid() ?? true);
+  public readonly dirty = computed(() => this.model()?.dirty() ?? false);
+  public readonly saveBlocked = computed(() => this.dirty() && !this.isValid());
+
+  public readonly issuesByWidget = computed<Map<string, ValidationIssue[]>>(
+    () => this.model()?.issuesByWidget() ?? new Map(),
+  );
+
+  public readonly selectedWidget = computed<WidgetModel | null>(() => {
+    const id = this.selection.selectedWidgetId();
+    return id ? (this.model()?.widget(id) ?? null) : null;
+  });
+
+  /** Skips any that have since been removed. */
+  public readonly selectedWidgets = computed<WidgetModel[]>(() => {
+    const model = this.model();
+    if (!model) return [];
+    return this.selection
+      .selectedWidgetIds()
+      .map((id) => model.widget(id))
+      .filter((w): w is WidgetModel => !!w);
+  });
+
+  public readonly selectedTableWidget = computed<DataTableWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof DataTableWidgetModel ? widget : null;
+  });
+
+  public readonly selectedChartWidget = computed<ChartWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
+
+  public readonly selectedKpiWidget = computed<KpiWidgetModel | null>(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof KpiWidgetModel ? widget : null;
+  });
+
+  /** The selected widget, when it has its own filter. */
+  public readonly selectedFilterableWidget = computed<
+    DataTableWidgetModel | PivotTableWidgetModel | KpiWidgetModel | ChartWidgetModel | null
+  >(() => {
+    const widget = this.selectedWidget();
+    return widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel ||
+      widget instanceof ChartWidgetModel
+      ? widget
+      : null;
+  });
+
   private readonly selection = inject(WidgetSelection);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -43,12 +130,6 @@ export class ReportSession {
 
   /** From the route, so it survives a reload or deep link. */
   private readonly params = toSignal(this.route.paramMap);
-  readonly reportId = computed(() => {
-    const raw = this.params()?.get('reportId');
-    return raw ? Number(raw) : null;
-  });
-
-  readonly model = signal<ReportModel | null>(null);
 
   /** A 404 is expected before the draft is checked out, so the global not-found toast is skipped. */
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
@@ -58,10 +139,6 @@ export class ReportSession {
         : undefined,
     { defaultValue: [] },
   );
-  readonly datasets = this.datasetsResource.value;
-
-  /** Static for the server's lifetime, so loaded once. */
-  readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
 
   // The `tab` query param (a tab's stable id) is the source of truth, so reload, deep links and
   // back/forward restore the open tab.
@@ -98,7 +175,7 @@ export class ReportSession {
   }
 
   /** Keeps any URL fragment, so switching to a fragment's tab doesn't erase it. */
-  goToTab(tabId: string, replaceUrl = false): void {
+  public goToTab(tabId: string, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tabId },
@@ -108,102 +185,33 @@ export class ReportSession {
     });
   }
 
-  /** One grid column's measured width, which the drag and resize directives snap to. */
-  readonly columnWidth = signal(0);
-
-  readonly sources: ModelSources = {
-    schemas: this.schemaCache.schemas,
-    catalogue: this.operatorCatalogue.asReadonly(),
-  };
-
-  // The canvas and placement verbs work on the active tab.
-  readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
-  readonly gridColumns = computed(
-    () => this.activeTab()?.gridColumns() ?? TabModel.DEFAULT_GRID_COLUMNS,
-  );
-  readonly gridRows = computed(() => this.activeTab()?.gridRows() ?? TabModel.DEFAULT_GRID_ROWS);
-
-  setGridColumns(value: number): void {
+  public setGridColumns(value: number): void {
     this.activeTab()?.setGridColumns(value);
   }
 
-  setGridRows(value: number): void {
+  public setGridRows(value: number): void {
     this.activeTab()?.setGridRows(value);
   }
 
   /** Null if there's no tab to add it to. */
-  addWidget(type: WidgetType): WidgetModel | null {
+  public addWidget(type: WidgetType): WidgetModel | null {
     return this.activeTab()?.addWidget(type) ?? null;
   }
-
-  readonly tabs = computed(() => this.model()?.tabs() ?? []);
-  readonly activeTabId = computed(() => this.model()?.activeTabId() ?? null);
-  readonly activeTab = computed(() => this.model()?.activeTab() ?? null);
-
-  readonly issues = computed<ValidationIssue[]>(() => this.model()?.issues() ?? []);
-  readonly errors = computed(() => this.model()?.errors() ?? []);
-  readonly warnings = computed(() => this.model()?.warnings() ?? []);
-  readonly isValid = computed(() => this.model()?.isValid() ?? true);
-  readonly dirty = computed(() => this.model()?.dirty() ?? false);
-  readonly saveBlocked = computed(() => this.dirty() && !this.isValid());
-
-  readonly issuesByWidget = computed<Map<string, ValidationIssue[]>>(
-    () => this.model()?.issuesByWidget() ?? new Map(),
-  );
-
-  readonly selectedWidget = computed<WidgetModel | null>(() => {
-    const id = this.selection.selectedWidgetId();
-    return id ? (this.model()?.widget(id) ?? null) : null;
-  });
-
-  /** Skips any that have since been removed. */
-  readonly selectedWidgets = computed<WidgetModel[]>(() => {
-    const model = this.model();
-    if (!model) return [];
-    return this.selection
-      .selectedWidgetIds()
-      .map((id) => model.widget(id))
-      .filter((w): w is WidgetModel => !!w);
-  });
-
-  readonly selectedTableWidget = computed<DataTableWidgetModel | null>(() => {
-    const widget = this.selectedWidget();
-    return widget instanceof DataTableWidgetModel ? widget : null;
-  });
-
-  readonly selectedChartWidget = computed<ChartWidgetModel | null>(() => {
-    const widget = this.selectedWidget();
-    return widget instanceof ChartWidgetModel ? widget : null;
-  });
-
-  readonly selectedKpiWidget = computed<KpiWidgetModel | null>(() => {
-    const widget = this.selectedWidget();
-    return widget instanceof KpiWidgetModel ? widget : null;
-  });
-
-  /** The selected widget, when it has its own filter. */
-  readonly selectedFilterableWidget = computed<
-    DataTableWidgetModel | PivotTableWidgetModel | KpiWidgetModel | ChartWidgetModel | null
-  >(() => {
-    const widget = this.selectedWidget();
-    return widget instanceof DataTableWidgetModel ||
-      widget instanceof PivotTableWidgetModel ||
-      widget instanceof KpiWidgetModel ||
-      widget instanceof ChartWidgetModel
-      ? widget
-      : null;
-  });
 
   /**
    * Rebuilds the tree from an undo or redo snapshot. Built through the constructor, not `fromDto`, so
    * it counts as unsaved and is written back.
    */
-  restore(report: ReportRevisionContent | null): void {
+  public restore(report: ReportRevisionContent | null): void {
     if (!report) return;
     this.model.set(new ReportModel(report, this.sources));
     // The tab sync effect reselects the active tab against the rebuilt tabs.
 
     const present = new Set(report.tabs.flatMap((t) => t.widgets.map((w) => w.id)));
     this.selection.set(this.selection.selectedWidgetIds().filter((id) => present.has(id)));
+  }
+
+  public get datasets() {
+    return this.datasetsResource.value;
   }
 }

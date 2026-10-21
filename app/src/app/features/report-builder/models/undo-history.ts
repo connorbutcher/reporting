@@ -8,19 +8,19 @@ import { ReportRevisionContent } from '../../../core/models/report';
 export class UndoHistory {
   private static readonly MAX_ENTRIES = 60;
 
+  public readonly canUndo = computed(() => this.index() > 0);
+  public readonly canRedo = computed(() => this.index() < this.entries().length - 1);
+
   private readonly entries = signal<string[]>([]);
   private readonly index = signal(-1);
 
-  readonly canUndo = computed(() => this.index() > 0);
-  readonly canRedo = computed(() => this.index() < this.entries().length - 1);
-
-  reset(serialized: string): void {
+  public reset(serialized: string): void {
     this.entries.set([serialized]);
     this.index.set(0);
   }
 
   /** Ignores a snapshot identical to the current entry, which restoring produces. */
-  capture(json: string): void {
+  public capture(json: string): void {
     const entries = this.entries();
     const index = this.index();
     if (index >= 0 && entries[index] === json) return;
@@ -32,13 +32,13 @@ export class UndoHistory {
     this.index.set(trimmed.length - 1);
   }
 
-  undo(): ReportRevisionContent | null {
+  public undo(): ReportRevisionContent | null {
     if (!this.canUndo()) return null;
     this.index.update((i) => i - 1);
     return this.current();
   }
 
-  redo(): ReportRevisionContent | null {
+  public redo(): ReportRevisionContent | null {
     if (!this.canRedo()) return null;
     this.index.update((i) => i + 1);
     return this.current();

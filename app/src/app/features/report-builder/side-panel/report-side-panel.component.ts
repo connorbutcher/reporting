@@ -17,20 +17,38 @@ import { PanelView } from './panel-view';
 })
 export class ReportSidePanelComponent {
   private static readonly ELLIPSIS = 'ellipsis' as const;
+
   /** Above this many ancestors, the middle of the trail collapses behind "…". */
   private static readonly COLLAPSE_THRESHOLD = 4;
 
-  private readonly navigation = inject(PanelNavigation);
-  private readonly session = inject(ReportSession);
+  public readonly ellipsis = ReportSidePanelComponent.ELLIPSIS;
 
-  protected readonly ellipsis = ReportSidePanelComponent.ELLIPSIS;
-
-  protected readonly currentPanel = computed(() =>
+  public readonly currentPanel = computed(() =>
     PanelComponentRegistry.componentFor(this.navigation.view()),
   );
 
-  protected readonly canGoBack = this.navigation.canGoBack;
-  protected readonly canGoForward = this.navigation.canGoForward;
+  /** Root first, excluding the current view. */
+  public readonly ancestors = computed(() => {
+    const chain: PanelView[] = [];
+    let parent = PanelComponentRegistry.parentOf(this.navigation.view());
+    while (parent) {
+      chain.unshift(parent);
+      parent = PanelComponentRegistry.parentOf(parent);
+    }
+    return chain;
+  });
+
+  /** The full trail when short or expanded, else root, "…" and the two nearest steps. */
+  public readonly crumbs = computed<Crumb[]>(() => {
+    const all = this.ancestors();
+    if (all.length <= ReportSidePanelComponent.COLLAPSE_THRESHOLD || this.expanded()) return all;
+    return [all[0], ReportSidePanelComponent.ELLIPSIS, ...all.slice(-2)];
+  });
+
+  public readonly title = computed(() => this.labelFor(this.navigation.view()));
+
+  private readonly navigation = inject(PanelNavigation);
+  private readonly session = inject(ReportSession);
 
   /** The user expanded the collapsed trail for this screen. */
   private readonly expanded = signal(false);
@@ -43,26 +61,6 @@ export class ReportSidePanelComponent {
     });
   }
 
-  /** Root first, excluding the current view. */
-  protected readonly ancestors = computed(() => {
-    const chain: PanelView[] = [];
-    let parent = PanelComponentRegistry.parentOf(this.navigation.view());
-    while (parent) {
-      chain.unshift(parent);
-      parent = PanelComponentRegistry.parentOf(parent);
-    }
-    return chain;
-  });
-
-  /** The full trail when short or expanded, else root, "…" and the two nearest steps. */
-  protected readonly crumbs = computed<Crumb[]>(() => {
-    const all = this.ancestors();
-    if (all.length <= ReportSidePanelComponent.COLLAPSE_THRESHOLD || this.expanded()) return all;
-    return [all[0], ReportSidePanelComponent.ELLIPSIS, ...all.slice(-2)];
-  });
-
-  protected readonly title = computed(() => this.labelFor(this.navigation.view()));
-
   /** A collision-free `@for` key, built field by field since `Object.values` order isn't guaranteed. */
   private static viewKey(view: PanelView): string {
     const parts: string[] = [view.kind];
@@ -72,30 +70,30 @@ export class ReportSidePanelComponent {
     return parts.join('/');
   }
 
-  protected crumbKey(crumb: Crumb): string {
+  public crumbKey(crumb: Crumb): string {
     return crumb === ReportSidePanelComponent.ELLIPSIS
       ? ReportSidePanelComponent.ELLIPSIS
       : ReportSidePanelComponent.viewKey(crumb);
   }
 
-  protected expand(): void {
+  public expand(): void {
     this.expanded.set(true);
   }
 
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
   }
 
-  protected back(): void {
+  public back(): void {
     this.navigation.back();
   }
 
-  protected forward(): void {
+  public forward(): void {
     this.navigation.forward();
   }
 
   /** A panel's `static title`, refined with the live widget or column name for the two data-driven screens. */
-  protected labelFor(view: PanelView): string {
+  public labelFor(view: PanelView): string {
     const fallback = PanelComponentRegistry.VIEWS[view.kind].component.title;
     switch (view.kind) {
       case 'columnSettings':
@@ -105,5 +103,13 @@ export class ReportSidePanelComponent {
       default:
         return fallback;
     }
+  }
+
+  public get canGoBack() {
+    return this.navigation.canGoBack;
+  }
+
+  public get canGoForward() {
+    return this.navigation.canGoForward;
   }
 }

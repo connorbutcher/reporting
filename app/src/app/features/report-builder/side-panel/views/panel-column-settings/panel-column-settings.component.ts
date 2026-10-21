@@ -49,6 +49,10 @@ export class PanelColumnSettingsComponent {
       value,
     }));
   })();
+
+  /** Fallback heading; the chrome shows the column's own label when there is one. */
+  public static readonly title = 'Column';
+
   private static readonly DATE_FORMAT_PATTERNS = [
     'dd/MM/yyyy',
     'MM/dd/yyyy',
@@ -58,48 +62,34 @@ export class PanelColumnSettingsComponent {
     'dd/MM/yyyy HH:mm',
   ];
 
-  /** Fallback heading; the chrome shows the column's own label when there is one. */
-  static readonly title = 'Column';
+  public readonly dateFormats = PanelColumnSettingsComponent.DATE_FORMAT_OPTIONS;
+  public readonly alignOptions = OptionCatalog.HORIZONTAL_ALIGN;
 
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
-  private readonly schema = inject(DatasetSchema);
-
-  protected readonly dateFormats = PanelColumnSettingsComponent.DATE_FORMAT_OPTIONS;
-  protected readonly alignOptions = OptionCatalog.HORIZONTAL_ALIGN;
-
-  private readonly table = this.session.selectedTableWidget;
-
-  private readonly columnId = computed(() => {
-    const view = this.navigation.view();
-    return view.kind === 'columnSettings' ? view.columnId : null;
-  });
-
-  protected readonly column = computed(() => {
+  public readonly column = computed(() => {
     const columnId = this.columnId();
     return columnId ? (this.table()?.column(columnId) ?? null) : null;
   });
 
-  protected readonly schemaColumn = computed(() => this.column()?.schemaColumn() ?? null);
+  public readonly schemaColumn = computed(() => this.column()?.schemaColumn() ?? null);
 
   /** The column config narrowed to each editable shape; a mismatched or missing config reads as empty. */
-  protected readonly numericConfig = computed<NumericColumnConfig>(() => {
+  public readonly numericConfig = computed<NumericColumnConfig>(() => {
     const config = this.schemaColumn()?.configuration;
     return config?.kind === 'numeric' ? config : { kind: 'numeric' };
   });
 
-  protected readonly dateConfig = computed<DateColumnConfig>(() => {
+  public readonly dateConfig = computed<DateColumnConfig>(() => {
     const config = this.schemaColumn()?.configuration;
     return config?.kind === 'date' ? config : { kind: 'date' };
   });
 
-  protected readonly boolConfig = computed<BoolColumnConfig>(() => {
+  public readonly boolConfig = computed<BoolColumnConfig>(() => {
     const config = this.schemaColumn()?.configuration;
     return config?.kind === 'bool' ? config : { kind: 'bool' };
   });
 
   /** Count on any column; numeric aggregates on number columns. */
-  protected readonly totalOptions = computed<SelectOption<Aggregate | null>[]>(() => {
+  public readonly totalOptions = computed<SelectOption<Aggregate | null>[]>(() => {
     const options: SelectOption<Aggregate | null>[] = [
       { label: 'None', value: null },
       { label: 'Count of values', value: 'count' },
@@ -116,40 +106,55 @@ export class PanelColumnSettingsComponent {
     return options;
   });
 
-  protected readonly showsTotals = computed(() => this.table()?.appearance.showTotals() ?? false);
+  public readonly showsTotals = computed(() => this.table()?.appearance.showTotals() ?? false);
 
-  protected readonly effectiveAlign = computed<ColumnAlign>(() => {
+  public readonly effectiveAlign = computed<ColumnAlign>(() => {
     const explicit = this.column()?.align();
     if (explicit) return explicit;
     const schemaColumn = this.schemaColumn();
     return schemaColumn && this.isNumeric(schemaColumn) ? 'right' : 'left';
   });
 
-  protected isNumeric(column: DatasetColumn): boolean {
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly schema = inject(DatasetSchema);
+  private readonly table = this.session.selectedTableWidget;
+
+  private readonly columnId = computed(() => {
+    const view = this.navigation.view();
+    return view.kind === 'columnSettings' ? view.columnId : null;
+  });
+
+  public isNumeric(column: DatasetColumn): boolean {
     return ColumnTypes.isNumeric(column.type);
   }
 
-  protected toleranceSummary(column: TableColumnModel): string {
+  public toleranceSummary(column: TableColumnModel): string {
     const tolerance = column.tolerance();
     if (!tolerance) return 'Not set';
     return tolerance.match ? 'Highlighting on · matched by value' : 'Highlighting on';
   }
 
-  protected openTolerance(columnId: string): void {
+  public openTolerance(columnId: string): void {
     const widgetId = this.table()?.id;
     if (widgetId) this.navigation.navigate({ kind: 'columnTolerance', widgetId, columnId });
   }
 
-  protected patchNumeric(patch: Partial<Omit<NumericColumnConfig, 'kind'>>): void {
+  public patchNumeric(patch: Partial<Omit<NumericColumnConfig, 'kind'>>): void {
     this.saveConfig({ ...this.numericConfig(), ...patch });
   }
 
-  protected patchDate(patch: Partial<Omit<DateColumnConfig, 'kind'>>): void {
+  public patchDate(patch: Partial<Omit<DateColumnConfig, 'kind'>>): void {
     this.saveConfig({ ...this.dateConfig(), ...patch });
   }
 
-  protected patchBool(patch: Partial<Omit<BoolColumnConfig, 'kind'>>): void {
+  public patchBool(patch: Partial<Omit<BoolColumnConfig, 'kind'>>): void {
     this.saveConfig({ ...this.boolConfig(), ...patch });
+  }
+
+  public remove(columnId: string): void {
+    this.table()?.removeColumn(columnId);
+    this.navigation.back();
   }
 
   private saveConfig(config: DatasetColumnConfiguration): void {
@@ -158,10 +163,5 @@ export class PanelColumnSettingsComponent {
     if (!datasetId || !column) return;
 
     this.schema.updateColumnConfiguration(datasetId, column.id, config);
-  }
-
-  protected remove(columnId: string): void {
-    this.table()?.removeColumn(columnId);
-    this.navigation.back();
   }
 }

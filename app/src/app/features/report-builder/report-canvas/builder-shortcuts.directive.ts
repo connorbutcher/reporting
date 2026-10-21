@@ -12,6 +12,7 @@ import { WidgetSelection } from '../state/widget-selection';
 })
 export class BuilderShortcutsDirective {
   private static readonly NUDGE = 1;
+
   private static readonly NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
     ArrowLeft: { dx: -BuilderShortcutsDirective.NUDGE, dy: 0 },
     ArrowRight: { dx: BuilderShortcutsDirective.NUDGE, dy: 0 },
@@ -23,7 +24,13 @@ export class BuilderShortcutsDirective {
   private readonly commands = inject(WidgetCommands);
   private readonly selection = inject(WidgetSelection);
 
-  protected onKeyDown(event: KeyboardEvent): void {
+  private static isTextEntry(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+  }
+
+  public onKeyDown(event: KeyboardEvent): void {
     if (BuilderShortcutsDirective.isTextEntry(event.target)) return;
 
     const ctrl = event.ctrlKey || event.metaKey;
@@ -65,11 +72,5 @@ export class BuilderShortcutsDirective {
       event.preventDefault();
       this.commands.nudgeSelection(nudge.dx, nudge.dy);
     }
-  }
-
-  private static isTextEntry(target: EventTarget | null): boolean {
-    if (!(target instanceof HTMLElement)) return false;
-    if (target.isContentEditable) return true;
-    return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
   }
 }

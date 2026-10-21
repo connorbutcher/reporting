@@ -38,14 +38,17 @@ import { PivotDisplayRow } from './models/pivot-display-row';
 })
 export class PivotTableWidgetComponent extends DataWidgetBase {
   public readonly config = input.required<PivotTableWidgetConfig>();
+
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
+
   /** The report-level filter for this widget's dataset, layered over its own. */
   public readonly reportFilter = input<FilterGroup | null>(null);
+
   /** The widget's own filter, supplied by the host so half-typed conditions can be dropped. */
   public readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
-
   public readonly datasetId = computed(() => this.config().datasetId);
+
   public readonly configured = computed(
     () => !!this.config().datasetId && this.config().measures.length > 0,
   );
@@ -294,6 +297,11 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
   }
 
+  /** Raw values rather than the display text, for spreadsheets. */
+  private static csvRow(row: PivotRow, columns: readonly PivotValueColumn[]): unknown[] {
+    return [...row.dimensions, ...columns.map((c) => row.values[c.valueIndex]?.value ?? '')];
+  }
+
   /** Highest first, then lowest first, then unsorted. */
   public toggleSort(measureIndex: number): void {
     const current = this.effectiveSort();
@@ -388,7 +396,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   }
 
   /** A header, one line per row (subtotals included), then the grand total. */
-  protected exportCsv(): string | null {
+  public exportCsv(): string | null {
     const data = this.source.result();
     if (!data) return null;
 
@@ -403,20 +411,16 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return Csv.fromRows([header, ...rows]);
   }
 
-  protected exportName(): string {
+  public exportName(): string {
     return this.config().title?.trim() || 'pivot';
   }
 
   public get loading(): Signal<boolean> {
     return this.source.loading;
   }
+
   public get error(): Signal<boolean> {
     return this.source.error;
-  }
-
-  /** Raw values rather than the display text, for spreadsheets. */
-  private static csvRow(row: PivotRow, columns: readonly PivotValueColumn[]): unknown[] {
-    return [...row.dimensions, ...columns.map((c) => row.values[c.valueIndex]?.value ?? '')];
   }
 
   /** Prefixed by its column block in a cross-tab. */

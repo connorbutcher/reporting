@@ -12,11 +12,11 @@ import { WidgetFullscreenDialogData } from './widget-fullscreen-dialog-data';
   styleUrl: './widget-fullscreen-dialog.component.scss',
 })
 export class WidgetFullscreenDialogComponent {
-  protected readonly data = inject<WidgetFullscreenDialogData>(DIALOG_DATA);
+  public readonly data = inject<WidgetFullscreenDialogData>(DIALOG_DATA);
 
   private readonly dialogRef = inject(DialogRef<void>);
 
-  protected close(): void {
+  public close(): void {
     this.dialogRef.close();
   }
 }

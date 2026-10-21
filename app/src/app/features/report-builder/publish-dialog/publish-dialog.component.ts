@@ -15,10 +15,9 @@ import Quill from 'quill';
 export class PublishDialogComponent implements AfterViewInit, OnDestroy {
   private readonly dialogRef = inject(DialogRef<string | null>);
   private readonly editorHost = viewChild.required<ElementRef<HTMLDivElement>>('editor');
-
   private quill?: Quill;
 
-  ngAfterViewInit(): void {
+  public ngAfterViewInit(): void {
     this.quill = new Quill(this.editorHost().nativeElement, {
       theme: 'snow',
       placeholder: 'What changed in this version?',
@@ -32,16 +31,16 @@ export class PublishDialogComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  ngOnDestroy(): void {
+  public ngOnDestroy(): void {
     this.quill = undefined;
   }
 
-  protected publish(): void {
+  public publish(): void {
     const isEmpty = (this.quill?.getText().trim().length ?? 0) === 0;
     this.dialogRef.close(isEmpty ? null : (this.quill?.getSemanticHTML() ?? null));
   }
 
-  protected cancel(): void {
+  public cancel(): void {
     this.dialogRef.close();
   }
 }

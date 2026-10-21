@@ -68,7 +68,6 @@ export class ChartWidgetComponent extends DataWidgetBase {
   public readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
   /** Set by the outlet only in the viewer; keys comment anchors. */
   public readonly widgetId = input<string | null>(null);
-
   public readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
 
   /** A point chart, in the viewer, with an id. */
@@ -345,7 +344,6 @@ export class ChartWidgetComponent extends DataWidgetBase {
   });
 
   private cacheVersion = -1;
-
   private chartInstance: { getDataURL(opts?: object): string } | null = null;
 
   constructor() {
@@ -477,13 +475,13 @@ export class ChartWidgetComponent extends DataWidgetBase {
     this.downloadUrl(url, `${this.exportName()}.png`);
   }
 
-  protected exportCsv(): string | null {
+  public exportCsv(): string | null {
     const data = this.source.result();
     if (!data) return null;
     return ChartExport.csv(this.config(), data, this.source.columns());
   }
 
-  protected exportName(): string {
+  public exportName(): string {
     return this.config().title?.trim() || 'chart';
   }
 

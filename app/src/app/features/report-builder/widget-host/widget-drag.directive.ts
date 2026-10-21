@@ -14,26 +14,28 @@ import { ReportSession } from '../state/report-session';
   exportAs: 'widgetDrag',
 })
 export class WidgetDragDirective {
-  readonly widget = input.required<WidgetModel>({ alias: 'appWidgetDrag' });
+  public readonly widget = input.required<WidgetModel>({ alias: 'appWidgetDrag' });
 
   /** Where the drag would land, for the canvas overlay. */
-  readonly gridPreview = output<GridPreview | null>();
+  public readonly gridPreview = output<GridPreview | null>();
+
   /** Fires before the drag starts so the host can update the selection. */
-  readonly selectRequest = output<PointerEvent>();
+  public readonly selectRequest = output<PointerEvent>();
+  public readonly dragging = signal(false);
 
-  private readonly session = inject(ReportSession);
-  private readonly destroyRef = inject(DestroyRef);
-
-  readonly dragging = signal(false);
-  private readonly dragOffset = signal<{ x: number; y: number } | null>(null);
-  readonly transform = computed(() => {
+  public readonly transform = computed(() => {
     const offset = this.dragOffset();
     return offset ? `translate(${offset.x}px, ${offset.y}px)` : null;
   });
-  readonly invalid = signal(false);
 
+  public readonly invalid = signal(false);
+
+  private readonly session = inject(ReportSession);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dragOffset = signal<{ x: number; y: number } | null>(null);
   private dragStartPointer = { x: 0, y: 0 };
   private dragGroup: { widget: WidgetModel; origin: { x: number; y: number } }[] = [];
+
   /** Null while the move would collide. */
   private pendingDelta: { dx: number; dy: number } | null = null;
   private moveListener: ((e: PointerEvent) => void) | null = null;
@@ -43,7 +45,7 @@ export class WidgetDragDirective {
     this.destroyRef.onDestroy(() => this.cleanupListeners());
   }
 
-  start(event: PointerEvent): void {
+  public start(event: PointerEvent): void {
     event.preventDefault();
     // The surface below also selects on pointerdown; bubbling would toggle twice and undo a ctrl-click.
     event.stopPropagation();

@@ -16,17 +16,10 @@ import { PanelView } from '../../panel-view';
   styleUrl: './panel-widget-list.component.scss',
 })
 export class PanelWidgetListComponent {
-  static readonly title = 'Widgets';
-
-  private readonly session = inject(ReportSession);
-  private readonly selection = inject(WidgetSelection);
-  private readonly navigation = inject(PanelNavigation);
-
-  protected readonly widgets = this.session.widgets;
-  protected readonly selectedWidgetId = this.selection.selectedWidgetId;
+  public static readonly title = 'Widgets';
 
   /** Flattened for the listbox, with the widget type as the secondary line. */
-  protected readonly options = computed(() =>
+  public readonly options = computed(() =>
     this.session.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
@@ -37,15 +30,27 @@ export class PanelWidgetListComponent {
     })),
   );
 
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly navigation = inject(PanelNavigation);
+
   /**
    * Clicking the active option toggles it off, so onChange reports null; onClick still names the
    * clicked option, and onChange covers keyboard selection.
    */
-  protected open(widgetId: string | null | undefined): void {
+  public open(widgetId: string | null | undefined): void {
     if (widgetId) this.navigation.selectWidget(widgetId);
   }
 
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  public get widgets() {
+    return this.session.widgets;
+  }
+
+  public get selectedWidgetId() {
+    return this.selection.selectedWidgetId;
   }
 }

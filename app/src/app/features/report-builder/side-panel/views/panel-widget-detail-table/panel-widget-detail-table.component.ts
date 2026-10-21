@@ -13,14 +13,16 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-widget-detail-table.component.html',
 })
 export class PanelWidgetDetailTableComponent {
+  public readonly table = input.required<DataTableWidgetModel>();
+
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  readonly table = input.required<DataTableWidgetModel>();
-
-  protected readonly datasets = this.session.datasets;
-
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  public get datasets() {
+    return this.session.datasets;
   }
 }

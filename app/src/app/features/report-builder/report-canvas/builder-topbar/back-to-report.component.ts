@@ -23,5 +23,7 @@ import { TopbarLinkComponent } from './topbar-link.component';
 export class BackToReportComponent {
   private readonly session = inject(ReportSession);
 
-  protected readonly reportId = this.session.reportId;
+  public get reportId() {
+    return this.session.reportId;
+  }
 }

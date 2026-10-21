@@ -61,16 +61,13 @@ import { ReportSession } from '../../state/report-session';
   ],
 })
 export class IssueIndicatorComponent {
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
-
-  protected readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
+  public readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
     if (this.session.errors().length) return 'error';
     if (this.session.warnings().length) return 'warning';
     return 'ok';
   });
 
-  protected readonly label = computed(() => {
+  public readonly label = computed(() => {
     if (this.session.saveBlocked()) return 'Fix errors';
     const errors = this.session.errors().length;
     const warnings = this.session.warnings().length;
@@ -79,7 +76,10 @@ export class IssueIndicatorComponent {
     return 'No issues';
   });
 
-  protected open(): void {
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+
+  public open(): void {
     this.navigation.navigate({ kind: 'issues' });
   }
 }

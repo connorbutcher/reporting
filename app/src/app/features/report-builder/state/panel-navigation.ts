@@ -13,18 +13,17 @@ import { WidgetSelection } from './widget-selection';
  */
 @Injectable()
 export class PanelNavigation {
+  public readonly view = computed(() => this.history()[this.index()]);
+  public readonly canGoBack = computed(() => this.index() > 0);
+  public readonly canGoForward = computed(() => this.index() < this.history().length - 1);
+
   private readonly selection = inject(WidgetSelection);
   private readonly session = inject(ReportSession);
   private readonly fragments = inject(UrlFragmentService);
-
   private readonly history = signal<PanelView[]>([{ kind: 'root' }]);
   private readonly index = signal(0);
 
-  readonly view = computed(() => this.history()[this.index()]);
-  readonly canGoBack = computed(() => this.index() > 0);
-  readonly canGoForward = computed(() => this.index() < this.history().length - 1);
-
-  navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     // Navigating from a point in history discards anything after it.
     const trimmed = this.history().slice(0, this.index() + 1);
     this.history.set([...trimmed, view]);
@@ -33,24 +32,24 @@ export class PanelNavigation {
   }
 
   /** Steps sideways without adding history. */
-  replace(view: PanelView): void {
+  public replace(view: PanelView): void {
     this.history.update((views) => views.map((v, i) => (i === this.index() ? view : v)));
     this.syncSelectionToView();
   }
 
-  back(): void {
+  public back(): void {
     if (!this.canGoBack()) return;
     this.index.update((i) => i - 1);
     this.syncSelectionToView();
   }
 
-  forward(): void {
+  public forward(): void {
     if (!this.canGoForward()) return;
     this.index.update((i) => i + 1);
     this.syncSelectionToView();
   }
 
-  selectWidget(widgetId: string): void {
+  public selectWidget(widgetId: string): void {
     const current = this.view();
     const alreadyThere =
       current.kind === 'widget' &&
@@ -63,7 +62,7 @@ export class PanelNavigation {
   }
 
   /** For ctrl/shift-click on the canvas. */
-  toggleWidgetSelection(widgetId: string): void {
+  public toggleWidgetSelection(widgetId: string): void {
     this.selection.toggle(widgetId);
     const primary = this.selection.selectedWidgetIds().at(-1);
     if (primary) this.navigate({ kind: 'widget', widgetId: primary });
@@ -73,7 +72,7 @@ export class PanelNavigation {
    * Opens whatever the issue is about. For a widget, the tab switch and URL fragment change land in
    * one navigation, which scrolls the canvas to it and makes the link shareable.
    */
-  goToIssue(issue: ValidationIssue): void {
+  public goToIssue(issue: ValidationIssue): void {
     if (issue.widgetId) {
       this.selection.set([issue.widgetId]);
       const tabId = this.session.model()?.tabOf(issue.widgetId)?.id;

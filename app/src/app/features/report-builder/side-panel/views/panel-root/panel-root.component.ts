@@ -9,26 +9,18 @@ import { PanelView } from '../../panel-view';
   styleUrl: './panel-root.component.scss',
 })
 export class PanelRootComponent {
-  static readonly title = 'Report builder';
+  public static readonly title = 'Report builder';
 
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
+  public readonly widgetCount = computed(() => this.session.widgets().length);
 
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-  protected readonly errors = this.session.errors;
-  protected readonly issues = this.session.issues;
-
-  protected readonly widgetCount = computed(() => this.session.widgets().length);
-
-  protected readonly reportFilterSummary = computed(() => {
+  public readonly reportFilterSummary = computed(() => {
     const filters = this.session.model()?.filters() ?? [];
     const count = filters.reduce((n, f) => n + f.group.count(), 0);
     if (count === 0) return 'Applied per dataset to every widget on this report';
     return `${count} condition${count > 1 ? 's' : ''} across ${filters.filter((f) => f.group.count() > 0).length} dataset(s)`;
   });
 
-  protected readonly issueSummary = computed(() => {
+  public readonly issueSummary = computed(() => {
     const errors = this.session.errors().length;
     const warnings = this.session.warnings().length;
     if (!errors && !warnings) return 'No problems found';
@@ -39,7 +31,26 @@ export class PanelRootComponent {
     return parts.join(' · ');
   });
 
-  protected navigate(view: PanelView): void {
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
+  }
+
+  public get errors() {
+    return this.session.errors;
+  }
+
+  public get issues() {
+    return this.session.issues;
   }
 }

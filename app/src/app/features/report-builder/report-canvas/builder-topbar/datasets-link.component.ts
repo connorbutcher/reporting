@@ -17,7 +17,7 @@ import { TopbarLinkComponent } from './topbar-link.component';
   `,
 })
 export class DatasetsLinkComponent {
-  private readonly session = inject(ReportSession);
+  public readonly reportId = computed(() => this.session.model()?.reportId ?? null);
 
-  protected readonly reportId = computed(() => this.session.model()?.reportId ?? null);
+  private readonly session = inject(ReportSession);
 }

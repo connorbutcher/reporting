@@ -12,18 +12,18 @@ import { ReportSession } from './report-session';
 /** Loads every schema the report's widgets use and routes column-configuration edits through the shared cache. */
 @Injectable()
 export class DatasetSchema {
-  private readonly schemaCache = inject(DatasetSchemaCacheService);
-  private readonly session = inject(ReportSession);
-
   /** Bumped when a column's configuration changes, so widgets re-read it. */
-  readonly datasetVersion = signal(0);
+  public readonly datasetVersion = signal(0);
 
   /** Empty until the selected table's schema arrives. */
-  readonly activeSchemaColumns = computed(
+  public readonly activeSchemaColumns = computed(
     () => this.session.selectedTableWidget()?.schema()?.columns ?? [],
   );
 
-  readonly hasDataset = computed(() => !!this.session.selectedTableWidget()?.datasetId());
+  public readonly hasDataset = computed(() => !!this.session.selectedTableWidget()?.datasetId());
+
+  private readonly schemaCache = inject(DatasetSchemaCacheService);
+  private readonly session = inject(ReportSession);
 
   constructor() {
     // Load every referenced dataset, including each tolerance's limits dataset, so validation can tell
@@ -59,7 +59,7 @@ export class DatasetSchema {
     });
   }
 
-  updateColumnConfiguration(
+  public updateColumnConfiguration(
     datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,

@@ -21,23 +21,25 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-table-appearance.component.html',
 })
 export class PanelTableAppearanceComponent {
+  public static readonly title = 'Appearance';
+
   private static readonly DENSITY_OPTIONS: { label: string; value: TableDensity }[] = [
     { label: 'Compact', value: 'compact' },
     { label: 'Normal', value: 'normal' },
     { label: 'Roomy', value: 'comfortable' },
   ];
 
-  static readonly title = 'Appearance';
+  public readonly densityOptions = PanelTableAppearanceComponent.DENSITY_OPTIONS;
 
-  private readonly session = inject(ReportSession);
-  protected readonly densityOptions = PanelTableAppearanceComponent.DENSITY_OPTIONS;
-
-  protected readonly appearance = computed(
+  public readonly appearance = computed(
     () => this.session.selectedTableWidget()?.appearance ?? null,
   );
-  protected readonly showTitle = computed(() => this.session.selectedWidget()?.showTitle() ?? true);
 
-  protected setShowTitle(value: boolean): void {
+  public readonly showTitle = computed(() => this.session.selectedWidget()?.showTitle() ?? true);
+
+  private readonly session = inject(ReportSession);
+
+  public setShowTitle(value: boolean): void {
     this.session.selectedWidget()?.showTitle.set(value);
   }
 }

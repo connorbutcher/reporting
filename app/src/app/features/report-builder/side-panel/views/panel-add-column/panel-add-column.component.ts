@@ -11,35 +11,38 @@ import { PanelNavigation } from '../../../state/panel-navigation';
   templateUrl: './panel-add-column.component.html',
 })
 export class PanelAddColumnComponent {
-  static readonly title = 'Add column';
+  public static readonly title = 'Add column';
 
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
-  protected readonly table = this.session.selectedTableWidget;
-
-  protected readonly search = signal('');
+  public readonly search = signal('');
 
   /** Available columns, narrowed by the search box. */
-  protected readonly matches = computed(() => {
+  public readonly matches = computed(() => {
     const available = this.table()?.availableColumns() ?? [];
     const term = this.search().trim().toLowerCase();
     if (!term) return available;
     return available.filter((column) => column.name.toLowerCase().includes(term));
   });
 
-  protected readonly addAllLabel = computed(() => {
+  public readonly addAllLabel = computed(() => {
     const count = this.matches().length;
     return this.search().trim() ? `Add ${count} matching` : `Add all ${count}`;
   });
 
-  protected add(columnId: string): void {
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+
+  public add(columnId: string): void {
     this.table()?.addColumn(columnId);
     // Back to the list so several columns can be added in a row.
     this.navigation.back();
   }
 
-  protected addAll(): void {
+  public addAll(): void {
     this.table()?.addColumns(this.matches().map((column) => column.id));
     this.navigation.back();
+  }
+
+  public get table() {
+    return this.session.selectedTableWidget;
   }
 }

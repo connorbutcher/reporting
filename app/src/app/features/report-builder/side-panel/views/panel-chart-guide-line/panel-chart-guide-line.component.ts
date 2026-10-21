@@ -33,22 +33,25 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-chart-guide-line.component.html',
 })
 export class PanelChartGuideLineComponent {
+  public static readonly title = 'Guide line';
+
   private static readonly AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
     { label: 'Y axis', value: 'y' },
     { label: 'X axis', value: 'x' },
   ];
+
   private static readonly DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
     { label: 'Solid', value: 'solid' },
     { label: 'Dashed', value: 'dashed' },
     { label: 'Dotted', value: 'dotted' },
   ];
+
   private static readonly DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
     { label: 'Above the line', value: 'above' },
     { label: 'Below the line', value: 'below' },
   ];
-  private static readonly DEFAULT_COLOR = '#4f46e5';
 
-  public static readonly title = 'Guide line';
+  private static readonly DEFAULT_COLOR = '#4f46e5';
 
   public readonly dashOptions = PanelChartGuideLineComponent.DASH_OPTIONS;
   public readonly directionOptions = PanelChartGuideLineComponent.DIRECTION_OPTIONS;

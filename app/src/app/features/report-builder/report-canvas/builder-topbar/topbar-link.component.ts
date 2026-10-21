@@ -35,9 +35,9 @@ import { RouterLink } from '@angular/router';
 })
 export class TopbarLinkComponent {
   /** Router commands, e.g. `['/reports', id]`. */
-  readonly link = input.required<unknown[]>();
+  public readonly link = input.required<unknown[]>();
   /** A PrimeIcons class, e.g. `pi-database`. */
-  readonly icon = input.required<string>();
-  readonly label = input.required<string>();
-  readonly title = input('');
+  public readonly icon = input.required<string>();
+  public readonly label = input.required<string>();
+  public readonly title = input('');
 }

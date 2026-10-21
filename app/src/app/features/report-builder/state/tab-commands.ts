@@ -13,14 +13,14 @@ export class TabCommands {
   private readonly selection = inject(WidgetSelection);
   private readonly navigation = inject(PanelNavigation);
 
-  selectTab(tabId: string): void {
+  public selectTab(tabId: string): void {
     if (this.session.activeTabId() === tabId) return;
     this.session.goToTab(tabId);
     this.selection.clear();
     this.navigation.navigate({ kind: 'widgets' });
   }
 
-  addTab(): void {
+  public addTab(): void {
     const tab = this.session.model()?.addTab();
     if (!tab) return;
     this.session.goToTab(tab.id);
@@ -28,7 +28,7 @@ export class TabCommands {
     this.navigation.navigate({ kind: 'widgets' });
   }
 
-  removeTab(tabId: string): void {
+  public removeTab(tabId: string): void {
     const model = this.session.model();
     if (!model) return;
     const tabs = model.tabs();
@@ -45,11 +45,11 @@ export class TabCommands {
     if (wasActive && neighbour) this.session.goToTab(neighbour.id, true);
   }
 
-  renameTab(tabId: string, name: string): void {
+  public renameTab(tabId: string, name: string): void {
     this.session.model()?.renameTab(tabId, name);
   }
 
-  moveTab(tabId: string, toIndex: number): void {
+  public moveTab(tabId: string, toIndex: number): void {
     this.session.model()?.moveTab(tabId, toIndex);
   }
 }

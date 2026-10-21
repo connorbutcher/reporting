@@ -16,6 +16,15 @@ import { ReportSession } from './report-session';
  */
 @Injectable()
 export class ReportLifecycle {
+  public readonly loading = computed(
+    () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
+  );
+
+  /** An edit hasn't reached the server or the last save failed; shared by beforeunload and the route guard. */
+  public readonly hasUnsavedRisk = computed(
+    () => this.session.dirty() || this.autosave.saveFailed(),
+  );
+
   private readonly reportApi = inject(ReportApiService);
   private readonly router = inject(Router);
   private readonly session = inject(ReportSession);
@@ -32,17 +41,12 @@ export class ReportLifecycle {
 
   /** So a checkout is attempted only once per report. */
   private checkoutAttemptedFor: number | null = null;
+
   /** So opening the editor records one "recently viewed" visit. */
   private recordedViewFor: number | null = null;
+
   /** Set when even a checkout failed, so the skeleton stops. */
   private readonly loadFailed = signal(false);
-
-  readonly loading = computed(
-    () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
-  );
-
-  /** An edit hasn't reached the server or the last save failed; shared by beforeunload and the route guard. */
-  readonly hasUnsavedRisk = computed(() => this.session.dirty() || this.autosave.saveFailed());
 
   constructor() {
     // No draft yet: check one out and reload. If that fails too, give up so the skeleton stops.
@@ -81,7 +85,7 @@ export class ReportLifecycle {
   }
 
   /** Publishes the draft as a new version, then returns to the viewer. */
-  publish(notes: string | null): void {
+  public publish(notes: string | null): void {
     const model = this.session.model();
     if (!model) return;
 

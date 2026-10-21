@@ -5,19 +5,19 @@ import { ValidationIssue } from './validation-issue';
 import { TableAppearanceDto } from './table-appearance.dto';
 
 export class TableAppearanceModel extends EditorNode {
-  readonly showColumnHeaders = signal(true);
-  readonly resizableColumns = signal(false);
-  readonly stripedRows = signal(false);
-  readonly showGridlines = signal(false);
-  readonly rowHover = signal(true);
-  readonly density = signal<TableDensity>('compact');
-  readonly paginator = signal(false);
-  readonly rowsPerPage = signal(10);
-  readonly emptyMessage = signal('No rows to display.');
-  readonly showTotals = signal(false);
-  readonly showSearch = signal(false);
-  readonly frozenColumns = signal(0);
-  readonly rowDetails = signal(true);
+  public readonly showColumnHeaders = signal(true);
+  public readonly resizableColumns = signal(false);
+  public readonly stripedRows = signal(false);
+  public readonly showGridlines = signal(false);
+  public readonly rowHover = signal(true);
+  public readonly density = signal<TableDensity>('compact');
+  public readonly paginator = signal(false);
+  public readonly rowsPerPage = signal(10);
+  public readonly emptyMessage = signal('No rows to display.');
+  public readonly showTotals = signal(false);
+  public readonly showSearch = signal(false);
+  public readonly frozenColumns = signal(0);
+  public readonly rowDetails = signal(true);
 
   constructor(
     private readonly widgetId: string,
@@ -40,7 +40,7 @@ export class TableAppearanceModel extends EditorNode {
   }
 
   /** The notable settings, for the panel's summary line. */
-  summary(): string {
+  public summary(): string {
     const parts: string[] = [this.density()];
     if (this.resizableColumns()) parts.push('resizable');
     if (this.paginator()) parts.push('paginated');
@@ -49,7 +49,7 @@ export class TableAppearanceModel extends EditorNode {
     return parts.join(' · ');
   }
 
-  toDto(): TableAppearanceDto {
+  public toDto(): TableAppearanceDto {
     return {
       showColumnHeaders: this.showColumnHeaders(),
       resizableColumns: this.resizableColumns(),
@@ -67,15 +67,15 @@ export class TableAppearanceModel extends EditorNode {
     };
   }
 
-  protected override snapshotValue(): unknown {
+  public override snapshotValue(): unknown {
     return this.toDto();
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     if (!this.paginator() || this.rowsPerPage() >= 1) return [];
 
     return [

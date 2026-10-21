@@ -49,16 +49,34 @@ import { SaveStatusComponent } from '../../../../shared/save-status/save-status.
   ],
 })
 export class CanvasStatusComponent {
+  public readonly widgetCount = computed(() => this.session.widgets().length);
+  public readonly selectedCount = computed(() => this.selection.selectedWidgetIds().length);
+
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly autosave = inject(ReportAutosave);
 
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-  protected readonly hasMultiSelection = this.selection.hasMultiSelection;
-  protected readonly widgetCount = computed(() => this.session.widgets().length);
-  protected readonly selectedCount = computed(() => this.selection.selectedWidgetIds().length);
-  protected readonly saving = this.autosave.saving;
-  protected readonly saveFailed = this.autosave.saveFailed;
-  protected readonly dirty = this.session.dirty;
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
+  }
+
+  public get hasMultiSelection() {
+    return this.selection.hasMultiSelection;
+  }
+
+  public get saving() {
+    return this.autosave.saving;
+  }
+
+  public get saveFailed() {
+    return this.autosave.saveFailed;
+  }
+
+  public get dirty() {
+    return this.session.dirty;
+  }
 }

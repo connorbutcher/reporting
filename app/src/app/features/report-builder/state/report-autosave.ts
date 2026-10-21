@@ -13,23 +13,21 @@ import { ReportSession } from './report-session';
 @Injectable()
 export class ReportAutosave {
   private static readonly SAVE_DEBOUNCE_MS = 250;
+
   /** Long enough that a burst of typing is one undo step. */
   private static readonly HISTORY_DEBOUNCE_MS = 400;
+
+  public readonly saving = signal(false);
+
+  /** Lets the canvas warn instead of losing work quietly. */
+  public readonly saveFailed = signal(false);
 
   private readonly session = inject(ReportSession);
   private readonly reportApi = inject(ReportApiService);
   private readonly logger = inject(LoggerService);
-
   private readonly saveQueue = new Subject<void>();
   private readonly historyQueue = new Subject<void>();
   private readonly history = new UndoHistory();
-
-  readonly saving = signal(false);
-  /** Lets the canvas warn instead of losing work quietly. */
-  readonly saveFailed = signal(false);
-
-  readonly canUndo = this.history.canUndo;
-  readonly canRedo = this.history.canRedo;
 
   constructor() {
     const model = this.session.model;
@@ -96,15 +94,23 @@ export class ReportAutosave {
       });
   }
 
-  reset(serialized: string): void {
+  public reset(serialized: string): void {
     this.history.reset(serialized);
   }
 
-  undo(): void {
+  public undo(): void {
     this.session.restore(this.history.undo());
   }
 
-  redo(): void {
+  public redo(): void {
     this.session.restore(this.history.redo());
+  }
+
+  public get canUndo() {
+    return this.history.canUndo;
+  }
+
+  public get canRedo() {
+    return this.history.canRedo;
   }
 }

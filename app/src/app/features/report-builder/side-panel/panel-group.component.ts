@@ -19,9 +19,9 @@ import { Component, input } from '@angular/core';
   `,
 })
 export class PanelGroupComponent {
-  readonly label = input.required<string>();
+  public readonly label = input.required<string>();
   /** A glyph before the label; empty shows none. */
-  readonly icon = input('');
+  public readonly icon = input('');
   /** The initial state only; rarely used groups pass `false` to keep long panels scannable. */
-  readonly open = input(true);
+  public readonly open = input(true);
 }

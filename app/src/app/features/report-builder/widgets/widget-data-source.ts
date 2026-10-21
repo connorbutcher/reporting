@@ -12,13 +12,13 @@ import { WidgetDataSourceOptions } from './widget-data-source-options';
 export class WidgetDataSource<T> {
   private static readonly DEFAULT_DEBOUNCE_MS = 300;
 
+  public readonly columns = signal<DatasetColumn[]>([]);
+  public readonly loading = signal(true);
+  public readonly error = signal(false);
+  public readonly result = signal<T | null>(null);
+
   private readonly interactionQueue = new Subject<void>();
   private readonly filterQueue = new Subject<void>();
-
-  readonly columns = signal<DatasetColumn[]>([]);
-  readonly loading = signal(true);
-  readonly error = signal(false);
-  readonly result = signal<T | null>(null);
 
   constructor(private readonly options: WidgetDataSourceOptions<T>) {
     // The schema changes only with the dataset, so it loads immediately.
@@ -69,11 +69,11 @@ export class WidgetDataSource<T> {
       });
   }
 
-  reloadNow(): void {
+  public reloadNow(): void {
     this.interactionQueue.next();
   }
 
-  reloadDebounced(): void {
+  public reloadDebounced(): void {
     this.filterQueue.next();
   }
 }

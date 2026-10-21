@@ -53,11 +53,24 @@ import { ReportSession } from '../../state/report-session';
   ],
 })
 export class PublishButtonComponent {
+  public readonly canPublish = computed(
+    () => this.draftLoaded() && this.noIssues() && this.allSaved(),
+  );
+
+  public readonly title = computed(() => {
+    if (!this.draftLoaded()) return 'Loading the draft…';
+    if (!this.session.isValid()) return 'Fix errors before publishing';
+    if (!this.noIssues()) return 'Finish every widget before publishing — see the issues panel';
+    if (this.autosave.saveFailed())
+      return "Your last change hasn't saved yet — publishing is blocked until it does";
+    if (!this.allSaved()) return 'Waiting for your changes to finish saving…';
+    return 'Publish this draft as a new version';
+  });
+
   private readonly session = inject(ReportSession);
   private readonly autosave = inject(ReportAutosave);
   private readonly lifecycle = inject(ReportLifecycle);
   private readonly dialog = inject(Dialog);
-
   private readonly draftLoaded = computed(() => this.session.model() !== null);
 
   /** Every edit has reached the server, so a publish snapshots the latest. */
@@ -69,21 +82,7 @@ export class PublishButtonComponent {
     () => this.session.isValid() && this.session.warnings().length === 0,
   );
 
-  protected readonly canPublish = computed(
-    () => this.draftLoaded() && this.noIssues() && this.allSaved(),
-  );
-
-  protected readonly title = computed(() => {
-    if (!this.draftLoaded()) return 'Loading the draft…';
-    if (!this.session.isValid()) return 'Fix errors before publishing';
-    if (!this.noIssues()) return 'Finish every widget before publishing — see the issues panel';
-    if (this.autosave.saveFailed())
-      return "Your last change hasn't saved yet — publishing is blocked until it does";
-    if (!this.allSaved()) return 'Waiting for your changes to finish saving…';
-    return 'Publish this draft as a new version';
-  });
-
-  protected publish(): void {
+  public publish(): void {
     const ref = this.dialog.open<string | null>(PublishDialogComponent);
     ref.closed.subscribe((notes) => {
       // Undefined means the dialog was cancelled.

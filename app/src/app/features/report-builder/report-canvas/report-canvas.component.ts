@@ -51,7 +51,7 @@ export class ReportCanvasComponent {
   private readonly autosave = inject(ReportAutosave);
 
   /** Guards closing the tab or reloading. */
-  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+  public onBeforeUnload(event: BeforeUnloadEvent): void {
     if (!this.lifecycle.hasUnsavedRisk()) return;
     event.preventDefault();
     // Chrome shows its own message; older browsers read this.
@@ -59,7 +59,7 @@ export class ReportCanvasComponent {
   }
 
   /** Guards in-app navigation; called by the route guard. */
-  canLeave(): boolean {
+  public canLeave(): boolean {
     if (!this.lifecycle.hasUnsavedRisk()) return true;
     return window.confirm(
       this.autosave.saveFailed()

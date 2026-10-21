@@ -150,34 +150,30 @@ import { TabCommands } from '../../state/tab-commands';
   ],
 })
 export class CanvasTabsComponent {
+  public readonly canDelete = computed(() => this.tabs().length > 1);
+  public readonly editingId = signal<string | null>(null);
+  public readonly draft = signal('');
+  public readonly draggingId = signal<string | null>(null);
+
   private readonly session = inject(ReportSession);
   private readonly tabCommands = inject(TabCommands);
   private readonly injector = inject(Injector);
-
   private readonly renameInput = viewChild<ElementRef<HTMLInputElement>>('renameInput');
 
-  protected readonly tabs = this.session.tabs;
-  protected readonly activeTabId = this.session.activeTabId;
-  protected readonly canDelete = computed(() => this.tabs().length > 1);
-
-  protected readonly editingId = signal<string | null>(null);
-  protected readonly draft = signal('');
-  protected readonly draggingId = signal<string | null>(null);
-
-  protected select(tabId: string): void {
+  public select(tabId: string): void {
     this.tabCommands.selectTab(tabId);
   }
 
-  protected add(): void {
+  public add(): void {
     this.tabCommands.addTab();
   }
 
-  protected remove(tabId: string, event: Event): void {
+  public remove(tabId: string, event: Event): void {
     event.stopPropagation();
     this.tabCommands.removeTab(tabId);
   }
 
-  protected startRename(tabId: string): void {
+  public startRename(tabId: string): void {
     this.draft.set(
       this.tabs()
         .find((t) => t.id === tabId)
@@ -195,31 +191,31 @@ export class CanvasTabsComponent {
     );
   }
 
-  protected commitRename(tabId: string): void {
+  public commitRename(tabId: string): void {
     if (this.editingId() !== tabId) return;
     const name = this.draft().trim();
     if (name) this.tabCommands.renameTab(tabId, name);
     this.editingId.set(null);
   }
 
-  protected cancelRename(): void {
+  public cancelRename(): void {
     this.editingId.set(null);
   }
 
-  protected onDragStart(tabId: string, event: DragEvent): void {
+  public onDragStart(tabId: string, event: DragEvent): void {
     this.draggingId.set(tabId);
     event.dataTransfer?.setData('text/plain', tabId);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
   }
 
-  protected onDragOver(event: DragEvent): void {
+  public onDragOver(event: DragEvent): void {
     // Only a tab drag is a valid drop, not a file.
     if (!this.draggingId()) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }
 
-  protected onDrop(targetTabId: string, event: DragEvent): void {
+  public onDrop(targetTabId: string, event: DragEvent): void {
     event.preventDefault();
     const dragged = this.draggingId();
     this.draggingId.set(null);
@@ -229,7 +225,15 @@ export class CanvasTabsComponent {
     if (toIndex >= 0) this.tabCommands.moveTab(dragged, toIndex);
   }
 
-  protected onDragEnd(): void {
+  public onDragEnd(): void {
     this.draggingId.set(null);
+  }
+
+  public get tabs() {
+    return this.session.tabs;
+  }
+
+  public get activeTabId() {
+    return this.session.activeTabId;
   }
 }

@@ -12,21 +12,26 @@ import { PanelGroupComponent } from '../../panel-group.component';
   templateUrl: './panel-report-settings.component.html',
 })
 export class PanelReportSettingsComponent {
-  static readonly title = 'Tab settings';
+  public static readonly title = 'Tab settings';
 
-  protected readonly defaultColumns = TabModel.DEFAULT_GRID_COLUMNS;
-  protected readonly defaultRows = TabModel.DEFAULT_GRID_ROWS;
+  public readonly defaultColumns = TabModel.DEFAULT_GRID_COLUMNS;
+  public readonly defaultRows = TabModel.DEFAULT_GRID_ROWS;
 
   private readonly session = inject(ReportSession);
 
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-
-  protected setGridColumns(value: number): void {
+  public setGridColumns(value: number): void {
     this.session.setGridColumns(value);
   }
 
-  protected setGridRows(value: number): void {
+  public setGridRows(value: number): void {
     this.session.setGridRows(value);
+  }
+
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
   }
 }

@@ -72,7 +72,15 @@ export class BuilderTopbarComponent {
   private readonly session = inject(ReportSession);
   private readonly autosave = inject(ReportAutosave);
 
-  protected readonly saving = this.autosave.saving;
-  protected readonly saveFailed = this.autosave.saveFailed;
-  protected readonly dirty = this.session.dirty;
+  public get saving() {
+    return this.autosave.saving;
+  }
+
+  public get saveFailed() {
+    return this.autosave.saveFailed;
+  }
+
+  public get dirty() {
+    return this.session.dirty;
+  }
 }

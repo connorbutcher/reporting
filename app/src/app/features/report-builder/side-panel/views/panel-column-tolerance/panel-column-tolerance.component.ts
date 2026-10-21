@@ -19,28 +19,26 @@ import { PanelGroupComponent } from '../../panel-group.component';
   providers: [ToleranceSourcePicker],
 })
 export class PanelColumnToleranceComponent {
-  static readonly title = 'Tolerance limits';
+  public static readonly title = 'Tolerance limits';
+
+  public readonly picker = inject(ToleranceSourcePicker);
+
+  public readonly column = computed(() => {
+    const columnId = this.columnId();
+    return columnId ? (this.table()?.column(columnId) ?? null) : null;
+  });
+
+  /** The table's columns, for the identifier that picks each row's limits. */
+  public readonly tableColumns = computed(() => this.table()?.schema()?.columns ?? []);
 
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
-
-  protected readonly datasets = this.session.datasets;
-  protected readonly picker = inject(ToleranceSourcePicker);
-
   private readonly table = this.session.selectedTableWidget;
 
   private readonly columnId = computed(() => {
     const view = this.navigation.view();
     return view.kind === 'columnTolerance' ? view.columnId : null;
   });
-
-  protected readonly column = computed(() => {
-    const columnId = this.columnId();
-    return columnId ? (this.table()?.column(columnId) ?? null) : null;
-  });
-
-  /** The table's columns, for the identifier that picks each row's limits. */
-  protected readonly tableColumns = computed(() => this.table()?.schema()?.columns ?? []);
 
   private lastColumnId: string | null = null;
 
@@ -64,8 +62,12 @@ export class PanelColumnToleranceComponent {
     });
   }
 
-  protected clear(): void {
+  public clear(): void {
     this.picker.selectDataset(null);
     this.column()?.setTolerance(null);
+  }
+
+  public get datasets() {
+    return this.session.datasets;
   }
 }

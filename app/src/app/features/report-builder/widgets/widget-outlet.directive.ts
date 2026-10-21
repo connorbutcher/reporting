@@ -28,21 +28,20 @@ import { WidgetOutputHandler } from './widget-output-handler';
   exportAs: 'widgetOutlet',
 })
 export class WidgetOutletDirective {
-  readonly widget = input.required<Widget>({ alias: 'appWidgetOutlet' });
+  public readonly widget = input.required<Widget>({ alias: 'appWidgetOutlet' });
 
   /** The report-level filter for this widget's dataset, layered over its own (table only). */
-  readonly reportFilter = input<FilterGroup | null>(null);
+  public readonly reportFilter = input<FilterGroup | null>(null);
   /** This widget's own filter (table only). */
-  readonly widgetFilter = input<FilterGroup | null>(null);
+  public readonly widgetFilter = input<FilterGroup | null>(null);
   /** A chart's per-binding resolved filters, keyed by binding id (chart only). */
-  readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
+  public readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
   /** Bumped when column configuration changes, so the widget refetches (builder only). */
-  readonly datasetVersion = input(0);
+  public readonly datasetVersion = input(0);
   /** Handlers for the widget's outputs, keyed by output name (builder edits only). */
-  readonly widgetOutputs = input<Record<string, WidgetOutputHandler>>({});
+  public readonly widgetOutputs = input<Record<string, WidgetOutputHandler>>({});
 
   private readonly viewContainer = inject(ViewContainerRef);
-
   private ref: ComponentRef<unknown> | null = null;
   private renderedType: WidgetType | null = null;
   private declaredInputs = new Set<string>();
