@@ -1,41 +1,42 @@
 import { Directive, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
+import { GridPreview } from '../grid/grid-preview';
+import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
 import { ReportSession } from '../state/report-session';
 
 /**
- * The drag half of a widget's pointer interaction, split out of the host so the
- * component keeps only widget dispatch and selection. Sits on the widget surface
- * and is started from the header's `pointerdown`; the whole current selection
- * moves as a group, snapping to the grid and refusing moves that would collide.
+ * Drags a widget from its header. The whole selection moves as a group, snapping to the grid and
+ * refusing moves that would collide.
  */
 @Directive({
   selector: '[appWidgetDrag]',
   exportAs: 'widgetDrag',
 })
 export class WidgetDragDirective {
-  readonly widget = input.required<WidgetModel>({ alias: 'appWidgetDrag' });
+  public readonly widget = input.required<WidgetModel>({ alias: 'appWidgetDrag' });
 
-  /** Live preview of where the dragged widget would land, for the canvas overlay. */
-  readonly gridPreview = output<GridPreview | null>();
-  /** Fires synchronously before the drag begins so the host can update the selection. */
-  readonly selectRequest = output<PointerEvent>();
+  /** Where the drag would land, for the canvas overlay. */
+  public readonly gridPreview = output<GridPreview | null>();
 
-  private readonly session = inject(ReportSession);
-  private readonly destroyRef = inject(DestroyRef);
+  /** Fires before the drag starts so the host can update the selection. */
+  public readonly selectRequest = output<PointerEvent>();
+  public readonly dragging = signal(false);
 
-  readonly dragging = signal(false);
-  private readonly dragOffset = signal<{ x: number; y: number } | null>(null);
-  readonly transform = computed(() => {
+  public readonly transform = computed(() => {
     const offset = this.dragOffset();
     return offset ? `translate(${offset.x}px, ${offset.y}px)` : null;
   });
-  readonly invalid = signal(false);
 
+  public readonly invalid = signal(false);
+
+  private readonly session = inject(ReportSession);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dragOffset = signal<{ x: number; y: number } | null>(null);
   private dragStartPointer = { x: 0, y: 0 };
-  /** Every widget moving in this drag, with where it started. */
   private dragGroup: { widget: WidgetModel; origin: { x: number; y: number } }[] = [];
-  /** The accepted offset for the group, or null while it would collide. */
+
+  /** Null while the move would collide. */
   private pendingDelta: { dx: number; dy: number } | null = null;
   private moveListener: ((e: PointerEvent) => void) | null = null;
   private upListener: ((e: PointerEvent) => void) | null = null;
@@ -44,15 +45,13 @@ export class WidgetDragDirective {
     this.destroyRef.onDestroy(() => this.cleanupListeners());
   }
 
-  start(event: PointerEvent): void {
+  public start(event: PointerEvent): void {
     event.preventDefault();
-    // The surface below also selects on pointerdown; letting this bubble would
-    // run the toggle twice and cancel out a ctrl-click.
+    // The surface below also selects on pointerdown; bubbling would toggle twice and undo a ctrl-click.
     event.stopPropagation();
-    // Emitted synchronously, so the store's selection is settled before we read it.
+    // Synchronous, so the selection is settled before it's read below.
     this.selectRequest.emit(event);
 
-    // Dragging any member of a selection moves the whole group together.
     const selected = this.session.selectedWidgets();
     const group = selected.some((w) => w.id === this.widget().id) ? selected : [this.widget()];
     this.dragGroup = group.map((widget) => ({ widget, origin: { x: widget.x(), y: widget.y() } }));
@@ -72,12 +71,14 @@ export class WidgetDragDirective {
     const dy = event.clientY - this.dragStartPointer.y;
     this.dragOffset.set({ x: dx, y: dy });
 
-    // Column width is measured live (columns fill the canvas); rows are a fixed height.
-    const columnStep = this.session.columnWidth() + GRID_GAP;
-    const rowStep = ROW_HEIGHT + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
+    const rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
 
-    // Clamp the group as a unit so its members keep their relative positions.
-    const deltaCols = this.clampGroupDelta(columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0, 'x');
+    // Clamp the group as a unit so members keep their relative positions.
+    const deltaCols = this.clampGroupDelta(
+      columnStep > GridLayout.GRID_GAP ? Math.round(dx / columnStep) : 0,
+      'x',
+    );
     const deltaRows = this.clampGroupDelta(Math.round(dy / rowStep), 'y');
 
     const invalid = this.groupCollides(deltaCols, deltaRows);
@@ -111,7 +112,7 @@ export class WidgetDragDirective {
     this.gridPreview.emit(null);
   }
 
-  /** Limits the shift so no member of the group leaves the grid. */
+  /** Keeps every member of the group on the grid. */
   private clampGroupDelta(delta: number, axis: 'x' | 'y'): number {
     const limit = axis === 'x' ? this.session.gridColumns() : this.session.gridRows();
 
@@ -123,7 +124,7 @@ export class WidgetDragDirective {
       min = Math.max(min, -start);
       max = Math.min(max, limit - size - start);
     }
-    return clamp(delta, min, max);
+    return GridLayout.clamp(delta, min, max);
   }
 
   private groupCollides(dx: number, dy: number): boolean {
@@ -132,7 +133,7 @@ export class WidgetDragDirective {
 
     return this.dragGroup.some(({ widget, origin }) => {
       const rect: GridRect = { x: origin.x + dx, y: origin.y + dy, w: widget.w(), h: widget.h() };
-      return others.some((other) => rectsOverlap(rect, other.rect()));
+      return others.some((other) => GridLayout.rectsOverlap(rect, other.rect()));
     });
   }
 

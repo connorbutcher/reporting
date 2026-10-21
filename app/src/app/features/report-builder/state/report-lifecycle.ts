@@ -10,27 +10,28 @@ import { ReportAutosave } from './report-autosave';
 import { ReportSession } from './report-session';
 
 /**
- * Loading and publishing the report. The draft is fetched with an
- * {@link httpResource} keyed on the route's report id (via {@link ReportSession}),
- * so navigating or reloading refetches on its own — no imperative `load()` call
- * from the screen. When the report has no checked-out draft yet (a direct
- * navigation or a refresh mid-edit), the GET 404s and this checks one out on the
- * fly, then reloads the resource. The resolved content is turned into the
+ * Loads and publishes the report. The draft resource is keyed on the route's report id; if no draft
+ * is checked out yet (a 404), one is checked out and the resource reloads. The content becomes the
  * {@link ReportModel} tree once, seeding the autosave baseline.
  */
 @Injectable()
 export class ReportLifecycle {
+  public readonly loading = computed(
+    () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
+  );
+
+  /** An edit hasn't reached the server or the last save failed; shared by beforeunload and the route guard. */
+  public readonly hasUnsavedRisk = computed(
+    () => this.session.dirty() || this.autosave.saveFailed(),
+  );
+
   private readonly reportApi = inject(ReportApiService);
   private readonly router = inject(Router);
   private readonly session = inject(ReportSession);
   private readonly autosave = inject(ReportAutosave);
   private readonly notify = inject(NotificationService);
 
-  /**
-   * The checked-out draft for the current report; refetched whenever the route id changes. A missing
-   * draft is expected — the GET 404s and we check one out below — so this opts out of the global
-   * not-found toast; the checkout fallback owns any real failure message.
-   */
+  /** A missing draft is expected (checked out below), so the global not-found toast is skipped. */
   private readonly draftResource = httpResource<ReportRevisionContent>(() => {
     const id = this.session.reportId();
     return id !== null
@@ -38,29 +39,17 @@ export class ReportLifecycle {
       : undefined;
   });
 
-  /** The report id we've already tried to check out a draft for, so we only try once. */
+  /** So a checkout is attempted only once per report. */
   private checkoutAttemptedFor: number | null = null;
-  /** The report id whose view we've recorded, so opening the editor logs it once for "recently viewed". */
+
+  /** So opening the editor records one "recently viewed" visit. */
   private recordedViewFor: number | null = null;
-  /** Set when even a checkout couldn't produce a draft, so the skeleton stops. */
+
+  /** Set when even a checkout failed, so the skeleton stops. */
   private readonly loadFailed = signal(false);
 
-  /** True until the report's model tree is built (or loading has failed), for the canvas skeleton. */
-  readonly loading = computed(
-    () => this.session.reportId() !== null && this.session.model() === null && !this.loadFailed(),
-  );
-
-  /**
-   * Whether leaving right now could lose work: an edit hasn't reached the server
-   * yet, or the last attempt to send it failed. Shared by the beforeunload
-   * handler and the route guard so both agree on the risk.
-   */
-  readonly hasUnsavedRisk = computed(() => this.session.dirty() || this.autosave.saveFailed());
-
   constructor() {
-    // The GET failing means the report has no draft checked out yet — check one
-    // out on the fly and reload the resource. If that fails too there's nothing
-    // to edit, so give up and let the skeleton stop.
+    // No draft yet: check one out and reload. If that fails too, give up so the skeleton stops.
     effect(() => {
       const id = this.session.reportId();
       const failed = this.draftResource.error() !== undefined;
@@ -77,14 +66,16 @@ export class ReportLifecycle {
           next: () => this.draftResource.reload(),
           error: (err) => {
             this.loadFailed.set(true);
-            // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.
-            this.notify.apiError(err, "This report couldn't be opened for editing. Please try again.");
+            // The global interceptor already reports a 403.
+            this.notify.apiError(
+              err,
+              "This report couldn't be opened for editing. Please try again.",
+            );
           },
         });
       });
     });
 
-    // Build the model tree once the draft content arrives (first load or after a checkout).
     effect(() => {
       const content = this.draftResource.hasValue() ? this.draftResource.value() : null;
       untracked(() => {
@@ -93,8 +84,8 @@ export class ReportLifecycle {
     });
   }
 
-  /** Publishes the checked-out draft as a new version, then returns to the viewer. */
-  publish(notes: string | null): void {
+  /** Publishes the draft as a new version, then returns to the viewer. */
+  public publish(notes: string | null): void {
     const model = this.session.model();
     if (!model) return;
 
@@ -103,20 +94,18 @@ export class ReportLifecycle {
         this.router.navigate(['/reports', model.reportId]);
         this.notify.success('Report published.');
       },
-      error: (err) => this.notify.apiError(err, "The report couldn't be published. Please try again."),
+      error: (err) =>
+        this.notify.apiError(err, "The report couldn't be published. Please try again."),
     });
   }
 
   private setLoadedReport(report: ReportRevisionContent): void {
     const model = ReportModel.fromDto(report, this.session.sources);
     this.session.model.set(model);
-    // Seeded from the model, not the server payload: the model normalises
-    // defaults and key order, so anything else would look like a change and
-    // leave an undo step available before the user has done anything.
+    // Seeded from the model, which normalises defaults and key order, so a fresh load has nothing to undo.
     this.autosave.reset(model.serialized());
 
-    // Opening a report to edit counts as visiting it — record it once so it surfaces in the
-    // editor's "recently viewed". Fire-and-forget: a failed record must never disrupt editing.
+    // Fire-and-forget: a failed record must never disrupt editing.
     if (report.reportId !== this.recordedViewFor) {
       this.recordedViewFor = report.reportId;
       this.reportApi.recordView(report.reportId).subscribe({ error: () => {} });

@@ -1,7 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { ReportSession } from '../../state/report-session';
 
-/** The name of the report being edited. */
 @Component({
   selector: 'app-builder-identity',
   template: `<h1 class="name">{{ name() }}</h1>`,
@@ -18,7 +17,7 @@ import { ReportSession } from '../../state/report-session';
   ],
 })
 export class BuilderIdentityComponent {
-  private readonly session = inject(ReportSession);
+  public readonly name = computed(() => this.session.model()?.name() ?? 'Report');
 
-  protected readonly name = computed(() => this.session.model()?.name() ?? 'Report');
+  private readonly session = inject(ReportSession);
 }

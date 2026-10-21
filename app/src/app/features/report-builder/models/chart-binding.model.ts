@@ -12,54 +12,45 @@ import {
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
+import { ColumnTypes } from './column-types';
 
 /**
- * One dataset's contribution to a chart: its dataset, axes, per-value split, and row filter,
- * each editable in isolation. A chart owns one or more; overlaying several plots two datasets
- * against each other. The filter is a child node, so its problems and unsaved changes roll up.
+ * One dataset's contribution to a chart: dataset, axes, split and row filter. The filter is a child
+ * node, so its issues and unsaved changes roll up.
  */
 export class ChartBindingModel extends EditorNode {
   public readonly id: string;
-  /** Null until the user binds this series to a dataset. */
   public readonly datasetId = signal<number | null>(null);
   public readonly xColumnId = signal<string | null>(null);
   public readonly yColumnId = signal<string | null>(null);
-  /** Scales each point's marker by this numeric column's value — a scatter bubble chart. Ignored by every other chart kind. */
+  /** Scatter bubble size; ignored by other chart kinds. */
   public readonly sizeColumnId = signal<string | null>(null);
   /**
-   * A bar chart's measures, each a series (grouped or stacked), or a histogram's distributed
-   * columns, each its own binned series. Empty on point/box charts, which use {@link yColumnId}.
-   * Edit through {@link setValueColumnIds} (bar, mirrors the first into {@link yColumnId}) or
-   * {@link setHistogramValueColumnIds} (histogram, mirrors the first into {@link xColumnId}) so
-   * single-measure readers (validation, tolerance, CSV) still resolve one.
+   * A bar chart's measures or a histogram's binned columns; empty on point and box charts. Edit
+   * through {@link setValueColumnIds} or {@link setHistogramValueColumnIds}, which mirror the first
+   * into the single-column field so single-measure readers still resolve one.
    */
   public readonly valueColumnIds = signal<readonly string[]>([]);
-  /**
-   * The measures the bar editor shows: the explicit list, else a legacy single {@link yColumnId}
-   * folded in. Bar charts read this; point/box charts ignore it and use {@link yColumnId}.
-   */
+  /** The bar editor's measures: the explicit list, else a legacy single {@link yColumnId}. */
   public readonly barValueColumnIds = computed<string[]>(() => {
     const list = this.valueColumnIds();
     if (list.length) return [...list];
     const y = this.yColumnId();
     return y ? [y] : [];
   });
-  /**
-   * The columns the histogram editor shows: the explicit list, else a legacy single {@link xColumnId}
-   * folded in. Histograms read this; other chart kinds ignore it.
-   */
+  /** The histogram editor's columns: the explicit list, else a legacy single {@link xColumnId}. */
   public readonly histogramValueColumnIds = computed<string[]>(() => {
     const list = this.valueColumnIds();
     if (list.length) return [...list];
     const x = this.xColumnId();
     return x ? [x] : [];
   });
-  /** Splits this binding into a coloured series per distinct value; null plots one. */
+  /** Splits into a coloured series per distinct value; null plots one. */
   public readonly seriesColumnId = signal<string | null>(null);
-  /** On a combination chart, whether this series draws as bars or a line; ignored by other kinds. */
+  /** Combination charts only. */
   public readonly renderAs = signal<ChartSeriesRenderAs>('bar');
-  /** Which value axis to plot against, by id; null falls back to the primary axis. */
+  /** Null plots against the primary axis. */
   public readonly yAxisId = signal<string | null>(null);
   /** Null uses the palette. */
   public readonly color = signal<string | null>(null);
@@ -67,23 +58,18 @@ export class ChartBindingModel extends EditorNode {
   public readonly symbol = signal<ChartSymbol | null>(null);
   /** Null draws solid. */
   public readonly dashStyle = signal<LineDashStyle | null>(null);
-  /** Blank falls back to the dataset/column name in the legend. */
+  /** Blank falls back to the dataset or column name. */
   public readonly label = signal('');
-  /**
-   * Draw order for a point chart's (scatter/line) own rows. Null keeps the default X-ascending
-   * order. Ignored by every grouping chart (bar, combo, box plot), which order via the chart's
-   * own `sort` instead.
-   */
+  /** Draw order for a point chart's rows; null keeps X ascending. Grouping charts use the chart's sort. */
   public readonly sort = signal<ChartSort | null>(null);
   public readonly filter: FilterGroupModel;
 
   public readonly schema: Signal<DatasetSchema | null>;
-  /** Numeric columns — for anything needing a measure (a bar's value, a band's axis). */
   public readonly numericColumns: Signal<DatasetColumn[]>;
-  /** Columns an axis can plot: numeric (value), text (category), or date (time). */
+  /** Columns an axis can plot: numeric, text or date. */
   public readonly axisColumns: Signal<DatasetColumn[]>;
 
-  /** For issue titles/navigation only — this binding's own state never depends on its parent. */
+  /** For issue titles and navigation only. */
   private readonly widgetId: string;
 
   constructor(
@@ -99,8 +85,7 @@ export class ChartBindingModel extends EditorNode {
     this.xColumnId.set(binding.xColumnId);
     this.yColumnId.set(binding.yColumnId);
     this.sizeColumnId.set(binding.sizeColumnId ?? null);
-    // Stored as-is (no fold): a legacy single-measure bar binding leaves this empty and is folded
-    // from yColumnId on read (barValueColumnIds), so a point/box binding's yColumnId is never shadowed.
+    // Stored as-is: a legacy bar binding leaves this empty and is folded from yColumnId on read.
     this.valueColumnIds.set(binding.valueColumnIds?.filter((id): id is string => !!id) ?? []);
     this.seriesColumnId.set(binding.seriesColumnId);
     this.renderAs.set(binding.renderAs ?? 'bar');
@@ -116,20 +101,20 @@ export class ChartBindingModel extends EditorNode {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.numericColumns = computed(
-      () => this.schema()?.columns.filter((c) => c.type === 'int' || c.type === 'double') ?? [],
+      () => this.schema()?.columns.filter((c) => ColumnTypes.isNumeric(c.type)) ?? [],
     );
     this.axisColumns = computed(
       () =>
         this.schema()?.columns.filter(
-          (c) => c.type === 'int' || c.type === 'double' || c.type === 'string' || c.type === 'dateTime',
+          (c) =>
+            c.type === 'int' || c.type === 'double' || c.type === 'string' || c.type === 'dateTime',
         ) ?? [],
     );
 
     this.filter = new FilterGroupModel(binding.filter, {
       schema: this.schema,
       catalogue: sources.catalogue,
-      // A chart filter offers the whole dataset; a tolerance filter keys off this
-      // binding's axis columns that carry a band.
+      // Tolerance operators key off this binding's banded axis columns.
       tolerantColumns: computed(
         () =>
           new Set(
@@ -146,21 +131,19 @@ export class ChartBindingModel extends EditorNode {
     });
   }
 
-  /** Sets the bar measures and mirrors the first into {@link yColumnId} for single-measure readers. */
   public setValueColumnIds(ids: readonly string[]): void {
     const clean = ids.filter((id) => !!id);
     this.valueColumnIds.set(clean);
     this.yColumnId.set(clean[0] ?? null);
   }
 
-  /** Sets the histogram's distributed columns and mirrors the first into {@link xColumnId} for single-column readers. */
   public setHistogramValueColumnIds(ids: readonly string[]): void {
     const clean = ids.filter((id) => !!id);
     this.valueColumnIds.set(clean);
     this.xColumnId.set(clean[0] ?? null);
   }
 
-  /** Swapping dataset invalidates every column choice, since they belong to the old schema. */
+  /** Clears every column choice, since they belong to the old schema. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
@@ -180,10 +163,10 @@ export class ChartBindingModel extends EditorNode {
       xColumnId: this.xColumnId(),
       yColumnId: this.yColumnId(),
       sizeColumnId: this.sizeColumnId(),
-      // Only bar and histogram charts populate this; empty stays null so point/box configs are unchanged.
+      // Empty stays null so point and box configs are unchanged.
       valueColumnIds: values.length ? [...values] : null,
       seriesColumnId: this.seriesColumnId(),
-      // Only combo charts vary this; 'bar' (the default) stays null so other configs are unchanged.
+      // The default stays null so non-combo configs are unchanged.
       renderAs: this.renderAs() === 'bar' ? null : this.renderAs(),
       yAxisId: this.yAxisId(),
       color: this.color(),
@@ -199,27 +182,26 @@ export class ChartBindingModel extends EditorNode {
     return [this.filter];
   }
 
-  // "No dataset yet" / "no axis picked yet" stay on the widget (read through the primary
-  // binding there), so that wording is unchanged from the single-dataset era. This only
-  // catches the other kind of problem: a column that *was* validly picked, but whose dataset
-  // has since had that column removed — the same "still exists?" check TableColumnModel and
-  // FilterConditionModel already do, applied to a chart series's own column fields.
+  // Catches a column that was picked but has since been removed from the dataset. Missing
+  // dataset or axis picks are reported by the widget.
   public override ownIssues(): ValidationIssue[] {
     const schema = this.schema();
-    // A pending schema fetch (or no dataset picked yet) must not look like a deleted column.
+    // A pending schema fetch must not look like a deleted column.
     if (!schema) return [];
 
     const columnIds = new Set(schema.columns.map((c) => c.id));
-    const missing = (columnId: string | null) => !!columnId && !columnIds.has(columnId);
-
-    const brokenFields: string[] = [];
-    if (missing(this.xColumnId())) brokenFields.push('X axis');
-    if (missing(this.yColumnId())) brokenFields.push('Y axis');
-    if (missing(this.sizeColumnId())) brokenFields.push('size');
-    if (missing(this.seriesColumnId())) brokenFields.push('split-by');
-    if (this.valueColumnIds().some((id) => missing(id))) brokenFields.push('value');
     const sort = this.sort();
-    if (sort?.by === 'column' && missing(sort.columnId)) brokenFields.push('sort');
+    const fields: [label: string, columnIds: readonly (string | null)[]][] = [
+      ['X axis', [this.xColumnId()]],
+      ['Y axis', [this.yColumnId()]],
+      ['size', [this.sizeColumnId()]],
+      ['split-by', [this.seriesColumnId()]],
+      ['value', this.valueColumnIds()],
+      ['sort', sort?.by === 'column' ? [sort.columnId] : []],
+    ];
+    const brokenFields = fields
+      .filter(([, ids]) => ids.some((id) => !!id && !columnIds.has(id)))
+      .map(([label]) => label);
 
     if (brokenFields.length === 0) return [];
 

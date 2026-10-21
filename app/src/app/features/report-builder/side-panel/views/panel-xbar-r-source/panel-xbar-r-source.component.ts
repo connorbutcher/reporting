@@ -7,7 +7,6 @@ import { ReportSession } from '../../../state/report-session';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The Xbar-R chart's data source: its dataset, the subgroup/value columns, and its row filter. */
 @Component({
   selector: 'app-panel-xbar-r-source',
   imports: [FormsModule, SelectModule, PanelGroupComponent],
@@ -16,7 +15,6 @@ import { PanelGroupComponent } from '../../panel-group.component';
 export class PanelXBarRSourceComponent {
   public readonly chart = input.required<XBarRChartWidgetModel>();
 
-  /** The datasets on this report, for the data-source picker. */
   public readonly datasets = inject(ReportSession).datasets;
 
   private readonly navigation = inject(PanelNavigation);

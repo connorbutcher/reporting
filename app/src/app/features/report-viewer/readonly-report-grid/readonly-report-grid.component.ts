@@ -1,6 +1,6 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, Signal, computed, inject, input, output } from '@angular/core';
-import { ROW_HEIGHT, GRID_GAP } from '../../report-builder/grid.util';
+import { GridLayout } from '../../report-builder/grid/grid-layout';
 import {
   ReportRevisionContent,
   Tab,
@@ -12,11 +12,10 @@ import { isChartWidget, isExportableWidgetType } from '../../../core/models/widg
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
-import {
-  WidgetFullscreenDialogComponent,
-  WidgetFullscreenDialogData,
-} from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
-import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
+import { WidgetFullscreenDialogComponent } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
+import { WidgetFullscreenDialogData } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog-data';
+import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
+import { WidgetOutputHandler } from '../../report-builder/widgets/widget-output-handler';
 import { ReportComments } from '../comments/report-comments';
 import { chartBindingKey } from '../filters/view-filter-entry';
 
@@ -36,8 +35,8 @@ export class ReadonlyReportGridComponent {
   /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
   readonly tab = input.required<Tab>();
 
-  protected readonly rowHeight = ROW_HEIGHT;
-  protected readonly gridGap = GRID_GAP;
+  protected readonly rowHeight = GridLayout.ROW_HEIGHT;
+  protected readonly gridGap = GridLayout.GRID_GAP;
 
   /**
    * Session overrides from the viewer's filter panel. Page filters are keyed by

@@ -9,32 +9,26 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
-import { ModelSources, SchemaSource, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
+import { SchemaSource } from './sources/schema-source';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';
+import { PanelView } from '../side-panel/panel-view';
 import { ValidationIssue } from './validation-issue';
 
 export class DataTableWidgetModel extends WidgetModel {
-  override readonly type = 'dataTable' as const;
+  public override readonly type = 'dataTable' as const;
+  public readonly datasetId = signal<number | null>(null);
+  public readonly sortColumnId = signal<string | null>(null);
+  public readonly sortDirection = signal<SortDirection>('asc');
+  public readonly appearance: TableAppearanceModel;
+  public readonly columns = signal<readonly TableColumnModel[]>([]);
+  public readonly filter: FilterGroupModel;
+  public readonly schema: Signal<DatasetSchema | null>;
+  public readonly availableColumns: Signal<DatasetSchema['columns']>;
 
-  /** Null until the user binds the table to a dataset. */
-  readonly datasetId = signal<number | null>(null);
-  readonly sortColumnId = signal<string | null>(null);
-  readonly sortDirection = signal<SortDirection>('asc');
-
-  readonly appearance: TableAppearanceModel;
-  readonly columns = signal<readonly TableColumnModel[]>([]);
-
-  /** Rows this widget shows, narrowed server-side. */
-  readonly filter: FilterGroupModel;
-
-  /** The bound dataset's schema, once loaded. */
-  readonly schema: Signal<DatasetSchema | null>;
-  /** Dataset columns not yet placed on the table. */
-  readonly availableColumns: Signal<DatasetSchema['columns']>;
-
-  /** Kept so a column added later (see `addColumns`) can build with the same tolerance-schema
-   * look-up its siblings got at construction time. */
+  /** Kept so columns added later get the same tolerance-schema look-up. */
   private readonly schemas: SchemaSource;
 
   constructor(widget: DataTableWidget, sources: ModelSources) {
@@ -59,18 +53,20 @@ export class DataTableWidgetModel extends WidgetModel {
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
       catalogue: sources.catalogue,
-      // A table's filter narrows what that table shows, so it only offers the
-      // columns actually on it — the dataset's other columns belong to the
-      // report-level filter.
+      // A table's filter offers only its own columns; the rest belong to the report filter.
       columns: computed(() =>
         this.columns()
           .map((c) => c.schemaColumn())
           .filter((c): c is NonNullable<typeof c> => !!c),
       ),
-      // The columns on this table that have fixed tolerance banding, so the filter can offer
-      // "in/out of tolerance" on them. A column whose limits are matched per row has no single band.
+      // Columns with fixed banding can be filtered in or out of tolerance; per-row limits have no single band.
       tolerantColumns: computed(
-        () => new Set(this.columns().filter((c) => hasFixedLimits(c.tolerance())).map((c) => c.columnId)),
+        () =>
+          new Set(
+            this.columns()
+              .filter((c) => hasFixedLimits(c.tolerance()))
+              .map((c) => c.columnId),
+          ),
       ),
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,
@@ -83,8 +79,8 @@ export class DataTableWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice, the sort, and the filter. */
-  setDataset(datasetId: number | null): void {
+  /** Clears every column choice, the sort and the filter. */
+  public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
     this.columns.set([]);
@@ -92,12 +88,12 @@ export class DataTableWidgetModel extends WidgetModel {
     this.filter.clear();
   }
 
-  addColumn(columnId: string): void {
+  public addColumn(columnId: string): void {
     this.addColumns([columnId]);
   }
 
-  /** Appends several columns in one step, skipping any already on the table. */
-  addColumns(columnIds: readonly string[]): void {
+  /** Skips columns already on the table. */
+  public addColumns(columnIds: readonly string[]): void {
     const existing = new Set(this.columns().map((c) => c.columnId));
     const added = columnIds
       .filter((id) => !existing.has(id))
@@ -107,12 +103,12 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.update((columns) => [...columns, ...added]);
   }
 
-  removeColumn(columnId: string): void {
+  public removeColumn(columnId: string): void {
     this.columns.update((columns) => columns.filter((c) => c.columnId !== columnId));
     if (this.sortColumnId() === columnId) this.sortColumnId.set(null);
   }
 
-  moveColumn(index: number, offset: number): void {
+  public moveColumn(index: number, offset: number): void {
     const columns = [...this.columns()];
     const target = index + offset;
     if (target < 0 || target >= columns.length) return;
@@ -121,8 +117,8 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.set(columns);
   }
 
-  /** Moves one column to another's position — for a header drag reorder. */
-  reorderColumn(draggedColumnId: string, targetColumnId: string): void {
+  /** For a header drag reorder. */
+  public reorderColumn(draggedColumnId: string, targetColumnId: string): void {
     const columns = [...this.columns()];
     const from = columns.findIndex((c) => c.columnId === draggedColumnId);
     const to = columns.findIndex((c) => c.columnId === targetColumnId);
@@ -133,21 +129,21 @@ export class DataTableWidgetModel extends WidgetModel {
     this.columns.set(columns);
   }
 
-  column(columnId: string): TableColumnModel | null {
+  public column(columnId: string): TableColumnModel | null {
     return this.columns().find((c) => c.columnId === columnId) ?? null;
   }
 
-  setSort(columnId: string, direction: SortDirection): void {
+  public setSort(columnId: string, direction: SortDirection): void {
     this.sortColumnId.set(columnId);
     this.sortDirection.set(direction);
   }
 
-  /** Applies widths measured after a drag-resize, ignoring unknown columns. */
-  applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
+  /** Ignores unknown columns. */
+  public applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
     for (const { columnId, width } of widths) this.column(columnId)?.setWidth(width);
   }
 
-  override toDto(): DataTableWidget {
+  public override toDto(): DataTableWidget {
     const config: DataTableWidgetConfig = {
       type: 'dataTable',
       ...DEFAULT_TABLE_CONFIG,
@@ -162,80 +158,78 @@ export class DataTableWidgetModel extends WidgetModel {
     return { ...this.geometryDto(), type: 'dataTable', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return 'Table';
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [this.appearance, this.filter, ...this.columns()];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const name = this.label();
-
-    const seen = new Set<string>();
-    if (this.columns().some((c) => !seen.add(c.columnId))) {
-      issues.push({
-        id: `${this.id}:duplicateColumn`,
-        severity: 'error',
-        title: `${name} has a duplicated column`,
-        detail: 'The same dataset column has been added more than once.',
-        widgetId: this.id,
-        view: { kind: 'widgetColumns', widgetId: this.id },
-      });
-    }
-
+  public override ownIssues(): ValidationIssue[] {
+    const duplicate = this.duplicateColumnIssue();
     if (!this.datasetId()) {
-      issues.push({
-        id: `${this.id}:noDataset`,
-        severity: 'warning',
-        title: `${name} has no dataset`,
-        detail: 'Pick a dataset so the table has something to show.',
-        widgetId: this.id,
-        view: { kind: 'widget', widgetId: this.id },
-      });
-      return issues;
+      const noDataset = this.issue(
+        'noDataset',
+        'warning',
+        `${this.label()} has no dataset`,
+        'Pick a dataset so the table has something to show.',
+      );
+      return duplicate ? [duplicate, noDataset] : [noDataset];
     }
+    return [duplicate, this.noColumnsIssue(), this.sortColumnIssue()].filter(
+      (issue): issue is ValidationIssue => !!issue,
+    );
+  }
 
-    if (this.columns().length === 0) {
-      issues.push({
-        id: `${this.id}:noColumns`,
-        severity: 'warning',
-        title: `${name} has no columns`,
-        detail: 'Add the columns you want the table to show.',
-        widgetId: this.id,
-        view: { kind: 'widgetColumns', widgetId: this.id },
-      });
-    }
+  private duplicateColumnIssue(): ValidationIssue | null {
+    const seen = new Set<string>();
+    if (!this.columns().some((c) => !seen.add(c.columnId))) return null;
+    return this.issue(
+      'duplicateColumn',
+      'error',
+      `${this.label()} has a duplicated column`,
+      'The same dataset column has been added more than once.',
+      this.columnsView(),
+    );
+  }
 
+  private noColumnsIssue(): ValidationIssue | null {
+    if (this.columns().length > 0) return null;
+    return this.issue(
+      'noColumns',
+      'warning',
+      `${this.label()} has no columns`,
+      'Add the columns you want the table to show.',
+      this.columnsView(),
+    );
+  }
+
+  /** Sorting by a hidden column is a warning; sorting by a column the dataset no longer has is broken. */
+  private sortColumnIssue(): ValidationIssue | null {
     const sortColumnId = this.sortColumnId();
-    if (sortColumnId && !this.columns().some((c) => c.columnId === sortColumnId)) {
-      // Distinguish "sorts by a column that's valid but just not shown" (fine to leave, or fix
-      // by re-adding it) from "sorts by a column the dataset no longer has at all" (a real
-      // break — the sort can never work again until it's repointed).
-      const schema = this.schema();
-      if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
-        issues.push({
-          id: `${this.id}:sortColumnMissing`,
-          severity: 'error',
-          title: `${name} sorts by a column that no longer exists`,
-          detail: 'That dataset column was removed. Pick a different sort column.',
-          widgetId: this.id,
-          view: { kind: 'widgetColumns', widgetId: this.id },
-        });
-      } else {
-        issues.push({
-          id: `${this.id}:sortColumn`,
-          severity: 'warning',
-          title: `${name} sorts by a column it doesn't show`,
-          detail: 'Add that column back, or sort by one that is displayed.',
-          widgetId: this.id,
-          view: { kind: 'widgetColumns', widgetId: this.id },
-        });
-      }
-    }
+    if (!sortColumnId || this.column(sortColumnId)) return null;
 
-    return issues;
+    const schema = this.schema();
+    if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {
+      return this.issue(
+        'sortColumnMissing',
+        'error',
+        `${this.label()} sorts by a column that no longer exists`,
+        'That dataset column was removed. Pick a different sort column.',
+        this.columnsView(),
+      );
+    }
+    return this.issue(
+      'sortColumn',
+      'warning',
+      `${this.label()} sorts by a column it doesn't show`,
+      'Add that column back, or sort by one that is displayed.',
+      this.columnsView(),
+    );
+  }
+
+  private columnsView(): PanelView {
+    return { kind: 'widgetColumns', widgetId: this.id };
   }
 }

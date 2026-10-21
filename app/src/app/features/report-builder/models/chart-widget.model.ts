@@ -1,4 +1,4 @@
-import { Signal, WritableSignal, computed, signal } from '@angular/core';
+import { Signal, WritableSignal, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   AxisLabelRotation,
@@ -16,53 +16,44 @@ import { ChartBindingModel } from './chart-binding.model';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /**
- * Shared behaviour for every chart kind (scatter, line, bar). Owns the series bindings, value
- * axes, tolerance bands, tooltip columns, and appearance — everything not specific to how one
- * kind is drawn. Concrete subclasses add their presentation signals and assemble their DTO.
- *
- * Each binding carries its own dataset/axes/filter (see {@link ChartBindingModel}). The editor
- * still targets a single binding, so the dataset/axis/series/filter accessors delegate to
- * {@link primaryBinding}; tolerance bands, tooltip columns, and appearance are chart-wide.
+ * Shared behaviour for every chart kind: series bindings, value axes, tolerance bands, guide lines,
+ * tooltip columns and appearance. Subclasses add their presentation signals and build their DTO.
+ * The editor still targets one binding, so the dataset/axis/filter accessors delegate to the first.
  */
 export abstract class ChartWidgetModel extends WidgetModel {
-  /** The datasets overlaid on this chart, in draw order. Always at least one. */
+  /** The datasets overlaid on this chart, in draw order; always at least one. */
   public readonly bindings = signal<readonly ChartBindingModel[]>([]);
 
   public readonly xAxisLabel = signal('');
   public readonly yAxisLabel = signal('');
-  /** The value (Y) axes this chart plots against; the first is the primary. Always at least one. */
+  /** The value axes; the first is the primary. Always at least one. */
   public readonly yAxes = signal<readonly ChartValueAxis[]>([]);
-  /** Fixed X-axis bounds (null auto-fits), log scale, tick interval, and label orientation — the
-   * X counterparts of a value axis's own. `xAxisRotate` is null when left at the default. */
+  /** X-axis bounds (null auto-fits), scale and labels; `xAxisRotate` is null at the default. */
   public readonly xAxisMin = signal<number | null>(null);
   public readonly xAxisMax = signal<number | null>(null);
   public readonly xLogScale = signal(false);
   public readonly xAxisInterval = signal<number | null>(null);
   public readonly xAxisRotate = signal<AxisLabelRotation | null>(null);
   public readonly xAxisScale = signal(false);
-  /** Mouse-wheel/drag zoom (+ slider) along the X axis; `zoomY` adds the same on the Y axis. */
   public readonly zoom = signal(true);
   public readonly zoomY = signal(false);
-  /** Plot gridlines (defaults on); value labels beside marks; colour point marks by value. */
   public readonly showGridLines = signal(true);
   public readonly showValueLabels = signal(false);
   public readonly colorByValue = signal(false);
-  /** Fits and draws a least-squares trend line per series. Point charts only. */
+  /** Point charts only. */
   public readonly showTrendLine = signal(false);
   public readonly showLegend = signal(true);
   public readonly pointSize = signal(8);
 
-  /** Reference lines per spec, each resolved against its own limits dataset. */
   public readonly toleranceBands = signal<readonly ChartToleranceBand[]>([]);
-  /** Dashed, labelled lines at fixed values — the simpler alternative to a tolerance band. */
   public readonly guideLines = signal<readonly ChartGuideLine[]>([]);
-  /** Extra fields shown in a point's tooltip, beyond X/Y. */
   public readonly tooltipColumns = signal<readonly ChartTooltipColumn[]>([]);
 
-  /** Kept so bindings added later can reuse the same schema/catalogue look-ups. */
+  /** Kept so bindings added later reuse the same look-ups. */
   private readonly sources: ModelSources;
 
   constructor(widget: ChartWidget, sources: ModelSources) {
@@ -72,7 +63,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
     this.xAxisLabel.set(config.xAxisLabel);
     this.yAxisLabel.set(config.yAxisLabel);
-    // Folds a pre-multi-axis config's single yAxisLabel into one primary axis.
+    // Folds an older single yAxisLabel into one primary axis.
     this.yAxes.set(readChartAxes(config));
     this.xAxisMin.set(config.xAxisMin ?? null);
     this.xAxisMax.set(config.xAxisMax ?? null);
@@ -80,10 +71,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.xAxisInterval.set(config.xAxisInterval ?? null);
     this.xAxisRotate.set(config.xAxisRotate ?? null);
     this.xAxisScale.set(config.xAxisScale ?? false);
-    // Charts saved before zoom existed default it on, matching a fresh chart.
+    // Older charts saved before zoom existed default it on.
     this.zoom.set(config.zoom ?? true);
     this.zoomY.set(config.zoomY ?? false);
-    // Gridlines default on for charts saved before the toggle existed.
     this.showGridLines.set(config.showGridLines ?? true);
     this.showValueLabels.set(config.showValueLabels ?? false);
     this.colorByValue.set(config.colorByValue ?? false);
@@ -94,21 +84,21 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.guideLines.set(config.guideLines ?? []);
     this.tooltipColumns.set(config.tooltipColumns ?? []);
 
-    // A saved chart carries its bindings; a fresh one seeds a single empty binding to bind.
+    // A fresh chart seeds one empty binding to bind.
     const seeded = config.bindings?.length
       ? config.bindings
       : [{ id: crypto.randomUUID(), ...EMPTY_CHART_BINDING }];
-    this.bindings.set(seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)));
+    this.bindings.set(
+      seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)),
+    );
   }
 
-  // --- bindings ------------------------------------------------------------
-
-  /** One binding by id, or null when it isn't on this chart (e.g. just removed). */
+  /** Null when the binding isn't on this chart, e.g. just removed. */
   public binding(id: string): ChartBindingModel | null {
     return this.bindings().find((b) => b.id === id) ?? null;
   }
 
-  /** Appends a fresh, unbound series to overlay another dataset; returns its id. */
+  /** Appends an unbound series and returns its id. */
   public addBinding(): string {
     const dto: ChartSeriesBinding = { id: crypto.randomUUID(), ...EMPTY_CHART_BINDING };
     const model = new ChartBindingModel(dto, this.sources, this.id, this.toleranceBands);
@@ -116,28 +106,26 @@ export abstract class ChartWidgetModel extends WidgetModel {
     return model.id;
   }
 
-  /** Removes a series; the last one stays, so a chart always has a binding. */
+  /** The last binding stays, so a chart always has one. */
   public removeBinding(id: string): void {
     this.bindings.update((bindings) =>
       bindings.length <= 1 ? bindings : bindings.filter((b) => b.id !== id),
     );
   }
 
-  // --- value axes ----------------------------------------------------------
-
-  /** Appends a fresh value axis (opposite side to balance the plot) and returns its id. */
+  /** Appends a value axis and returns its id. */
   public addYAxis(): string {
     const axis: ChartValueAxis = {
       id: crypto.randomUUID(),
       label: '',
-      // A second axis is most useful on the right; further ones alternate sides.
+      // A second axis goes on the right; further ones alternate sides.
       side: this.yAxes().length % 2 === 1 ? 'right' : 'left',
     };
     this.yAxes.update((axes) => [...axes, axis]);
     return axis.id;
   }
 
-  /** Removes a value axis; the primary (first) stays. Bindings and bands on it fall back to the primary. */
+  /** The primary axis stays; bindings and bands on a removed axis fall back to it. */
   public removeYAxis(id: string): void {
     let removed = false;
     this.yAxes.update((axes) => {
@@ -162,23 +150,19 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.yAxes.update((axes) => axes.map((a) => (a.id === id ? { ...a, ...patch } : a)));
   }
 
-  /** Swapping dataset invalidates the primary binding's columns, and the chart-wide tooltip. */
   public setDataset(datasetId: number | null): void {
     const primary = this.primaryBinding();
     if (datasetId === primary.datasetId()) return;
     primary.setDataset(datasetId);
-    // Tooltip columns are chart-wide but keyed to the old schema, so they clear too.
+    // Tooltip columns are chart-wide but keyed to the old schema.
     this.tooltipColumns.set([]);
   }
-
-  // --- tolerance bands -----------------------------------------------------
 
   public addToleranceBand(): string {
     const band: ChartToleranceBand = {
       id: crypto.randomUUID(),
       axis: 'y',
-      // 0 / '' are the "not pointed at a spec yet" placeholders; such a band is left out of
-      // the saved config (see chartConfigBaseDto) until the user finishes filling it in.
+      // 0 and '' mean "no spec picked yet"; such a band is left out of the saved config.
       sourceDatasetId: 0,
       sourceRowId: '',
       minColumnId: '',
@@ -199,8 +183,6 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public toleranceBand(id: string): ChartToleranceBand | null {
     return this.toleranceBands().find((b) => b.id === id) ?? null;
   }
-
-  // --- guide lines -----------------------------------------------------
 
   public addGuideLine(): string {
     const line: ChartGuideLine = {
@@ -225,9 +207,6 @@ export abstract class ChartWidgetModel extends WidgetModel {
     return this.guideLines().find((l) => l.id === id) ?? null;
   }
 
-  // --- tooltip columns -----------------------------------------------------
-
-  /** Adds the first dataset column not already shown in the tooltip. */
   public addTooltipColumn(): void {
     const used = new Set(this.tooltipColumns().map((c) => c.columnId));
     const next = (this.schema()?.columns ?? []).find((c) => !used.has(c.id));
@@ -248,7 +227,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     );
   }
 
-  /** Swaps which column a tooltip entry shows, dropping a duplicate if that column is already added. */
+  /** Drops the entry instead when the new column is already shown. */
   public replaceTooltipColumn(oldColumnId: string, newColumnId: string): void {
     if (oldColumnId === newColumnId) return;
     this.tooltipColumns.update((cols) =>
@@ -258,23 +237,19 @@ export abstract class ChartWidgetModel extends WidgetModel {
     );
   }
 
-  // --- serialisation & validation ------------------------------------------
-
-  /** The chart config fields common to every kind, for a subclass to spread into its own DTO. */
+  /** The config fields common to every chart kind, for a subclass to spread into its DTO. */
   public chartConfigBaseDto(): Omit<ChartWidgetConfigBase, 'type'> {
     return {
       ...this.baseConfigDto(),
       bindings: this.bindings().map((b) => b.toDto()),
       yAxes: this.yAxes().map((a) => ({ ...a })),
       xAxisLabel: this.xAxisLabel(),
-      // Mirror the primary axis's label onto the deprecated flat field so a chart saved here
-      // still reads sensibly through any pre-multi-axis code path.
+      // Mirrored onto the deprecated flat field for older readers.
       yAxisLabel: this.yAxes()[0]?.label ?? this.yAxisLabel(),
       xAxisMin: this.xAxisMin(),
       xAxisMax: this.xAxisMax(),
       xLogScale: this.xLogScale(),
       xAxisInterval: this.xAxisInterval(),
-      // Null (the default) round-trips as an absent field, matching the optional config shape.
       xAxisRotate: this.xAxisRotate() ?? undefined,
       xAxisScale: this.xAxisScale(),
       zoom: this.zoom(),
@@ -285,9 +260,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
       showTrendLine: this.showTrendLine(),
       showLegend: this.showLegend(),
       pointSize: this.pointSize(),
-      // A band not yet pointed at a spec is left out — the server's Guid fields can't parse the
-      // empty placeholder, and a half-built band shouldn't block autosave. It stays in the signal
-      // so a mid-edit panel can still find it.
+      // A band with no spec yet is left out: the server can't parse the empty ids, and it
+      // shouldn't block autosave. It stays in the signal so the panel can still edit it.
       toleranceBands: this.toleranceBands()
         .filter((b) => b.sourceDatasetId && b.sourceRowId && b.minColumnId && b.maxColumnId)
         .map((b) => ({ ...b })),
@@ -302,8 +276,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     return this.bindings();
   }
 
-  // Validates every binding, not just the first, so a half-configured overlaid dataset
-  // (which ChartQuery.build would silently skip) still raises a warning.
+  // Checks every binding, so a half-configured overlay (which the query skips) still warns.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
     const bindings = this.bindings();
@@ -313,23 +286,23 @@ export abstract class ChartWidgetModel extends WidgetModel {
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (dataset ${i + 1})` : name;
       if (!binding.datasetId()) {
-        issues.push({
-          id: `${this.id}:noDataset:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noDataset:${binding.id}`,
+            'warning',
+            `${where} has no dataset`,
+            'Pick a dataset so the chart has something to plot.',
+          ),
+        );
       } else if (!binding.xColumnId() || !binding.yColumnId()) {
-        issues.push({
-          id: `${this.id}:noAxes:${binding.id}`,
-          severity: 'warning',
-          title: `${where} is missing an axis`,
-          detail: 'Pick both an X and a Y column to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noAxes:${binding.id}`,
+            'warning',
+            `${where} is missing an axis`,
+            'Pick both an X and a Y column to plot.',
+          ),
+        );
       }
     });
 
@@ -337,12 +310,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
   }
 
   /**
-   * Dangling-reference checks shared by every chart kind's `ownIssues()` — a tooltip column or
-   * tolerance-band column that pointed at a real dataset column when it was picked, but that
-   * column has since been removed. Chart-wide (tooltip columns and tolerance bands are plain
-   * data on the widget, not their own {@link EditorNode}s), so unlike the per-binding check in
-   * {@link ChartBindingModel}, every concrete subclass must call this itself alongside its own
-   * checks — none of them delegate to this base class's `ownIssues()`.
+   * Checks that tooltip columns and tolerance-band columns still exist. Every subclass calls this
+   * from its own `ownIssues()`, since none delegate to the base implementation.
    */
   public sharedChartIssues(): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
@@ -351,21 +320,22 @@ export abstract class ChartWidgetModel extends WidgetModel {
     if (schema) {
       const columnIds = new Set(schema.columns.map((c) => c.id));
       if (this.tooltipColumns().some((c) => !columnIds.has(c.columnId))) {
-        issues.push({
-          id: `${this.id}:tooltipMissingColumn`,
-          severity: 'error',
-          title: `${this.label()} shows a tooltip column that no longer exists`,
-          detail: 'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            'tooltipMissingColumn',
+            'error',
+            `${this.label()} shows a tooltip column that no longer exists`,
+            'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
+          ),
+        );
       }
     }
 
-    // A tolerance band points at its own "limits" dataset — separate from whatever the chart
-    // itself plots — so it's checked against that dataset's schema, not the chart's.
+    // A band reads its own limits dataset, so it's checked against that schema.
     for (const band of this.toleranceBands()) {
-      const bandSchema = band.sourceDatasetId ? (this.sources.schemas()[band.sourceDatasetId] ?? null) : null;
+      const bandSchema = band.sourceDatasetId
+        ? (this.sources.schemas()[band.sourceDatasetId] ?? null)
+        : null;
       if (!bandSchema) continue;
 
       const columnIds = new Set(bandSchema.columns.map((c) => c.id));
@@ -377,23 +347,22 @@ export abstract class ChartWidgetModel extends WidgetModel {
       ].filter((id): id is string => !!id);
 
       if (pointers.some((id) => !columnIds.has(id))) {
-        issues.push({
-          id: `${this.id}:tolerance:${band.id}:missingColumn`,
-          severity: 'error',
-          title: `${this.label()}'s tolerance band points at a removed column`,
-          detail: `"${bandSchema.name}" no longer has one of the columns this band uses. Re-point it or remove the band.`,
-          widgetId: this.id,
-          view: { kind: 'chartToleranceBand', widgetId: this.id, bandId: band.id },
-        });
+        issues.push(
+          this.issue(
+            `tolerance:${band.id}:missingColumn`,
+            'error',
+            `${this.label()}'s tolerance band points at a removed column`,
+            `"${bandSchema.name}" no longer has one of the columns this band uses. Re-point it or remove the band.`,
+            { kind: 'chartToleranceBand', widgetId: this.id, bandId: band.id },
+          ),
+        );
       }
     }
 
     return issues;
   }
 
-  // --- primary-binding accessors -------------------------------------------
-  // Kept so the panel, validation, and schema-loading read the same shape they did when this
-  // state lived directly on the widget. Removed once callers move to iterate `bindings`.
+  // Primary-binding accessors, kept until callers iterate `bindings` directly.
 
   public get datasetId(): WritableSignal<number | null> {
     return this.primaryBinding().datasetId;
@@ -420,7 +389,6 @@ export abstract class ChartWidgetModel extends WidgetModel {
     return this.primaryBinding().axisColumns;
   }
 
-  /** The first binding — the one the delegating accessors above read through. */
   private primaryBinding(): ChartBindingModel {
     return this.bindings()[0];
   }

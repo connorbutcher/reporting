@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminAreaGuard, fullAdminGuard, groupManagerGuard } from './features/admin/admin.guard';
-import { unsavedChangesGuard } from './features/report-builder/report-canvas/unsaved-changes.guard';
+import { UnsavedChangesGuard } from './features/report-builder/report-canvas/unsaved-changes.guard';
 
 export const routes: Routes = [
   {
@@ -59,7 +59,7 @@ export const routes: Routes = [
       import('./features/report-builder/report-canvas/report-canvas.component').then(
         (m) => m.ReportCanvasComponent,
       ),
-    canDeactivate: [unsavedChangesGuard],
+    canDeactivate: [UnsavedChangesGuard.canDeactivate],
   },
   {
     // The datasets of a report's checked-out draft are managed here, reached from the builder.

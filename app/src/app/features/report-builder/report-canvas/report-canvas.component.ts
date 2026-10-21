@@ -15,11 +15,8 @@ import { CanvasStatusComponent } from './canvas-status/canvas-status.component';
 import { CanvasTabsComponent } from './canvas-tabs/canvas-tabs.component';
 
 /**
- * The report builder screen. A thin shell: it provides the state services (see
- * `providers` below) — which load the report reactively from the route id
- * themselves — guards against leaving with unsaved changes, and lays out the
- * toolbar, canvas, and side panel. Everything else lives in those services and
- * the child components, which inject the ones they need directly.
+ * The report builder screen: provides the state services, guards against leaving with unsaved
+ * changes, and lays out the toolbar, canvas and side panel.
  */
 @Component({
   selector: 'app-report-canvas',
@@ -33,9 +30,7 @@ import { CanvasTabsComponent } from './canvas-tabs/canvas-tabs.component';
   ],
   templateUrl: './report-canvas.component.html',
   styleUrl: './report-canvas.component.scss',
-  // The report-builder state is split across focused collaborator services; all
-  // are provided here so they share one component-scoped instance per screen, and
-  // the sub-components inject the ones they need directly.
+  // One instance of each state service per screen; child components inject what they need.
   providers: [
     WidgetSelection,
     ReportSession,
@@ -51,21 +46,20 @@ import { CanvasTabsComponent } from './canvas-tabs/canvas-tabs.component';
   },
 })
 export class ReportCanvasComponent {
-  // Injected so the component-scoped services are constructed and their route-driven
-  // load kicks off; also read below for the unsaved-changes guards.
+  // Injecting it starts the route-driven load.
   private readonly lifecycle = inject(ReportLifecycle);
   private readonly autosave = inject(ReportAutosave);
 
-  /** Browser-level guard for closing the tab or reloading. */
-  protected onBeforeUnload(event: BeforeUnloadEvent): void {
+  /** Guards closing the tab or reloading. */
+  public onBeforeUnload(event: BeforeUnloadEvent): void {
     if (!this.lifecycle.hasUnsavedRisk()) return;
     event.preventDefault();
-    // Chrome ignores the message and shows its own; older browsers read it.
+    // Chrome shows its own message; older browsers read this.
     event.returnValue = true;
   }
 
-  /** In-app guard for navigating away, e.g. back to the home page. Public so the route guard can call it. */
-  canLeave(): boolean {
+  /** Guards in-app navigation; called by the route guard. */
+  public canLeave(): boolean {
     if (!this.lifecycle.hasUnsavedRisk()) return true;
     return window.confirm(
       this.autosave.saveFailed()

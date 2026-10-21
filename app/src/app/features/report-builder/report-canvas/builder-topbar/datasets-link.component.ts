@@ -2,7 +2,6 @@ import { Component, computed, inject } from '@angular/core';
 import { ReportSession } from '../../state/report-session';
 import { TopbarLinkComponent } from './topbar-link.component';
 
-/** Secondary navigation to the report's dataset editor. */
 @Component({
   selector: 'app-datasets-link',
   imports: [TopbarLinkComponent],
@@ -18,7 +17,7 @@ import { TopbarLinkComponent } from './topbar-link.component';
   `,
 })
 export class DatasetsLinkComponent {
-  private readonly session = inject(ReportSession);
+  public readonly reportId = computed(() => this.session.model()?.reportId ?? null);
 
-  protected readonly reportId = computed(() => this.session.model()?.reportId ?? null);
+  private readonly session = inject(ReportSession);
 }

@@ -8,35 +8,29 @@ import { StaticTextWidgetConfig, TextFontWeight } from '../../../../core/models/
   styleUrl: './static-text-widget.component.scss',
 })
 export class StaticTextWidgetComponent {
-  readonly config = input.required<StaticTextWidgetConfig>();
+  public readonly config = input.required<StaticTextWidgetConfig>();
+  public readonly hasContent = computed(() => this.config().content.trim().length > 0);
 
-  protected readonly hasContent = computed(() => this.config().content.trim().length > 0);
-
-  /**
-   * Only the properties that actually vary go through the style binding;
-   * layout structure stays in the stylesheet. Colours come from a native
-   * `<input type="color">` in the side panel, which only ever yields a valid
-   * `#rrggbb` value, so there is no free-text CSS to sanitise here.
-   */
-  protected readonly containerStyle = computed(() => {
+  /** Colours come from a native colour input, which only yields `#rrggbb`, so nothing needs sanitising. */
+  public readonly containerStyle = computed(() => {
     const c = this.config();
-    return joinStyle({
+    return StaticTextWidgetComponent.joinStyle({
       padding: `${c.padding}px`,
       background: c.backgroundColor ?? 'transparent',
-      'justify-content': verticalAlignCss(c.verticalAlign),
+      'justify-content': StaticTextWidgetComponent.verticalAlignCss(c.verticalAlign),
       'overflow-x': c.wrap ? 'hidden' : 'auto',
     });
   });
 
-  protected readonly contentStyle = computed(() => {
+  public readonly contentStyle = computed(() => {
     const c = this.config();
     const decorations = [c.underline && 'underline', c.strikethrough && 'line-through']
       .filter(Boolean)
       .join(' ');
 
-    return joinStyle({
+    return StaticTextWidgetComponent.joinStyle({
       'font-size': `${c.fontSize}px`,
-      'font-weight': String(fontWeightCss(c.fontWeight)),
+      'font-weight': String(StaticTextWidgetComponent.fontWeightCss(c.fontWeight)),
       'font-style': c.italic ? 'italic' : 'normal',
       'text-decoration': decorations || 'none',
       'line-height': String(c.lineHeight),
@@ -46,34 +40,34 @@ export class StaticTextWidgetComponent {
       'overflow-wrap': c.wrap ? 'break-word' : 'normal',
     });
   });
-}
 
-function fontWeightCss(weight: TextFontWeight): number {
-  switch (weight) {
-    case 'medium':
-      return 500;
-    case 'semibold':
-      return 600;
-    case 'bold':
-      return 700;
-    default:
-      return 400;
+  private static fontWeightCss(weight: TextFontWeight): number {
+    switch (weight) {
+      case 'medium':
+        return 500;
+      case 'semibold':
+        return 600;
+      case 'bold':
+        return 700;
+      default:
+        return 400;
+    }
   }
-}
 
-function verticalAlignCss(align: StaticTextWidgetConfig['verticalAlign']): string {
-  switch (align) {
-    case 'middle':
-      return 'center';
-    case 'bottom':
-      return 'flex-end';
-    default:
-      return 'flex-start';
+  private static verticalAlignCss(align: StaticTextWidgetConfig['verticalAlign']): string {
+    switch (align) {
+      case 'middle':
+        return 'center';
+      case 'bottom':
+        return 'flex-end';
+      default:
+        return 'flex-start';
+    }
   }
-}
 
-function joinStyle(props: Record<string, string>): string {
-  return Object.entries(props)
-    .map(([key, value]) => `${key}:${value}`)
-    .join(';');
+  private static joinStyle(props: Record<string, string>): string {
+    return Object.entries(props)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(';');
+  }
 }

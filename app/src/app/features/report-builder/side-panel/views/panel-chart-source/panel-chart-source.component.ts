@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { ChartWidgetModel } from '../../../models/widget.model';
-import { ChartTypePanelDirective, ChartTypePanels } from '../../chart-type-panel.directive';
+import { ChartTypePanelDirective } from '../../chart-type-panel.directive';
+import { ChartTypePanels } from '../../chart-type-panels';
 import { PanelBarChartSourceComponent } from '../panel-bar-chart-source/panel-bar-chart-source.component';
 import { PanelBoxPlotSourceComponent } from '../panel-box-plot-source/panel-box-plot-source.component';
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';

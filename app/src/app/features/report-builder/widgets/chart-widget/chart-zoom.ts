@@ -1,16 +1,11 @@
-/** A zoom window along a chart's X axis, as percentages of the full range. */
-export interface ChartZoomRange {
-  start: number;
-  end: number;
-}
+import { ChartZoomRange } from './models/chart-zoom-range';
 
 /**
- * Remembers each chart's X zoom for the rest of the reader's browser session, so a reload or a filter
- * change doesn't snap a long series back to the full range. Kept in sessionStorage (per viewer, per tab),
- * which can be unavailable — every access is guarded and the chart simply starts unzoomed then.
+ * Remembers each chart's X zoom in sessionStorage so reloads and filter changes keep it. Storage
+ * can be unavailable, so every access is guarded.
  */
 export class ChartZoomMemory {
-  /** The id a point chart's value-axis (Y) zoom carries, so a remembered X window isn't applied to it. */
+  /** The id of a point chart's Y zoom, so a remembered X window isn't applied to it. */
   public static readonly VALUE_ZOOM_ID = 'value-zoom';
 
   private static readonly PREFIX = 'chart-zoom:';
@@ -40,10 +35,7 @@ export class ChartZoomMemory {
     }
   }
 
-  /**
-   * The zoom window an echarts `datazoom` event describes — a single window, or the first of a
-   * batch (the slider and inside zoom move together) — or null when it carries no percentages.
-   */
+  /** The window a `datazoom` event describes (the first of a batch), or null without percentages. */
   public static fromEvent(event: unknown): ChartZoomRange | null {
     const e = event as {
       start?: number;
@@ -56,8 +48,6 @@ export class ChartZoomMemory {
       : null;
   }
 
-
-  /** Applies a remembered window to every zoom of a built option along its X (or category) axis. */
   public static apply<T extends { dataZoom?: unknown }>(
     option: T,
     range: ChartZoomRange | null,

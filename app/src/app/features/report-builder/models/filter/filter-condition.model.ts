@@ -8,9 +8,9 @@ import {
 } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
-import { findProblem, problemCue, problemIssue } from './filter-condition-problem';
+import { ConditionProblems } from './condition-problems';
 import { FilterContext } from './filter-context';
-import { offerableOperators } from './offerable-operators';
+import { OfferableOperators } from './offerable-operators';
 
 /** One `column operator value(s)` test. */
 export class FilterConditionModel extends EditorNode {
@@ -24,7 +24,6 @@ export class FilterConditionModel extends EditorNode {
     () => this.context.schema()?.columns.find((c) => c.id === this.columnId()) ?? null,
   );
 
-  /** The column has tolerance banding in this context. */
   public readonly isTolerant: Signal<boolean> = computed(
     () => this.context.tolerantColumns?.().has(this.columnId()) ?? false,
   );
@@ -33,10 +32,9 @@ export class FilterConditionModel extends EditorNode {
     const type = this.schemaColumn()?.type;
     const catalogue = this.context.catalogue();
     if (!type || !catalogue) return [];
-    return offerableOperators(catalogue[type] ?? [], this.isTolerant(), this.operator());
+    return OfferableOperators.of(catalogue[type] ?? [], this.isTolerant(), this.operator());
   });
 
-  /** Drives how many operand inputs to render. */
   public readonly descriptor: Signal<OperatorDescriptor | null> = computed(
     () => this.availableOperators().find((o) => o.value === this.operator()) ?? null,
   );
@@ -45,7 +43,7 @@ export class FilterConditionModel extends EditorNode {
     Array.from({ length: this.descriptor()?.operandCount ?? 0 }, (_, i) => i),
   );
 
-  /** The schema has loaded and lacks this column. False while it's pending, so a slow fetch isn't read as a deleted column. */
+  /** False while the schema is pending, so a slow fetch isn't read as a deleted column. */
   public readonly columnMissing = computed(() => !!this.context.schema() && !this.schemaColumn());
 
   /** Reads as complete while operators are unknown, so a pending schema drops nothing. */
@@ -57,12 +55,12 @@ export class FilterConditionModel extends EditorNode {
   /** Why this row isn't narrowing the data; null when fine or disabled. */
   public readonly problem = computed(() => {
     const problem = this.currentProblem();
-    return problem && problemCue(problem);
+    return problem && ConditionProblems.cue(problem);
   });
 
   private readonly currentProblem = computed(() =>
     this.enabled()
-      ? findProblem({
+      ? ConditionProblems.find({
           columnMissing: this.columnMissing(),
           toleranceMissing: TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant(),
           complete: this.isComplete(),
@@ -97,7 +95,6 @@ export class FilterConditionModel extends EditorNode {
   }
 
   public setOperator(operator: FilterOperator): void {
-    if (operator === this.operator()) return;
     this.operator.set(operator);
 
     const needed = this.availableOperators().find((o) => o.value === operator)?.operandCount ?? 0;
@@ -144,6 +141,12 @@ export class FilterConditionModel extends EditorNode {
   public override ownIssues(): ValidationIssue[] {
     const problem = this.currentProblem();
     if (!problem) return [];
-    return [problemIssue(problem, `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`, this.context)];
+    return [
+      ConditionProblems.issue(
+        problem,
+        `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`,
+        this.context,
+      ),
+    ];
   }
 }

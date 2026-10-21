@@ -9,15 +9,20 @@ import { ValidationIssue } from '../../../models/validation-issue';
   styleUrl: './panel-issues.component.scss',
 })
 export class PanelIssuesComponent {
-  static readonly title = 'Report issues';
+  public static readonly title = 'Report issues';
 
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  protected readonly issues = this.session.issues;
-  protected readonly saveBlocked = this.session.saveBlocked;
-
-  protected goToIssue(issue: ValidationIssue): void {
+  public goToIssue(issue: ValidationIssue): void {
     this.navigation.goToIssue(issue);
+  }
+
+  public get issues() {
+    return this.session.issues;
+  }
+
+  public get saveBlocked() {
+    return this.session.saveBlocked;
   }
 }

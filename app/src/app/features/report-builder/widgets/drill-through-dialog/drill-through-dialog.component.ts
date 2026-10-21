@@ -2,23 +2,12 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../core/models/dataset';
-import { FilterGroup } from '../../../../core/models/filter';
 import { DEFAULT_TABLE_CONFIG, DataTableWidgetConfig } from '../../../../core/models/report';
 import { DataTableWidgetComponent } from '../data-table-widget/data-table-widget.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
+import { DrillThroughDialogData } from './drill-through-dialog-data';
 
-/** What a pivot hands the drill-through view: the dataset, a heading, and the filter selecting the rows behind a cell. */
-export interface DrillThroughDialogData {
-  datasetId: number;
-  title: string;
-  /** The pivot's own filters together with the clicked group's conditions. */
-  filter: FilterGroup | null;
-}
-
-/**
- * The rows behind one pivot cell, as a searchable, exportable data table of every dataset column. It
- * reuses the data table widget as-is, configured on the fly, so the rows read exactly as a table would.
- */
+/** The rows behind a drilled cell, shown with the data table widget configured on the fly. */
 @Component({
   selector: 'app-drill-through-dialog',
   imports: [DataTableWidgetComponent, WidgetExportActionsComponent],
@@ -31,7 +20,6 @@ export class DrillThroughDialogComponent {
 
   public readonly error = signal(false);
 
-  /** A plain table of every dataset column, with a search box, scrolling through every matched row. */
   public readonly config = computed<DataTableWidgetConfig | null>(() => {
     const columns = this.columns();
     if (!columns) return null;

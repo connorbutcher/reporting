@@ -3,7 +3,7 @@ import { HistogramWidgetModel } from '../../../models/widget.model';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 
-/** The histogram's data source: each overlaid distribution picks its own dataset and column. */
+/** Each overlaid distribution picks its own dataset and column. */
 @Component({
   selector: 'app-panel-histogram-source',
   imports: [PanelGroupComponent, PanelChartSeriesListComponent],

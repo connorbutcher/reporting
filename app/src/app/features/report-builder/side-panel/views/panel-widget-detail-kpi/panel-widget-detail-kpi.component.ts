@@ -19,7 +19,6 @@ import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The KPI branch of the widget-detail panel: dataset, value, comparison, and appearance. */
 @Component({
   selector: 'app-panel-widget-detail-kpi',
   imports: [
@@ -65,13 +64,13 @@ export class PanelWidgetDetailKpiComponent {
     { label: 'Lower is better', value: 'lowerIsBetter' },
   ];
 
-  /** The date-column + period-length fields are shared by the previous-period comparison and the sparkline, so they show whenever either needs them. */
+  /** The previous-period comparison and the sparkline both use the date column and period. */
   public readonly needsDateColumn = computed(() => {
     const kpi = this.kpi();
     return kpi.comparisonMode() === 'previousPeriod' || kpi.showSparkline();
   });
 
-  /** Direction drives both the trend's sentiment and the threshold bands, so it shows whenever either is in play. */
+  /** Direction drives the trend's sentiment and the threshold bands. */
   public readonly needsDirection = computed(() => {
     const kpi = this.kpi();
     return kpi.comparisonMode() !== 'none' || kpi.thresholdsEnabled();
@@ -84,7 +83,6 @@ export class PanelWidgetDetailKpiComponent {
     this.navigation.navigate(view);
   }
 
-  /** The datasets on this report, for the data-source picker. */
   public get datasets(): Signal<DatasetSummary[]> {
     return this.session.datasets;
   }

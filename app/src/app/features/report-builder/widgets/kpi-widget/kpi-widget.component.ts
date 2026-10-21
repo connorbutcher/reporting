@@ -2,52 +2,22 @@ import { Component, Signal, computed, effect, inject, input, untracked } from '@
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { KpiWidgetConfig } from '../../../../core/models/report';
-import { KpiGroupResult, KpiHistoryPoint, KpiQueryResult } from '../../../../core/models/widget-query';
-import { toCsv } from '../csv.util';
-import { resolveWidgetFilter } from '../effective-filter';
+import {
+  KpiGroupResult,
+  KpiHistoryPoint,
+  KpiQueryResult,
+} from '../../../../core/models/widget-query';
+import { Csv } from '../csv';
+import { EffectiveFilter } from '../effective-filter';
+import { KpiQuery } from './kpi-query';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
-const SPARKLINE_WIDTH = 100;
-const SPARKLINE_HEIGHT = 28;
-
-/** A short word for what the figure is being measured against, for the trend caption. */
-function comparisonCaption(config: KpiWidgetConfig): string {
-  switch (config.comparisonMode) {
-    case 'fixedTarget':
-      return 'target';
-    case 'previousPeriod':
-      return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
-    default:
-      return '';
-  }
-}
-
-/** An SVG `<polyline>` points string tracing a trailing history, normalized into a fixed viewBox. Gaps (null buckets) are simply skipped, so the line draws straight across them. */
-function sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
-  const present = history.map((h) => h.value).filter((v): v is number => v !== null);
-  if (present.length < 2) return null;
-
-  const min = Math.min(...present);
-  const max = Math.max(...present);
-  const span = max - min || 1;
-  const stepX = history.length > 1 ? SPARKLINE_WIDTH / (history.length - 1) : 0;
-
-  const points = history
-    .map((point, index) => (point.value === null ? null : { x: index * stepX, y: point.value }))
-    .filter((p): p is { x: number; y: number } => p !== null)
-    .map((p) => `${p.x.toFixed(1)},${(SPARKLINE_HEIGHT - ((p.y - min) / span) * SPARKLINE_HEIGHT).toFixed(1)}`);
-
-  return points.length >= 2 ? points.join(' ') : null;
-}
-
 /**
- * One headline number reduced from a dataset: a plain aggregate, or the count/percent of rows
- * failing a tolerance band, with an optional trend against a fixed target or the previous period,
- * absolute status thresholds, a trailing-history sparkline, a target meter, or — in place of the
- * single value — a capped row of mini-tiles grouped by a dimension column.
+ * A headline number from a dataset (an aggregate, or rows failing a tolerance band), with optional
+ * trend, thresholds, sparkline and target meter, or a row of tiles grouped by a column.
  */
 @Component({
   selector: 'app-kpi-widget',
@@ -56,6 +26,9 @@ function sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
   styleUrl: './kpi-widget.component.scss',
 })
 export class KpiWidgetComponent extends DataWidgetBase {
+  private static readonly SPARKLINE_WIDTH = 100;
+  private static readonly SPARKLINE_HEIGHT = 28;
+
   public readonly config = input.required<KpiWidgetConfig>();
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   public readonly datasetVersion = input(0);
@@ -66,18 +39,11 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   public readonly datasetId = computed(() => this.config().datasetId);
 
-  /** True once a dataset is bound and the value is fully specified for its source. */
-  public readonly configured = computed(() => {
-    const config = this.config();
-    if (!config.datasetId) return false;
-    if (config.valueSource === 'aggregate') {
-      return config.aggregate === 'count' || !!config.valueColumnId;
-    }
-    return !!config.valueColumnId && !!config.tolerance;
-  });
+  public readonly configured = computed(() => KpiQuery.isConfigured(this.config()));
 
-  /** Set when the widget groups by a column — a row of mini-tiles replaces the single value. */
-  public readonly groups = computed<KpiGroupResult[] | null>(() => this.source.result()?.groups ?? null);
+  public readonly groups = computed<KpiGroupResult[] | null>(
+    () => this.source.result()?.groups ?? null,
+  );
 
   public readonly displayValue = computed(() => this.source.result()?.displayValue ?? '—');
   public readonly status = computed(() => this.source.result()?.status ?? 'none');
@@ -89,13 +55,13 @@ export class KpiWidgetComponent extends DataWidgetBase {
   public readonly comparisonLabel = computed(() => {
     const result = this.source.result();
     if (!result || result.comparisonDisplayValue === null) return null;
-    const caption = comparisonCaption(this.config());
+    const caption = KpiWidgetComponent.comparisonCaption(this.config());
     const pct = result.deltaPercent;
     const pctText = pct !== null ? ` (${pct > 0 ? '+' : ''}${pct.toFixed(0)}%)` : '';
     return `vs ${caption} — ${result.comparisonDisplayValue}${pctText}`;
   });
 
-  /** The fixed-target comparison as a 0–100 fill percent, clamped; null when a meter isn't showable. */
+  /** The target comparison as a clamped 0–100 fill percent, or null. */
   public readonly meterPercent = computed(() => {
     const result = this.source.result();
     if (!result || result.value === null || !result.comparisonValue) return null;
@@ -103,23 +69,23 @@ export class KpiWidgetComponent extends DataWidgetBase {
   });
 
   public readonly showMeter = computed(
-    () => this.config().showAsMeter && this.config().comparisonMode === 'fixedTarget' && this.meterPercent() !== null,
+    () =>
+      this.config().showAsMeter &&
+      this.config().comparisonMode === 'fixedTarget' &&
+      this.meterPercent() !== null,
   );
 
-  /** An SVG polyline for the trailing-history sparkline; null when there's nothing to plot. */
   public readonly sparklinePath = computed(() => {
     if (!this.config().showSparkline) return null;
-    return sparklinePoints(this.source.result()?.history ?? []);
+    return KpiWidgetComponent.sparklinePoints(this.source.result()?.history ?? []);
   });
 
   public readonly isTruncated = computed(() => !!this.source.result()?.truncated);
 
-  /** What is narrowing the rows, for the count bar's hover text. */
   public readonly filterLines = computed(() =>
     this.describeFilters([this.effectiveFilter()], this.source.columns()),
   );
 
-  /** The always-on footer text, mirroring the other data widgets' "N of M rows". */
   public readonly countLabel = computed(() => {
     const data = this.source.result();
     if (!data) return '';
@@ -138,7 +104,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
   private readonly datasetApi = inject(DatasetApiService);
 
   private readonly effectiveFilter = computed(() =>
-    resolveWidgetFilter(this.reportFilter(), this.widgetFilter(), this.config().filter),
+    EffectiveFilter.resolve(this.reportFilter(), this.widgetFilter(), this.config().filter),
   );
 
   private readonly source = new WidgetDataSource<KpiQueryResult>({
@@ -147,44 +113,17 @@ export class KpiWidgetComponent extends DataWidgetBase {
     api: this.datasetApi,
     fetch: () => {
       const config = this.config();
-      if (!config.datasetId) return null;
-      if (config.valueSource === 'aggregate' && config.aggregate !== 'count' && !config.valueColumnId) {
-        return null;
-      }
-      if (config.valueSource === 'toleranceOutOfLimits' && (!config.valueColumnId || !config.tolerance)) {
-        return null;
-      }
-
-      return this.datasetApi.queryKpi(config.datasetId, {
-        filter: this.effectiveFilter(),
-        valueSource: config.valueSource,
-        aggregate: config.aggregate,
-        valueColumnId: config.valueColumnId,
-        tolerance: config.tolerance,
-        toleranceStatusMode: config.toleranceStatusMode,
-        showAsPercent: config.showAsPercent,
-        comparisonMode: config.comparisonMode,
-        targetValue: config.targetValue,
-        dateColumnId: config.dateColumnId,
-        periodDays: config.periodDays,
-        direction: config.direction,
-        unitPrefix: config.unitPrefix,
-        unitSuffix: config.unitSuffix,
-        decimalPlaces: config.decimalPlaces,
-        thresholdsEnabled: config.thresholdsEnabled,
-        warningThreshold: config.warningThreshold,
-        criticalThreshold: config.criticalThreshold,
-        showSparkline: config.showSparkline,
-        sparklinePeriods: config.sparklinePeriods,
-        groupByColumnId: config.groupByColumnId,
-        maxGroups: config.maxGroups,
-      });
+      if (!config.datasetId || !KpiQuery.isConfigured(config)) return null;
+      return this.datasetApi.queryKpi(
+        config.datasetId,
+        KpiQuery.request(config, this.effectiveFilter()),
+      );
     },
   });
 
   constructor() {
     super();
-    // Switching datasets reloads immediately; the config-driven reload below debounces.
+    // Switching datasets reloads immediately; the reload below debounces.
     effect(() => {
       const ready = this.configured();
       this.datasetVersion();
@@ -204,34 +143,10 @@ export class KpiWidgetComponent extends DataWidgetBase {
       });
     });
 
-    // Re-reduce whenever the value source, comparison, thresholds, sparkline, grouping, or filter change.
     effect(() => {
       if (!this.configured()) return;
       this.effectiveFilter();
-      const config = this.config();
-      void [
-        config.valueSource,
-        config.aggregate,
-        config.valueColumnId,
-        config.tolerance,
-        config.toleranceStatusMode,
-        config.showAsPercent,
-        config.comparisonMode,
-        config.targetValue,
-        config.dateColumnId,
-        config.periodDays,
-        config.direction,
-        config.unitPrefix,
-        config.unitSuffix,
-        config.decimalPlaces,
-        config.thresholdsEnabled,
-        config.warningThreshold,
-        config.criticalThreshold,
-        config.showSparkline,
-        config.sparklinePeriods,
-        config.groupByColumnId,
-        config.maxGroups,
-      ];
+      this.config();
 
       untracked(() => {
         this.source.loading.set(true);
@@ -241,7 +156,39 @@ export class KpiWidgetComponent extends DataWidgetBase {
     });
   }
 
-  /** Retries the last query after a load failure. */
+  private static comparisonCaption(config: KpiWidgetConfig): string {
+    switch (config.comparisonMode) {
+      case 'fixedTarget':
+        return 'target';
+      case 'previousPeriod':
+        return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
+      default:
+        return '';
+    }
+  }
+
+  /** A polyline points string in a fixed viewBox; null buckets are skipped. */
+  private static sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
+    const present = history.map((h) => h.value).filter((v): v is number => v !== null);
+    if (present.length < 2) return null;
+
+    const min = Math.min(...present);
+    const max = Math.max(...present);
+    const span = max - min || 1;
+    const stepX =
+      history.length > 1 ? KpiWidgetComponent.SPARKLINE_WIDTH / (history.length - 1) : 0;
+
+    const points = history
+      .map((point, index) => (point.value === null ? null : { x: index * stepX, y: point.value }))
+      .filter((p): p is { x: number; y: number } => p !== null)
+      .map(
+        (p) =>
+          `${p.x.toFixed(1)},${(KpiWidgetComponent.SPARKLINE_HEIGHT - ((p.y - min) / span) * KpiWidgetComponent.SPARKLINE_HEIGHT).toFixed(1)}`,
+      );
+
+    return points.length >= 2 ? points.join(' ') : null;
+  }
+
   public retry(): void {
     this.source.error.set(false);
     this.source.loading.set(true);
@@ -252,20 +199,22 @@ export class KpiWidgetComponent extends DataWidgetBase {
     return this.config().title?.trim() || 'kpi';
   }
 
-  /** The figure and its comparison as a one-row CSV, or one row per tile when grouped. */
+  /** One row, or one per tile when grouped. */
   public exportCsv(): string | null {
     const data = this.source.result();
     if (!data) return null;
     if (data.groups) {
-      return toCsv([['Group', 'Value'], ...data.groups.map((g) => [g.label, g.displayValue ?? ''])]);
+      return Csv.fromRows([
+        ['Group', 'Value'],
+        ...data.groups.map((g) => [g.label, g.displayValue ?? '']),
+      ]);
     }
-    return toCsv([
+    return Csv.fromRows([
       ['Value', 'Comparison'],
       [data.displayValue ?? '', data.comparisonDisplayValue ?? ''],
     ]);
   }
 
-  /** Source-derived signals, exposed as getters so their backing field stays below the public block. */
   public get loading(): Signal<boolean> {
     return this.source.loading;
   }

@@ -9,38 +9,29 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
-import { SchemaSource } from './widget-model-base';
+import { SchemaSource } from './sources/schema-source';
 
-/** One column placed on a table, owning how that column is presented. */
 export class TableColumnModel extends EditorNode {
-  readonly columnId: string;
+  public readonly columnId: string;
 
-  /** Blank falls back to the dataset column's own name. */
-  readonly header = signal<string>('');
-  readonly width = signal<number | null>(null);
-  /** Null follows the column's type: right for numbers, left otherwise. */
-  readonly align = signal<ColumnAlign | null>(null);
-  readonly sortable = signal(true);
-  /** Pass/fail highlighting resolved against a row of a separate limits dataset. Null shows no banding. */
-  readonly tolerance = signal<ToleranceConfig | null>(null);
-  /** The aggregate shown in the totals row; null leaves this column's total blank. */
-  readonly total = signal<Aggregate | null>(null);
-  readonly wrap = signal(false);
-  readonly dataBars = signal(false);
-  /** Conditional highlighting, checked in order; the first rule a value matches wins. */
-  readonly formatRules = signal<readonly FormatRule[]>([]);
+  /** Blank falls back to the dataset column's name. */
+  public readonly header = signal<string>('');
+  public readonly width = signal<number | null>(null);
+  /** Null follows the type: right for numbers, left otherwise. */
+  public readonly align = signal<ColumnAlign | null>(null);
+  public readonly sortable = signal(true);
+  /** Pass/fail highlighting against a row of a separate limits dataset; null shows none. */
+  public readonly tolerance = signal<ToleranceConfig | null>(null);
+  /** The totals-row aggregate; null leaves this column's total blank. */
+  public readonly total = signal<Aggregate | null>(null);
+  public readonly wrap = signal(false);
+  public readonly dataBars = signal(false);
+  /** Checked in order; the first rule a value matches wins. */
+  public readonly formatRules = signal<readonly FormatRule[]>([]);
+  public readonly schemaColumn: Signal<DatasetColumn | null>;
+  public readonly label: Signal<string>;
 
-  /** The dataset column this refers to, once the schema has loaded. */
-  readonly schemaColumn: Signal<DatasetColumn | null>;
-
-  /** The label actually rendered in the table header. */
-  readonly label: Signal<string>;
-
-  /**
-   * The tolerance's own "limits" dataset schema, once loaded — separate from {@link schema},
-   * which is this column's dataset (the one the tolerance's own column, above, belongs to).
-   * Null while the banding is off, pending, or points at nothing yet.
-   */
+  /** The tolerance's own limits dataset; null while banding is off, pending or unset. */
   private readonly toleranceSchema: Signal<DatasetSchema | null>;
 
   constructor(
@@ -73,15 +64,15 @@ export class TableColumnModel extends EditorNode {
     });
   }
 
-  setWidth(width: number | null): void {
+  public setWidth(width: number | null): void {
     this.width.set(width === null || !Number.isFinite(width) ? null : Math.round(width));
   }
 
-  setTolerance(tolerance: ToleranceConfig | null): void {
+  public setTolerance(tolerance: ToleranceConfig | null): void {
     this.tolerance.set(tolerance);
   }
 
-  toDto(): DataTableColumnSetting {
+  public toDto(): DataTableColumnSetting {
     const header = this.header().trim();
     return {
       columnId: this.columnId,
@@ -93,21 +84,22 @@ export class TableColumnModel extends EditorNode {
       ...(this.total() ? { total: this.total()! } : {}),
       ...(this.wrap() ? { wrap: true } : {}),
       ...(this.dataBars() ? { dataBars: true } : {}),
-      ...(this.formatRules().length ? { formatRules: this.formatRules().map((r) => ({ ...r })) } : {}),
+      ...(this.formatRules().length
+        ? { formatRules: this.formatRules().map((r) => ({ ...r })) }
+        : {}),
     };
   }
 
-  protected override snapshotValue(): unknown {
+  public override snapshotValue(): unknown {
     return this.toDto();
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
-    // Only meaningful once the schema is known; a pending fetch must not look
-    // like a column that has been deleted from the dataset.
+  public override ownIssues(): ValidationIssue[] {
+    // A pending schema fetch must not look like a deleted column.
     if (this.schema() && !this.schemaColumn()) {
       return [
         {
@@ -121,9 +113,8 @@ export class TableColumnModel extends EditorNode {
       ];
     }
 
-    // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
-    // so they're checked against that dataset's schema rather than this column's own. A per-row
-    // match adds one column on each side: its identifier in the limits dataset, and the table's own.
+    // Tolerance columns point at the limits dataset, so they're checked against its schema. A per-row
+    // match adds the identifier column on each side.
     const tolerance = this.tolerance();
     const toleranceSchema = this.toleranceSchema();
     if (tolerance && toleranceSchema) {

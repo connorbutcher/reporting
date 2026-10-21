@@ -6,7 +6,6 @@ import { BarChartWidgetModel } from '../../../models/widget.model';
 import { PanelGroupComponent } from '../../panel-group.component';
 import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-chart-series-list.component';
 
-/** The bar chart's data source: how bars summarise their values, and the per-dataset series. */
 @Component({
   selector: 'app-panel-bar-chart-source',
   imports: [FormsModule, SelectModule, PanelGroupComponent, PanelChartSeriesListComponent],
@@ -15,7 +14,6 @@ import { PanelChartSeriesListComponent } from '../panel-chart-series-list/panel-
 export class PanelBarChartSourceComponent {
   public readonly chart = input.required<BarChartWidgetModel>();
 
-  /** The aggregate options offered for a bar chart, in menu order. */
   public readonly aggregates: { label: string; value: Aggregate }[] = [
     { label: 'Sum', value: 'sum' },
     { label: 'Average', value: 'average' },

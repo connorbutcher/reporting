@@ -1,26 +1,14 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, GridPreview } from '../../grid.util';
+import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { GridLayout } from '../../grid/grid-layout';
+import { GridPreview } from '../../grid/grid-preview';
 import { ReportLifecycle } from '../../state/report-lifecycle';
 import { ReportSession } from '../../state/report-session';
 import { WidgetSelection } from '../../state/widget-selection';
 import { WidgetHostComponent } from '../../widget-host/widget-host.component';
 
 /**
- * The editable grid: the report's widgets laid out on the snap grid, plus the
- * drop-preview overlay shown while a widget is being dragged or resized.
- *
- * Columns stretch to fill the canvas width so the report never scrolls
- * horizontally; only the number of columns changes how fine the grid is. The
- * grid element is measured on resize (and whenever the column count changes) so
- * the drag/resize maths and the background grid lines track the real column width.
+ * The editable grid: widgets on the snap grid, plus the drop preview while dragging or resizing.
+ * Columns stretch to the canvas width, so the column width is measured on resize.
  */
 @Component({
   selector: 'app-canvas-grid',
@@ -29,56 +17,60 @@ import { WidgetHostComponent } from '../../widget-host/widget-host.component';
   styleUrl: './canvas-grid.component.scss',
 })
 export class CanvasGridComponent {
+  public readonly rowHeight = GridLayout.ROW_HEIGHT;
+  public readonly gridGap = GridLayout.GRID_GAP;
+  public readonly dropPreview = signal<GridPreview | null>(null);
+  public readonly rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
+  public readonly columnStep = computed(() => this.session.columnWidth() + GridLayout.GRID_GAP);
+
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly lifecycle = inject(ReportLifecycle);
-
-  protected readonly loading = this.lifecycle.loading;
-  protected readonly widgets = this.session.widgets;
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-
-  protected readonly rowHeight = ROW_HEIGHT;
-  protected readonly gridGap = GRID_GAP;
-  protected readonly dropPreview = signal<GridPreview | null>(null);
-
   private readonly gridEl = viewChild<ElementRef<HTMLElement>>('grid');
 
-  /** Fixed vertical pitch between rows; horizontal pitch is measured (see below). */
-  protected readonly rowStep = ROW_HEIGHT + GRID_GAP;
-  /** Horizontal pitch between columns, from the measured column width. */
-  protected readonly columnStep = computed(() => this.session.columnWidth() + GRID_GAP);
-
   constructor() {
-    // Measure the column width from the live grid, re-running whenever the column
-    // count changes and whenever the element resizes with the window/panel.
+    // Re-measure when the column count changes or the element resizes.
     effect((onCleanup) => {
       const el = this.gridEl()?.nativeElement;
       const columns = this.session.gridColumns();
       if (!el) return;
 
-      const measure = () => {
-        const width = el.clientWidth;
-        // clientWidth includes the grid's own padding only if box-sizing adds it;
-        // the grid has none, so this is the track area. Subtract the gaps between
-        // columns and divide by the count to get one column's width.
-        const columnWidth = columns > 0 ? (width - (columns - 1) * GRID_GAP) / columns : 0;
-        this.session.columnWidth.set(Math.max(0, columnWidth));
-      };
-
-      measure();
-      const observer = new ResizeObserver(measure);
+      this.measureColumnWidth(el, columns);
+      const observer = new ResizeObserver(() => this.measureColumnWidth(el, columns));
       observer.observe(el);
       onCleanup(() => observer.disconnect());
     });
   }
 
-  protected onDropPreview(preview: GridPreview | null): void {
+  public onDropPreview(preview: GridPreview | null): void {
     this.dropPreview.set(preview);
   }
 
-  /** Clicking empty canvas drops the selection. */
-  protected onCanvasPointerDown(event: PointerEvent): void {
+  /** Clicking empty canvas clears the selection. */
+  public onCanvasPointerDown(event: PointerEvent): void {
     if (event.target === event.currentTarget) this.selection.clear();
+  }
+
+  public get loading() {
+    return this.lifecycle.loading;
+  }
+
+  public get widgets() {
+    return this.session.widgets;
+  }
+
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
+  }
+
+  /** The grid has no padding, so its client width less the gaps is the track area. */
+  private measureColumnWidth(el: HTMLElement, columns: number): void {
+    const columnWidth =
+      columns > 0 ? (el.clientWidth - (columns - 1) * GridLayout.GRID_GAP) / columns : 0;
+    this.session.columnWidth.set(Math.max(0, columnWidth));
   }
 }

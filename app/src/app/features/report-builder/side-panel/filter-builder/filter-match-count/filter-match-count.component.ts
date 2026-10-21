@@ -3,9 +3,10 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { DatasetCountResult, FilterGroup, combineFilters } from '../../../../../core/models/filter';
 import { FilterGroupModel } from '../../../models/filter';
-import { MatchState, liveMatchCount } from '../live-match-count';
+import { LiveMatchCount } from '../live-match-count';
+import { MatchState } from '../match-state';
 
-/** "Matches N of M rows" for the filter being edited, folded together with whatever else already narrows the dataset. */
+/** "Matches N of M rows" for the filter being edited, combined with whatever else narrows the dataset. */
 @Component({
   selector: 'app-filter-match-count',
   imports: [DecimalPipe],
@@ -14,12 +15,11 @@ import { MatchState, liveMatchCount } from '../live-match-count';
 })
 export class FilterMatchCountComponent {
   public readonly group = input.required<FilterGroupModel>();
-  /** Filters outside the group being edited (the report filter, or a session-adjusted page filter), so the count reflects what renders. */
+  /** Filters outside this group (the report or page filter), so the count matches what renders. */
   public readonly additionalFilter = input<FilterGroup | null>(null);
 
-  // The key is inlined so it stays a closure over the inputs: reading toQueryDto() tracks every
-  // condition, operator and value, so the count re-runs as the filter is edited.
-  public readonly match = liveMatchCount(
+  // Inlined so reading toQueryDto() tracks every condition edit.
+  public readonly match = LiveMatchCount.create(
     computed(() => {
       const group = this.group();
       const datasetId = group.datasetId();
@@ -29,7 +29,7 @@ export class FilterMatchCountComponent {
     inject(DatasetApiService),
   );
 
-  /** The latest counts, held across a re-check so the readout keeps its numbers (dimmed) instead of blanking. */
+  /** Held across a re-check so the readout dims instead of blanking. */
   public readonly numbers = linkedSignal<MatchState, DatasetCountResult | null>({
     source: this.match,
     computation: (match, previous) => {

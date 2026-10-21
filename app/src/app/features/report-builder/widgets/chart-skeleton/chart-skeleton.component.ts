@@ -1,13 +1,7 @@
 import { Component, input } from '@angular/core';
+import { ChartSkeletonShape } from './chart-skeleton-shape';
 
-/** The silhouette a loading chart hints at: columns for the aggregating charts, a trend for scatter and line. */
-export type ChartSkeletonShape = 'bars' | 'line';
-
-/**
- * A placeholder drawn where a chart will be on its first load — axes and a softly pulsing outline of
- * the chart's shape — so the widget keeps its size and character instead of collapsing to a spinner
- * and jumping when the real chart arrives. Motion is dropped for readers who ask for less of it.
- */
+/** A pulsing outline of the chart's shape on first load, so the widget keeps its size. */
 @Component({
   selector: 'app-chart-skeleton',
   template: `
@@ -35,6 +29,5 @@ export type ChartSkeletonShape = 'bars' | 'line';
 export class ChartSkeletonComponent {
   public readonly shape = input<ChartSkeletonShape>('bars');
 
-  /** Varied heights so it reads as a chart rather than a block. */
   public readonly barHeights = [46, 72, 58, 88, 64, 78, 52];
 }

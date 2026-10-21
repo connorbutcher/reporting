@@ -1,13 +1,9 @@
 import { Component, computed, input, output } from '@angular/core';
 
 /**
- * The slim footer strip under a data widget that says how many rows it is showing — "Showing 40 of
- * 500 rows" — so a filtered or capped widget never passes itself off as the whole dataset. One
- * component so the table, pivot and chart widgets share a single look; each widget builds its own
- * label from the counts its query returned.
- *
- * Hover names what is narrowing the widget ({@link filters}); where the host can show a widget's
- * filters ({@link actionable}) the strip is a button that asks for them.
+ * The footer strip saying how many rows a data widget shows, so a filtered or capped widget never
+ * looks like the whole dataset. Hover lists the {@link filters}; when {@link actionable} it's a
+ * button.
  */
 @Component({
   selector: 'app-widget-count-bar',
@@ -34,14 +30,11 @@ export class WidgetCountBarComponent {
   public readonly label = input.required<string>();
   /** The PrimeIcons class beside the label, e.g. `pi-filter`. */
   public readonly icon = input('pi-list');
-  /** The widget is showing less than everything — a row cap, or a series that failed to load. */
+  /** Showing less than everything: a row cap, or a series that failed to load. */
   public readonly warning = input(false);
-  /** What is narrowing the widget, one entry per condition, listed in the hover text. */
   public readonly filters = input<readonly string[]>([]);
-  /** Whether the host can open this widget's filters; makes the strip clickable. */
   public readonly actionable = input(false);
 
-  /** The strip was clicked (only when {@link actionable}). */
   public readonly activate = output<void>();
 
   public readonly tooltip = computed(() => {

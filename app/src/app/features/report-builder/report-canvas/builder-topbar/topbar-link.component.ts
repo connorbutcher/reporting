@@ -1,11 +1,7 @@
 import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-/**
- * A secondary navigation link in the builder topbar — the shared look (pill
- * button with a leading icon) behind the "Datasets" and "Back to report" links,
- * so the styling lives in one place.
- */
+/** The shared pill-link look behind the topbar's "Datasets" and "Back to report" links. */
 @Component({
   selector: 'app-topbar-link',
   imports: [RouterLink],
@@ -38,10 +34,10 @@ import { RouterLink } from '@angular/router';
   ],
 })
 export class TopbarLinkComponent {
-  /** Router commands array, e.g. `['/reports', id]`. */
-  readonly link = input.required<unknown[]>();
-  /** PrimeIcons class without the `pi` prefix, e.g. `pi-database`. */
-  readonly icon = input.required<string>();
-  readonly label = input.required<string>();
-  readonly title = input('');
+  /** Router commands, e.g. `['/reports', id]`. */
+  public readonly link = input.required<unknown[]>();
+  /** A PrimeIcons class, e.g. `pi-database`. */
+  public readonly icon = input.required<string>();
+  public readonly label = input.required<string>();
+  public readonly title = input('');
 }

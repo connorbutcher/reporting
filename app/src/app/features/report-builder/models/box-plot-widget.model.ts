@@ -11,39 +11,30 @@ import {
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
-/**
- * A box-and-whisker chart. It reuses the shared chart base for dataset/series/filter binding,
- * reading `xColumnId` as the category the boxes group by and `yColumnId` as the measure whose
- * spread each box summarises — both required, unlike a bar chart's count aggregate.
- */
+/** A box plot: `xColumnId` is the category and `yColumnId` the measure; both are required. */
 export class BoxPlotWidgetModel extends ChartWidgetModel {
   public override readonly type = 'boxPlot' as const;
 
-  /** Where the whiskers end, and whether outliers are drawn beyond them. */
+  /** Where whiskers end, and whether outliers are drawn beyond them. */
   public readonly whisker = signal<BoxWhisker>('tukey');
-  /** The whisker length multiplier — of the IQR for `tukey`, of the standard deviation for `stdDev`. */
+  /** Multiplies the IQR for `tukey`, the standard deviation for `stdDev`. */
   public readonly whiskerFactor = signal(1.5);
-  /** How the boxes are ordered along the category axis. */
   public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
-  /** Draws the mean as a marker inside each box, alongside the median line. */
   public readonly showMean = signal(false);
-  /** Prints each box's sample size (n) above it. */
   public readonly showSampleSize = signal(false);
-  /** Overlays the individual measurements as jittered points over each box. */
   public readonly showPoints = signal(false);
-  /** Adds process performance (Pp/Ppk) to each box's tooltip, resolved against the value-axis spec band. */
+  /** Adds Pp/Ppk to each box's tooltip, against the value-axis spec band. */
   public readonly showCapability = signal(false);
-  /** Draws boxes horizontally (categories down the Y axis) rather than upright. */
   public readonly horizontal = signal(false);
-  /** Buckets a date category by period; null groups by the exact date. */
+  /** Buckets a date category by period; null groups by exact date. */
   public readonly categoryGrouping = signal<DateGrouping | null>(null);
 
   constructor(widget: BoxPlotWidget, sources: ModelSources) {
     super(widget, sources);
     this.whisker.set(widget.config.whisker);
-    // Charts saved before these existed default to the box-plot config defaults.
+    // Older charts default to the box-plot defaults.
     this.whiskerFactor.set(widget.config.whiskerFactor ?? 1.5);
     this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
     this.showMean.set(widget.config.showMean ?? false);
@@ -76,8 +67,6 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     return widgetTypeDescriptor('boxPlot').label;
   }
 
-  // Category maps to xColumnId, measure to yColumnId; both are required, so the worded
-  // messages differ from the shared "X and Y" check point charts use.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
     const shared = this.sharedChartIssues();
@@ -85,42 +74,36 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     if (!this.datasetId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noDataset`,
-          severity: 'warning',
-          title: `${name} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noDataset',
+          'warning',
+          `${name} has no dataset`,
+          'Pick a dataset so the chart has something to plot.',
+        ),
       ];
     }
 
     if (!this.xColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noCategory`,
-          severity: 'warning',
-          title: `${name} has no category`,
-          detail: 'Pick a category column to group the boxes by.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noCategory',
+          'warning',
+          `${name} has no category`,
+          'Pick a category column to group the boxes by.',
+        ),
       ];
     }
 
     if (!this.yColumnId()) {
       return [
         ...shared,
-        {
-          id: `${this.id}:noValue`,
-          severity: 'warning',
-          title: `${name} has no value`,
-          detail: 'Pick a value column whose spread each box summarises.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        },
+        this.issue(
+          'noValue',
+          'warning',
+          `${name} has no value`,
+          'Pick a value column whose spread each box summarises.',
+        ),
       ];
     }
 

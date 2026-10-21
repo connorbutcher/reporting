@@ -6,18 +6,17 @@ import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The static-text branch of the widget-detail panel: content and a link to its style view. */
 @Component({
   selector: 'app-panel-widget-detail-text',
   imports: [FormsModule, TextareaModule, PanelGroupComponent],
   templateUrl: './panel-widget-detail-text.component.html',
 })
 export class PanelWidgetDetailTextComponent {
+  public readonly text = input.required<StaticTextWidgetModel>();
+
   private readonly navigation = inject(PanelNavigation);
 
-  readonly text = input.required<StaticTextWidgetModel>();
-
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
   }
 }

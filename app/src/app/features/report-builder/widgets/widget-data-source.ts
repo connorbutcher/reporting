@@ -1,55 +1,27 @@
-import { Signal, effect, signal, untracked } from '@angular/core';
+import { effect, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { EMPTY, Observable, Subject, catchError, debounceTime, merge, switchMap } from 'rxjs';
-import { DatasetApiService } from '../../../core/api/dataset-api.service';
+import { EMPTY, Subject, catchError, debounceTime, merge, switchMap } from 'rxjs';
 import { DatasetColumn } from '../../../core/models/dataset';
-
-export interface WidgetDataSourceOptions<T> {
-  /** The dataset to load, or null when the widget isn't configured yet. */
-  datasetId: Signal<number | null>;
-  /** Bumped by the page when column configuration changes, to refetch the schema. */
-  version: Signal<number>;
-  api: DatasetApiService;
-  /**
-   * Builds the query for the current config, or returns null when there isn't
-   * enough to ask (no dataset, missing axes). Read at fire time, inside the
-   * pipeline, so it always sees the latest config.
-   */
-  fetch: () => Observable<T> | null;
-  /** Runs (untracked) each time a dataset's schema is about to load — e.g. to seed sort/page. */
-  onSchemaLoad?: () => void;
-  /** Long enough that typing a filter value settles into one request. */
-  debounceMs?: number;
-}
-
-const DEFAULT_DEBOUNCE_MS = 300;
+import { WidgetDataSourceOptions } from './widget-data-source-options';
 
 /**
- * The shared data engine behind the table and chart widgets: it loads a
- * dataset's schema and runs the debounced, cancel-on-supersede query pipeline,
- * exposing `columns`/`loading`/`error`/`result`. Each widget keeps its own
- * effects deciding *when* to reload — immediately for discrete interactions
- * (paging, sorting, switching datasets) via {@link reloadNow}, or coalesced for
- * typing via {@link reloadDebounced} — so their distinct trigger semantics are
- * preserved while the boilerplate lives in one place.
- *
- * Must be constructed in an injection context (a component's field initializer
- * or constructor) so its effect and subscription are torn down with the widget.
+ * Loads a widget's schema and runs its debounced, cancel-on-supersede query pipeline. Each widget
+ * decides when to reload: {@link reloadNow} for discrete interactions, {@link reloadDebounced}
+ * for typing. Construct in an injection context so it's torn down with the widget.
  */
 export class WidgetDataSource<T> {
-  /** Discrete interactions reload immediately. */
+  private static readonly DEFAULT_DEBOUNCE_MS = 300;
+
+  public readonly columns = signal<DatasetColumn[]>([]);
+  public readonly loading = signal(true);
+  public readonly error = signal(false);
+  public readonly result = signal<T | null>(null);
+
   private readonly interactionQueue = new Subject<void>();
-  /** Typing a filter value settles into one request instead of one per keystroke. */
   private readonly filterQueue = new Subject<void>();
 
-  readonly columns = signal<DatasetColumn[]>([]);
-  readonly loading = signal(true);
-  readonly error = signal(false);
-  readonly result = signal<T | null>(null);
-
   constructor(private readonly options: WidgetDataSourceOptions<T>) {
-    // The schema describes the widget and changes only with the dataset, so it
-    // loads immediately rather than through the debounced query pipeline.
+    // The schema changes only with the dataset, so it loads immediately.
     effect((onCleanup) => {
       const datasetId = options.datasetId();
       options.version();
@@ -71,7 +43,9 @@ export class WidgetDataSource<T> {
 
     merge(
       this.interactionQueue,
-      this.filterQueue.pipe(debounceTime(options.debounceMs ?? DEFAULT_DEBOUNCE_MS)),
+      this.filterQueue.pipe(
+        debounceTime(options.debounceMs ?? WidgetDataSource.DEFAULT_DEBOUNCE_MS),
+      ),
     )
       .pipe(
         switchMap(() => {
@@ -79,8 +53,7 @@ export class WidgetDataSource<T> {
           if (!request) return EMPTY;
 
           return request.pipe(
-            // Caught inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and stop all future reloads.
+            // Caught inside the switchMap, since an outer error would stop all future reloads.
             catchError(() => {
               this.error.set(true);
               this.loading.set(false);
@@ -96,13 +69,11 @@ export class WidgetDataSource<T> {
       });
   }
 
-  /** Reloads at once, for discrete interactions (paging, sorting, switching datasets). */
-  reloadNow(): void {
+  public reloadNow(): void {
     this.interactionQueue.next();
   }
 
-  /** Reloads after the debounce, for changes that arrive in a burst (typing a filter value). */
-  reloadDebounced(): void {
+  public reloadDebounced(): void {
     this.filterQueue.next();
   }
 }

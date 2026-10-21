@@ -7,7 +7,6 @@ import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** The "Tolerance bands" group of the chart detail panel: lists each band and adds new ones. */
 @Component({
   selector: 'app-panel-chart-tolerance-list',
   imports: [ButtonModule, PanelGroupComponent],
@@ -19,7 +18,7 @@ export class PanelChartToleranceListComponent {
   private readonly session = inject(ReportSession);
   private readonly navigation = inject(PanelNavigation);
 
-  /** Adds a band and jumps straight to it, rather than leaving the user to find it in the list. */
+  /** Adds a band and opens it. */
   public addToleranceBand(): void {
     const chart = this.chart();
     const bandId = chart.addToleranceBand();

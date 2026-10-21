@@ -1,7 +1,11 @@
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
-import { ChartSeriesBinding, ChartWidgetConfig, HistogramBinMode } from '../../../../../core/models/report';
+import {
+  ChartSeriesBinding,
+  ChartWidgetConfig,
+  HistogramBinMode,
+} from '../../../../../core/models/report';
 import {
   BarChartQueryResult,
   ChartRowCounts,
@@ -22,9 +26,19 @@ const binding = (id: string, datasetId: number): ChartSeriesBinding =>
   }) as ChartSeriesBinding;
 
 const barConfig = (...bindings: ChartSeriesBinding[]): ChartWidgetConfig =>
-  ({ type: 'barChart', aggregate: 'sum', bindings, toleranceBands: [] }) as unknown as ChartWidgetConfig;
+  ({
+    type: 'barChart',
+    aggregate: 'sum',
+    bindings,
+    toleranceBands: [],
+  }) as unknown as ChartWidgetConfig;
 
-const histBinding = (id: string, datasetId: number, label = '', valueColumnIds = ['value']): ChartSeriesBinding =>
+const histBinding = (
+  id: string,
+  datasetId: number,
+  label = '',
+  valueColumnIds = ['value'],
+): ChartSeriesBinding =>
   ({
     id,
     datasetId,
@@ -190,7 +204,10 @@ describe('ChartQuery histogram overlay', () => {
       },
     } as unknown as DatasetApiService;
 
-    const result = await runHistogram(api, histogramConfig('auto', null, null, histBinding('a', 1)));
+    const result = await runHistogram(
+      api,
+      histogramConfig('auto', null, null, histBinding('a', 1)),
+    );
 
     expect(calls).toBe(1);
     // Each series remembers the binding it came from, for drill-through and colour overrides.
@@ -267,7 +284,13 @@ describe('ChartQuery histogram overlay', () => {
   });
 
   it('aligns bin edges across bindings when Auto mode would otherwise pick a count per dataset', async () => {
-    const seen: { datasetId: number; binMode: string; rangeMin: number | null; rangeMax: number | null; binCount: number }[] = [];
+    const seen: {
+      datasetId: number;
+      binMode: string;
+      rangeMin: number | null;
+      rangeMax: number | null;
+      binCount: number;
+    }[] = [];
     const api = {
       queryHistogram: (datasetId: number, req: Record<string, unknown>) => {
         seen.push({
@@ -368,7 +391,9 @@ describe('ChartQuery histogram overlay', () => {
 });
 
 /** Just the label and values of each histogram series — what these overlay tests are about. */
-function labelsAndValues(series: readonly { label: string; values: number[] }[]): { label: string; values: number[] }[] {
+function labelsAndValues(
+  series: readonly { label: string; values: number[] }[],
+): { label: string; values: number[] }[] {
   return series.map(({ label, values }) => ({ label, values }));
 }
 
@@ -386,7 +411,8 @@ describe('ChartQuery bar overlay ordering', () => {
 
   it('re-sorts the union of categories, so a later dataset’s categories don’t trail at the end', async () => {
     const api = {
-      queryBarChart: (datasetId: number) => of(datasetId === 1 ? part(1, ['b', 'd']) : part(2, ['a', 'c'])),
+      queryBarChart: (datasetId: number) =>
+        of(datasetId === 1 ? part(1, ['b', 'd']) : part(2, ['a', 'c'])),
     } as unknown as DatasetApiService;
 
     const result = await run(api, barConfig(binding('a', 1), binding('b', 2)));

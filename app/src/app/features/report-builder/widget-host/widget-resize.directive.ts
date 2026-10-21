@@ -1,33 +1,26 @@
 import { Directive, DestroyRef, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GridLayout } from '../grid/grid-layout';
+import { GridPreview } from '../grid/grid-preview';
+import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
 import { ReportSession } from '../state/report-session';
+import { ResizeDirection } from './resize-direction';
 
-export type ResizeDirection = 'right' | 'bottom' | 'corner';
-
-/**
- * The resize half of a widget's pointer interaction, split out of the host so
- * the component keeps only widget dispatch and selection. Sits on the widget
- * surface and is started from a resize handle's `pointerdown`; the widget grows
- * or shrinks by whole grid cells, refusing sizes that would collide or leave
- * the grid.
- */
+/** Resizes a widget from a handle by whole cells, refusing sizes that collide or leave the grid. */
 @Directive({
   selector: '[appWidgetResize]',
   exportAs: 'widgetResize',
 })
 export class WidgetResizeDirective {
-  readonly widget = input.required<WidgetModel>({ alias: 'appWidgetResize' });
+  public readonly widget = input.required<WidgetModel>({ alias: 'appWidgetResize' });
 
-  /** Live preview of the widget's candidate rect, for the canvas overlay. */
-  readonly gridPreview = output<GridPreview | null>();
+  /** The candidate rect, for the canvas overlay. */
+  public readonly gridPreview = output<GridPreview | null>();
+  public readonly invalid = signal(false);
+  public readonly previewSize = signal<{ width: number; height: number } | null>(null);
 
   private readonly session = inject(ReportSession);
   private readonly destroyRef = inject(DestroyRef);
-
-  readonly invalid = signal(false);
-  readonly previewSize = signal<{ width: number; height: number } | null>(null);
-
   private direction: ResizeDirection = 'corner';
   private startCell = { w: 0, h: 0 };
   private startPointer = { x: 0, y: 0 };
@@ -39,7 +32,7 @@ export class WidgetResizeDirective {
     this.destroyRef.onDestroy(() => this.cleanupListeners());
   }
 
-  start(event: PointerEvent, direction: ResizeDirection): void {
+  public start(event: PointerEvent, direction: ResizeDirection): void {
     event.preventDefault();
     event.stopPropagation();
 
@@ -59,18 +52,22 @@ export class WidgetResizeDirective {
     const widget = this.widget();
     const dx = event.clientX - this.startPointer.x;
     const dy = event.clientY - this.startPointer.y;
-    const columnStep = this.session.columnWidth() + GRID_GAP;
-    const deltaCols = columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0;
-    const deltaRows = Math.round(dy / (ROW_HEIGHT + GRID_GAP));
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
+    const deltaCols = columnStep > GridLayout.GRID_GAP ? Math.round(dx / columnStep) : 0;
+    const deltaRows = Math.round(dy / (GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP));
 
     const candidateW =
       this.direction === 'bottom'
         ? widget.w()
-        : clamp(this.startCell.w + deltaCols, 1, this.session.gridColumns() - widget.x());
+        : GridLayout.clamp(
+            this.startCell.w + deltaCols,
+            1,
+            this.session.gridColumns() - widget.x(),
+          );
     const candidateH =
       this.direction === 'right'
         ? widget.h()
-        : clamp(this.startCell.h + deltaRows, 1, this.session.gridRows() - widget.y());
+        : GridLayout.clamp(this.startCell.h + deltaRows, 1, this.session.gridRows() - widget.y());
     const candidate: GridRect = { x: widget.x(), y: widget.y(), w: candidateW, h: candidateH };
 
     this.pending = candidate;
@@ -91,12 +88,12 @@ export class WidgetResizeDirective {
     this.gridPreview.emit(null);
   }
 
-  /** The pixel footprint of a w×h span: cells plus the gaps between them. */
+  /** Cells plus the gaps between them. */
   private pixelSize(w: number, h: number): { width: number; height: number } {
-    const columnStep = this.session.columnWidth() + GRID_GAP;
+    const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
     return {
-      width: Math.max(0, w * columnStep - GRID_GAP),
-      height: h * (ROW_HEIGHT + GRID_GAP) - GRID_GAP,
+      width: Math.max(0, w * columnStep - GridLayout.GRID_GAP),
+      height: h * (GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP) - GridLayout.GRID_GAP,
     };
   }
 
@@ -106,7 +103,7 @@ export class WidgetResizeDirective {
     if (candidate.y + candidate.h > this.session.gridRows()) return true;
 
     const siblings = this.session.model()?.siblingsOf(this.widget().id) ?? [];
-    return siblings.some((other) => rectsOverlap(candidate, other.rect()));
+    return siblings.some((other) => GridLayout.rectsOverlap(candidate, other.rect()));
   }
 
   private cleanupListeners(): void {

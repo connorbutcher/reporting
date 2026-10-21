@@ -6,35 +6,18 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartAxis, LineDashStyle, LineDirection, chartAxisDisplayName } from '../../../../../core/models/report';
+import {
+  ChartAxis,
+  LineDashStyle,
+  LineDirection,
+  chartAxisDisplayName,
+} from '../../../../../core/models/report';
 import { XBarRChartWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-const AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
-  { label: 'Y axis', value: 'y' },
-  { label: 'X axis', value: 'x' },
-];
-
-const DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
-  { label: 'Solid', value: 'solid' },
-  { label: 'Dashed', value: 'dashed' },
-  { label: 'Dotted', value: 'dotted' },
-];
-
-const DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
-  { label: 'Above the line', value: 'above' },
-  { label: 'Below the line', value: 'below' },
-];
-
-const DEFAULT_COLOR = '#4f46e5';
-
-/**
- * A single dashed line drawn at a fixed value on an axis, captioned with a label — the
- * lightweight alternative to a tolerance band for marking a target, a cap, or any other
- * fixed point that doesn't need resolving against a separate limits dataset.
- */
+/** A labelled line at a fixed value: a lightweight alternative to a tolerance band. */
 @Component({
   selector: 'app-panel-chart-guide-line',
   imports: [
@@ -52,32 +35,47 @@ const DEFAULT_COLOR = '#4f46e5';
 export class PanelChartGuideLineComponent {
   public static readonly title = 'Guide line';
 
-  public readonly dashOptions = DASH_OPTIONS;
-  public readonly directionOptions = DIRECTION_OPTIONS;
-  public readonly defaultColor = DEFAULT_COLOR;
+  private static readonly AXIS_OPTIONS: { label: string; value: ChartAxis }[] = [
+    { label: 'Y axis', value: 'y' },
+    { label: 'X axis', value: 'x' },
+  ];
 
-  /** "the range"/"the line" so the outline checkbox's label matches whichever shape the line currently is. */
+  private static readonly DASH_OPTIONS: { label: string; value: LineDashStyle }[] = [
+    { label: 'Solid', value: 'solid' },
+    { label: 'Dashed', value: 'dashed' },
+    { label: 'Dotted', value: 'dotted' },
+  ];
+
+  private static readonly DIRECTION_OPTIONS: { label: string; value: LineDirection }[] = [
+    { label: 'Above the line', value: 'above' },
+    { label: 'Below the line', value: 'below' },
+  ];
+
+  private static readonly DEFAULT_COLOR = '#4f46e5';
+
+  public readonly dashOptions = PanelChartGuideLineComponent.DASH_OPTIONS;
+  public readonly directionOptions = PanelChartGuideLineComponent.DIRECTION_OPTIONS;
+  public readonly defaultColor = PanelChartGuideLineComponent.DEFAULT_COLOR;
+
+  /** Matches the outline checkbox label to the line's current shape. */
   public readonly outlineLabel = computed(() => {
     const line = this.line();
     const isRange = line?.valueTo !== null && line?.valueTo !== undefined;
     return isRange ? 'Outline points outside the range' : 'Outline points past this line';
   });
 
-  /**
-   * Only axes bound to a numeric column can carry a line — a line is a fixed numeric
-   * value, meaningless on a category (text) axis. Falls back to both when neither is
-   * numeric so the control still renders.
-   */
+  /** Only numeric axes can carry a line; falls back to both so the control still renders. */
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return AXIS_OPTIONS;
-    // A control chart's X axis is its subgroups, with no numeric scale to place a line on.
-    if (chart instanceof XBarRChartWidgetModel) return AXIS_OPTIONS.filter((o) => o.value === 'y');
+    if (!chart) return PanelChartGuideLineComponent.AXIS_OPTIONS;
+    // A control chart's X axis is its subgroups, with no numeric scale.
+    if (chart instanceof XBarRChartWidgetModel)
+      return PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) => o.value === 'y');
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
-    const options = AXIS_OPTIONS.filter((o) =>
+    const options = PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
     );
-    return options.length ? options : AXIS_OPTIONS;
+    return options.length ? options : PanelChartGuideLineComponent.AXIS_OPTIONS;
   });
 
   public readonly line = computed(() => {
@@ -85,7 +83,7 @@ export class PanelChartGuideLineComponent {
     return lineId ? (this.chart()?.guideLine(lineId) ?? null) : null;
   });
 
-  /** Same reasoning as {@link PanelChartToleranceBandComponent.yAxisOptions}: numeric axes only. */
+  /** Numeric axes only, as for tolerance bands. */
   public readonly yAxisOptions = computed(() => {
     const chart = this.chart();
     if (!chart) return [];
@@ -113,8 +111,7 @@ export class PanelChartGuideLineComponent {
   public setYAxis(yAxisId: string | null): void {
     const lineId = this.lineId();
     if (!lineId) return;
-    // Store null for the primary axis so the line stays anchored to it even if the axis
-    // list is later reordered.
+    // Null for the primary axis keeps the line on it even if axes are reordered.
     const primaryId = this.chart()?.yAxes()[0]?.id ?? null;
     this.chart()?.updateGuideLine(lineId, { yAxisId: yAxisId === primaryId ? null : yAxisId });
   }
@@ -124,8 +121,7 @@ export class PanelChartGuideLineComponent {
     if (lineId) this.chart()?.updateGuideLine(lineId, { value: value ?? 0 });
   }
 
-  /** Toggles this line between a single value and a region — seeding `valueTo` with the
-   * current value so a freshly-turned-on range starts zero-width and visibly expandable. */
+  /** Seeds `valueTo` with the current value, so a new range starts zero-width. */
   public setRange(isRange: boolean): void {
     const lineId = this.lineId();
     const line = this.line();
@@ -174,7 +170,7 @@ export class PanelChartGuideLineComponent {
     this.navigation.back();
   }
 
-  /** Whether any series plotted on the given Y axis binds a numeric column, i.e. it's a value axis. */
+  /** Whether any series on the axis binds a numeric column. */
   private axisIsNumeric(axisId: string): boolean {
     const chart = this.chart();
     if (!chart) return false;

@@ -13,32 +13,26 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 import { ValidationIssue } from './validation-issue';
-
-/** Numeric column types an aggregate other than Count can reduce. */
-function isNumeric(type: DatasetColumn['type']): boolean {
-  return type === 'int' || type === 'double';
-}
+import { ColumnTypes } from './column-types';
 
 /**
- * A single headline number reduced from a dataset: either a plain aggregate over a column, or the
- * count/percent of rows failing a tolerance band. Optionally compared against a fixed target or the
- * previous rolling period, with a direction so the client knows whether the trend is good or bad.
- * Binds a single dataset, like the data table and pivot.
+ * A headline number from one dataset: an aggregate over a column, or the count or percent of rows
+ * failing a tolerance band. Optionally compared with a target or the previous period.
  */
 export class KpiWidgetModel extends WidgetModel {
   public override readonly type = 'kpi' as const;
 
-  /** Null until the user binds the widget to a dataset. */
   public readonly datasetId = signal<number | null>(null);
 
   public readonly valueSource = signal<KpiValueSource>('aggregate');
   public readonly aggregate = signal<Aggregate>('sum');
-  /** The aggregated column (aggregate mode, unused for `count`), or the tolerance-checked column (tolerance mode). */
+  /** The aggregated column (unused for Count), or the tolerance-checked column. */
   public readonly valueColumnId = signal<string | null>(null);
 
-  /** Tolerance mode: the band rows are checked against. Null shows no tolerance is configured. */
+  /** Tolerance mode's band; null when none is configured. */
   public readonly tolerance = signal<ToleranceConfig | null>(null);
   public readonly toleranceStatusMode = signal<KpiToleranceStatusMode>('fail');
   public readonly showAsPercent = signal(true);
@@ -53,35 +47,30 @@ export class KpiWidgetModel extends WidgetModel {
   public readonly unitSuffix = signal('');
   public readonly decimalPlaces = signal(1);
 
-  /** Absolute status bands, independent of the trend/comparison. */
+  /** Absolute status bands, independent of the comparison. */
   public readonly thresholdsEnabled = signal(false);
   public readonly warningThreshold = signal<number | null>(null);
   public readonly criticalThreshold = signal<number | null>(null);
 
-  /** A trend line of the value's trailing history, reusing {@link dateColumnId}/{@link periodDays}. */
+  /** Reuses {@link dateColumnId} and {@link periodDays}. */
   public readonly showSparkline = signal(false);
   public readonly sparklinePeriods = signal(8);
 
-  /** Fixed-target mode only: a progress bar toward the target instead of the trend arrow. */
+  /** Fixed-target mode only: a progress bar instead of the trend arrow. */
   public readonly showAsMeter = signal(false);
 
-  /** Set, the widget becomes a row of mini-tiles — one value per distinct value of this column. */
+  /** When set, shows a mini-tile per distinct value of this column. */
   public readonly groupByColumnId = signal<string | null>(null);
   public readonly maxGroups = signal(8);
 
-  /** Rows this widget summarises, narrowed server-side. */
   public readonly filter: FilterGroupModel;
 
-  /** The bound dataset's schema, once loaded. */
   public readonly schema: Signal<DatasetSchema | null>;
-  /** Every column on the bound dataset. */
   public readonly columns: Signal<DatasetColumn[]>;
-  /** Numeric columns, for the value-column picker (Count aside). */
   public readonly numericColumns: Signal<DatasetColumn[]>;
-  /** Date columns, for the previous-period comparison's date-column picker. */
   public readonly dateColumns: Signal<DatasetColumn[]>;
 
-  /** The tolerance's own "limits" dataset schema, once loaded — separate from {@link schema}. */
+  /** The tolerance's own limits dataset, separate from {@link schema}. */
   private readonly toleranceSchema: Signal<DatasetSchema | null>;
 
   constructor(widget: KpiWidget, sources: ModelSources) {
@@ -117,7 +106,9 @@ export class KpiWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.columns = computed(() => this.schema()?.columns ?? []);
-    this.numericColumns = computed(() => this.columns().filter((c) => isNumeric(c.type)));
+    this.numericColumns = computed(() =>
+      this.columns().filter((c) => ColumnTypes.isNumeric(c.type)),
+    );
     this.dateColumns = computed(() => this.columns().filter((c) => c.type === 'dateTime'));
     this.toleranceSchema = computed(() => {
       const sourceId = this.tolerance()?.sourceDatasetId;
@@ -134,7 +125,7 @@ export class KpiWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice, the tolerance, and the filter. */
+  /** Clears every column choice, the tolerance and the filter. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
@@ -145,7 +136,6 @@ export class KpiWidgetModel extends WidgetModel {
     this.filter.clear();
   }
 
-  /** Switching to Count drops the value column; switching away from aggregate drops nothing extra. */
   public setValueSource(source: KpiValueSource): void {
     this.valueSource.set(source);
     if (source === 'aggregate' && this.aggregate() === 'count') this.valueColumnId.set(null);
@@ -160,17 +150,14 @@ export class KpiWidgetModel extends WidgetModel {
     this.tolerance.set(tolerance);
   }
 
-  /**
-   * Switching comparison mode drops fields the new mode doesn't use. The date column is shared with
-   * the sparkline, so it's only cleared when neither feature needs it any more.
-   */
+  /** Drops fields the new mode doesn't use; the date column stays while the sparkline needs it. */
   public setComparisonMode(mode: KpiComparisonMode): void {
     this.comparisonMode.set(mode);
     if (mode !== 'fixedTarget') this.targetValue.set(null);
     if (mode !== 'previousPeriod' && !this.showSparkline()) this.dateColumnId.set(null);
   }
 
-  /** Turning the sparkline off drops the date column only if the comparison isn't using it too. */
+  /** Keeps the date column while the comparison still uses it. */
   public setShowSparkline(show: boolean): void {
     this.showSparkline.set(show);
     if (!show && this.comparisonMode() !== 'previousPeriod') this.dateColumnId.set(null);
@@ -218,135 +205,142 @@ export class KpiWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const name = this.label();
-    const view = { kind: 'widget', widgetId: this.id } as const;
-
     if (!this.datasetId()) {
-      issues.push({
-        id: `${this.id}:noDataset`,
-        severity: 'warning',
-        title: `${name} has no dataset`,
-        detail: 'Pick a dataset so there is something to summarise.',
-        widgetId: this.id,
-        view,
-      });
-      return issues;
+      return [
+        this.issue(
+          'noDataset',
+          'warning',
+          `${this.label()} has no dataset`,
+          'Pick a dataset so there is something to summarise.',
+        ),
+      ];
     }
+    return [
+      this.valueColumnIssue(),
+      this.toleranceSetupIssue(),
+      this.targetIssue(),
+      this.dateColumnIssue(),
+      ...this.removedColumnIssues(),
+      this.removedToleranceColumnIssue(),
+    ].filter((issue): issue is ValidationIssue => !!issue);
+  }
 
-    if (this.valueSource() === 'aggregate' && this.aggregate() !== 'count' && !this.valueColumnId()) {
-      issues.push({
-        id: `${this.id}:noValueColumn`,
-        severity: 'warning',
-        title: `${name} has no value column`,
-        detail: 'Pick a column to summarise, or switch to Count.',
-        widgetId: this.id,
-        view,
-      });
-    }
+  private valueColumnIssue(): ValidationIssue | null {
+    const needsColumn = this.valueSource() === 'aggregate' && this.aggregate() !== 'count';
+    if (!needsColumn || this.valueColumnId()) return null;
+    return this.issue(
+      'noValueColumn',
+      'warning',
+      `${this.label()} has no value column`,
+      'Pick a column to summarise, or switch to Count.',
+    );
+  }
 
-    if (this.valueSource() === 'toleranceOutOfLimits' && (!this.valueColumnId() || !this.tolerance())) {
-      issues.push({
-        id: `${this.id}:noTolerance`,
-        severity: 'warning',
-        title: `${name} has no tolerance configured`,
-        detail: 'Pick a value column and a tolerance band to check it against.',
-        widgetId: this.id,
-        view,
-      });
-    }
+  private toleranceSetupIssue(): ValidationIssue | null {
+    if (this.valueSource() !== 'toleranceOutOfLimits') return null;
+    if (this.valueColumnId() && this.tolerance()) return null;
+    return this.issue(
+      'noTolerance',
+      'warning',
+      `${this.label()} has no tolerance configured`,
+      'Pick a value column and a tolerance band to check it against.',
+    );
+  }
 
-    if (this.comparisonMode() === 'fixedTarget' && this.targetValue() === null) {
-      issues.push({
-        id: `${this.id}:noTarget`,
-        severity: 'warning',
-        title: `${name} has no target value`,
-        detail: 'Enter the value to compare against, or turn off the comparison.',
-        widgetId: this.id,
-        view,
-      });
-    }
+  private targetIssue(): ValidationIssue | null {
+    if (this.comparisonMode() !== 'fixedTarget' || this.targetValue() !== null) return null;
+    return this.issue(
+      'noTarget',
+      'warning',
+      `${this.label()} has no target value`,
+      'Enter the value to compare against, or turn off the comparison.',
+    );
+  }
 
-    if ((this.comparisonMode() === 'previousPeriod' || this.showSparkline()) && !this.dateColumnId()) {
-      issues.push({
-        id: `${this.id}:noDateColumn`,
-        severity: 'warning',
-        title: `${name} has no date column`,
-        detail: 'Pick the date column the previous-period comparison or sparkline windows on.',
-        widgetId: this.id,
-        view,
-      });
-    }
+  private dateColumnIssue(): ValidationIssue | null {
+    const needsDate = this.comparisonMode() === 'previousPeriod' || this.showSparkline();
+    if (!needsDate || this.dateColumnId()) return null;
+    return this.issue(
+      'noDateColumn',
+      'warning',
+      `${this.label()} has no date column`,
+      'Pick the date column the previous-period comparison or sparkline windows on.',
+    );
+  }
 
-    // A column reference that was validly picked, but whose dataset has since had that column
-    // removed — the same "still exists?" check TableColumnModel/PivotTableWidgetModel do.
+  /** Columns that were picked but have since been removed from the dataset. */
+  private removedColumnIssues(): ValidationIssue[] {
     const schema = this.schema();
-    if (schema) {
-      const columnIds = new Set(schema.columns.map((c) => c.id));
+    if (!schema) return [];
+    const columnIds = new Set(schema.columns.map((c) => c.id));
+    const name = this.label();
+    const issues: ValidationIssue[] = [];
 
-      if (this.valueColumnId() && !columnIds.has(this.valueColumnId()!)) {
-        issues.push({
-          id: `${this.id}:missingValueColumn`,
-          severity: 'error',
-          title: `${name}'s value column no longer exists`,
-          detail: 'The column it summarises was removed from the dataset. Pick a new one.',
-          widgetId: this.id,
-          view,
-        });
-      }
-
-      if (this.dateColumnId() && !columnIds.has(this.dateColumnId()!)) {
-        issues.push({
-          id: `${this.id}:missingDateColumn`,
-          severity: 'error',
-          title: `${name}'s date column no longer exists`,
-          detail: 'The column the previous-period comparison windows on was removed. Pick a new one.',
-          widgetId: this.id,
-          view,
-        });
-      }
-
-      if (this.groupByColumnId() && !columnIds.has(this.groupByColumnId()!)) {
-        issues.push({
-          id: `${this.id}:missingGroupColumn`,
-          severity: 'error',
-          title: `${name}'s group-by column no longer exists`,
-          detail: 'The column it grouped tiles by was removed from the dataset. Pick a new one.',
-          widgetId: this.id,
-          view,
-        });
-      }
+    if (this.isRemoved(columnIds, this.valueColumnId())) {
+      issues.push(
+        this.issue(
+          'missingValueColumn',
+          'error',
+          `${name}'s value column no longer exists`,
+          'The column it summarises was removed from the dataset. Pick a new one.',
+        ),
+      );
     }
-
-    // The tolerance's own min/max/concession columns point at a *different* ("limits") dataset,
-    // checked against that dataset's schema rather than this widget's own — same as a table
-    // column's tolerance validation.
-    const tolerance = this.tolerance();
-    const toleranceSchema = this.toleranceSchema();
-    if (tolerance && toleranceSchema) {
-      const columnIds = new Set(toleranceSchema.columns.map((c) => c.id));
-      const pointers = [
-        tolerance.minColumnId,
-        tolerance.maxColumnId,
-        tolerance.concessionLowerColumnId,
-        tolerance.concessionUpperColumnId,
-        tolerance.match?.sourceColumnId,
-      ].filter((id): id is string => !!id);
-      const matchColumnGone =
-        !!tolerance.match && !!schema && !schema.columns.some((c) => c.id === tolerance.match!.columnId);
-
-      if (pointers.some((id) => !columnIds.has(id)) || matchColumnGone) {
-        issues.push({
-          id: `${this.id}:toleranceMissing`,
-          severity: 'error',
-          title: `${name}'s tolerance points at a removed column`,
-          detail: `A column this tolerance uses (in "${toleranceSchema.name}" or in this widget's own dataset) has been removed. Re-point it or remove the banding.`,
-          widgetId: this.id,
-          view,
-        });
-      }
+    if (this.isRemoved(columnIds, this.dateColumnId())) {
+      issues.push(
+        this.issue(
+          'missingDateColumn',
+          'error',
+          `${name}'s date column no longer exists`,
+          'The column the previous-period comparison windows on was removed. Pick a new one.',
+        ),
+      );
     }
-
+    if (this.isRemoved(columnIds, this.groupByColumnId())) {
+      issues.push(
+        this.issue(
+          'missingGroupColumn',
+          'error',
+          `${name}'s group-by column no longer exists`,
+          'The column it grouped tiles by was removed from the dataset. Pick a new one.',
+        ),
+      );
+    }
     return issues;
+  }
+
+  private removedToleranceColumnIssue(): ValidationIssue | null {
+    const toleranceSchema = this.toleranceSchema();
+    if (!toleranceSchema || !this.tolerancePointsAtRemovedColumn(toleranceSchema)) return null;
+    return this.issue(
+      'toleranceMissing',
+      'error',
+      `${this.label()}'s tolerance points at a removed column`,
+      `A column this tolerance uses (in "${toleranceSchema.name}" or in this widget's own dataset) has been removed. Re-point it or remove the banding.`,
+    );
+  }
+
+  /** Limit columns live in the limits dataset; the match column lives in this widget's own dataset. */
+  private tolerancePointsAtRemovedColumn(toleranceSchema: DatasetSchema): boolean {
+    const tolerance = this.tolerance();
+    if (!tolerance) return false;
+    const columnIds = new Set(toleranceSchema.columns.map((c) => c.id));
+    const pointers = [
+      tolerance.minColumnId,
+      tolerance.maxColumnId,
+      tolerance.concessionLowerColumnId,
+      tolerance.concessionUpperColumnId,
+      tolerance.match?.sourceColumnId,
+    ].filter((id): id is string => !!id);
+    const schema = this.schema();
+    const matchColumnGone =
+      !!tolerance.match &&
+      !!schema &&
+      !schema.columns.some((c) => c.id === tolerance.match!.columnId);
+    return pointers.some((id) => !columnIds.has(id)) || matchColumnGone;
+  }
+
+  private isRemoved(columnIds: ReadonlySet<string>, columnId: string | null): boolean {
+    return !!columnId && !columnIds.has(columnId);
   }
 }

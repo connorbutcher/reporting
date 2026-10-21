@@ -10,10 +10,9 @@ import { ValidationIssue } from './validation-issue';
 import { WidgetModel } from './widget-model-base';
 
 export class StaticTextWidgetModel extends WidgetModel {
-  override readonly type = 'staticText' as const;
-
-  readonly content = signal('');
-  readonly style: TextStyleModel;
+  public override readonly type = 'staticText' as const;
+  public readonly content = signal('');
+  public readonly style: TextStyleModel;
 
   constructor(widget: StaticTextWidget) {
     super(widget);
@@ -21,7 +20,7 @@ export class StaticTextWidgetModel extends WidgetModel {
     this.style = new TextStyleModel(widget.config);
   }
 
-  override toDto(): StaticTextWidget {
+  public override toDto(): StaticTextWidget {
     const config: StaticTextWidgetConfig = {
       type: 'staticText',
       ...DEFAULT_TEXT_CONFIG,
@@ -32,26 +31,24 @@ export class StaticTextWidgetModel extends WidgetModel {
     return { ...this.geometryDto(), type: 'staticText', config };
   }
 
-  protected override defaultTitle(): string {
+  public override defaultTitle(): string {
     return 'Text';
   }
 
-  protected override childNodes(): readonly EditorNode[] {
+  public override childNodes(): readonly EditorNode[] {
     return [this.style];
   }
 
-  protected override ownIssues(): ValidationIssue[] {
+  public override ownIssues(): ValidationIssue[] {
     if (this.content().trim().length > 0) return [];
 
     return [
-      {
-        id: `${this.id}:noContent`,
-        severity: 'warning',
-        title: `${this.label()} has no text`,
-        detail: 'Add the text this widget should show.',
-        widgetId: this.id,
-        view: { kind: 'widget', widgetId: this.id },
-      },
+      this.issue(
+        'noContent',
+        'warning',
+        `${this.label()} has no text`,
+        'Add the text this widget should show.',
+      ),
     ];
   }
 }

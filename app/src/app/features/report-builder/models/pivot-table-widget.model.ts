@@ -11,49 +11,34 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 import { ValidationIssue } from './validation-issue';
+import { ColumnTypes } from './column-types';
 
-/** Numeric column types an aggregate other than Count can reduce. */
-function isNumeric(type: DatasetColumn['type']): boolean {
-  return type === 'int' || type === 'double';
-}
-
-/**
- * A pivot / aggregation table. It binds a single dataset (like the data table), grouping rows by its
- * `rowFields` dimension columns and reducing each group to one or more `measures`. The measure list
- * and row-field list are edited as plain arrays; the widget's dirty/undo tracking flows through
- * {@link toDto}.
- */
+/** A pivot table: one dataset, rows grouped by `rowFields` and reduced to one or more `measures`. */
 export class PivotTableWidgetModel extends WidgetModel {
   public override readonly type = 'pivotTable' as const;
 
-  /** Null until the user binds the pivot to a dataset. */
   public readonly datasetId = signal<number | null>(null);
-  /** Column ids rows are grouped by, in order. */
   public readonly rowFields = signal<readonly string[]>([]);
   /** Column ids spread across the top, in order. */
   public readonly columnFields = signal<readonly string[]>([]);
-  /** Date fields grouped by period, by column id. */
+  /** Date fields grouped by period. */
   public readonly fieldGroupings = signal<readonly PivotFieldGrouping[]>([]);
-  /** The measures computed per group, each a value column. */
   public readonly measures = signal<readonly PivotMeasure[]>([]);
-  /** The measure the rows are ordered by (by its id); null orders by the dimensions. */
+  /** Null orders rows by their dimensions. */
   public readonly sortMeasureId = signal<string | null>(null);
   public readonly sortDescending = signal(true);
   public readonly showGrandTotal = signal(true);
   public readonly showSubtotals = signal(false);
 
-  /** Rows this widget aggregates, narrowed server-side. */
   public readonly filter: FilterGroupModel;
 
-  /** The bound dataset's schema, once loaded. */
   public readonly schema: Signal<DatasetSchema | null>;
-  /** Every column on the bound dataset. */
   public readonly columns: Signal<DatasetColumn[]>;
-  /** Numeric columns, for the measure column picker (Count aside). */
   public readonly numericColumns: Signal<DatasetColumn[]>;
-  /** Columns not already used as a row or column field, for the add-field pickers. */
+  /** Columns not already used as a row or column field. */
   public readonly availableRowFields: Signal<DatasetColumn[]>;
   public readonly availableColumnFields: Signal<DatasetColumn[]>;
 
@@ -76,7 +61,9 @@ export class PivotTableWidgetModel extends WidgetModel {
       return id ? (sources.schemas()[id] ?? null) : null;
     });
     this.columns = computed(() => this.schema()?.columns ?? []);
-    this.numericColumns = computed(() => this.columns().filter((c) => isNumeric(c.type)));
+    this.numericColumns = computed(() =>
+      this.columns().filter((c) => ColumnTypes.isNumeric(c.type)),
+    );
     this.availableRowFields = computed(() => {
       const used = new Set([...this.rowFields(), ...this.columnFields()]);
       return this.columns().filter((c) => !used.has(c.id));
@@ -86,7 +73,7 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.filter = new FilterGroupModel(config.filter ?? null, {
       schema: this.schema,
       catalogue: sources.catalogue,
-      // A pivot can filter on any of its dataset's columns, not only the ones it groups by.
+      // A pivot can filter on any column, not only the ones it groups by.
       columns: this.columns,
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,
@@ -94,7 +81,7 @@ export class PivotTableWidgetModel extends WidgetModel {
     });
   }
 
-  /** Swapping dataset invalidates every column choice and the filter. */
+  /** Clears every column choice and the filter. */
   public setDataset(datasetId: number | null): void {
     if (datasetId === this.datasetId()) return;
     this.datasetId.set(datasetId);
@@ -134,12 +121,11 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.columnFields.set(fields);
   }
 
-  /** The period a date field is grouped by; null when it groups by exact value. */
+  /** Null when the field groups by exact value. */
   public fieldGrouping(columnId: string): DateGrouping | null {
     return this.fieldGroupings().find((g) => g.columnId === columnId)?.grouping ?? null;
   }
 
-  /** Groups a date field by period, or (null) by exact value again. */
   public setFieldGrouping(columnId: string, grouping: DateGrouping | null): void {
     const others = this.fieldGroupings().filter((g) => g.columnId !== columnId);
     if (!grouping && others.length === this.fieldGroupings().length) return;
@@ -154,7 +140,7 @@ export class PivotTableWidgetModel extends WidgetModel {
     this.rowFields.set(fields);
   }
 
-  /** Adds a measure, defaulting to Count so it's valid before a column is picked. */
+  /** Defaults to Count so it's valid before a column is picked. */
   public addMeasure(): void {
     const measure: PivotMeasure = {
       id: crypto.randomUUID(),
@@ -166,14 +152,12 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public updateMeasure(id: string, patch: Partial<Omit<PivotMeasure, 'id'>>): void {
-    this.measures.update((measures) =>
-      measures.map((m) => (m.id === id ? { ...m, ...patch } : m)),
-    );
+    this.measures.update((measures) => measures.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }
 
   /**
-   * Switching an aggregate to Count drops its column; away from Count leaves the picker to fill. A
-   * distinct count reads any column, so leaving it for a numeric aggregate drops a non-number column.
+   * Count drops the column. Distinct count reads any column, so moving from it to a numeric
+   * aggregate drops a non-number column.
    */
   public setMeasureAggregate(id: string, aggregate: PivotAggregate): void {
     if (aggregate === 'count') {
@@ -182,14 +166,14 @@ export class PivotTableWidgetModel extends WidgetModel {
     }
     const measure = this.measures().find((m) => m.id === id);
     const column = measure?.columnId ? this.columns().find((c) => c.id === measure.columnId) : null;
-    const keepsColumn = aggregate === 'countDistinct' || !column || isNumeric(column.type);
+    const keepsColumn =
+      aggregate === 'countDistinct' || !column || ColumnTypes.isNumeric(column.type);
     this.updateMeasure(id, keepsColumn ? { aggregate } : { aggregate, columnId: null });
   }
 
   public removeMeasure(id: string): void {
     this.measures.update((measures) => measures.filter((m) => m.id !== id));
-    // Sorting by a measure that's gone would silently fall back to dimension order; clear it so the
-    // panel and the query agree there's no measure sort any more.
+    // Clear the sort so the panel and query agree there's no measure sort.
     if (this.sortMeasureId() === id) this.sortMeasureId.set(null);
   }
 
@@ -229,75 +213,71 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    const issues: ValidationIssue[] = [];
-    const name = this.label();
-    const view = { kind: 'widget', widgetId: this.id } as const;
-
     if (!this.datasetId()) {
-      issues.push({
-        id: `${this.id}:noDataset`,
-        severity: 'warning',
-        title: `${name} has no dataset`,
-        detail: 'Pick a dataset so the pivot has something to summarise.',
-        widgetId: this.id,
-        view,
-      });
-      return issues;
+      return [
+        this.issue(
+          'noDataset',
+          'warning',
+          `${this.label()} has no dataset`,
+          'Pick a dataset so the pivot has something to summarise.',
+        ),
+      ];
     }
+    return [
+      this.noMeasuresIssue(),
+      this.measureColumnIssue(),
+      this.removedFieldIssue(),
+      this.removedMeasureColumnIssue(),
+    ].filter((issue): issue is ValidationIssue => !!issue);
+  }
 
-    if (this.measures().length === 0) {
-      issues.push({
-        id: `${this.id}:noMeasures`,
-        severity: 'warning',
-        title: `${name} has no measures`,
-        detail: 'Add at least one measure (a value column and how to summarise it).',
-        widgetId: this.id,
-        view,
-      });
+  private noMeasuresIssue(): ValidationIssue | null {
+    if (this.measures().length > 0) return null;
+    return this.issue(
+      'noMeasures',
+      'warning',
+      `${this.label()} has no measures`,
+      'Add at least one measure (a value column and how to summarise it).',
+    );
+  }
+
+  private measureColumnIssue(): ValidationIssue | null {
+    if (!this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) return null;
+    return this.issue(
+      'measureNoColumn',
+      'warning',
+      `${this.label()} has a measure with no column`,
+      'Pick a value column for each measure other than Count.',
+    );
+  }
+
+  private removedFieldIssue(): ValidationIssue | null {
+    const columnIds = this.schemaColumnIds();
+    const fields = [...this.rowFields(), ...this.columnFields()];
+    if (!columnIds || fields.every((id) => columnIds.has(id))) return null;
+    return this.issue(
+      'missingRowField',
+      'error',
+      `${this.label()} groups by a column that no longer exists`,
+      'A dimension column was removed from the dataset. Remove it or replace it with another.',
+    );
+  }
+
+  private removedMeasureColumnIssue(): ValidationIssue | null {
+    const columnIds = this.schemaColumnIds();
+    if (!columnIds || !this.measures().some((m) => m.columnId && !columnIds.has(m.columnId))) {
+      return null;
     }
+    return this.issue(
+      'missingMeasureColumn',
+      'error',
+      `${this.label()} has a measure whose column no longer exists`,
+      "A measure's value column was removed from the dataset. Pick a new one.",
+    );
+  }
 
-    // A non-count aggregate needs a column to reduce; Count is valid without one.
-    if (this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) {
-      issues.push({
-        id: `${this.id}:measureNoColumn`,
-        severity: 'warning',
-        title: `${name} has a measure with no column`,
-        detail: 'Pick a value column for each measure other than Count.',
-        widgetId: this.id,
-        view,
-      });
-    }
-
-    // A dimension or measure column that was validly picked, but whose dataset has since had
-    // that column removed — the same "still exists?" check TableColumnModel/FilterConditionModel
-    // do for their own column references.
+  private schemaColumnIds(): ReadonlySet<string> | null {
     const schema = this.schema();
-    if (schema) {
-      const columnIds = new Set(schema.columns.map((c) => c.id));
-
-      if ([...this.rowFields(), ...this.columnFields()].some((id) => !columnIds.has(id))) {
-        issues.push({
-          id: `${this.id}:missingRowField`,
-          severity: 'error',
-          title: `${name} groups by a column that no longer exists`,
-          detail: 'A dimension column was removed from the dataset. Remove it or replace it with another.',
-          widgetId: this.id,
-          view,
-        });
-      }
-
-      if (this.measures().some((m) => m.columnId && !columnIds.has(m.columnId))) {
-        issues.push({
-          id: `${this.id}:missingMeasureColumn`,
-          severity: 'error',
-          title: `${name} has a measure whose column no longer exists`,
-          detail: "A measure's value column was removed from the dataset. Pick a new one.",
-          widgetId: this.id,
-          view,
-        });
-      }
-    }
-
-    return issues;
+    return schema ? new Set(schema.columns.map((c) => c.id)) : null;
   }
 }

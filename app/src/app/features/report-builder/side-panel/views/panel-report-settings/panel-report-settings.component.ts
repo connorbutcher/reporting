@@ -1,32 +1,37 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from '../../../models/report.model';
+import { TabModel } from '../../../models/tab.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/** Grid size for the active tab — each tab is its own surface, so this is per-tab. */
+/** The active tab's grid size. */
 @Component({
   selector: 'app-panel-report-settings',
   imports: [FormsModule, InputNumberModule, PanelGroupComponent],
   templateUrl: './panel-report-settings.component.html',
 })
 export class PanelReportSettingsComponent {
-  static readonly title = 'Tab settings';
+  public static readonly title = 'Tab settings';
 
-  protected readonly defaultColumns = DEFAULT_GRID_COLUMNS;
-  protected readonly defaultRows = DEFAULT_GRID_ROWS;
+  public readonly defaultColumns = TabModel.DEFAULT_GRID_COLUMNS;
+  public readonly defaultRows = TabModel.DEFAULT_GRID_ROWS;
 
   private readonly session = inject(ReportSession);
 
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-
-  protected setGridColumns(value: number): void {
+  public setGridColumns(value: number): void {
     this.session.setGridColumns(value);
   }
 
-  protected setGridRows(value: number): void {
+  public setGridRows(value: number): void {
     this.session.setGridRows(value);
+  }
+
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
   }
 }

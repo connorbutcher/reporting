@@ -7,28 +7,23 @@ import { ReportSession } from './report-session';
 import { WidgetSelection } from './widget-selection';
 
 /**
- * Where the side panel has been — a linear back/forward history, separate from
- * the report's own undo stack (which tracks edits, not navigation) — together
- * with the coordination that keeps the canvas selection in step with it.
- *
- * Navigating the panel to a widget selects it, and selecting a widget navigates
- * the panel to it, so the two never drift apart; the tab that owns a selected
- * widget is brought to the front so the canvas shows what's configured.
+ * The side panel's back/forward history (separate from the edit undo stack), kept in step with the
+ * canvas selection: navigating to a widget selects it, selecting one navigates to it, and its tab is
+ * brought to the front.
  */
 @Injectable()
 export class PanelNavigation {
+  public readonly view = computed(() => this.history()[this.index()]);
+  public readonly canGoBack = computed(() => this.index() > 0);
+  public readonly canGoForward = computed(() => this.index() < this.history().length - 1);
+
   private readonly selection = inject(WidgetSelection);
   private readonly session = inject(ReportSession);
   private readonly fragments = inject(UrlFragmentService);
-
   private readonly history = signal<PanelView[]>([{ kind: 'root' }]);
   private readonly index = signal(0);
 
-  readonly view = computed(() => this.history()[this.index()]);
-  readonly canGoBack = computed(() => this.index() > 0);
-  readonly canGoForward = computed(() => this.index() < this.history().length - 1);
-
-  navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     // Navigating from a point in history discards anything after it.
     const trimmed = this.history().slice(0, this.index() + 1);
     this.history.set([...trimmed, view]);
@@ -36,26 +31,25 @@ export class PanelNavigation {
     this.syncSelectionToView();
   }
 
-  /** Replaces the current entry, for stepping sideways without adding history. */
-  replace(view: PanelView): void {
+  /** Steps sideways without adding history. */
+  public replace(view: PanelView): void {
     this.history.update((views) => views.map((v, i) => (i === this.index() ? view : v)));
     this.syncSelectionToView();
   }
 
-  back(): void {
+  public back(): void {
     if (!this.canGoBack()) return;
     this.index.update((i) => i - 1);
     this.syncSelectionToView();
   }
 
-  forward(): void {
+  public forward(): void {
     if (!this.canGoForward()) return;
     this.index.update((i) => i + 1);
     this.syncSelectionToView();
   }
 
-  /** Selecting a widget anywhere opens its configuration in the panel. */
-  selectWidget(widgetId: string): void {
+  public selectWidget(widgetId: string): void {
     const current = this.view();
     const alreadyThere =
       current.kind === 'widget' &&
@@ -67,20 +61,18 @@ export class PanelNavigation {
     if (!alreadyThere) this.navigate({ kind: 'widget', widgetId });
   }
 
-  /** Adds to or removes from the selection, for ctrl/shift-clicking on the canvas. */
-  toggleWidgetSelection(widgetId: string): void {
+  /** For ctrl/shift-click on the canvas. */
+  public toggleWidgetSelection(widgetId: string): void {
     this.selection.toggle(widgetId);
     const primary = this.selection.selectedWidgetIds().at(-1);
     if (primary) this.navigate({ kind: 'widget', widgetId: primary });
   }
 
   /**
-   * Takes the user to whatever the issue is about. When it names a widget, this
-   * also points the URL fragment at it — in one navigation with the tab switch,
-   * so the two land together — which is what scrolls the canvas to it and makes
-   * the link shareable.
+   * Opens whatever the issue is about. For a widget, the tab switch and URL fragment change land in
+   * one navigation, which scrolls the canvas to it and makes the link shareable.
    */
-  goToIssue(issue: ValidationIssue): void {
+  public goToIssue(issue: ValidationIssue): void {
     if (issue.widgetId) {
       this.selection.set([issue.widgetId]);
       const tabId = this.session.model()?.tabOf(issue.widgetId)?.id;
@@ -89,7 +81,6 @@ export class PanelNavigation {
     this.navigate(issue.view);
   }
 
-  /** Brings the tab that owns a widget to the front, so the canvas shows what's selected. */
   private focusTabFor(widgetId: string): void {
     const tab = this.session.model()?.tabOf(widgetId);
     if (tab && this.session.activeTabId() !== tab.id) this.session.goToTab(tab.id);
@@ -97,8 +88,7 @@ export class PanelNavigation {
 
   private syncSelectionToView(): void {
     const view = this.view();
-    // Panel navigation always focuses a single widget; canvas multi-selection
-    // is only replaced when the panel actually moves to a different one.
+    // The panel focuses one widget; a canvas multi-selection is replaced only when it moves elsewhere.
     if ('widgetId' in view && !this.selection.selectedWidgetIds().includes(view.widgetId)) {
       this.selection.select(view.widgetId);
     }

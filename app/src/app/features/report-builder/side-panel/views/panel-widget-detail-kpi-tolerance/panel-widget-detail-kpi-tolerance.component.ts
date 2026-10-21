@@ -9,12 +9,7 @@ import { ReportSession } from '../../../state/report-session';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
 import { PanelGroupComponent } from '../../panel-group.component';
 
-/**
- * A KPI's tolerance band: a dataset, one row in it (the active spec), and which of that row's
- * columns hold the min, max, and optional concession bounds — the same "point at a spec row"
- * picker a table column's tolerance panel uses, here configuring the one band a KPI checks its
- * value column against rather than a per-column one.
- */
+/** The one tolerance band a KPI checks its value against, using the same spec-row picker as a table column. */
 @Component({
   selector: 'app-panel-widget-detail-kpi-tolerance',
   imports: [FormsModule, ButtonModule, CheckboxModule, SelectModule, PanelGroupComponent],
@@ -26,14 +21,14 @@ export class PanelWidgetDetailKpiToleranceComponent {
 
   public readonly picker = inject(ToleranceSourcePicker);
 
-  /** The KPI's own dataset columns, from which the identifier that picks each row's limits is chosen. */
+  /** The KPI's columns, for the identifier that picks each row's limits. */
   public readonly kpiColumns = computed(() => this.kpi()?.schema()?.columns ?? []);
 
   private readonly session = inject(ReportSession);
   private seeded = false;
 
   constructor() {
-    // Seeds the draft when the panel opens on a (possibly different) widget.
+    // Seed when the panel opens on a widget.
     effect(() => {
       const kpi = this.kpi();
       if (!kpi || this.seeded) return;
@@ -43,8 +38,7 @@ export class PanelWidgetDetailKpiToleranceComponent {
       untracked(() => this.picker.seed(tolerance));
     });
 
-    // Writes back once the draft is complete; an in-progress edit leaves
-    // whatever was last saved untouched rather than persisting a half state.
+    // Write back only once complete, so a half-finished edit isn't saved.
     effect(() => {
       const tolerance = this.picker.toColumnTolerance();
       if (!tolerance) return;

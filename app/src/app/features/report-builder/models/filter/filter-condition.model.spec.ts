@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { FilterCondition } from '../../../../core/models/filter';
 import { FilterConditionModel } from './filter-condition.model';
-import { column, condition, contextOf, schemaOf } from './testing/filter-fixtures';
+import { FilterFixtures } from './testing/filter-fixtures';
 
-const build = (dto: FilterCondition, options: Parameters<typeof contextOf>[0] = {}) =>
-  new FilterConditionModel(dto, contextOf(options));
+const build = (
+  dto: FilterCondition,
+  options: Parameters<typeof FilterFixtures.contextOf>[0] = {},
+) => new FilterConditionModel(dto, FilterFixtures.contextOf(options));
 
 describe('FilterConditionModel', () => {
   describe('construction', () => {
     it('copies the dto, treating a missing enabled flag as enabled', () => {
       const values = ['x'];
-      const model = build(condition('a', 'equals', values));
+      const model = build(FilterFixtures.condition('a', 'equals', values));
 
       expect(model.columnId()).toBe('a');
       expect(model.operator()).toBe('equals');
@@ -20,25 +22,34 @@ describe('FilterConditionModel', () => {
     });
 
     it('reads enabled: false', () => {
-      expect(build(condition('a', 'equals', [], false)).enabled()).toBe(false);
+      expect(build(FilterFixtures.condition('a', 'equals', [], false)).enabled()).toBe(false);
     });
   });
 
   describe('operators', () => {
     it('offers none until the schema and catalogue are in', () => {
-      expect(build(condition('a'), { schema: null }).availableOperators()).toEqual([]);
-      expect(build(condition('a'), { catalogue: null }).availableOperators()).toEqual([]);
+      expect(build(FilterFixtures.condition('a'), { schema: null }).availableOperators()).toEqual(
+        [],
+      );
+      expect(
+        build(FilterFixtures.condition('a'), { catalogue: null }).availableOperators(),
+      ).toEqual([]);
     });
 
     it('offers the operators for the column’s type', () => {
-      const model = build(condition('a'));
+      const model = build(FilterFixtures.condition('a'));
 
-      expect(model.availableOperators().map((o) => o.value)).toEqual(['equals', 'notEquals', 'in', 'isEmpty']);
+      expect(model.availableOperators().map((o) => o.value)).toEqual([
+        'equals',
+        'notEquals',
+        'in',
+        'isEmpty',
+      ]);
     });
 
     it('hides tolerance operators unless the column has banding', () => {
-      const plain = build(condition('b', 'equals'));
-      const banded = build(condition('b', 'equals'), { tolerant: ['b'] });
+      const plain = build(FilterFixtures.condition('b', 'equals'));
+      const banded = build(FilterFixtures.condition('b', 'equals'), { tolerant: ['b'] });
 
       expect(plain.availableOperators().map((o) => o.value)).toEqual(['equals', 'between']);
       expect(banded.availableOperators().map((o) => o.value)).toEqual([
@@ -52,22 +63,26 @@ describe('FilterConditionModel', () => {
     });
 
     it('keeps an orphaned tolerance operator that is currently selected', () => {
-      const model = build(condition('b', 'inTolerance'));
+      const model = build(FilterFixtures.condition('b', 'inTolerance'));
 
-      expect(model.availableOperators().map((o) => o.value)).toEqual(['equals', 'between', 'inTolerance']);
+      expect(model.availableOperators().map((o) => o.value)).toEqual([
+        'equals',
+        'between',
+        'inTolerance',
+      ]);
       expect(model.descriptor()?.value).toBe('inTolerance');
     });
 
     it('describes the chosen operator, and how many operand slots it needs', () => {
-      expect(build(condition('a', 'equals')).operandIndexes()).toEqual([0]);
-      expect(build(condition('b', 'between')).operandIndexes()).toEqual([0, 1]);
-      expect(build(condition('a', 'isEmpty')).operandIndexes()).toEqual([]);
+      expect(build(FilterFixtures.condition('a', 'equals')).operandIndexes()).toEqual([0]);
+      expect(build(FilterFixtures.condition('b', 'between')).operandIndexes()).toEqual([0, 1]);
+      expect(build(FilterFixtures.condition('a', 'isEmpty')).operandIndexes()).toEqual([]);
     });
   });
 
   describe('editing', () => {
     it('switching column keeps a valid operator but clears the values', () => {
-      const model = build(condition('a', 'equals', ['x']));
+      const model = build(FilterFixtures.condition('a', 'equals', ['x']));
 
       model.setColumn('a2');
 
@@ -76,8 +91,17 @@ describe('FilterConditionModel', () => {
     });
 
     it('switching to a type that lacks the operator falls back to its first', () => {
-      const ctx = contextOf({ columns: [column('a'), column('b', 'int'), column('c', 'bool')] });
-      const model = new FilterConditionModel(condition('a', 'notEquals', ['x']), ctx);
+      const ctx = FilterFixtures.contextOf({
+        columns: [
+          FilterFixtures.column('a'),
+          FilterFixtures.column('b', 'int'),
+          FilterFixtures.column('c', 'bool'),
+        ],
+      });
+      const model = new FilterConditionModel(
+        FilterFixtures.condition('a', 'notEquals', ['x']),
+        ctx,
+      );
 
       model.setColumn('c');
 
@@ -85,7 +109,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('does nothing when the column is unchanged', () => {
-      const model = build(condition('a', 'equals', ['x']));
+      const model = build(FilterFixtures.condition('a', 'equals', ['x']));
 
       model.setColumn('a');
 
@@ -93,7 +117,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('changing operator keeps only the operands that still fit', () => {
-      const model = build(condition('b', 'between', ['1', '2']));
+      const model = build(FilterFixtures.condition('b', 'between', ['1', '2']));
 
       model.setOperator('equals');
       expect(model.values()).toEqual(['1']);
@@ -103,7 +127,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('setValue pads with blanks up to the index', () => {
-      const model = build(condition('b', 'between'));
+      const model = build(FilterFixtures.condition('b', 'between'));
 
       model.setValue(1, 'to');
 
@@ -111,7 +135,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('setValues replaces every operand with a copy', () => {
-      const model = build(condition('a', 'in'));
+      const model = build(FilterFixtures.condition('a', 'in'));
       const next = ['a', 'b'];
 
       model.setValues(next);
@@ -121,7 +145,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('toggles enabled', () => {
-      const model = build(condition('a'));
+      const model = build(FilterFixtures.condition('a'));
 
       model.setEnabled(false);
 
@@ -131,32 +155,34 @@ describe('FilterConditionModel', () => {
 
   describe('completeness', () => {
     it('needs as many non-blank operands as the operator takes', () => {
-      expect(build(condition('a', 'equals', [])).isComplete()).toBe(false);
-      expect(build(condition('a', 'equals', ['  '])).isComplete()).toBe(false);
-      expect(build(condition('a', 'equals', ['x'])).isComplete()).toBe(true);
-      expect(build(condition('b', 'between', ['1'])).isComplete()).toBe(false);
-      expect(build(condition('b', 'between', ['1', '2'])).isComplete()).toBe(true);
-      expect(build(condition('a', 'isEmpty')).isComplete()).toBe(true);
+      expect(build(FilterFixtures.condition('a', 'equals', [])).isComplete()).toBe(false);
+      expect(build(FilterFixtures.condition('a', 'equals', ['  '])).isComplete()).toBe(false);
+      expect(build(FilterFixtures.condition('a', 'equals', ['x'])).isComplete()).toBe(true);
+      expect(build(FilterFixtures.condition('b', 'between', ['1'])).isComplete()).toBe(false);
+      expect(build(FilterFixtures.condition('b', 'between', ['1', '2'])).isComplete()).toBe(true);
+      expect(build(FilterFixtures.condition('a', 'isEmpty')).isComplete()).toBe(true);
     });
 
     it('reads as complete while the operators are unknown, so a pending schema drops nothing', () => {
-      expect(build(condition('a', 'equals'), { schema: null }).isComplete()).toBe(true);
+      expect(build(FilterFixtures.condition('a', 'equals'), { schema: null }).isComplete()).toBe(
+        true,
+      );
     });
   });
 
   describe('a removed column', () => {
     it('is missing only once the schema has loaded without it', () => {
-      expect(build(condition('gone'), { schema: null }).columnMissing()).toBe(false);
-      expect(build(condition('gone')).columnMissing()).toBe(true);
-      expect(build(condition('a')).columnMissing()).toBe(false);
+      expect(build(FilterFixtures.condition('gone'), { schema: null }).columnMissing()).toBe(false);
+      expect(build(FilterFixtures.condition('gone')).columnMissing()).toBe(true);
+      expect(build(FilterFixtures.condition('a')).columnMissing()).toBe(false);
     });
 
     it('becomes missing when the schema arrives lacking the column', () => {
-      const ctx = contextOf({ schema: null });
-      const model = new FilterConditionModel(condition('gone'), ctx);
+      const ctx = FilterFixtures.contextOf({ schema: null });
+      const model = new FilterConditionModel(FilterFixtures.condition('gone'), ctx);
       expect(model.columnMissing()).toBe(false);
 
-      ctx.schemaSignal.set(schemaOf([column('a')]));
+      ctx.schemaSignal.set(FilterFixtures.schemaOf([FilterFixtures.column('a')]));
 
       expect(model.columnMissing()).toBe(true);
     });
@@ -164,46 +190,55 @@ describe('FilterConditionModel', () => {
 
   describe('problem (the inline cue)', () => {
     it('is null for a healthy condition and for a disabled one', () => {
-      expect(build(condition('a', 'equals', ['x'])).problem()).toBeNull();
-      expect(build(condition('gone', 'equals', [], false)).problem()).toBeNull();
+      expect(build(FilterFixtures.condition('a', 'equals', ['x'])).problem()).toBeNull();
+      expect(build(FilterFixtures.condition('gone', 'equals', [], false)).problem()).toBeNull();
     });
 
     it('flags a missing column as an error', () => {
-      expect(build(condition('gone', 'equals', ['x'])).problem()).toEqual({
+      expect(build(FilterFixtures.condition('gone', 'equals', ['x'])).problem()).toEqual({
         severity: 'error',
         message: 'This column no longer exists.',
       });
     });
 
     it('warns about a tolerance operator on a column without banding', () => {
-      expect(build(condition('b', 'inTolerance')).problem()).toEqual({
+      expect(build(FilterFixtures.condition('b', 'inTolerance')).problem()).toEqual({
         severity: 'warning',
         message: 'No tolerance banding here, so nothing matches.',
       });
-      expect(build(condition('b', 'inTolerance'), { tolerant: ['b'] }).problem()).toBeNull();
+      expect(
+        build(FilterFixtures.condition('b', 'inTolerance'), { tolerant: ['b'] }).problem(),
+      ).toBeNull();
     });
 
     it('asks for the missing value, or both values for a range', () => {
-      expect(build(condition('a', 'equals')).problem()).toEqual({ severity: 'error', message: 'Enter a value.' });
-      expect(build(condition('b', 'between', ['1'])).problem()).toEqual({
+      expect(build(FilterFixtures.condition('a', 'equals')).problem()).toEqual({
+        severity: 'error',
+        message: 'Enter a value.',
+      });
+      expect(build(FilterFixtures.condition('b', 'between', ['1'])).problem()).toEqual({
         severity: 'error',
         message: 'Enter both values.',
       });
     });
 
     it('reports the column first when several things are wrong', () => {
-      expect(build(condition('gone', 'inTolerance')).problem()?.message).toBe('This column no longer exists.');
+      expect(build(FilterFixtures.condition('gone', 'inTolerance')).problem()?.message).toBe(
+        'This column no longer exists.',
+      );
     });
   });
 
   describe('issues (the Issues panel)', () => {
     it('has none for a healthy or disabled condition', () => {
-      expect(build(condition('a', 'equals', ['x'])).ownIssues()).toEqual([]);
-      expect(build(condition('gone', 'equals', [], false)).ownIssues()).toEqual([]);
+      expect(build(FilterFixtures.condition('a', 'equals', ['x'])).ownIssues()).toEqual([]);
+      expect(build(FilterFixtures.condition('gone', 'equals', [], false)).ownIssues()).toEqual([]);
     });
 
     it('raises a missing column as an error, and stops there', () => {
-      const [issue, ...rest] = build(condition('gone', 'inTolerance'), { widgetId: 'w1' }).ownIssues();
+      const [issue, ...rest] = build(FilterFixtures.condition('gone', 'inTolerance'), {
+        widgetId: 'w1',
+      }).ownIssues();
 
       expect(rest).toEqual([]);
       expect(issue).toMatchObject({
@@ -216,7 +251,7 @@ describe('FilterConditionModel', () => {
     });
 
     it('raises missing banding as a warning naming the column', () => {
-      const [issue] = build(condition('b', 'inTolerance')).ownIssues();
+      const [issue] = build(FilterFixtures.condition('b', 'inTolerance')).ownIssues();
 
       expect(issue).toMatchObject({
         id: 'owner:filter:b:inTolerance:missingTolerance',
@@ -226,8 +261,8 @@ describe('FilterConditionModel', () => {
     });
 
     it('raises a missing value as an error saying how many are needed', () => {
-      const [one] = build(condition('a', 'equals')).ownIssues();
-      const [two] = build(condition('b', 'between', ['1'])).ownIssues();
+      const [one] = build(FilterFixtures.condition('a', 'equals')).ownIssues();
+      const [two] = build(FilterFixtures.condition('b', 'between', ['1'])).ownIssues();
 
       expect(one).toMatchObject({
         id: 'owner:filter:a:equals:missingValue',
@@ -239,10 +274,13 @@ describe('FilterConditionModel', () => {
     });
 
     it('uses the context’s panel view when it has one', () => {
-      const ctx = contextOf();
+      const ctx = FilterFixtures.contextOf();
       const withView = { ...ctx, view: { kind: 'widget', widgetId: 'w9' } as const };
 
-      const [issue] = new FilterConditionModel(condition('a', 'equals'), withView).ownIssues();
+      const [issue] = new FilterConditionModel(
+        FilterFixtures.condition('a', 'equals'),
+        withView,
+      ).ownIssues();
 
       expect(issue.view).toEqual({ kind: 'widget', widgetId: 'w9' });
     });
@@ -250,7 +288,7 @@ describe('FilterConditionModel', () => {
 
   describe('toDto', () => {
     it('omits enabled when on, so the dto stays stable for the common case', () => {
-      expect(build(condition('a', 'equals', ['x'])).toDto()).toEqual({
+      expect(build(FilterFixtures.condition('a', 'equals', ['x'])).toDto()).toEqual({
         kind: 'condition',
         columnId: 'a',
         operator: 'equals',
@@ -259,11 +297,13 @@ describe('FilterConditionModel', () => {
     });
 
     it('writes enabled: false when off', () => {
-      expect(build(condition('a', 'equals', ['x'], false)).toDto()).toMatchObject({ enabled: false });
+      expect(build(FilterFixtures.condition('a', 'equals', ['x'], false)).toDto()).toMatchObject({
+        enabled: false,
+      });
     });
 
     it('returns a copy of the values', () => {
-      const model = build(condition('a', 'equals', ['x']));
+      const model = build(FilterFixtures.condition('a', 'equals', ['x']));
 
       expect(model.toDto().values).not.toBe(model.values());
     });

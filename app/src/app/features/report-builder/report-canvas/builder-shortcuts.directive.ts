@@ -3,14 +3,7 @@ import { ReportAutosave } from '../state/report-autosave';
 import { WidgetCommands } from '../state/widget-commands';
 import { WidgetSelection } from '../state/widget-selection';
 
-/** Nudging by a whole cell keeps widgets on the grid. */
-const NUDGE = 1;
-
-/**
- * Keyboard shortcuts for editing the canvas: undo/redo, duplicate, delete,
- * arrow-key nudging, and clearing the selection. Listens on the document so
- * the shortcuts work wherever focus is, except inside a text field.
- */
+/** Canvas keyboard shortcuts, listening on the document but never inside a text field. */
 @Directive({
   selector: '[appBuilderShortcuts]',
   host: {
@@ -18,13 +11,27 @@ const NUDGE = 1;
   },
 })
 export class BuilderShortcutsDirective {
+  private static readonly NUDGE = 1;
+
+  private static readonly NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
+    ArrowLeft: { dx: -BuilderShortcutsDirective.NUDGE, dy: 0 },
+    ArrowRight: { dx: BuilderShortcutsDirective.NUDGE, dy: 0 },
+    ArrowUp: { dx: 0, dy: -BuilderShortcutsDirective.NUDGE },
+    ArrowDown: { dx: 0, dy: BuilderShortcutsDirective.NUDGE },
+  };
+
   private readonly autosave = inject(ReportAutosave);
   private readonly commands = inject(WidgetCommands);
   private readonly selection = inject(WidgetSelection);
 
-  protected onKeyDown(event: KeyboardEvent): void {
-    // Never steal keys from a field the user is typing in.
-    if (isTextEntry(event.target)) return;
+  private static isTextEntry(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+  }
+
+  public onKeyDown(event: KeyboardEvent): void {
+    if (BuilderShortcutsDirective.isTextEntry(event.target)) return;
 
     const ctrl = event.ctrlKey || event.metaKey;
 
@@ -60,23 +67,10 @@ export class BuilderShortcutsDirective {
       return;
     }
 
-    const nudge = NUDGE_KEYS[event.key];
+    const nudge = BuilderShortcutsDirective.NUDGE_KEYS[event.key];
     if (nudge && this.selection.selectedWidgetIds().length > 0) {
       event.preventDefault();
       this.commands.nudgeSelection(nudge.dx, nudge.dy);
     }
   }
-}
-
-const NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
-  ArrowLeft: { dx: -NUDGE, dy: 0 },
-  ArrowRight: { dx: NUDGE, dy: 0 },
-  ArrowUp: { dx: 0, dy: -NUDGE },
-  ArrowDown: { dx: 0, dy: NUDGE },
-};
-
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
 }

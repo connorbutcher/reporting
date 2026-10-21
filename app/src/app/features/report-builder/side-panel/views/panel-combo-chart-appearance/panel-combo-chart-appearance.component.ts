@@ -4,11 +4,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { ComboChartWidgetModel } from '../../../models/widget.model';
 import { PanelChartSortComponent } from '../panel-chart-sort/panel-chart-sort.component';
 
-/**
- * Appearance options for a combination chart: value labels, how the bars/lines are ordered, and
- * bar stacking (as on a bar chart), plus the line-only smooth/points/area options, shown once any
- * series is drawn as a line.
- */
+/** Combination chart appearance; line-only options show once any series draws as a line. */
 @Component({
   selector: 'app-panel-combo-chart-appearance',
   imports: [FormsModule, CheckboxModule, PanelChartSortComponent],

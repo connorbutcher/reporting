@@ -9,33 +9,25 @@ import {
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
-/**
- * A histogram. It reuses the shared chart base for dataset/series/filter binding, reading
- * `xColumnId` as the single numeric column whose values are binned — there is no separate measure,
- * unlike the bar and box charts, so only the value column is required.
- */
+/** A histogram: bins the numeric `xColumnId`; there's no separate measure. */
 export class HistogramWidgetModel extends ChartWidgetModel {
   public override readonly type = 'histogram' as const;
 
-  /** How the bin edges are chosen. */
   public readonly binMode = signal<HistogramBinMode>('auto');
-  /** The number of bins for `count` mode; ignored otherwise. */
+  /** `count` mode only. */
   public readonly binCount = signal(10);
-  /** The width of each bin for `width` mode; ignored otherwise. */
+  /** `width` mode only. */
   public readonly binWidth = signal(1);
-  /** Fixed lower bound of the binned range; null uses the data's minimum. */
+  /** Null uses the data's minimum. */
   public readonly rangeMin = signal<number | null>(null);
-  /** Fixed upper bound of the binned range; null uses the data's maximum. */
+  /** Null uses the data's maximum. */
   public readonly rangeMax = signal<number | null>(null);
-  /** Whether each bar shows a raw count, a relative frequency, or a density. */
+  /** Raw count, relative frequency, or density. */
   public readonly normalize = signal<HistogramNormalize>('count');
-  /** Accumulates each bin into the ones before it, drawing a cumulative distribution. */
   public readonly cumulative = signal(false);
-  /** Draws bars horizontally (bins down the Y axis) rather than as vertical columns. */
   public readonly horizontal = signal(false);
-  /** Overlays a fitted normal curve per series. */
   public readonly showNormalCurve = signal(false);
 
   constructor(widget: HistogramWidget, sources: ModelSources) {
@@ -73,10 +65,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
     return widgetTypeDescriptor('histogram').label;
   }
 
-  // The binned column maps to xColumnId; there is no measure, so only a dataset and that column
-  // are required. Every overlaid series is checked, not just the first, so a half-configured
-  // overlaid distribution still raises a warning (mirroring the base class's generic bindings check,
-  // which histogram can't use as-is since it requires a yColumnId histogram doesn't have).
+  // Checks every binding itself, since the base check requires a yColumnId a histogram doesn't have.
   public override ownIssues(): ValidationIssue[] {
     const name = this.label();
     const bindings = this.bindings();
@@ -86,23 +75,23 @@ export class HistogramWidgetModel extends ChartWidgetModel {
     bindings.forEach((binding, i) => {
       const where = multi ? `${name} (series ${i + 1})` : name;
       if (!binding.datasetId()) {
-        issues.push({
-          id: `${this.id}:noDataset:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no dataset`,
-          detail: 'Pick a dataset so the chart has something to plot.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noDataset:${binding.id}`,
+            'warning',
+            `${where} has no dataset`,
+            'Pick a dataset so the chart has something to plot.',
+          ),
+        );
       } else if (binding.histogramValueColumnIds().length === 0) {
-        issues.push({
-          id: `${this.id}:noValue:${binding.id}`,
-          severity: 'warning',
-          title: `${where} has no value`,
-          detail: 'Pick a numeric column whose distribution the histogram bins.',
-          widgetId: this.id,
-          view: { kind: 'widget', widgetId: this.id },
-        });
+        issues.push(
+          this.issue(
+            `noValue:${binding.id}`,
+            'warning',
+            `${where} has no value`,
+            'Pick a numeric column whose distribution the histogram bins.',
+          ),
+        );
       }
     });
 

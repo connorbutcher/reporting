@@ -5,7 +5,6 @@ import { SelectModule } from 'primeng/select';
 import { Aggregate, DateGrouping } from '../../../../../core/models/report';
 import { LineChartWidgetModel } from '../../../models/widget.model';
 
-/** The line-only options: aggregating rows per X value, plus smooth, show points and area fill. */
 @Component({
   selector: 'app-panel-line-chart-options',
   imports: [FormsModule, CheckboxModule, SelectModule],
@@ -14,14 +13,14 @@ import { LineChartWidgetModel } from '../../../models/widget.model';
 export class PanelLineChartOptionsComponent {
   public readonly chart = input.required<LineChartWidgetModel>();
 
-  /** Whether the X column is a date, so its values can be grouped by period before aggregating. */
+  /** A date X column can be grouped by period before aggregating. */
   public readonly xIsDate = computed(() => {
     const chart = this.chart();
     const id = chart.xColumnId();
     return !!id && chart.schema()?.columns.find((c) => c.id === id)?.type === 'dateTime';
   });
 
-  /** Null plots every row; an aggregate reduces the rows sharing an X value to one point. */
+  /** Null plots every row. */
   public readonly aggregates: { label: string; value: Aggregate | null }[] = [
     { label: 'Every row', value: null },
     { label: 'Sum', value: 'sum' },

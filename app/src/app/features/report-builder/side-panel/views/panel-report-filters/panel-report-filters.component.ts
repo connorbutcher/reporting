@@ -2,16 +2,9 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
+import { DatasetChip } from './dataset-chip';
 
-interface DatasetChip {
-  readonly id: number;
-  readonly name: string;
-  readonly count: number;
-  /** The chip's accessible name: dataset and conditions. */
-  readonly label: string;
-}
-
-/** Report-level filters, one per dataset, applied to every widget bound to that dataset. */
+/** Report-level filters, one per dataset, applied to every widget on that dataset. */
 @Component({
   selector: 'app-panel-report-filters',
   imports: [FilterBuilderComponent, PanelFilterReuseComponent],
@@ -23,7 +16,7 @@ export class PanelReportFiltersComponent {
 
   public readonly datasetIds = computed(() => this.session.model()?.usedDatasetIds() ?? []);
 
-  /** The dataset on screen; defaults to the first in use. */
+  /** Defaults to the first dataset in use. */
   public readonly activeDatasetId = computed(
     () => this.selectedDatasetId() ?? this.datasetIds()[0] ?? null,
   );
@@ -40,7 +33,8 @@ export class PanelReportFiltersComponent {
     return this.datasetIds().map((id) => {
       const name = datasets.find((d) => d.id === id)?.name ?? 'Dataset';
       const count = model?.reportFilter(id)?.group.count() ?? 0;
-      const conditions = count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+      const conditions =
+        count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
       return { id, name, count, label: `${name}, ${conditions}` };
     });
   });
@@ -49,7 +43,7 @@ export class PanelReportFiltersComponent {
   private readonly selectedDatasetId = signal<number | null>(null);
 
   constructor() {
-    // Creating the filter is a write, so it happens here rather than in a computed.
+    // Creating the filter is a write, so it can't happen in a computed.
     effect(() => {
       const datasetId = this.activeDatasetId();
       const model = this.session.model();

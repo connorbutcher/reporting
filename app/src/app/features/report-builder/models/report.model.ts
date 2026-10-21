@@ -1,51 +1,57 @@
 import { Signal, computed, signal } from '@angular/core';
-import { ReportRevisionContent, Tab, bandedChartColumns, hasFixedLimits } from '../../../core/models/report';
+import {
+  ReportRevisionContent,
+  Tab,
+  bandedChartColumns,
+  hasFixedLimits,
+} from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
 import { ReportFilterModel } from './filter';
-import {
-  DEFAULT_GRID_COLUMNS,
-  DEFAULT_GRID_ROWS,
-  TabModel,
-} from './tab.model';
+import { TabModel } from './tab.model';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
   KpiWidgetModel,
-  ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
 } from './widget.model';
 import { ValidationIssue } from './validation-issue';
-
-// Re-exported so the store and settings panel keep importing the grid defaults
-// from here, unaware they now originate on the tab.
-export { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_ROWS } from './tab.model';
+import { ModelSources } from './sources/model-sources';
 
 /**
- * The report being edited. Owns its tabs, the report-level filters, and the name.
- * Grid geometry and widgets live on each {@link TabModel}; the report proxies the
- * widget/grid operations through to whichever tab is active, so callers that used
- * to talk to the single-surface report keep working unchanged.
+ * The report being edited: its tabs, report-level filters and name. Grid geometry and widgets
+ * live on each {@link TabModel}.
  */
 export class ReportModel extends EditorNode {
-  readonly reportId: number;
-  readonly name = signal('');
+  public readonly reportId: number;
+  public readonly name = signal('');
+  public readonly tabs = signal<readonly TabModel[]>([]);
+  public readonly activeTabId = signal<string | null>(null);
 
-  readonly tabs = signal<readonly TabModel[]>([]);
-  readonly activeTabId = signal<string | null>(null);
-
-  /** The tab the canvas shows and every placement operation targets. */
-  readonly activeTab = computed<TabModel | null>(() => {
+  public readonly activeTab = computed<TabModel | null>(() => {
     const tabs = this.tabs();
     return tabs.find((t) => t.id === this.activeTabId()) ?? tabs[0] ?? null;
   });
 
-  /** Report-level filters, one per dataset, layered over each widget's own. */
-  readonly filters = signal<readonly ReportFilterModel[]>([]);
+  /** One filter per dataset, layered over each widget's own. */
+  public readonly filters = signal<readonly ReportFilterModel[]>([]);
+  public readonly issuesByWidget: Signal<Map<string, ValidationIssue[]>>;
 
-  /** Issues grouped by widget, so each one can show its own badge cheaply. */
-  readonly issuesByWidget: Signal<Map<string, ValidationIssue[]>>;
+  /**
+   * Every dataset a filterable widget uses, across all tabs, in first-use order. Includes every chart
+   * binding, since {@link WidgetHostComponent} layers a dataset's report filter under each binding.
+   */
+  public readonly usedDatasetIds = computed(() => {
+    const ids = this.tabs()
+      .flatMap((tab) => tab.widgets())
+      .flatMap((widget) => ReportModel.datasetIdsOf(widget))
+      .filter((id): id is number => !!id);
+    return [...new Set(ids)];
+  });
+
+  /** Memoized so the dirty check, undo stack and autosave share one JSON.stringify per edit. */
+  public readonly serialized = computed(() => JSON.stringify(this.toDto()));
 
   constructor(
     report: ReportRevisionContent,
@@ -59,8 +65,7 @@ export class ReportModel extends EditorNode {
       .sort((a, b) => a.order - b.order)
       .map((t) => new TabModel(t, sources));
     this.tabs.set(tabs);
-    // Which tab is active is driven by the route's `tab` param (see ReportSession),
-    // so it's left unset here; `activeTab` falls back to the first tab until then.
+    // The route's `tab` param picks the active tab (see ReportSession); until then `activeTab` falls back to the first.
 
     this.filters.set(
       (report.filters ?? []).map((f) => this.buildReportFilter(f.datasetId, f.filter)),
@@ -78,32 +83,39 @@ export class ReportModel extends EditorNode {
     });
   }
 
-  static fromDto(report: ReportRevisionContent, sources: ModelSources): ReportModel {
+  public static fromDto(report: ReportRevisionContent, sources: ModelSources): ReportModel {
     const model = new ReportModel(report, sources);
-    // Freshly loaded state is by definition the saved state.
     model.markPristine();
     return model;
   }
 
-  // --- cross-tab widget lookup & mutation ------------------------------------
-  // Per-tab reads (widgets, grid) and adding a widget target the *active* tab, so
-  // they live on ReportSession, which owns the active tab. What stays here spans
-  // tabs: resolving a widget wherever it lives, and routing an edit to its tab.
+  /** A chart filters every binding's dataset; a table, pivot or KPI its one dataset. */
+  private static datasetIdsOf(widget: WidgetModel): (number | null)[] {
+    if (widget instanceof ChartWidgetModel) return widget.bindings().map((b) => b.datasetId());
+    if (
+      widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel
+    ) {
+      return [widget.datasetId()];
+    }
+    return [];
+  }
 
-  removeWidget(widgetId: string): void {
+  public removeWidget(widgetId: string): void {
     this.tabOf(widgetId)?.removeWidget(widgetId);
   }
 
-  removeWidgets(widgetIds: readonly string[]): void {
+  public removeWidgets(widgetIds: readonly string[]): void {
     for (const id of widgetIds) this.tabOf(id)?.removeWidget(id);
   }
 
-  duplicateWidget(widgetId: string): WidgetModel | null {
+  public duplicateWidget(widgetId: string): WidgetModel | null {
     return this.tabOf(widgetId)?.duplicateWidget(widgetId) ?? null;
   }
 
-  /** Any widget across every tab, so the panel resolves a selection wherever it lives. */
-  widget(widgetId: string): WidgetModel | null {
+  /** Finds a widget on any tab. */
+  public widget(widgetId: string): WidgetModel | null {
     for (const tab of this.tabs()) {
       const found = tab.widget(widgetId);
       if (found) return found;
@@ -111,34 +123,28 @@ export class ReportModel extends EditorNode {
     return null;
   }
 
-  /** The tab a widget belongs to, or null if it isn't on any. */
-  tabOf(widgetId: string): TabModel | null {
+  public tabOf(widgetId: string): TabModel | null {
     return this.tabs().find((t) => t.widget(widgetId)) ?? null;
   }
 
-  /** Siblings on the same tab as the given widget, for collision checks while dragging/resizing. */
-  siblingsOf(widgetId: string): readonly WidgetModel[] {
+  /** Same-tab siblings, for collision checks while dragging or resizing. */
+  public siblingsOf(widgetId: string): readonly WidgetModel[] {
     return this.tabOf(widgetId)?.siblingsOf(widgetId) ?? [];
   }
 
-  // --- tab lifecycle ---------------------------------------------------------
-
-  setActiveTab(tabId: string): void {
+  public setActiveTab(tabId: string): void {
     if (this.tabs().some((t) => t.id === tabId)) this.activeTabId.set(tabId);
   }
 
-  /**
-   * Adds an empty tab after the last one and returns it. Making it the active tab
-   * is the caller's job (it navigates the `tab` query param — see TabCommands).
-   */
-  addTab(): TabModel {
+  /** Adds an empty tab at the end; the caller makes it active by navigating the `tab` query param. */
+  public addTab(): TabModel {
     const order = this.tabs().reduce((max, t) => Math.max(max, t.order()), -1) + 1;
     const dto: Tab = {
       id: crypto.randomUUID(),
       name: `Tab ${this.tabs().length + 1}`,
       order,
-      columns: DEFAULT_GRID_COLUMNS,
-      rows: DEFAULT_GRID_ROWS,
+      columns: TabModel.DEFAULT_GRID_COLUMNS,
+      rows: TabModel.DEFAULT_GRID_ROWS,
       widgets: [],
     };
     const tab = new TabModel(dto, this.sources);
@@ -146,11 +152,8 @@ export class ReportModel extends EditorNode {
     return tab;
   }
 
-  /**
-   * Removes a tab, refusing to drop the last one. Reselecting a survivor is the
-   * caller's job when the active tab went (the route's `tab` param drives it).
-   */
-  removeTab(tabId: string): void {
+  /** Removes a tab unless it's the last; the caller reselects a survivor if the active tab went. */
+  public removeTab(tabId: string): void {
     const tabs = this.tabs();
     if (tabs.length <= 1) return;
     if (!tabs.some((t) => t.id === tabId)) return;
@@ -160,14 +163,13 @@ export class ReportModel extends EditorNode {
     this.tabs.set(next);
   }
 
-  renameTab(tabId: string, name: string): void {
+  public renameTab(tabId: string, name: string): void {
     this.tabs()
       .find((t) => t.id === tabId)
       ?.name.set(name);
   }
 
-  /** Moves a tab to a new position and renumbers every tab's order to match. */
-  moveTab(tabId: string, toIndex: number): void {
+  public moveTab(tabId: string, toIndex: number): void {
     const tabs = [...this.tabs()];
     const from = tabs.findIndex((t) => t.id === tabId);
     if (from < 0) return;
@@ -179,47 +181,12 @@ export class ReportModel extends EditorNode {
     this.tabs.set(tabs);
   }
 
-  /** Rewrites each tab's `order` to its position in the list. */
-  private renumber(tabs: readonly TabModel[]): void {
-    tabs.forEach((tab, index) => tab.order.set(index));
-  }
-
-  // --- report-level filters -------------------------------------------------
-
-  /**
-   * Every dataset a filterable widget is bound to, across every tab, in first-use order —
-   * so the report-filters panel offers one for each. Covers tables, pivots, and *every*
-   * chart binding (not just a chart's primary dataset), matching what the widgets actually
-   * apply: {@link WidgetHostComponent} layers a dataset's report filter under each binding's
-   * own, so an overlaid dataset can be filtered report-wide too.
-   */
-  readonly usedDatasetIds = computed(() => {
-    const ids: number[] = [];
-    const add = (id: number | null) => {
-      if (id && !ids.includes(id)) ids.push(id);
-    };
-    for (const tab of this.tabs()) {
-      for (const widget of tab.widgets()) {
-        if (widget instanceof ChartWidgetModel) {
-          for (const binding of widget.bindings()) add(binding.datasetId());
-        } else if (
-          widget instanceof DataTableWidgetModel ||
-          widget instanceof PivotTableWidgetModel ||
-          widget instanceof KpiWidgetModel
-        ) {
-          add(widget.datasetId());
-        }
-      }
-    }
-    return ids;
-  });
-
-  reportFilter(datasetId: number): ReportFilterModel | null {
+  public reportFilter(datasetId: number): ReportFilterModel | null {
     return this.filters().find((f) => f.datasetId === datasetId) ?? null;
   }
 
-  /** The filter for a dataset, created on first use so the panel always has one to edit. */
-  ensureReportFilter(datasetId: number): ReportFilterModel {
+  /** Created on first use so the panel always has a filter to edit. */
+  public ensureReportFilter(datasetId: number): ReportFilterModel {
     const existing = this.reportFilter(datasetId);
     if (existing) return existing;
 
@@ -228,19 +195,53 @@ export class ReportModel extends EditorNode {
     return model;
   }
 
+  public toDto(): ReportRevisionContent {
+    return {
+      reportId: this.reportId,
+      name: this.name(),
+      tabs: this.tabs().map((t) => t.toDto()),
+      // Notes only exist on published versions.
+      notes: null,
+      filters: this.filters()
+        .map((f) => f.toDto())
+        .filter((f): f is ReportFilter => f !== null),
+    };
+  }
+
+  public override serialize(): string {
+    return this.serialized();
+  }
+
+  public override snapshotValue(): unknown {
+    return this.toDto();
+  }
+
+  public override childNodes(): readonly EditorNode[] {
+    return [...this.tabs(), ...this.filters()];
+  }
+
+  public override ownIssues(): ValidationIssue[] {
+    // Grid and overlap issues belong to each tab.
+    return [];
+  }
+
+  private renumber(tabs: readonly TabModel[]): void {
+    tabs.forEach((tab, index) => tab.order.set(index));
+  }
+
   private buildReportFilter(datasetId: number, dto: FilterGroup | null): ReportFilterModel {
     return new ReportFilterModel(datasetId, dto, {
       schema: computed(() => this.sources.schemas()[datasetId] ?? null),
       catalogue: this.sources.catalogue,
-      // A page filter isn't tied to one widget, so its tolerance operators are offered on
-      // any column banded by a widget in the report that draws on this dataset.
+      // A page filter isn't tied to one widget, so tolerance operators are offered on any column a
+      // widget on this dataset bands.
       tolerantColumns: computed(() => this.tolerantColumnsFor(datasetId)),
       view: { kind: 'reportFilters' },
       ownerId: `report:${datasetId}`,
     });
   }
 
-  /** Every column banded (table banding or a chart's single-band axis) by a widget on this dataset. */
+  /** Columns banded by a table or a chart's single-band axis on this dataset. */
   private tolerantColumnsFor(datasetId: number): ReadonlySet<string> {
     const columns = new Set<string>();
     for (const tab of this.tabs()) {
@@ -265,42 +266,5 @@ export class ReportModel extends EditorNode {
       }
     }
     return columns;
-  }
-
-  toDto(): ReportRevisionContent {
-    return {
-      reportId: this.reportId,
-      name: this.name(),
-      tabs: this.tabs().map((t) => t.toDto()),
-      // Notes only ever exist on published versions; a draft's autosave payload never carries one.
-      notes: null,
-      filters: this.filters()
-        .map((f) => f.toDto())
-        .filter((f): f is ReportFilter => f !== null),
-    };
-  }
-
-  /**
-   * The whole report serialized, memoized so it recomputes once per change and is
-   * shared between the dirty check ({@link serialize}) and the undo stack / autosave
-   * — a large report would otherwise be JSON-stringified several times per edit.
-   */
-  readonly serialized = computed(() => JSON.stringify(this.toDto()));
-
-  protected override serialize(): string {
-    return this.serialized();
-  }
-
-  protected override snapshotValue(): unknown {
-    return this.toDto();
-  }
-
-  protected override childNodes(): readonly EditorNode[] {
-    return [...this.tabs(), ...this.filters()];
-  }
-
-  protected override ownIssues(): ValidationIssue[] {
-    // Grid/overlap issues belong to each tab; the report itself raises none.
-    return [];
   }
 }

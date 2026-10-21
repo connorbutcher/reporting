@@ -6,14 +6,9 @@ import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { FilterConditionModel } from '../../../models/filter';
 import { ColumnValueLists } from '../column-value-lists';
-import {
-  operandDisplayValue,
-  operandInputType,
-  operandPlaceholder,
-  usesValueList,
-} from '../operand-input';
+import { OperandInput } from '../operand-input';
 
-/** One condition: enable toggle, column, operator and operands, with the reason it isn't narrowing when it isn't. */
+/** One condition row, with the reason it isn't narrowing when it isn't. */
 @Component({
   selector: 'app-filter-condition-row',
   imports: [FormsModule, ButtonModule, MultiSelectModule, SelectModule, ToggleSwitchModule],
@@ -38,7 +33,7 @@ export class FilterConditionRowComponent {
   public readonly position = computed(() => this.index() + 1);
 
   public readonly pickFromValues = computed(() =>
-    usesValueList(this.condition().schemaColumn()?.type, this.condition().operator()),
+    OperandInput.usesValueList(this.condition().schemaColumn()?.type, this.condition().operator()),
   );
 
   /** "Is any of" takes several values, so it's a multi-select. */
@@ -48,25 +43,26 @@ export class FilterConditionRowComponent {
     this.pickFromValues() ? this.lists.valuesFor(this.condition().columnId())() : [],
   );
 
-  public readonly inputType = computed(() => operandInputType(this.condition().descriptor()));
+  public readonly inputType = computed(() => OperandInput.inputType(this.condition().descriptor()));
 
   public readonly operands = computed(() => {
     const condition = this.condition();
     const descriptor = condition.descriptor();
     return condition.operandIndexes().map((index) => ({
       index,
-      placeholder: operandPlaceholder(descriptor, index),
-      value: operandDisplayValue(descriptor, condition.values()[index] ?? ''),
+      placeholder: OperandInput.placeholder(descriptor, index),
+      value: OperandInput.displayValue(descriptor, condition.values()[index] ?? ''),
     }));
   });
 
   private readonly lists = inject(ColumnValueLists);
 
   constructor() {
-    // Fetches on demand as the row comes to need a value picker, so a filter without one fetches nothing.
+    // Fetch values only once the row needs a value picker.
     effect(() => {
       const datasetId = this.datasetId();
-      if (datasetId !== null && this.pickFromValues()) this.lists.load(datasetId, this.condition().columnId());
+      if (datasetId !== null && this.pickFromValues())
+        this.lists.load(datasetId, this.condition().columnId());
     });
   }
 }

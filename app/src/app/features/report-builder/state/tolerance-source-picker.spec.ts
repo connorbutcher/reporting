@@ -48,7 +48,10 @@ describe('ToleranceSourcePicker per-row matching', () => {
 
     expect(p.isComplete()).toBe(true);
     // No fixed row travels with a matched tolerance.
-    expect(p.toColumnTolerance()).toEqual({ ...limits, match: { columnId: 'part', sourceColumnId: 'lpart' } });
+    expect(p.toColumnTolerance()).toEqual({
+      ...limits,
+      match: { columnId: 'part', sourceColumnId: 'lpart' },
+    });
   });
 
   it('remembers the fixed row while matching is on, so turning it off restores it', () => {
@@ -87,7 +90,9 @@ describe('ToleranceSourcePicker per-row matching', () => {
 describe('hasFixedLimits', () => {
   it('is true only for a fixed-row tolerance — the filter operators need a single band', () => {
     expect(hasFixedLimits({ ...limits, sourceRowId: 'r1' })).toBe(true);
-    expect(hasFixedLimits({ ...limits, match: { columnId: 'a', sourceColumnId: 'b' } })).toBe(false);
+    expect(hasFixedLimits({ ...limits, match: { columnId: 'a', sourceColumnId: 'b' } })).toBe(
+      false,
+    );
     expect(hasFixedLimits(null)).toBe(false);
     expect(hasFixedLimits(undefined)).toBe(false);
   });

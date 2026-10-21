@@ -3,10 +3,8 @@ import { ReportSession } from '../../state/report-session';
 import { TopbarLinkComponent } from './topbar-link.component';
 
 /**
- * Leaves the builder and returns to the report's view page. In-app navigation, so
- * the unsaved-changes guard still gets a chance to confirm before any pending save
- * is abandoned. The report id comes from the route, so the link is there even
- * before the draft has loaded.
+ * Returns to the report's view page. In-app navigation, so the unsaved-changes guard can confirm
+ * first. The id comes from the route, so the link works before the draft loads.
  */
 @Component({
   selector: 'app-back-to-report',
@@ -25,5 +23,7 @@ import { TopbarLinkComponent } from './topbar-link.component';
 export class BackToReportComponent {
   private readonly session = inject(ReportSession);
 
-  protected readonly reportId = this.session.reportId;
+  public get reportId() {
+    return this.session.reportId;
+  }
 }

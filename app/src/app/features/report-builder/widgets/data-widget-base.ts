@@ -7,21 +7,16 @@ import { FilterNode, describeFilter } from '../../../core/models/filter';
 import { WidgetExportBase } from './widget-export-base';
 
 /**
- * What the widgets that query a dataset (table, pivot, chart) share beyond exporting: a way for the
- * host to be asked for this widget's filters, and the wording of what is currently filtering it.
- *
- * `filterable` is switched on by the outlet only when the host handles {@link filterRequest} — the
- * viewer does (it opens the filters panel on that widget), the builder doesn't (its filters live in
- * the side panel) — so the count bar is a button exactly where clicking it does something.
+ * Shared by widgets that query a dataset. The outlet sets `filterable` only when the host handles
+ * {@link filterRequest} (the viewer does, the builder doesn't).
  */
 @Directive()
 export abstract class DataWidgetBase extends WidgetExportBase {
   public readonly filterable = input(false);
 
-  /** The reader asked to see this widget's filters (the count bar was clicked). */
   public readonly filterRequest = output<void>();
 
-  /** Operator wording from the API, cached app-wide; null until it arrives (or if it can't). */
+  /** Operator wording from the API, cached app-wide; null until it arrives. */
   private readonly operators = toSignal(
     inject(FilterApiService)
       .operators()
@@ -29,7 +24,6 @@ export abstract class DataWidgetBase extends WidgetExportBase {
     { initialValue: null },
   );
 
-  /** The active filters as readable lines for the count bar's hover text. */
   public describeFilters(
     filters: readonly (FilterNode | null)[],
     columns: readonly DatasetColumn[],

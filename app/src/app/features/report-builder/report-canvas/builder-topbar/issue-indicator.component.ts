@@ -2,11 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PanelNavigation } from '../../state/panel-navigation';
 import { ReportSession } from '../../state/report-session';
 
-/**
- * The report's validation state, as a button into the issues panel. Stays quiet
- * (a plain check) while the report is clean, and only takes on colour when there
- * are warnings or errors to draw attention to.
- */
+/** Opens the issues panel; a plain check while clean, coloured for warnings or errors. */
 @Component({
   selector: 'app-issue-indicator',
   template: `
@@ -65,16 +61,13 @@ import { ReportSession } from '../../state/report-session';
   ],
 })
 export class IssueIndicatorComponent {
-  private readonly session = inject(ReportSession);
-  private readonly navigation = inject(PanelNavigation);
-
-  protected readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
+  public readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
     if (this.session.errors().length) return 'error';
     if (this.session.warnings().length) return 'warning';
     return 'ok';
   });
 
-  protected readonly label = computed(() => {
+  public readonly label = computed(() => {
     if (this.session.saveBlocked()) return 'Fix errors';
     const errors = this.session.errors().length;
     const warnings = this.session.warnings().length;
@@ -83,7 +76,10 @@ export class IssueIndicatorComponent {
     return 'No issues';
   });
 
-  protected open(): void {
+  private readonly session = inject(ReportSession);
+  private readonly navigation = inject(PanelNavigation);
+
+  public open(): void {
     this.navigation.navigate({ kind: 'issues' });
   }
 }

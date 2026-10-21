@@ -4,18 +4,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FilterGroup } from '../../../../core/models/filter';
 import { FilterGroupModel } from '../../models/filter';
-import {
-  column,
-  condition,
-  contextOf,
-  groupOf,
-  schemaOf,
-} from '../../models/filter/testing/filter-fixtures';
+import { FilterFixtures } from '../../models/filter/testing/filter-fixtures';
 import { FilterBuilderComponent } from './filter-builder.component';
 
 interface Setup {
   dto?: FilterGroup | null;
-  context?: Parameters<typeof contextOf>[0];
+  context?: Parameters<typeof FilterFixtures.contextOf>[0];
   additionalFilter?: FilterGroup | null;
   hint?: string;
 }
@@ -24,18 +18,25 @@ describe('FilterBuilderComponent', () => {
   let fixture: ComponentFixture<FilterBuilderComponent>;
   let http: HttpTestingController;
   let group: FilterGroupModel;
-  let context: ReturnType<typeof contextOf>;
+  let context: ReturnType<typeof FilterFixtures.contextOf>;
 
   beforeEach(() => {
     vi.useFakeTimers();
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     http = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => vi.useRealTimers());
 
-  async function render({ dto = null, context: options = {}, additionalFilter = null, hint = '' }: Setup = {}) {
-    context = contextOf(options);
+  async function render({
+    dto = null,
+    context: options = {},
+    additionalFilter = null,
+    hint = '',
+  }: Setup = {}) {
+    context = FilterFixtures.contextOf(options);
     group = new FilterGroupModel(dto, context);
     fixture = TestBed.createComponent(FilterBuilderComponent);
     fixture.componentRef.setInput('group', group);
@@ -58,7 +59,9 @@ describe('FilterBuilderComponent', () => {
   const match = () => el().querySelector('.filter-match') as HTMLElement | null;
   const counts = () => http.match((r) => r.url.endsWith('/count'));
   const button = (label: string) =>
-    [...el().querySelectorAll('button')].find((b) => b.textContent!.includes(label) || b.getAttribute('aria-label') === label);
+    [...el().querySelectorAll('button')].find(
+      (b) => b.textContent!.includes(label) || b.getAttribute('aria-label') === label,
+    );
 
   async function countAnd(result: { totalRowCount: number; matchedRowCount: number }) {
     await settle(350);
@@ -127,7 +130,12 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('notes when the report filter is folded in', async () => {
-      await render({ additionalFilter: groupOf('and', condition('a', 'equals', ['x'])) });
+      await render({
+        additionalFilter: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals', ['x']),
+        ),
+      });
 
       await countAnd({ totalRowCount: 10, matchedRowCount: 1 });
 
@@ -135,15 +143,22 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('asks the server for the count over this filter and the additional one', async () => {
-      const extra = groupOf('and', condition('a', 'equals', ['x']));
-      await render({ dto: groupOf('and', condition('a', 'equals', ['y'])), additionalFilter: extra });
+      const extra = FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x']));
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['y'])),
+        additionalFilter: extra,
+      });
 
       const req = await countAnd({ totalRowCount: 1, matchedRowCount: 1 });
 
       expect(req.request.method).toBe('POST');
       expect(req.request.url).toBe('/api/datasets/7/count');
       expect(req.request.body).toEqual({
-        filter: groupOf('and', extra, groupOf('and', condition('a', 'equals', ['y']))),
+        filter: FilterFixtures.groupOf(
+          'and',
+          extra,
+          FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['y'])),
+        ),
       });
     });
 
@@ -208,15 +223,23 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('labels the list with how many conditions there are and how many are switched on', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('a', 'equals', ['y'], false)) });
+      await render({
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('a', 'equals', ['y'], false),
+        ),
+      });
 
-      expect(el().querySelector('.filter-rows-label')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(
-        '2 conditions · 1 active',
-      );
+      expect(
+        el().querySelector('.filter-rows-label')!.textContent!.replace(/\s+/g, ' ').trim(),
+      ).toBe('2 conditions · 1 active');
     });
 
     it('offers the join only once there is more than one condition', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x'])),
+      });
       expect(el().querySelector('#filter-join')).toBeNull();
 
       group.addCondition('a');
@@ -225,7 +248,13 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('adds a condition from the button, and removes or clears them', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])) });
+      await render({
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('b', 'equals', ['1']),
+        ),
+      });
       expect(rows()).toHaveLength(2);
 
       button('Add condition')!.click();
@@ -243,26 +272,39 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('mutes a switched-off row', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x'], false)) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x'], false)),
+      });
 
       expect(rows()[0].classList).toContain('filter-row--off');
     });
 
     it('marks a row that can’t narrow anything, with the reason', async () => {
       await render({
-        dto: groupOf('and', condition('a', 'equals'), condition('b', 'inTolerance'), condition('gone', 'equals', ['x'])),
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals'),
+          FilterFixtures.condition('b', 'inTolerance'),
+          FilterFixtures.condition('gone', 'equals', ['x']),
+        ),
       });
 
       const [blank, banding, removed] = rows();
       expect(blank.classList).toContain('filter-row--error');
       expect(blank.querySelector('.filter-row-problem')!.textContent).toContain('Enter a value.');
       expect(banding.classList).toContain('filter-row--warning');
-      expect(banding.querySelector('.filter-row-problem')!.textContent).toContain('No tolerance banding');
-      expect(removed.querySelector('.filter-row-problem')!.textContent).toContain('no longer exists');
+      expect(banding.querySelector('.filter-row-problem')!.textContent).toContain(
+        'No tolerance banding',
+      );
+      expect(removed.querySelector('.filter-row-problem')!.textContent).toContain(
+        'no longer exists',
+      );
     });
 
     it('does not flag a healthy row', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'equals', ['x'])),
+      });
 
       expect(rows()[0].querySelector('.filter-row-problem')).toBeNull();
       expect(rows()[0].className).not.toMatch(/--(error|warning)/);
@@ -273,7 +315,9 @@ describe('FilterBuilderComponent', () => {
     const inputs = () => [...el().querySelectorAll('input.value')] as HTMLInputElement[];
 
     it('shows a typed input for a number, with its value', async () => {
-      await render({ dto: groupOf('and', condition('b', 'equals', ['42'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('b', 'equals', ['42'])),
+      });
 
       expect(inputs()).toHaveLength(1);
       expect(inputs()[0].type).toBe('number');
@@ -282,14 +326,18 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('shows from/to for a range', async () => {
-      await render({ dto: groupOf('and', condition('b', 'between', ['1', '9'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('b', 'between', ['1', '9'])),
+      });
 
       expect(inputs().map((i) => i.placeholder)).toEqual(['from', 'to']);
       expect(inputs().map((i) => i.value)).toEqual(['1', '9']);
     });
 
     it('writes an operand back to the condition when the input changes', async () => {
-      await render({ dto: groupOf('and', condition('b', 'equals', ['1'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('b', 'equals', ['1'])),
+      });
 
       inputs()[0].value = '77';
       inputs()[0].dispatchEvent(new Event('change'));
@@ -298,7 +346,9 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('shows no input for an operator with no operand', async () => {
-      await render({ dto: groupOf('and', condition('a', 'isEmpty')) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'isEmpty')),
+      });
 
       expect(inputs()).toHaveLength(0);
       expect(el().querySelector('.operands')).toBeNull();
@@ -306,8 +356,11 @@ describe('FilterBuilderComponent', () => {
 
     it('shows a date input, converting a stored ISO date to yyyy-MM-dd', async () => {
       await render({
-        dto: groupOf('and', condition('d', 'greaterThan', ['2026-03-04T10:00:00.000Z'])),
-        context: { columns: [column('d', 'dateTime')] },
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('d', 'greaterThan', ['2026-03-04T10:00:00.000Z']),
+        ),
+        context: { columns: [FilterFixtures.column('d', 'dateTime')] },
       });
 
       expect(inputs()[0].type).toBe('date');
@@ -316,8 +369,8 @@ describe('FilterBuilderComponent', () => {
 
     it('leaves an unparseable date as typed', async () => {
       await render({
-        dto: groupOf('and', condition('d', 'greaterThan', ['soon'])),
-        context: { columns: [column('d', 'dateTime')] },
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('d', 'greaterThan', ['soon'])),
+        context: { columns: [FilterFixtures.column('d', 'dateTime')] },
       });
 
       expect(inputs()[0].value).toBe('');
@@ -325,10 +378,17 @@ describe('FilterBuilderComponent', () => {
   });
 
   describe('value pickers for text columns', () => {
-    const valuesRequests = () => http.match((r) => r.url.includes('/columns/') && r.url.endsWith('/values'));
+    const valuesRequests = () =>
+      http.match((r) => r.url.includes('/columns/') && r.url.endsWith('/values'));
 
     it('offers a select of the column’s values for equals, fetched once', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('a', 'notEquals', ['y'])) });
+      await render({
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('a', 'notEquals', ['y']),
+        ),
+      });
 
       const requests = valuesRequests();
       expect(requests).toHaveLength(1);
@@ -343,7 +403,9 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('offers a multi-select for "is any of"', async () => {
-      await render({ dto: groupOf('and', condition('a', 'in', ['x', 'y'])) });
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'in', ['x', 'y'])),
+      });
       valuesRequests().forEach((r) => r.flush(['x', 'y']));
       await settle();
 
@@ -351,14 +413,23 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('fetches nothing for a column that is not text, or an operator that types its operand', async () => {
-      await render({ dto: groupOf('and', condition('b', 'equals', ['1']), condition('a', 'isEmpty')) });
+      await render({
+        dto: FilterFixtures.groupOf(
+          'and',
+          FilterFixtures.condition('b', 'equals', ['1']),
+          FilterFixtures.condition('a', 'isEmpty'),
+        ),
+      });
 
       expect(valuesRequests()).toHaveLength(0);
     });
 
     it('fetches when a row switches to a value-list operator, and for each column once', async () => {
-      const cols = [column('a'), column('a2')];
-      await render({ dto: groupOf('and', condition('a', 'isEmpty')), context: { columns: cols } });
+      const cols = [FilterFixtures.column('a'), FilterFixtures.column('a2')];
+      await render({
+        dto: FilterFixtures.groupOf('and', FilterFixtures.condition('a', 'isEmpty')),
+        context: { columns: cols },
+      });
       expect(valuesRequests()).toHaveLength(0);
 
       group.children()[0].setOperator('equals');
@@ -369,12 +440,21 @@ describe('FilterBuilderComponent', () => {
 
       group.addCondition('a2');
       await settle();
-      expect(valuesRequests().map((r) => r.request.url)).toEqual(['/api/datasets/7/columns/a2/values']);
+      expect(valuesRequests().map((r) => r.request.url)).toEqual([
+        '/api/datasets/7/columns/a2/values',
+      ]);
     });
   });
 
   it('exposes the schema’s columns to pick from', async () => {
-    await render({ context: { schema: schemaOf([column('a', 'string', 'Alpha'), column('b', 'int', 'Beta')]) } });
+    await render({
+      context: {
+        schema: FilterFixtures.schemaOf([
+          FilterFixtures.column('a', 'string', 'Alpha'),
+          FilterFixtures.column('b', 'int', 'Beta'),
+        ]),
+      },
+    });
 
     expect(group.columns().map((c) => c.name)).toEqual(['Alpha', 'Beta']);
   });

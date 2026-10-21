@@ -4,7 +4,7 @@ import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection, widgetFragment } from '../../../core/models/report';
 import { isExportableWidgetType } from '../../../core/models/widget-catalog';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
-import { GridPreview } from '../grid.util';
+import { GridPreview } from '../grid/grid-preview';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
@@ -17,11 +17,10 @@ import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
 import { WidgetSelection } from '../state/widget-selection';
 import { WidgetExportActionsComponent } from '../widgets/widget-export-actions/widget-export-actions.component';
-import {
-  WidgetFullscreenDialogComponent,
-  WidgetFullscreenDialogData,
-} from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
-import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
+import { WidgetFullscreenDialogComponent } from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
+import { WidgetFullscreenDialogData } from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog-data';
+import { WidgetOutletDirective } from '../widgets/widget-outlet.directive';
+import { WidgetOutputHandler } from '../widgets/widget-output-handler';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
 
@@ -43,92 +42,63 @@ import { WidgetResizeDirective } from './widget-resize.directive';
   },
 })
 export class WidgetHostComponent {
-  readonly widget = input.required<WidgetModel>();
-  readonly gridPreview = output<GridPreview | null>();
+  public readonly widget = input.required<WidgetModel>();
+  public readonly gridPreview = output<GridPreview | null>();
 
-  private readonly session = inject(ReportSession);
-  private readonly selection = inject(WidgetSelection);
-  private readonly navigation = inject(PanelNavigation);
-  private readonly schema = inject(DatasetSchema);
-  private readonly dialog = inject(Dialog);
-
-  protected readonly selected = computed(() =>
+  public readonly selected = computed(() =>
     this.selection.selectedWidgetIds().includes(this.widget().id),
   );
-  /** The one the side panel is editing, when several are selected at once. */
-  protected readonly primary = computed(
-    () => this.selection.selectedWidgetId() === this.widget().id,
-  );
-  protected readonly issues = computed(
+
+  /** The widget the side panel edits when several are selected. */
+  public readonly primary = computed(() => this.selection.selectedWidgetId() === this.widget().id);
+
+  public readonly issues = computed(
     () => this.session.issuesByWidget().get(this.widget().id) ?? [],
   );
-  protected readonly hasError = computed(() => this.issues().some((i) => i.severity === 'error'));
-  protected readonly issueLabel = computed(() => {
+
+  public readonly hasError = computed(() => this.issues().some((i) => i.severity === 'error'));
+
+  public readonly issueLabel = computed(() => {
     const count = this.issues().length;
     return `${count} issue${count === 1 ? '' : 's'} on this widget — click to review`;
   });
 
-  protected readonly gridColumn = computed(
+  public readonly gridColumn = computed(
     () => `${this.widget().x() + 1} / span ${this.widget().w()}`,
   );
-  protected readonly gridRow = computed(
-    () => `${this.widget().y() + 1} / span ${this.widget().h()}`,
-  );
-  protected readonly fragment = computed(() => widgetFragment(this.widget().id));
-  protected readonly title = computed(() => this.widget().label());
-  protected readonly showTitle = computed(() => this.widget().showTitle());
 
-  protected readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
+  public readonly gridRow = computed(() => `${this.widget().y() + 1} / span ${this.widget().h()}`);
+  public readonly fragment = computed(() => widgetFragment(this.widget().id));
+  public readonly title = computed(() => this.widget().label());
+  public readonly showTitle = computed(() => this.widget().showTitle());
+  public readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
 
-  /** The widget's current DTO — its config reflects live edits — for the render outlet. */
-  protected readonly widgetDto = computed(() => this.widget().toDto());
+  /** Reflects live edits. */
+  public readonly widgetDto = computed(() => this.widget().toDto());
+  public readonly datasetVersion = computed(() => this.schema.datasetVersion());
 
-  // Narrowed once here rather than in the template, since Angular's control
-  // flow can't infer that two separate `widget()` calls refer to the same value.
-  private readonly tableModel = computed(() => {
-    const widget = this.widget();
-    return widget instanceof DataTableWidgetModel ? widget : null;
-  });
-  private readonly chartModel = computed(() => {
-    const widget = this.widget();
-    return widget instanceof ChartWidgetModel ? widget : null;
-  });
-  /** The table, pivot, and KPI all carry a single dataset + own filter, wired identically. */
-  private readonly filterableModel = computed(() => {
-    const widget = this.widget();
-    return widget instanceof DataTableWidgetModel ||
-      widget instanceof PivotTableWidgetModel ||
-      widget instanceof KpiWidgetModel
-      ? widget
-      : null;
-  });
-
-  protected readonly datasetVersion = computed(() => this.schema.datasetVersion());
-
-  /** Wired by name onto the created widget's outputs; only a table emits these. */
-  protected readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
+  /** Bound by name to the widget's outputs; only a table emits these. */
+  public readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
     sortChange: (sort: { columnId: string; direction: SortDirection }) => this.onSortChange(sort),
     columnResize: (widths: { columnId: string; width: number }[]) => this.onColumnResize(widths),
     columnReorder: (move: { draggedColumnId: string; targetColumnId: string }) =>
       this.onColumnReorder(move),
   };
 
-  /** Only the finished conditions, so a half-typed row doesn't blank the table or pivot. */
-  protected readonly widgetFilter = computed(() => this.filterableModel()?.filter.toQueryDto() ?? null);
+  /** Only finished conditions, so a half-typed row doesn't blank the widget. */
+  public readonly widgetFilter = computed(
+    () => this.filterableModel()?.filter.toQueryDto() ?? null,
+  );
 
-  /** The report-level filter for a table's or pivot's dataset, layered over its own. */
-  protected readonly reportFilter = computed(() => {
+  /** The report-level filter for a table's or pivot's dataset. */
+  public readonly reportFilter = computed(() => {
     const datasetId = this.filterableModel()?.datasetId();
     if (!datasetId) return null;
     return this.reportFilterFor(datasetId);
   });
 
-  /**
-   * Each chart binding's resolved, query-safe filter — the report filter for the
-   * binding's dataset layered under the binding's own finished conditions — keyed
-   * by binding id, so every overlaid dataset narrows its own rows.
-   */
-  protected readonly bindingFilters = computed(() => {
+  /** Each chart binding's report filter layered under its own finished conditions, keyed by binding id. */
+  public readonly bindingFilters = computed(() => {
     const chart = this.chartModel();
     if (!chart) return null;
 
@@ -141,30 +111,51 @@ export class WidgetHostComponent {
     return filters;
   });
 
-  private reportFilterFor(datasetId: number | null): FilterGroup | null {
-    if (!datasetId) return null;
-    return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
-  }
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly navigation = inject(PanelNavigation);
+  private readonly schema = inject(DatasetSchema);
+  private readonly dialog = inject(Dialog);
 
-  /** Ctrl/⌘ or shift extends the selection; a plain click replaces it. */
-  protected select(event: PointerEvent | MouseEvent): void {
+  // Narrowed here because template control flow can't tell two `widget()` calls are the same value.
+  private readonly tableModel = computed(() => {
+    const widget = this.widget();
+    return widget instanceof DataTableWidgetModel ? widget : null;
+  });
+
+  private readonly chartModel = computed(() => {
+    const widget = this.widget();
+    return widget instanceof ChartWidgetModel ? widget : null;
+  });
+
+  /** Tables, pivots and KPIs share one dataset-plus-filter wiring. */
+  private readonly filterableModel = computed(() => {
+    const widget = this.widget();
+    return widget instanceof DataTableWidgetModel ||
+      widget instanceof PivotTableWidgetModel ||
+      widget instanceof KpiWidgetModel
+      ? widget
+      : null;
+  });
+
+  /** Ctrl/⌘ or shift extends the selection. */
+  public select(event: PointerEvent | MouseEvent): void {
     if (event.ctrlKey || event.metaKey || event.shiftKey) {
       this.navigation.toggleWidgetSelection(this.widget().id);
       return;
     }
-    // Clicking a widget already in a multi-selection keeps the group intact so
-    // the whole thing can be dragged.
+    // Keep a multi-selection intact so the group can be dragged.
     if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) return;
     this.navigation.selectWidget(this.widget().id);
   }
 
-  protected showIssues(): void {
+  public showIssues(): void {
     this.selection.set([this.widget().id]);
     this.navigation.navigate({ kind: 'issues' });
   }
 
-  /** Opens this widget at near-fullscreen size, fed the same reactive inputs its outlet already gets. */
-  protected openFullscreen(): void {
+  /** Opens near-fullscreen with the same inputs as the outlet. */
+  public openFullscreen(): void {
     this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
       data: {
         widget: this.widgetDto,
@@ -178,22 +169,23 @@ export class WidgetHostComponent {
     });
   }
 
-  protected onSortChange(sort: { columnId: string; direction: SortDirection }): void {
+  public onSortChange(sort: { columnId: string; direction: SortDirection }): void {
     this.tableModel()?.setSort(sort.columnId, sort.direction);
   }
 
-  protected onColumnReorder(move: { draggedColumnId: string; targetColumnId: string }): void {
+  public onColumnReorder(move: { draggedColumnId: string; targetColumnId: string }): void {
     this.tableModel()?.reorderColumn(move.draggedColumnId, move.targetColumnId);
   }
 
-  /**
-   * Persists widths after a drag-resize so the layout survives a reload. This
-   * only ever updates widths on columns the user already chose: it must never
-   * add or reorder columns, since layout reflows can trigger it too.
-   */
-  protected onColumnResize(widths: { columnId: string; width: number }[]): void {
+  /** Persists resized widths. Only updates existing columns, since layout reflows trigger this too. */
+  public onColumnResize(widths: { columnId: string; width: number }[]): void {
     const table = this.tableModel();
     if (!table?.appearance.resizableColumns()) return;
     table.applyColumnWidths(widths);
+  }
+
+  private reportFilterFor(datasetId: number | null): FilterGroup | null {
+    if (!datasetId) return null;
+    return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   }
 }

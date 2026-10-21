@@ -4,11 +4,7 @@ import { ReportSession } from '../../state/report-session';
 import { WidgetSelection } from '../../state/widget-selection';
 import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
 
-/**
- * The slim strip along the bottom of the canvas — an editor-style status bar for
- * the passive facts about what's on it: grid size, widget count, current
- * selection, and a live save dot. This is where the top bar's old grid meta went.
- */
+/** The canvas status bar: grid size, widget count, selection and a live save dot. */
 @Component({
   selector: 'app-canvas-status',
   imports: [SaveStatusComponent],
@@ -22,7 +18,12 @@ import { SaveStatusComponent } from '../../../../shared/save-status/save-status.
         <span>{{ selectedCount() }} selected</span>
       }
       <span class="spacer"></span>
-      <app-save-status variant="dot" [saving]="saving()" [saveFailed]="saveFailed()" [dirty]="dirty()" />
+      <app-save-status
+        variant="dot"
+        [saving]="saving()"
+        [saveFailed]="saveFailed()"
+        [dirty]="dirty()"
+      />
     </div>
   `,
   styles: [
@@ -48,16 +49,34 @@ import { SaveStatusComponent } from '../../../../shared/save-status/save-status.
   ],
 })
 export class CanvasStatusComponent {
+  public readonly widgetCount = computed(() => this.session.widgets().length);
+  public readonly selectedCount = computed(() => this.selection.selectedWidgetIds().length);
+
   private readonly session = inject(ReportSession);
   private readonly selection = inject(WidgetSelection);
   private readonly autosave = inject(ReportAutosave);
 
-  protected readonly gridColumns = this.session.gridColumns;
-  protected readonly gridRows = this.session.gridRows;
-  protected readonly hasMultiSelection = this.selection.hasMultiSelection;
-  protected readonly widgetCount = computed(() => this.session.widgets().length);
-  protected readonly selectedCount = computed(() => this.selection.selectedWidgetIds().length);
-  protected readonly saving = this.autosave.saving;
-  protected readonly saveFailed = this.autosave.saveFailed;
-  protected readonly dirty = this.session.dirty;
+  public get gridColumns() {
+    return this.session.gridColumns;
+  }
+
+  public get gridRows() {
+    return this.session.gridRows;
+  }
+
+  public get hasMultiSelection() {
+    return this.selection.hasMultiSelection;
+  }
+
+  public get saving() {
+    return this.autosave.saving;
+  }
+
+  public get saveFailed() {
+    return this.autosave.saveFailed;
+  }
+
+  public get dirty() {
+    return this.session.dirty;
+  }
 }

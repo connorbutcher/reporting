@@ -4,13 +4,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ReportFilterModel } from '../../../models/filter';
-import {
-  column,
-  condition,
-  contextOf,
-  groupOf,
-  schemaOf,
-} from '../../../models/filter/testing/filter-fixtures';
+import { FilterFixtures } from '../../../models/filter/testing/filter-fixtures';
 import { ReportSession } from '../../../state/report-session';
 import { PanelReportFiltersComponent } from './panel-report-filters.component';
 
@@ -20,18 +14,27 @@ describe('PanelReportFiltersComponent', () => {
   let datasetIds: ReturnType<typeof signal<number[]>>;
   let ensured: number[];
 
-  const filterFor = (id: number, ...conditions: ReturnType<typeof condition>[]) =>
+  const filterFor = (id: number, ...conditions: ReturnType<typeof FilterFixtures.condition>[]) =>
     new ReportFilterModel(
       id,
-      conditions.length ? groupOf('and', ...conditions) : null,
-      contextOf({ schema: schemaOf([column('a')], id, `Dataset ${id}`) }),
+      conditions.length ? FilterFixtures.groupOf('and', ...conditions) : null,
+      FilterFixtures.contextOf({
+        schema: FilterFixtures.schemaOf([FilterFixtures.column('a')], id, `Dataset ${id}`),
+      }),
     );
 
   beforeEach(async () => {
     ensured = [];
     filters = new Map([
-      [7, filterFor(7, condition('a', 'equals', ['x']), condition('a', 'equals', ['y']))],
-      [8, filterFor(8, condition('a', 'equals', ['z']))],
+      [
+        7,
+        filterFor(
+          7,
+          FilterFixtures.condition('a', 'equals', ['x']),
+          FilterFixtures.condition('a', 'equals', ['y']),
+        ),
+      ],
+      [8, filterFor(8, FilterFixtures.condition('a', 'equals', ['z']))],
       [9, filterFor(9)],
     ]);
     datasetIds = signal([7, 8, 9]);
@@ -79,16 +82,12 @@ describe('PanelReportFiltersComponent', () => {
   });
 
   it('shows a chip per dataset in use, named, with its condition count', () => {
-    expect(chips().map((c) => c.querySelector('.dataset-chip-label')!.textContent!.trim())).toEqual([
-      'Bearings',
-      'Torque',
-      'Gearbox',
-    ]);
-    expect(chips().map((c) => c.querySelector('.dataset-chip-count')?.textContent?.trim() ?? null)).toEqual([
-      '2',
-      '1',
-      null,
-    ]);
+    expect(chips().map((c) => c.querySelector('.dataset-chip-label')!.textContent!.trim())).toEqual(
+      ['Bearings', 'Torque', 'Gearbox'],
+    );
+    expect(
+      chips().map((c) => c.querySelector('.dataset-chip-count')?.textContent?.trim() ?? null),
+    ).toEqual(['2', '1', null]);
   });
 
   it('words each chip’s accessible name with its conditions', () => {

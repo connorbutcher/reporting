@@ -5,7 +5,7 @@ import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
 import { FilterConditionModel } from './filter-condition.model';
 import { FilterContext } from './filter-context';
-import { toConditionModels } from './filter-group-nodes';
+import { FilterGroupNodes } from './filter-group-nodes';
 
 /** A set of conditions joined by AND or OR. */
 export class FilterGroupModel extends EditorNode {
@@ -13,7 +13,6 @@ export class FilterGroupModel extends EditorNode {
   public readonly children = signal<readonly FilterConditionModel[]>([]);
 
   public readonly count = computed(() => this.children().length);
-  /** Conditions switched on: what actually narrows the data. */
   public readonly enabledCount = computed(() => this.children().filter((c) => c.enabled()).length);
   /** Switched-on conditions on a removed column, which {@link toQueryDto} leaves out. */
   public readonly missingColumnCount = computed(
@@ -32,13 +31,14 @@ export class FilterGroupModel extends EditorNode {
     return all.filter((c) => allowedIds.has(c.id) || referenced.has(c.id));
   });
 
-  /** Both the schema and the operator catalogue are in. */
   public readonly ready: Signal<boolean> = computed(
     () => !!this.context.schema() && !!this.context.catalogue(),
   );
 
   /** Null until the schema loads. */
-  public readonly datasetId: Signal<number | null> = computed(() => this.context.schema()?.id ?? null);
+  public readonly datasetId: Signal<number | null> = computed(
+    () => this.context.schema()?.id ?? null,
+  );
 
   constructor(
     dto: FilterGroup | null,
@@ -46,14 +46,14 @@ export class FilterGroupModel extends EditorNode {
   ) {
     super();
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditionModels(dto, context));
+    this.children.set(FilterGroupNodes.toConditionModels(dto, context));
   }
 
   public setJoin(join: FilterJoin): void {
     this.join.set(join);
   }
 
-  /** Adds a condition on the first column this filter may test, or on `columnId`. Null if none is offerable. */
+  /** Uses `columnId`, else the first offerable column; null if none is offerable. */
   public addCondition(columnId?: string): FilterConditionModel | null {
     const offerable = this.columns();
     const column = columnId ? offerable.find((c) => c.id === columnId) : offerable[0];
@@ -79,7 +79,7 @@ export class FilterGroupModel extends EditorNode {
   /** Rebuilds from a stored filter, leaving that filter's own conditions untouched. */
   public replaceWith(dto: FilterGroup | null): void {
     this.join.set(dto?.join ?? 'and');
-    this.children.set(toConditionModels(dto, this.context, { clone: true }));
+    this.children.set(FilterGroupNodes.toConditionModels(dto, this.context, { clone: true }));
   }
 
   /** Null when empty, so an untouched filter never narrows anything. */
@@ -87,15 +87,12 @@ export class FilterGroupModel extends EditorNode {
     return this.project(() => true);
   }
 
-  /**
-   * The filter sent to the query endpoint: enabled, complete conditions on columns that exist. The
-   * server rejects an operand-less condition or an unknown column outright, failing the whole widget.
-   */
+  /** Only enabled, complete conditions on existing columns; the server rejects anything else outright. */
   public toQueryDto(): FilterGroup | null {
     return this.project((c) => c.enabled() && c.isComplete() && !c.columnMissing());
   }
 
-  /** Every finished condition, enabled or not: a disabled one can be toggled back on, but a row still being typed isn't state yet. */
+  /** Every finished condition, enabled or not; a row still being typed is left out. */
   public toCompleteDto(): FilterGroup | null {
     return this.project((c) => c.isComplete());
   }
@@ -113,7 +110,9 @@ export class FilterGroupModel extends EditorNode {
   }
 
   private project(keep: (condition: FilterConditionModel) => boolean): FilterGroup | null {
-    const children = this.children().filter(keep).map((c) => c.toDto());
+    const children = this.children()
+      .filter(keep)
+      .map((c) => c.toDto());
     return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
   }
 }

@@ -6,7 +6,7 @@ import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog'
 import { ReportSession } from '../../../state/report-session';
 import { WidgetSelection } from '../../../state/widget-selection';
 import { PanelNavigation } from '../../../state/panel-navigation';
-import { widgetFilterCount } from '../../../models/widget-filter-summary';
+import { WidgetFilterSummary } from '../../../models/widget-filter-summary';
 import { PanelView } from '../../panel-view';
 
 @Component({
@@ -16,40 +16,41 @@ import { PanelView } from '../../panel-view';
   styleUrl: './panel-widget-list.component.scss',
 })
 export class PanelWidgetListComponent {
-  static readonly title = 'Widgets';
+  public static readonly title = 'Widgets';
 
-  private readonly session = inject(ReportSession);
-  private readonly selection = inject(WidgetSelection);
-  private readonly navigation = inject(PanelNavigation);
-
-  protected readonly widgets = this.session.widgets;
-  protected readonly selectedWidgetId = this.selection.selectedWidgetId;
-
-  /** Listbox needs plain fields, so each model is flattened into an option. Shows the widget's
-   * *type* (e.g. "Scatter chart") as the secondary line rather than its grid position/size —
-   * raw column/row numbers told a report author nothing they could act on and just duplicated
-   * what's already visible by looking at the canvas. */
-  protected readonly options = computed(() =>
+  /** Flattened for the listbox, with the widget type as the secondary line. */
+  public readonly options = computed(() =>
     this.session.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
       icon: widgetTypeDescriptor(widget.type).icon,
       typeLabel: widgetTypeDescriptor(widget.type).label,
       label: widget.label(),
-      filterCount: widgetFilterCount(widget),
+      filterCount: WidgetFilterSummary.count(widget),
     })),
   );
 
+  private readonly session = inject(ReportSession);
+  private readonly selection = inject(WidgetSelection);
+  private readonly navigation = inject(PanelNavigation);
+
   /**
-   * Clicking the already-active option makes the listbox toggle it off, so
-   * onChange reports null. onClick still names the clicked option, which keeps
-   * opening a single click; onChange covers keyboard selection.
+   * Clicking the active option toggles it off, so onChange reports null; onClick still names the
+   * clicked option, and onChange covers keyboard selection.
    */
-  protected open(widgetId: string | null | undefined): void {
+  public open(widgetId: string | null | undefined): void {
     if (widgetId) this.navigation.selectWidget(widgetId);
   }
 
-  protected navigate(view: PanelView): void {
+  public navigate(view: PanelView): void {
     this.navigation.navigate(view);
+  }
+
+  public get widgets() {
+    return this.session.widgets;
+  }
+
+  public get selectedWidgetId() {
+    return this.selection.selectedWidgetId;
   }
 }
