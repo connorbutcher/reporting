@@ -8,7 +8,14 @@ const col = (id: string, name: string, type: DatasetColumn['type'] = 'string'): 
   ({ id, name, type, order: 0, configuration: {} }) as DatasetColumn;
 
 const schema = (id: number, name: string, columns: DatasetColumn[]): DatasetSchema =>
-  ({ id, name, sourceId: 1, source: 'json', sourceConfig: {}, columns }) as unknown as DatasetSchema;
+  ({
+    id,
+    name,
+    sourceId: 1,
+    source: 'json',
+    sourceConfig: {},
+    columns,
+  }) as unknown as DatasetSchema;
 
 const data = schema(1, 'Data', [col('part', 'Part'), col('reading', 'Reading', 'double')]);
 const limits = schema(2, 'Limits', [
@@ -44,13 +51,21 @@ describe('TableColumnModel tolerance validation', () => {
   });
 
   it('flags a match whose own-dataset identifier column was removed', () => {
-    const column = columnWith({ ...matching, match: { columnId: 'gone', sourceColumnId: 'lpart' } });
+    const column = columnWith({
+      ...matching,
+      match: { columnId: 'gone', sourceColumnId: 'lpart' },
+    });
 
     expect(column.errors().map((e) => e.id)).toEqual(['w1:column:reading:toleranceMissing']);
   });
 
   it('still checks a fixed-row pointer’s bound columns', () => {
-    const fixed: ToleranceConfig = { sourceDatasetId: 2, sourceRowId: 'r1', minColumnId: 'min', maxColumnId: 'gone' };
+    const fixed: ToleranceConfig = {
+      sourceDatasetId: 2,
+      sourceRowId: 'r1',
+      minColumnId: 'min',
+      maxColumnId: 'gone',
+    };
 
     expect(columnWith(fixed).errors()).toHaveLength(1);
     expect(columnWith({ ...fixed, maxColumnId: 'max' }).errors()).toHaveLength(0);

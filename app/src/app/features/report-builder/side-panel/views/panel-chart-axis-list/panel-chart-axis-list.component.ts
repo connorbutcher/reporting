@@ -47,7 +47,11 @@ export class PanelChartAxisListComponent {
     const label = this.chart().xAxisLabel().trim();
     if (label) return label;
     const columnId = this.chart().xColumnId();
-    return this.chart().axisColumns().find((c) => c.id === columnId)?.name ?? 'X axis';
+    return (
+      this.chart()
+        .axisColumns()
+        .find((c) => c.id === columnId)?.name ?? 'X axis'
+    );
   }
 
   /** A value axis's row label. */

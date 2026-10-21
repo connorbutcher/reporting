@@ -98,7 +98,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
     const seeded = config.bindings?.length
       ? config.bindings
       : [{ id: crypto.randomUUID(), ...EMPTY_CHART_BINDING }];
-    this.bindings.set(seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)));
+    this.bindings.set(
+      seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)),
+    );
   }
 
   // --- bindings ------------------------------------------------------------
@@ -355,7 +357,8 @@ export abstract class ChartWidgetModel extends WidgetModel {
           id: `${this.id}:tooltipMissingColumn`,
           severity: 'error',
           title: `${this.label()} shows a tooltip column that no longer exists`,
-          detail: 'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
+          detail:
+            'One of the extra tooltip columns was removed from the dataset. Remove or replace it.',
           widgetId: this.id,
           view: { kind: 'widget', widgetId: this.id },
         });
@@ -365,7 +368,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
     // A tolerance band points at its own "limits" dataset — separate from whatever the chart
     // itself plots — so it's checked against that dataset's schema, not the chart's.
     for (const band of this.toleranceBands()) {
-      const bandSchema = band.sourceDatasetId ? (this.sources.schemas()[band.sourceDatasetId] ?? null) : null;
+      const bandSchema = band.sourceDatasetId
+        ? (this.sources.schemas()[band.sourceDatasetId] ?? null)
+        : null;
       if (!bandSchema) continue;
 
       const columnIds = new Set(bandSchema.columns.map((c) => c.id));

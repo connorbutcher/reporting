@@ -6,7 +6,12 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartAxis, LineDashStyle, LineDirection, chartAxisDisplayName } from '../../../../../core/models/report';
+import {
+  ChartAxis,
+  LineDashStyle,
+  LineDirection,
+  chartAxisDisplayName,
+} from '../../../../../core/models/report';
 import { XBarRChartWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';

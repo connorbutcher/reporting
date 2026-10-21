@@ -1,5 +1,10 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { ControlChartMode, readChartAxes, readChartBindings, XBarRChartWidgetConfig } from '../../../../../core/models/report';
+import {
+  ControlChartMode,
+  readChartAxes,
+  readChartBindings,
+  XBarRChartWidgetConfig,
+} from '../../../../../core/models/report';
 import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../core/models/widget-query';
 import { ECOption, LineSeriesOption, TooltipCallbackParams } from './chart-option.types';
 import { CategoryZoom } from './category-zoom';
@@ -92,8 +97,15 @@ export class XBarROption {
 
     const categoryAutoRotate = categories.length > 6 ? 30 : 0;
     const categoryRotate = ChartScale.labelRotate(config.xAxisRotate, categoryAutoRotate);
-    const categoryNameGap = ChartScale.nameGap(ChartScale.longestLen(categories), categoryRotate, 'x');
-    const hiddenCategoryAxis = { ...ChartScale.categoryAxis(categories, config.xAxisInterval), gridIndex: 0 };
+    const categoryNameGap = ChartScale.nameGap(
+      ChartScale.longestLen(categories),
+      categoryRotate,
+      'x',
+    );
+    const hiddenCategoryAxis = {
+      ...ChartScale.categoryAxis(categories, config.xAxisInterval),
+      gridIndex: 0,
+    };
     const labelledCategoryAxis = {
       ...ChartScale.categoryAxis(categories, config.xAxisInterval),
       ...(categoryRotate !== 0 ? { axisLabel: { rotate: categoryRotate } } : {}),
@@ -105,21 +117,36 @@ export class XBarROption {
 
     // The mean axis fits the data rather than anchoring at zero — a control chart's measurements
     // are rarely near it — while the range axis, never negative, keeps the usual zero floor.
-    const meanScale = ChartScale.numericAxis(false, meanAxisConfig.min, meanAxisConfig.max, meanAxisConfig.interval, valueConfig, true);
+    const meanScale = ChartScale.numericAxis(
+      false,
+      meanAxisConfig.min,
+      meanAxisConfig.max,
+      meanAxisConfig.interval,
+      valueConfig,
+      true,
+    );
     const rangeScale = ChartScale.numericAxis(false, null, null, null, valueConfig, false);
 
     const meanExtentValues = subgroups.flatMap((s) => [s.mean, s.xBarUcl, s.xBarLcl]);
-    const rangeExtentValues = subgroups.flatMap((s) => (s.hasRange === false ? [s.rUcl] : [s.range, s.rUcl]));
+    const rangeExtentValues = subgroups.flatMap((s) =>
+      s.hasRange === false ? [s.rUcl] : [s.range, s.rUcl],
+    );
     const meanNameGap = ChartScale.nameGap(
       mode === 'p' ? 6 : XBarROption.labelLen(meanExtentValues, valueConfig),
       0,
       'y',
     );
-    const rangeNameGap = ChartScale.nameGap(XBarROption.labelLen(rangeExtentValues, valueConfig), 0, 'y');
+    const rangeNameGap = ChartScale.nameGap(
+      XBarROption.labelLen(rangeExtentValues, valueConfig),
+      0,
+      'y',
+    );
 
     const meanAxis = {
       ...meanScale,
-      ...(mode === 'p' ? { axisLabel: { formatter: (v: number | string) => formatMean(Number(v)) } } : {}),
+      ...(mode === 'p'
+        ? { axisLabel: { formatter: (v: number | string) => formatMean(Number(v)) } }
+        : {}),
       gridIndex: 0,
       name: meanLabel,
       nameLocation: 'middle' as const,
@@ -148,13 +175,25 @@ export class XBarROption {
             {
               xAxis: baselineCount - 1,
               lineStyle: { color: CENTER_LINE_COLOR, type: 'dotted' as const, width: 1.25 },
-              label: { formatter: 'Limits baseline', position: 'insideEndTop' as const, color: CENTER_LINE_COLOR, fontSize: 10 },
+              label: {
+                formatter: 'Limits baseline',
+                position: 'insideEndTop' as const,
+                color: CENTER_LINE_COLOR,
+                fontSize: 10,
+              },
             },
           ]
         : [];
     const specReference = ReferenceSeries.build(
-      [...ToleranceMarks.lines(bands, () => 'yAxis'), ...GuideLineMarks.lines(guideLines, () => 'yAxis'), ...baselineMark],
-      [...ToleranceMarks.areas(bands, () => 'yAxis'), ...GuideLineMarks.areas(guideLines, () => 'yAxis')],
+      [
+        ...ToleranceMarks.lines(bands, () => 'yAxis'),
+        ...GuideLineMarks.lines(guideLines, () => 'yAxis'),
+        ...baselineMark,
+      ],
+      [
+        ...ToleranceMarks.areas(bands, () => 'yAxis'),
+        ...GuideLineMarks.areas(guideLines, () => 'yAxis'),
+      ],
       { xAxisIndex: 0, yAxisIndex: 0 },
     );
 
@@ -248,8 +287,22 @@ export class XBarROption {
       series: [
         ...meanSeriesSet,
         rangeSeries,
-        ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rUcl', 1, 1),
-        ...XBarROption.limitSeries(names.dispersionChart, categories.length, subgroups, 'rLcl', 1, 1),
+        ...XBarROption.limitSeries(
+          names.dispersionChart,
+          categories.length,
+          subgroups,
+          'rUcl',
+          1,
+          1,
+        ),
+        ...XBarROption.limitSeries(
+          names.dispersionChart,
+          categories.length,
+          subgroups,
+          'rLcl',
+          1,
+          1,
+        ),
         XBarROption.centerSeries(names.dispersionChart, categories.length, rCenterLine, 1, 1),
         ...(specReference ? [specReference] : []),
       ],
@@ -267,16 +320,25 @@ export class XBarROption {
       case 'xBarS':
         return { value: 'Mean', dispersion: 'Std dev', meanChart: 'X̄', dispersionChart: 'S' };
       case 'individuals':
-        return { value: 'Value', dispersion: 'Moving range', meanChart: 'X', dispersionChart: 'MR' };
+        return {
+          value: 'Value',
+          dispersion: 'Moving range',
+          meanChart: 'X',
+          dispersionChart: 'MR',
+        };
       case 'p':
-        return { value: 'Proportion defective', dispersion: '', meanChart: 'p', dispersionChart: '' };
+        return {
+          value: 'Proportion defective',
+          dispersion: '',
+          meanChart: 'p',
+          dispersionChart: '',
+        };
       case 'np':
         return { value: 'Defectives', dispersion: '', meanChart: 'np', dispersionChart: '' };
       default:
         return { value: 'Mean', dispersion: 'Range', meanChart: 'X̄', dispersionChart: 'R' };
     }
   }
-
 
   /** One point's tooltip: its mean/range plus that subgroup's own control limits and sample size. */
   private static tooltip(params: TooltipCallbackParams, ctx: SubgroupTooltipContext): string {
@@ -360,7 +422,10 @@ export class XBarROption {
   }
 
   /** The longest formatted value label, in characters, across a set of plotted values. */
-  private static labelLen(values: readonly number[], config: NumericColumnConfig | undefined): number {
+  private static labelLen(
+    values: readonly number[],
+    config: NumericColumnConfig | undefined,
+  ): number {
     if (values.length === 0) return 0;
     let min = Infinity;
     let max = -Infinity;
@@ -368,6 +433,9 @@ export class XBarROption {
       if (v < min) min = v;
       if (v > max) max = v;
     }
-    return Math.max(ChartFormat.numeric(min, config).length, ChartFormat.numeric(max, config).length);
+    return Math.max(
+      ChartFormat.numeric(min, config).length,
+      ChartFormat.numeric(max, config).length,
+    );
   }
 }

@@ -1,4 +1,8 @@
-import { FilterOperator, OperatorDescriptor, TOLERANCE_OPERATORS } from '../../../../core/models/filter';
+import {
+  FilterOperator,
+  OperatorDescriptor,
+  TOLERANCE_OPERATORS,
+} from '../../../../core/models/filter';
 
 /**
  * A type's operators as a condition may offer them. Tolerance operators need a band to test against

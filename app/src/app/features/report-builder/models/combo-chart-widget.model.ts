@@ -50,7 +50,9 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   });
 
   /** Whether any series is drawn as a line — gates the line-only appearance options. */
-  public readonly hasLineSeries = computed(() => this.bindings().some((b) => b.renderAs() === 'line'));
+  public readonly hasLineSeries = computed(() =>
+    this.bindings().some((b) => b.renderAs() === 'line'),
+  );
 
   constructor(widget: ComboChartWidget, sources: ModelSources) {
     super(widget, sources);

@@ -27,12 +27,26 @@ describe('PanelColumnToleranceComponent per-row matching', () => {
     const column = { tolerance: signal<ToleranceConfig | null>(null), setTolerance };
     const table = {
       column: () => column,
-      schema: () => ({ columns: [{ id: 'part', name: 'Part Number', type: 'string' }, { id: 'reading', name: 'Reading', type: 'double' }] }),
+      schema: () => ({
+        columns: [
+          { id: 'part', name: 'Part Number', type: 'string' },
+          { id: 'reading', name: 'Reading', type: 'double' },
+        ],
+      }),
     };
     TestBed.configureTestingModule({
       providers: [
-        { provide: ReportSession, useValue: { datasets: signal([{ id: 2, name: 'Limits' }]), selectedTableWidget: signal(table) } },
-        { provide: PanelNavigation, useValue: { view: signal({ kind: 'columnTolerance', columnId: 'reading' }) } },
+        {
+          provide: ReportSession,
+          useValue: {
+            datasets: signal([{ id: 2, name: 'Limits' }]),
+            selectedTableWidget: signal(table),
+          },
+        },
+        {
+          provide: PanelNavigation,
+          useValue: { view: signal({ kind: 'columnTolerance', columnId: 'reading' }) },
+        },
         { provide: NotificationService, useValue: { loadError: () => undefined } },
         {
           provide: DatasetApiService,
@@ -45,7 +59,11 @@ describe('PanelColumnToleranceComponent per-row matching', () => {
     });
     const fixture = TestBed.createComponent(PanelColumnToleranceComponent);
     fixture.detectChanges();
-    const picker = (fixture.componentInstance as unknown as { picker: import('../../../state/tolerance-source-picker').ToleranceSourcePicker }).picker;
+    const picker = (
+      fixture.componentInstance as unknown as {
+        picker: import('../../../state/tolerance-source-picker').ToleranceSourcePicker;
+      }
+    ).picker;
     picker.selectDataset(2);
     fixture.detectChanges();
     return { fixture, picker, el: fixture.nativeElement as HTMLElement };

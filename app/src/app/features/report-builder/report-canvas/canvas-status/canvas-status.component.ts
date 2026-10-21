@@ -22,7 +22,12 @@ import { SaveStatusComponent } from '../../../../shared/save-status/save-status.
         <span>{{ selectedCount() }} selected</span>
       }
       <span class="spacer"></span>
-      <app-save-status variant="dot" [saving]="saving()" [saveFailed]="saveFailed()" [dirty]="dirty()" />
+      <app-save-status
+        variant="dot"
+        [saving]="saving()"
+        [saveFailed]="saveFailed()"
+        [dirty]="dirty()"
+      />
     </div>
   `,
   styles: [

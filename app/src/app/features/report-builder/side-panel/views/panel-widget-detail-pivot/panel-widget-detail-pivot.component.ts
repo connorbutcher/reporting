@@ -6,7 +6,12 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { DatasetColumn, DatasetSummary } from '../../../../../core/models/dataset';
-import { DateGrouping, PivotAggregate, PivotMeasure, PivotShowAs } from '../../../../../core/models/report';
+import {
+  DateGrouping,
+  PivotAggregate,
+  PivotMeasure,
+  PivotShowAs,
+} from '../../../../../core/models/report';
 import { PivotTableWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
@@ -76,7 +81,13 @@ export class PanelWidgetDetailPivotComponent {
 
   /** Ids of the date columns, which offer a period grouping when used as a field. */
   public readonly dateColumns = computed(
-    () => new Set(this.pivot().columns().filter((c) => c.type === 'dateTime').map((c) => c.id)),
+    () =>
+      new Set(
+        this.pivot()
+          .columns()
+          .filter((c) => c.type === 'dateTime')
+          .map((c) => c.id),
+      ),
   );
 
   /** Sort-by choices: the dimension order, then each measure by its (derived) header. */
@@ -104,7 +115,9 @@ export class PanelWidgetDetailPivotComponent {
 
   /** A distinct count reads any column; the other aggregates need a number. */
   public measureColumns(measure: PivotMeasure): DatasetColumn[] {
-    return measure.aggregate === 'countDistinct' ? this.pivot().columns() : this.pivot().numericColumns();
+    return measure.aggregate === 'countDistinct'
+      ? this.pivot().columns()
+      : this.pivot().numericColumns();
   }
 
   public navigate(view: PanelView): void {
@@ -122,7 +135,8 @@ export class PanelWidgetDetailPivotComponent {
     if (measure.aggregate === 'count') return 'Count';
     const column = measure.columnId ? (names.get(measure.columnId) ?? 'value') : 'value';
     if (measure.aggregate === 'countDistinct') return `Distinct ${column}`;
-    const aggregate = this.aggregates.find((a) => a.value === measure.aggregate)?.label ?? measure.aggregate;
+    const aggregate =
+      this.aggregates.find((a) => a.value === measure.aggregate)?.label ?? measure.aggregate;
     return `${aggregate} of ${column}`;
   }
 }

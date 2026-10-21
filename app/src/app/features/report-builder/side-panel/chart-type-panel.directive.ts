@@ -1,4 +1,12 @@
-import { ComponentRef, Directive, Type, ViewContainerRef, effect, inject, input } from '@angular/core';
+import {
+  ComponentRef,
+  Directive,
+  Type,
+  ViewContainerRef,
+  effect,
+  inject,
+  input,
+} from '@angular/core';
 import { WidgetType } from '../../../core/models/report';
 import { ChartWidgetModel } from '../models/widget.model';
 

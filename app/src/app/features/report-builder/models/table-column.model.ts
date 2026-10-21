@@ -93,7 +93,9 @@ export class TableColumnModel extends EditorNode {
       ...(this.total() ? { total: this.total()! } : {}),
       ...(this.wrap() ? { wrap: true } : {}),
       ...(this.dataBars() ? { dataBars: true } : {}),
-      ...(this.formatRules().length ? { formatRules: this.formatRules().map((r) => ({ ...r })) } : {}),
+      ...(this.formatRules().length
+        ? { formatRules: this.formatRules().map((r) => ({ ...r })) }
+        : {}),
     };
   }
 

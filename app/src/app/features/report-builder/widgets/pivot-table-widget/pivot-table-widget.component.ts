@@ -1,5 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { Component, Signal, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import {
+  Component,
+  Signal,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
@@ -87,7 +96,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   /** The dimension columns, one per row field. */
   public readonly dimensionColumns = computed<PivotDimensionColumn[]>(
-    () => this.source.result()?.rowFields.map((f, fieldIndex) => ({ label: f.label, fieldIndex })) ?? [],
+    () =>
+      this.source.result()?.rowFields.map((f, fieldIndex) => ({ label: f.label, fieldIndex })) ??
+      [],
   );
 
   /** True when column fields spread the measures across the top, so the header takes two rows. */
@@ -108,8 +119,13 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const data = this.source.result();
     if (!data) return [];
     // The key is "m<request position>" — the server drops unusable measures but keeps the numbering.
-    const measures = data.measures.map((m) => ({ label: m.label, measureIndex: Number(m.key.slice(1)) }));
-    const keyBlocks: (number | null)[] = this.crossTab() ? (data.columnKeys ?? []).map((_, i) => i) : [];
+    const measures = data.measures.map((m) => ({
+      label: m.label,
+      measureIndex: Number(m.key.slice(1)),
+    }));
+    const keyBlocks: (number | null)[] = this.crossTab()
+      ? (data.columnKeys ?? []).map((_, i) => i)
+      : [];
     if (!this.crossTab() || data.hasRowTotals) keyBlocks.push(null);
 
     return keyBlocks.flatMap((columnKeyIndex, block) =>
@@ -126,7 +142,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const override = this.viewSort();
     if (override !== undefined) return override;
     const config = this.config();
-    const index = config.sortMeasureId ? config.measures.findIndex((m) => m.id === config.sortMeasureId) : -1;
+    const index = config.sortMeasureId
+      ? config.measures.findIndex((m) => m.id === config.sortMeasureId)
+      : -1;
     return index >= 0 ? { kind: 'measure', index, descending: config.sortDescending } : null;
   });
 
@@ -190,7 +208,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       matched !== total
         ? `${matched.toLocaleString()} of ${total.toLocaleString()} rows`
         : `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
-    const columnsText = data.columnsTruncated ? ` · first ${data.columnKeys?.length ?? 0} columns` : '';
+    const columnsText = data.columnsTruncated
+      ? ` · first ${data.columnKeys?.length ?? 0} columns`
+      : '';
     return `${groupsText} · ${rowsText}${columnsText}`;
   });
 
@@ -237,7 +257,8 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
         .filter((r) => !r.isSubtotal)
         .map((r) => r.values[column.valueIndex]?.value)
         .filter((v): v is number => typeof v === 'number');
-      if (values.length) ranges.set(column.valueIndex, { min: Math.min(...values), max: Math.max(...values) });
+      if (values.length)
+        ranges.set(column.valueIndex, { min: Math.min(...values), max: Math.max(...values) });
     }
     return ranges;
   });
@@ -395,7 +416,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   public barPercent(column: PivotValueColumn, row: PivotDisplayRow): number | null {
     if (row.isSubtotal) return null;
     const range = this.valueRanges().get(column.valueIndex);
-    return range ? dataBarPercent(row.values[column.valueIndex]?.value, range.min, range.max) : null;
+    return range
+      ? dataBarPercent(row.values[column.valueIndex]?.value, range.min, range.max)
+      : null;
   }
 
   /** Whether clicking a cell can open the rows behind it. */
@@ -411,7 +434,8 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     if (!datasetId || !this.canDrill(row, column)) return;
 
     const data = this.source.result()!;
-    const columnKey = column?.columnKeyIndex != null ? data.columnKeys![column.columnKeyIndex] : null;
+    const columnKey =
+      column?.columnKeyIndex != null ? data.columnKeys![column.columnKeyIndex] : null;
     const parts = [...row.path, ...(columnKey?.labels ?? [])];
     const title = [this.config().title?.trim() || 'Pivot', ...parts].join(' › ');
 
@@ -440,14 +464,19 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const columns = this.valueColumns();
     const blocks = data.columnKeys ?? [];
     const valueHeader = (c: PivotValueColumn): string => {
-      const label = data.measures.find((m) => Number(m.key.slice(1)) === c.measureIndex)?.label ?? '';
+      const label =
+        data.measures.find((m) => Number(m.key.slice(1)) === c.measureIndex)?.label ?? '';
       if (!this.crossTab()) return label;
-      const block = c.columnKeyIndex === null ? 'Total' : blocks[c.columnKeyIndex].labels.join(' · ');
+      const block =
+        c.columnKeyIndex === null ? 'Total' : blocks[c.columnKeyIndex].labels.join(' · ');
       return `${block} – ${label}`;
     };
     const header = [...data.rowFields.map((f) => f.label), ...columns.map(valueHeader)];
     // Raw numeric measure values (not the £/% display) so the CSV drops straight into a spreadsheet.
-    const rowCells = (r: PivotRow): unknown[] => [...r.dimensions, ...columns.map((c) => r.values[c.valueIndex]?.value ?? '')];
+    const rowCells = (r: PivotRow): unknown[] => [
+      ...r.dimensions,
+      ...columns.map((c) => r.values[c.valueIndex]?.value ?? ''),
+    ];
     const rows = data.rows.map(rowCells);
     if (data.grandTotal) rows.push(rowCells(data.grandTotal));
     return toCsv([header, ...rows]);
@@ -465,7 +494,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return this.source.error;
   }
 
-  private measureConfig(measureIndex: number): PivotTableWidgetConfig['measures'][number] | undefined {
+  private measureConfig(
+    measureIndex: number,
+  ): PivotTableWidgetConfig['measures'][number] | undefined {
     return this.config().measures[measureIndex];
   }
 

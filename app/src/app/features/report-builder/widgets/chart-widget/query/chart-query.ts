@@ -66,7 +66,11 @@ export class ChartQuery {
     cache?: Map<string, ChartQueryResult>,
     columns: readonly DatasetColumn[] = [],
   ): Observable<
-    ChartQueryResult | BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult
+    | ChartQueryResult
+    | BarChartQueryResult
+    | BoxPlotQueryResult
+    | HistogramQueryResult
+    | XBarRChartQueryResult
   > | null {
     const bindings = readChartBindings(config);
     const tooltipColumns = ChartQuery.namedTooltipColumns(config.tooltipColumns, columns);
@@ -110,7 +114,10 @@ export class ChartQuery {
         map((results) => {
           const ok = results.filter((r): r is BarChartPart => r !== null);
           if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-          return { ...ChartQuery.mergeBar(ok, config.sort), failedBindingCount: results.length - ok.length };
+          return {
+            ...ChartQuery.mergeBar(ok, config.sort),
+            failedBindingCount: results.length - ok.length,
+          };
         }),
       );
     }
@@ -158,7 +165,10 @@ export class ChartQuery {
       const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
       if (bound.length === 0) return null;
 
-      const request = (b: ChartSeriesBinding, overrides?: Partial<HistogramQueryRequest>): HistogramQueryRequest => ({
+      const request = (
+        b: ChartSeriesBinding,
+        overrides?: Partial<HistogramQueryRequest>,
+      ): HistogramQueryRequest => ({
         filter: bindingFilters?.[b.id] ?? null,
         valueColumnIds: histogramValueColumnIds(b),
         seriesColumnId: b.seriesColumnId,
@@ -198,7 +208,8 @@ export class ChartQuery {
       // bins would otherwise be decided independently per dataset: an auto-fit range, or Auto mode's
       // data-driven bin count.
       const needsSharedEdges =
-        bound.length > 1 && (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
+        bound.length > 1 &&
+        (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
 
       if (!needsSharedEdges) {
         return queryAll(() => ({})).pipe(map(toResult));
@@ -210,12 +221,15 @@ export class ChartQuery {
       // Count override — so every series' edges come out identical.
       return queryAll(() => ({})).pipe(
         switchMap((probe) => {
-          const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
+          const ok = probe.filter(
+            (r): r is HistogramPart => r !== null && r.result.bins.length > 0,
+          );
           if (ok.length === 0) return of(toResult(probe));
 
           const rangeMin = config.rangeMin ?? Math.min(...ok.map((r) => r.result.bins[0].lower));
           const rangeMax =
-            config.rangeMax ?? Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
+            config.rangeMax ??
+            Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
           const sharedCount = Math.max(...ok.map((r) => r.result.bins.length));
 
           const finalOverrides =
@@ -230,7 +244,11 @@ export class ChartQuery {
 
     // A line chart can reduce every row sharing an X value to one point.
     const aggregate = config.type === 'lineChart' ? (config.aggregate ?? null) : null;
-    const xGrouping = aggregate ? (config.type === 'lineChart' ? (config.xGrouping ?? null) : null) : null;
+    const xGrouping = aggregate
+      ? config.type === 'lineChart'
+        ? (config.xGrouping ?? null)
+        : null
+      : null;
 
     const wanted = new Set<string>();
     const parts = bindings
@@ -366,7 +384,8 @@ export class ChartQuery {
   ): number[] {
     const indices = categories.map((_, i) => i);
     if (sort?.by === 'column') return indices;
-    const rank = (d: ChartCategoryDetail | undefined): number => (d?.isOther ? 2 : d?.isBlank ? 1 : 0);
+    const rank = (d: ChartCategoryDetail | undefined): number =>
+      d?.isOther ? 2 : d?.isBlank ? 1 : 0;
     const sorted = [...indices].sort((a, b) => {
       const da = details[a];
       const db = details[b];
@@ -430,7 +449,8 @@ export class ChartQuery {
         if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
         if (hasSplit) labelParts.push(s.label || '(blank)');
         // Nothing varies (one binding, one measure, no split): fall back to a sensible single name.
-        const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
+        const label =
+          labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
         const reindex = <T>(values: readonly T[] | undefined, missing: T): T[] =>
           categories.map((category) => {
@@ -504,7 +524,8 @@ export class ChartQuery {
         if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
         if (hasSplit) labelParts.push(s.label || '(blank)');
         // Nothing varies (one binding, one column, no split): fall back to a sensible single name.
-        const label = labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
+        const label =
+          labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
         return { ...s, label, bindingId: binding.id };
       });
@@ -542,7 +563,9 @@ export class ChartQuery {
    * datasets. Bindings on the same dataset read the same rows, so they must not double the total;
    * where their filters differ, the widest slice any of them plots stands for the dataset.
    */
-  private static sumRowCounts(parts: { binding: ChartSeriesBinding; result: ChartRowCounts }[]): ChartRowCounts {
+  private static sumRowCounts(
+    parts: { binding: ChartSeriesBinding; result: ChartRowCounts }[],
+  ): ChartRowCounts {
     const byDataset = new Map<number | null, ChartRowCounts>();
     for (const { binding, result } of parts) {
       const seen = byDataset.get(binding.datasetId);

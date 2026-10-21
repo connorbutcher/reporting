@@ -56,7 +56,6 @@ export class ChartZoomMemory {
       : null;
   }
 
-
   /** Applies a remembered window to every zoom of a built option along its X (or category) axis. */
   public static apply<T extends { dataZoom?: unknown }>(
     option: T,

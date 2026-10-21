@@ -1,5 +1,10 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
-import { EffectScatterSeriesOption, LineSeriesOption, PointSeriesOption, ScatterSeriesOption } from './chart-option.types';
+import {
+  EffectScatterSeriesOption,
+  LineSeriesOption,
+  PointSeriesOption,
+  ScatterSeriesOption,
+} from './chart-option.types';
 import { OutlineSeverity } from './outline-zone';
 import {
   ChartCommentAnchor,
@@ -114,7 +119,10 @@ export class PointSeries {
    * on epoch milliseconds, so the slope is rescaled to per day (per month over long spans) and says so.
    * The slope keeps three significant figures, so a small but real trend never prints as 0.00.
    */
-  public static trendStatsText(trend: NonNullable<ChartSeriesResult['trendLine']>, xIsDate = false): string {
+  public static trendStatsText(
+    trend: NonNullable<ChartSeriesResult['trendLine']>,
+    xIsDate = false,
+  ): string {
     let slope = trend.slope;
     let unit = '';
     if (xIsDate) {
@@ -125,7 +133,6 @@ export class PointSeries {
     }
     return `Slope: ${PointSeries.significant(slope)}${unit} · R²: ${trend.rSquared.toFixed(2)}`;
   }
-
 
   /**
    * One pin-shaped marker per widget comment anchored to this chart, grouped into a series per Y
@@ -225,7 +232,9 @@ export class PointSeries {
         tooltipLines: p.tooltipLines,
         size: p.size,
         // An outlined point also turns into a triangle, so its status isn't carried by colour alone.
-        ...(border ? { symbol: 'triangle', itemStyle: OutlineSeverity.itemStyle(color, border) } : {}),
+        ...(border
+          ? { symbol: 'triangle', itemStyle: OutlineSeverity.itemStyle(color, border) }
+          : {}),
       };
     });
   }

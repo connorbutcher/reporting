@@ -1,5 +1,10 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { Aggregate, BarChartWidgetConfig, readChartAxes, readChartBindings } from '../../../../../core/models/report';
+import {
+  Aggregate,
+  BarChartWidgetConfig,
+  readChartAxes,
+  readChartBindings,
+} from '../../../../../core/models/report';
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../core/models/widget-query';
 import { BarSeriesOption, ECOption, LabelCallbackParams } from './chart-option.types';
 import { CategoryZoom } from './category-zoom';
@@ -42,7 +47,8 @@ export class BarOption {
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
     const seriesPerBinding = new Map<string, number>();
     for (const s of series) {
-      if (s.bindingId) seriesPerBinding.set(s.bindingId, (seriesPerBinding.get(s.bindingId) ?? 0) + 1);
+      if (s.bindingId)
+        seriesPerBinding.set(s.bindingId, (seriesPerBinding.get(s.bindingId) ?? 0) + 1);
     }
 
     // A count has no measure, so it never borrows a leftover value column's units; otherwise each
@@ -50,18 +56,29 @@ export class BarOption {
     const isCount = config.aggregate === 'count';
     const measureIds = isCount
       ? []
-      : [...new Set(series.map((s) => s.valueColumnId ?? primary?.yColumnId ?? null).filter((id) => id != null))];
+      : [
+          ...new Set(
+            series
+              .map((s) => s.valueColumnId ?? primary?.yColumnId ?? null)
+              .filter((id) => id != null),
+          ),
+        ];
     const valueColumn = measureIds.length === 1 ? ChartColumns.byId(columns, measureIds[0]) : null;
     const valueConfig = ChartFormat.numericConfig(valueColumn);
     const seriesConfig = (s: BarSeriesResult): NumericColumnConfig | undefined =>
-      isCount ? undefined : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ?? valueConfig);
+      isCount
+        ? undefined
+        : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ??
+          valueConfig);
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
     // A bar chart uses only the primary value axis; its label, interval, and rotation live there.
     const valueAxisConfig = readChartAxes(config)[0];
     const percent = !!config.percentStacked;
     const valueLabel =
       valueAxisConfig.label.trim() ||
-      (percent ? '% of total' : BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null));
+      (percent
+        ? '% of total'
+        : BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null));
 
     // A legend only earns its space once bars split into more than one series.
     const showLegend = series.length > 1 && config.showLegend;
@@ -86,8 +103,10 @@ export class BarOption {
             return v === null || total === 0 ? null : (v / total) * 100;
           })
         : s.values;
-    const formatPercent = (v: number) => `${ChartFormat.numeric(v, { kind: 'numeric', decimals: 1 })}%`;
-    const formatValue = (s: BarSeriesResult) => (v: number) => (percent ? formatPercent(v) : ChartFormat.numeric(v, seriesConfig(s)));
+    const formatPercent = (v: number) =>
+      `${ChartFormat.numeric(v, { kind: 'numeric', decimals: 1 })}%`;
+    const formatValue = (s: BarSeriesResult) => (v: number) =>
+      percent ? formatPercent(v) : ChartFormat.numeric(v, seriesConfig(s));
 
     // The value axis is whichever one isn't holding the categories, so reference lines and
     // fills land on the measure regardless of orientation. Percent bars aren't on the measure's
@@ -95,8 +114,14 @@ export class BarOption {
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis');
     const bands = percent ? [] : (data?.toleranceBands ?? []);
     const guideLines = percent ? [] : (config.guideLines ?? []);
-    const marks = [...ToleranceMarks.lines(bands, valueAxisKey), ...GuideLineMarks.lines(guideLines, valueAxisKey)];
-    const areas = [...ToleranceMarks.areas(bands, valueAxisKey), ...GuideLineMarks.areas(guideLines, valueAxisKey)];
+    const marks = [
+      ...ToleranceMarks.lines(bands, valueAxisKey),
+      ...GuideLineMarks.lines(guideLines, valueAxisKey),
+    ];
+    const areas = [
+      ...ToleranceMarks.areas(bands, valueAxisKey),
+      ...GuideLineMarks.areas(guideLines, valueAxisKey),
+    ];
     // A bar's bands and outlined guide lines both test against the one value axis, worst-wins.
     const outlineColor = OutlineSeverity.forValue([
       ...ToleranceOutline.zonesFor(bands),
@@ -117,15 +142,30 @@ export class BarOption {
       ...categoryScale,
       name: categoryLabel,
       nameLocation: 'middle' as const,
-      nameGap: ChartScale.nameGap(ChartScale.longestLen(categories), categoryRotate, categoryOrientation),
+      nameGap: ChartScale.nameGap(
+        ChartScale.longestLen(categories),
+        categoryRotate,
+        categoryOrientation,
+      ),
       axisLabel: { ...categoryScale.axisLabel, rotate: categoryRotate },
       // echarts puts the first category at the bottom of a vertical axis; read top-down instead,
       // so a sorted horizontal chart leads with its first category.
       ...(horizontal ? { inverse: true } : {}),
     };
     const valueScale = percent
-      ? { type: 'value' as const, max: 100, axisLabel: { formatter: (v: number | string) => `${v}%` } }
-      : ChartScale.numericAxis(false, null, null, valueAxisConfig.interval, valueConfig, valueAxisConfig.scale);
+      ? {
+          type: 'value' as const,
+          max: 100,
+          axisLabel: { formatter: (v: number | string) => `${v}%` },
+        }
+      : ChartScale.numericAxis(
+          false,
+          null,
+          null,
+          valueAxisConfig.interval,
+          valueConfig,
+          valueAxisConfig.scale,
+        );
     const valueRotate = ChartScale.labelRotate(valueAxisConfig.rotate);
     const valueLen = percent ? 4 : BarOption.valueLabelLen(series, valueConfig);
     const valueAxis = {
@@ -164,7 +204,8 @@ export class BarOption {
                 show: true,
                 // Stacked segments label inside, so neighbouring segments' labels don't collide.
                 position: stacked ? 'inside' : horizontal ? 'right' : 'top',
-                formatter: (p: LabelCallbackParams) => (typeof p.value === 'number' ? format(p.value) : ''),
+                formatter: (p: LabelCallbackParams) =>
+                  typeof p.value === 'number' ? format(p.value) : '',
               },
             }
           : {}),
@@ -217,8 +258,7 @@ export class BarOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        formatter: (raw: unknown) =>
-          BarOption.tooltip(raw, seriesByName, formatValue, percent),
+        formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, formatValue, percent),
       },
       ...(showLegend ? { legend: { top: 0, data: series.map(seriesName), type: 'scroll' } } : {}),
       ...(zoom ? { dataZoom: CategoryZoom.dataZoom(horizontal) } : {}),
@@ -250,16 +290,26 @@ export class BarOption {
     if (header != null) lines.push(`<strong>${TooltipHtml.escape(header)}</strong>`);
     for (const p of params) {
       const s = p.seriesName != null ? seriesByName.get(p.seriesName) : undefined;
-      const value = typeof p.value === 'number' ? p.value : (p.value as { value?: unknown } | null)?.value;
+      const value =
+        typeof p.value === 'number' ? p.value : (p.value as { value?: unknown } | null)?.value;
       if (!s || typeof value !== 'number') continue;
       const format = formatValue(s);
       const actual = s.values[p.dataIndex];
-      const shown = percent && actual != null ? `${format(value)} (${ChartFormat.numeric(actual)})` : format(value);
+      const shown =
+        percent && actual != null
+          ? `${format(value)} (${ChartFormat.numeric(actual)})`
+          : format(value);
       const color = typeof p.color === 'string' ? p.color : '';
-      lines.push(`${color ? TooltipHtml.marker(color) : ''}${TooltipHtml.escape(p.seriesName ?? '')}: <strong>${TooltipHtml.escape(shown)}</strong>`);
+      lines.push(
+        `${color ? TooltipHtml.marker(color) : ''}${TooltipHtml.escape(p.seriesName ?? '')}: <strong>${TooltipHtml.escape(shown)}</strong>`,
+      );
       const rows = s.rowCounts?.[p.dataIndex];
-      if (rows != null) lines.push(`&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(`${ChartFormat.numeric(rows)} ${rows === 1 ? 'row' : 'rows'}`)}`);
-      for (const line of s.tooltipLines?.[p.dataIndex] ?? []) lines.push(`&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(line)}`);
+      if (rows != null)
+        lines.push(
+          `&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(`${ChartFormat.numeric(rows)} ${rows === 1 ? 'row' : 'rows'}`)}`,
+        );
+      for (const line of s.tooltipLines?.[p.dataIndex] ?? [])
+        lines.push(`&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(line)}`);
     }
     return lines.join('<br/>');
   }
@@ -290,7 +340,10 @@ export class BarOption {
       }
     }
     if (!Number.isFinite(min)) return 0;
-    return Math.max(ChartFormat.numeric(min, config).length, ChartFormat.numeric(max, config).length);
+    return Math.max(
+      ChartFormat.numeric(min, config).length,
+      ChartFormat.numeric(max, config).length,
+    );
   }
 
   private static aggregateLabel(aggregate: Aggregate): string {

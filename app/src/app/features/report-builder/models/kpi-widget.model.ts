@@ -234,7 +234,11 @@ export class KpiWidgetModel extends WidgetModel {
       return issues;
     }
 
-    if (this.valueSource() === 'aggregate' && this.aggregate() !== 'count' && !this.valueColumnId()) {
+    if (
+      this.valueSource() === 'aggregate' &&
+      this.aggregate() !== 'count' &&
+      !this.valueColumnId()
+    ) {
       issues.push({
         id: `${this.id}:noValueColumn`,
         severity: 'warning',
@@ -245,7 +249,10 @@ export class KpiWidgetModel extends WidgetModel {
       });
     }
 
-    if (this.valueSource() === 'toleranceOutOfLimits' && (!this.valueColumnId() || !this.tolerance())) {
+    if (
+      this.valueSource() === 'toleranceOutOfLimits' &&
+      (!this.valueColumnId() || !this.tolerance())
+    ) {
       issues.push({
         id: `${this.id}:noTolerance`,
         severity: 'warning',
@@ -267,7 +274,10 @@ export class KpiWidgetModel extends WidgetModel {
       });
     }
 
-    if ((this.comparisonMode() === 'previousPeriod' || this.showSparkline()) && !this.dateColumnId()) {
+    if (
+      (this.comparisonMode() === 'previousPeriod' || this.showSparkline()) &&
+      !this.dateColumnId()
+    ) {
       issues.push({
         id: `${this.id}:noDateColumn`,
         severity: 'warning',
@@ -300,7 +310,8 @@ export class KpiWidgetModel extends WidgetModel {
           id: `${this.id}:missingDateColumn`,
           severity: 'error',
           title: `${name}'s date column no longer exists`,
-          detail: 'The column the previous-period comparison windows on was removed. Pick a new one.',
+          detail:
+            'The column the previous-period comparison windows on was removed. Pick a new one.',
           widgetId: this.id,
           view,
         });
@@ -333,7 +344,9 @@ export class KpiWidgetModel extends WidgetModel {
         tolerance.match?.sourceColumnId,
       ].filter((id): id is string => !!id);
       const matchColumnGone =
-        !!tolerance.match && !!schema && !schema.columns.some((c) => c.id === tolerance.match!.columnId);
+        !!tolerance.match &&
+        !!schema &&
+        !schema.columns.some((c) => c.id === tolerance.match!.columnId);
 
       if (pointers.some((id) => !columnIds.has(id)) || matchColumnGone) {
         issues.push({

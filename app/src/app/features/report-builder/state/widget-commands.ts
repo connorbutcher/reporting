@@ -40,7 +40,8 @@ export class WidgetCommands {
     this.session.model()?.removeWidgets(widgetIds);
 
     this.selection.filterOut(widgetIds);
-    if (this.selection.selectedWidgetIds().length === 0) this.navigation.navigate({ kind: 'widgets' });
+    if (this.selection.selectedWidgetIds().length === 0)
+      this.navigation.navigate({ kind: 'widgets' });
   }
 
   /** Copies the current selection, and selects the copies. */

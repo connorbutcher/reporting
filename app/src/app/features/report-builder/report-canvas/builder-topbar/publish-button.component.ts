@@ -95,7 +95,8 @@ export class PublishButtonComponent {
     if (!this.draftLoaded()) return 'Loading the draft…';
     if (!this.session.isValid()) return 'Fix errors before publishing';
     if (!this.noIssues()) return 'Finish every widget before publishing — see the issues panel';
-    if (this.autosave.saveFailed()) return "Your last change hasn't saved yet — publishing is blocked until it does";
+    if (this.autosave.saveFailed())
+      return "Your last change hasn't saved yet — publishing is blocked until it does";
     if (!this.allSaved()) return 'Waiting for your changes to finish saving…';
     return 'Publish this draft as a new version';
   });

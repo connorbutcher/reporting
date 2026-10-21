@@ -65,10 +65,12 @@ export class ReportAutosave {
       untracked(() => this.historyQueue.next());
     });
 
-    this.historyQueue.pipe(debounceTime(HISTORY_DEBOUNCE_MS), takeUntilDestroyed()).subscribe(() => {
-      const current = model();
-      if (current) this.history.capture(current.serialized());
-    });
+    this.historyQueue
+      .pipe(debounceTime(HISTORY_DEBOUNCE_MS), takeUntilDestroyed())
+      .subscribe(() => {
+        const current = model();
+        if (current) this.history.capture(current.serialized());
+      });
 
     // Saves are coalesced so dragging, typing and toggling stay responsive;
     // switchMap drops superseded writes rather than racing them.

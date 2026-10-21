@@ -8,7 +8,11 @@ import {
   readChartAxes,
   readChartBindings,
 } from '../../../../../core/models/report';
-import { BarChartQueryResult, BarSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import {
+  BarChartQueryResult,
+  BarSeriesResult,
+  ResolvedToleranceBand,
+} from '../../../../../core/models/widget-query';
 import {
   BarSeriesOption,
   ECOption,
@@ -72,12 +76,14 @@ export class ComboOption {
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
     const seriesPerBinding = new Map<string, number>();
     for (const s of rawSeries) {
-      if (s.bindingId) seriesPerBinding.set(s.bindingId, (seriesPerBinding.get(s.bindingId) ?? 0) + 1);
+      if (s.bindingId)
+        seriesPerBinding.set(s.bindingId, (seriesPerBinding.get(s.bindingId) ?? 0) + 1);
     }
 
     const series: ComboSeries[] = rawSeries.map((result, i) => {
       const binding = result.bindingId ? bindingsById.get(result.bindingId) : undefined;
-      const single = (result.bindingId ? (seriesPerBinding.get(result.bindingId) ?? 1) : rawSeries.length) === 1;
+      const single =
+        (result.bindingId ? (seriesPerBinding.get(result.bindingId) ?? 1) : rawSeries.length) === 1;
       const override = single ? (binding?.color ?? null) : null;
       return {
         result,
@@ -102,13 +108,19 @@ export class ComboOption {
               .filter((id) => id != null),
           ),
         ];
-    const valueColumn = primaryMeasures.length === 1 ? ChartColumns.byId(columns, primaryMeasures[0]) : null;
+    const valueColumn =
+      primaryMeasures.length === 1 ? ChartColumns.byId(columns, primaryMeasures[0]) : null;
     const valueConfig = ChartFormat.numericConfig(valueColumn);
     const seriesConfig = (s: BarSeriesResult): NumericColumnConfig | undefined =>
-      isCount ? undefined : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ?? valueConfig);
-    const formatValue = (s: BarSeriesResult) => (v: number) => ChartFormat.numeric(v, seriesConfig(s));
+      isCount
+        ? undefined
+        : (ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null)) ??
+          valueConfig);
+    const formatValue = (s: BarSeriesResult) => (v: number) =>
+      ChartFormat.numeric(v, seriesConfig(s));
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
-    const primaryValueLabel = axes[0].label.trim() || BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null);
+    const primaryValueLabel =
+      axes[0].label.trim() || BarOption.measureLabel(config.aggregate, valueColumn?.name ?? null);
 
     const showLegend = series.length > 1 && config.showLegend;
     const showGridLines = config.showGridLines ?? true;
@@ -211,7 +223,9 @@ export class ComboOption {
         confine: true,
         formatter: (raw: unknown) => BarOption.tooltip(raw, seriesByName, formatValue, false),
       },
-      ...(showLegend ? { legend: { top: 0, data: series.map((s) => seriesName(s.result)), type: 'scroll' } } : {}),
+      ...(showLegend
+        ? { legend: { top: 0, data: series.map((s) => seriesName(s.result)), type: 'scroll' } }
+        : {}),
       ...(zoom ? { dataZoom: CategoryZoom.dataZoom(false) } : {}),
       xAxis: categoryAxis,
       yAxis: multiAxis ? yAxes : yAxes[0],
@@ -227,7 +241,8 @@ export class ComboOption {
                   label: {
                     show: true,
                     position: 'top' as const,
-                    formatter: (p: LabelCallbackParams) => (typeof p.value === 'number' ? format(p.value) : ''),
+                    formatter: (p: LabelCallbackParams) =>
+                      typeof p.value === 'number' ? format(p.value) : '',
                   },
                 }
               : {}),
@@ -345,7 +360,10 @@ export class ComboOption {
   }
 
   /** The longest formatted value label across the given series, to size a non-overlapping name gap. */
-  private static valueLabelLen(series: ComboSeries[], config: NumericColumnConfig | undefined): number {
+  private static valueLabelLen(
+    series: ComboSeries[],
+    config: NumericColumnConfig | undefined,
+  ): number {
     let min = Infinity;
     let max = -Infinity;
     for (const s of series) {
@@ -357,6 +375,9 @@ export class ComboOption {
       }
     }
     if (!Number.isFinite(min)) return 0;
-    return Math.max(ChartFormat.numeric(min, config).length, ChartFormat.numeric(max, config).length);
+    return Math.max(
+      ChartFormat.numeric(min, config).length,
+      ChartFormat.numeric(max, config).length,
+    );
   }
 }

@@ -1,5 +1,9 @@
 import { formatDate } from '@angular/common';
-import { DatasetColumn, DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
+import {
+  DatasetColumn,
+  DateColumnConfig,
+  NumericColumnConfig,
+} from '../../../../../core/models/dataset';
 
 const DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
 
@@ -22,7 +26,11 @@ export class ChartFormat {
     const useGrouping = config?.useGrouping !== false;
     const options: Intl.NumberFormatOptions =
       config?.decimals != null && config.decimals >= 0
-        ? { useGrouping, minimumFractionDigits: config.decimals, maximumFractionDigits: config.decimals }
+        ? {
+            useGrouping,
+            minimumFractionDigits: config.decimals,
+            maximumFractionDigits: config.decimals,
+          }
         : { useGrouping, maximumFractionDigits: 3 };
     const formatted = new Intl.NumberFormat('en-US', options).format(value);
     return `${config?.prefix ?? ''}${formatted}${config?.suffix ?? ''}`;

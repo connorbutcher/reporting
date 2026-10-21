@@ -1,7 +1,16 @@
 import { ChartZoomMemory } from '../chart-zoom';
 import { DatasetColumn } from '../../../../../core/models/dataset';
-import { ChartGuideLine, chartAxisIndex, readChartAxes, readChartBindings } from '../../../../../core/models/report';
-import { ChartQueryResult, ChartSeriesResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import {
+  ChartGuideLine,
+  chartAxisIndex,
+  readChartAxes,
+  readChartBindings,
+} from '../../../../../core/models/report';
+import {
+  ChartQueryResult,
+  ChartSeriesResult,
+  ResolvedToleranceBand,
+} from '../../../../../core/models/widget-query';
 import { ECOption, LabelCallbackParams, TooltipCallbackParams } from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
@@ -68,7 +77,12 @@ export class PointOption {
     const xDateCfg = ChartFormat.dateConfig(x);
     const yDateCfg = ChartFormat.dateConfig(y);
     const formatX = PointTooltip.formatterFor(xIsText, xIsDate, xConfig, xDateCfg);
-    const formatYPrimary = PointTooltip.formatterFor(yPrimaryIsText, yPrimaryIsDate, yConfig, yDateCfg);
+    const formatYPrimary = PointTooltip.formatterFor(
+      yPrimaryIsText,
+      yPrimaryIsDate,
+      yConfig,
+      yDateCfg,
+    );
     const formatYOther = PointTooltip.formatterFor(false, false, undefined, undefined);
     const xData = xIsText ? PointAxes.categories(series, 'x') : null;
     // The shared X axis's scale fragment and label rotation, hoisted so the assembled axis can
@@ -77,7 +91,14 @@ export class PointOption {
       ? ChartScale.dateAxis(xDateCfg)
       : xIsText
         ? ChartScale.categoryAxis(xData ?? [], config.xAxisInterval)
-        : ChartScale.numericAxis(config.xLogScale, config.xAxisMin, config.xAxisMax, config.xAxisInterval, xConfig, config.xAxisScale);
+        : ChartScale.numericAxis(
+            config.xLogScale,
+            config.xAxisMin,
+            config.xAxisMax,
+            config.xAxisInterval,
+            xConfig,
+            config.xAxisScale,
+          );
     const xRotate = ChartScale.labelRotate(config.xAxisRotate);
     const showGridLines = config.showGridLines ?? true;
     // Colour-by-value maps the Y value to a continuous colour scale (visualMap). Only meaningful
@@ -116,7 +137,10 @@ export class PointOption {
       if (s.bindingId) splitCounts.set(s.bindingId, (splitCounts.get(s.bindingId) ?? 0) + 1);
     }
     const seriesAxisIndex = series.map((s) =>
-      chartAxisIndex(axes, (s.bindingId ? bindingsById.get(s.bindingId) : undefined)?.yAxisId ?? null),
+      chartAxisIndex(
+        axes,
+        (s.bindingId ? bindingsById.get(s.bindingId) : undefined)?.yAxisId ?? null,
+      ),
     );
     const seriesStyle: SeriesStyle[] = series.map((s) => {
       const binding = s.bindingId ? bindingsById.get(s.bindingId) : undefined;
@@ -128,7 +152,9 @@ export class PointOption {
       };
     });
 
-    const seriesColors = series.map((s, i) => seriesStyle[i].color ?? SeriesColors.forSeries(colors, s.label, i));
+    const seriesColors = series.map(
+      (s, i) => seriesStyle[i].color ?? SeriesColors.forSeries(colors, s.label, i),
+    );
     // Groups series by the Y axis they plot on — used to colour an axis to match its series,
     // infer a secondary axis's type, and hang each axis's bands on one of its own series.
     const indicesByAxis = new Map<number, number[]>();
@@ -165,8 +191,14 @@ export class PointOption {
       const axisBands = bands.filter((b) => bandAxisIndex(b) === k);
       const axisLines = guideLines.filter((l) => guideLineAxisIndex(l) === k);
       const reference = ReferenceSeries.build(
-        [...ToleranceMarks.lines(axisBands, axisKeyFor), ...GuideLineMarks.lines(axisLines, axisKeyFor)],
-        [...ToleranceMarks.areas(axisBands, axisKeyFor), ...GuideLineMarks.areas(axisLines, axisKeyFor)],
+        [
+          ...ToleranceMarks.lines(axisBands, axisKeyFor),
+          ...GuideLineMarks.lines(axisLines, axisKeyFor),
+        ],
+        [
+          ...ToleranceMarks.areas(axisBands, axisKeyFor),
+          ...GuideLineMarks.areas(axisLines, axisKeyFor),
+        ],
         multiAxis ? { yAxisIndex: k } : {},
       );
       return reference ? [reference] : [];
@@ -179,8 +211,12 @@ export class PointOption {
       let outline = outlineByAxis.get(axisK);
       if (!outline) {
         const zones = [
-          ...ToleranceOutline.zonesFor(bands.filter((b) => b.axis === 'x' || bandAxisIndex(b) === axisK)),
-          ...GuideLineOutline.zonesFor(guideLines.filter((l) => l.axis === 'x' || guideLineAxisIndex(l) === axisK)),
+          ...ToleranceOutline.zonesFor(
+            bands.filter((b) => b.axis === 'x' || bandAxisIndex(b) === axisK),
+          ),
+          ...GuideLineOutline.zonesFor(
+            guideLines.filter((l) => l.axis === 'x' || guideLineAxisIndex(l) === axisK),
+          ),
         ];
         outline = OutlineSeverity.forPoints(zones);
         outlineByAxis.set(axisK, outline);
@@ -227,7 +263,14 @@ export class PointOption {
           // The Y value reads through the axis it plots on: the primary's format, or plain
           // grouping for a series on a secondary axis (whose column the shared schema lacks).
           const onPrimary = (seriesAxisIndex[params.seriesIndex] ?? 0) === 0;
-          return PointTooltip.format(params, showSeries, xLabel, yLabel, formatX, onPrimary ? formatYPrimary : formatYOther);
+          return PointTooltip.format(
+            params,
+            showSeries,
+            xLabel,
+            yLabel,
+            formatX,
+            onPrimary ? formatYPrimary : formatYOther,
+          );
         },
       },
       // `scroll` paginates the legend rather than letting many colour-by series overflow the plot.
@@ -259,7 +302,9 @@ export class PointOption {
                     { type: 'slider' as const, xAxisIndex: 0, height: 20, bottom: 12 },
                   ]
                 : []),
-              ...(config.zoomY ? [{ type: 'inside' as const, yAxisIndex: 0, id: ChartZoomMemory.VALUE_ZOOM_ID }] : []),
+              ...(config.zoomY
+                ? [{ type: 'inside' as const, yAxisIndex: 0, id: ChartZoomMemory.VALUE_ZOOM_ID }]
+                : []),
             ],
           }
         : {}),
@@ -296,8 +341,7 @@ export class PointOption {
                   label: {
                     show: true,
                     position: 'top' as const,
-                    formatter: (p: LabelCallbackParams) =>
-                      formatY((p.value as [Coord, Coord])[1]),
+                    formatter: (p: LabelCallbackParams) => formatY((p.value as [Coord, Coord])[1]),
                   },
                 }
               : {}),
@@ -305,7 +349,9 @@ export class PointOption {
           };
           // Shares `mainName` rather than a name of its own, so it draws without a separate legend
           // entry but still toggles off along with the series it fits.
-          const trend = config.showTrendLine ? PointSeries.trendLine(s, mainName, color, yAxisIndex, xIsDate) : null;
+          const trend = config.showTrendLine
+            ? PointSeries.trendLine(s, mainName, color, yAxisIndex, xIsDate)
+            : null;
           return trend ? [main, trend] : [main];
         }),
         ...referenceSeries,
@@ -337,7 +383,10 @@ export class PointOption {
    * bubble-chart convention. A point with no size value (unbound, or missing on that row) falls
    * back to the chart's fixed pointSize.
    */
-  private static sizeScale(series: readonly ChartSeriesResult[], fallbackPointSize: number): SizeScale | null {
+  private static sizeScale(
+    series: readonly ChartSeriesResult[],
+    fallbackPointSize: number,
+  ): SizeScale | null {
     let min = Infinity;
     let max = -Infinity;
     for (const s of series) {

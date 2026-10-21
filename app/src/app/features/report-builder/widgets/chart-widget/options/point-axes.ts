@@ -52,7 +52,14 @@ export class PointAxes {
         ? ChartScale.dateAxis(yDateCfg)
         : isText
           ? ChartScale.categoryAxis(cats ?? [], axis.interval)
-          : ChartScale.numericAxis(axis.logScale, axis.min, axis.max, axis.interval, isPrimary ? yConfig : undefined, axis.scale);
+          : ChartScale.numericAxis(
+              axis.logScale,
+              axis.min,
+              axis.max,
+              axis.interval,
+              isPrimary ? yConfig : undefined,
+              axis.scale,
+            );
       const rotate = ChartScale.labelRotate(axis.rotate);
       // Size the name's gap to clear this axis's own tick labels so the two never overlap.
       const longest = isText

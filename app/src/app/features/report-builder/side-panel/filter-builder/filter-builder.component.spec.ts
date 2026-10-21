@@ -28,13 +28,20 @@ describe('FilterBuilderComponent', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     http = TestBed.inject(HttpTestingController);
   });
 
   afterEach(() => vi.useRealTimers());
 
-  async function render({ dto = null, context: options = {}, additionalFilter = null, hint = '' }: Setup = {}) {
+  async function render({
+    dto = null,
+    context: options = {},
+    additionalFilter = null,
+    hint = '',
+  }: Setup = {}) {
     context = contextOf(options);
     group = new FilterGroupModel(dto, context);
     fixture = TestBed.createComponent(FilterBuilderComponent);
@@ -58,7 +65,9 @@ describe('FilterBuilderComponent', () => {
   const match = () => el().querySelector('.filter-match') as HTMLElement | null;
   const counts = () => http.match((r) => r.url.endsWith('/count'));
   const button = (label: string) =>
-    [...el().querySelectorAll('button')].find((b) => b.textContent!.includes(label) || b.getAttribute('aria-label') === label);
+    [...el().querySelectorAll('button')].find(
+      (b) => b.textContent!.includes(label) || b.getAttribute('aria-label') === label,
+    );
 
   async function countAnd(result: { totalRowCount: number; matchedRowCount: number }) {
     await settle(350);
@@ -136,7 +145,10 @@ describe('FilterBuilderComponent', () => {
 
     it('asks the server for the count over this filter and the additional one', async () => {
       const extra = groupOf('and', condition('a', 'equals', ['x']));
-      await render({ dto: groupOf('and', condition('a', 'equals', ['y'])), additionalFilter: extra });
+      await render({
+        dto: groupOf('and', condition('a', 'equals', ['y'])),
+        additionalFilter: extra,
+      });
 
       const req = await countAnd({ totalRowCount: 1, matchedRowCount: 1 });
 
@@ -208,11 +220,17 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('labels the list with how many conditions there are and how many are switched on', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('a', 'equals', ['y'], false)) });
+      await render({
+        dto: groupOf(
+          'and',
+          condition('a', 'equals', ['x']),
+          condition('a', 'equals', ['y'], false),
+        ),
+      });
 
-      expect(el().querySelector('.filter-rows-label')!.textContent!.replace(/\s+/g, ' ').trim()).toBe(
-        '2 conditions · 1 active',
-      );
+      expect(
+        el().querySelector('.filter-rows-label')!.textContent!.replace(/\s+/g, ' ').trim(),
+      ).toBe('2 conditions · 1 active');
     });
 
     it('offers the join only once there is more than one condition', async () => {
@@ -225,7 +243,9 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('adds a condition from the button, and removes or clears them', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])) });
+      await render({
+        dto: groupOf('and', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])),
+      });
       expect(rows()).toHaveLength(2);
 
       button('Add condition')!.click();
@@ -250,15 +270,24 @@ describe('FilterBuilderComponent', () => {
 
     it('marks a row that can’t narrow anything, with the reason', async () => {
       await render({
-        dto: groupOf('and', condition('a', 'equals'), condition('b', 'inTolerance'), condition('gone', 'equals', ['x'])),
+        dto: groupOf(
+          'and',
+          condition('a', 'equals'),
+          condition('b', 'inTolerance'),
+          condition('gone', 'equals', ['x']),
+        ),
       });
 
       const [blank, banding, removed] = rows();
       expect(blank.classList).toContain('filter-row--error');
       expect(blank.querySelector('.filter-row-problem')!.textContent).toContain('Enter a value.');
       expect(banding.classList).toContain('filter-row--warning');
-      expect(banding.querySelector('.filter-row-problem')!.textContent).toContain('No tolerance banding');
-      expect(removed.querySelector('.filter-row-problem')!.textContent).toContain('no longer exists');
+      expect(banding.querySelector('.filter-row-problem')!.textContent).toContain(
+        'No tolerance banding',
+      );
+      expect(removed.querySelector('.filter-row-problem')!.textContent).toContain(
+        'no longer exists',
+      );
     });
 
     it('does not flag a healthy row', async () => {
@@ -325,10 +354,13 @@ describe('FilterBuilderComponent', () => {
   });
 
   describe('value pickers for text columns', () => {
-    const valuesRequests = () => http.match((r) => r.url.includes('/columns/') && r.url.endsWith('/values'));
+    const valuesRequests = () =>
+      http.match((r) => r.url.includes('/columns/') && r.url.endsWith('/values'));
 
     it('offers a select of the column’s values for equals, fetched once', async () => {
-      await render({ dto: groupOf('and', condition('a', 'equals', ['x']), condition('a', 'notEquals', ['y'])) });
+      await render({
+        dto: groupOf('and', condition('a', 'equals', ['x']), condition('a', 'notEquals', ['y'])),
+      });
 
       const requests = valuesRequests();
       expect(requests).toHaveLength(1);
@@ -351,7 +383,9 @@ describe('FilterBuilderComponent', () => {
     });
 
     it('fetches nothing for a column that is not text, or an operator that types its operand', async () => {
-      await render({ dto: groupOf('and', condition('b', 'equals', ['1']), condition('a', 'isEmpty')) });
+      await render({
+        dto: groupOf('and', condition('b', 'equals', ['1']), condition('a', 'isEmpty')),
+      });
 
       expect(valuesRequests()).toHaveLength(0);
     });
@@ -369,12 +403,16 @@ describe('FilterBuilderComponent', () => {
 
       group.addCondition('a2');
       await settle();
-      expect(valuesRequests().map((r) => r.request.url)).toEqual(['/api/datasets/7/columns/a2/values']);
+      expect(valuesRequests().map((r) => r.request.url)).toEqual([
+        '/api/datasets/7/columns/a2/values',
+      ]);
     });
   });
 
   it('exposes the schema’s columns to pick from', async () => {
-    await render({ context: { schema: schemaOf([column('a', 'string', 'Alpha'), column('b', 'int', 'Beta')]) } });
+    await render({
+      context: { schema: schemaOf([column('a', 'string', 'Alpha'), column('b', 'int', 'Beta')]) },
+    });
 
     expect(group.columns().map((c) => c.name)).toEqual(['Alpha', 'Beta']);
   });

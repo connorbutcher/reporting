@@ -14,7 +14,13 @@ import { FilterMatchCountComponent } from './filter-match-count/filter-match-cou
  */
 @Component({
   selector: 'app-filter-builder',
-  imports: [FormsModule, ButtonModule, SelectModule, FilterMatchCountComponent, FilterConditionRowComponent],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    SelectModule,
+    FilterMatchCountComponent,
+    FilterConditionRowComponent,
+  ],
   providers: [ColumnValueLists],
   templateUrl: './filter-builder.component.html',
   styleUrl: './filter-builder.component.scss',

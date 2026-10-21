@@ -1,6 +1,11 @@
 import { FilterGroupModel } from './filter';
 import { ReportModel } from './report.model';
-import { ChartWidgetModel, DataTableWidgetModel, KpiWidgetModel, PivotTableWidgetModel } from './widget.model';
+import {
+  ChartWidgetModel,
+  DataTableWidgetModel,
+  KpiWidgetModel,
+  PivotTableWidgetModel,
+} from './widget.model';
 
 /** A filter elsewhere on the report that could be copied into the one being edited. */
 export interface ReusableFilter {

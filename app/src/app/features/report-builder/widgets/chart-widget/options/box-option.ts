@@ -1,6 +1,14 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { BoxPlotWidgetConfig, readChartAxes, readChartBindings } from '../../../../../core/models/report';
-import { Box, BoxPlotQueryResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import {
+  BoxPlotWidgetConfig,
+  readChartAxes,
+  readChartBindings,
+} from '../../../../../core/models/report';
+import {
+  Box,
+  BoxPlotQueryResult,
+  ResolvedToleranceBand,
+} from '../../../../../core/models/widget-query';
 import {
   BoxplotSeriesOption,
   ECOption,
@@ -64,8 +72,14 @@ export class BoxOption {
     const valueAxisKey = () => (horizontal ? 'xAxis' : 'yAxis') as 'xAxis' | 'yAxis';
     const bands = data?.toleranceBands ?? [];
     const guideLines = config.guideLines ?? [];
-    const marks = [...ToleranceMarks.lines(bands, valueAxisKey), ...GuideLineMarks.lines(guideLines, valueAxisKey)];
-    const areas = [...ToleranceMarks.areas(bands, valueAxisKey), ...GuideLineMarks.areas(guideLines, valueAxisKey)];
+    const marks = [
+      ...ToleranceMarks.lines(bands, valueAxisKey),
+      ...GuideLineMarks.lines(guideLines, valueAxisKey),
+    ];
+    const areas = [
+      ...ToleranceMarks.areas(bands, valueAxisKey),
+      ...GuideLineMarks.areas(guideLines, valueAxisKey),
+    ];
     // Boxes whose whiskers breach an outlined spec band or guide line are bordered in the crossed one's colour.
     const outline = OutlineSeverity.forExtent([
       ...ToleranceOutline.zonesFor(bands),
@@ -82,7 +96,11 @@ export class BoxOption {
       ...categoryScale,
       name: categoryLabel,
       nameLocation: 'middle' as const,
-      nameGap: ChartScale.nameGap(ChartScale.longestLen(categories), categoryRotate, categoryOrientation),
+      nameGap: ChartScale.nameGap(
+        ChartScale.longestLen(categories),
+        categoryRotate,
+        categoryOrientation,
+      ),
       axisLabel: { ...categoryScale.axisLabel, rotate: categoryRotate },
       // Read a horizontal chart top-down, so a sorted chart leads with its first category.
       ...(horizontal ? { inverse: true } : {}),
@@ -180,7 +198,9 @@ export class BoxOption {
           type: 'scatter',
           symbolSize: 6,
           itemStyle: { color, opacity: 0.8 },
-          data: s.outliers.map((o) => (horizontal ? [o.value, o.categoryIndex] : [o.categoryIndex, o.value])),
+          data: s.outliers.map((o) =>
+            horizontal ? [o.value, o.categoryIndex] : [o.categoryIndex, o.value],
+          ),
         });
       }
 
@@ -253,9 +273,12 @@ export class BoxOption {
         trigger: 'item',
         appendToBody: true,
         confine: true,
-        formatter: (params: TooltipCallbackParams) => BoxOption.tooltip(params, boxByKey, tooltipContext),
+        formatter: (params: TooltipCallbackParams) =>
+          BoxOption.tooltip(params, boxByKey, tooltipContext),
       },
-      ...(showLegend ? { legend: { top: 0, data: resolved.map((r) => r.name), type: 'scroll' } } : {}),
+      ...(showLegend
+        ? { legend: { top: 0, data: resolved.map((r) => r.name), type: 'scroll' } }
+        : {}),
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
       // Boxes first, then points, then the emphasis marks (outliers, mean, n) on top.
@@ -356,6 +379,9 @@ export class BoxOption {
       for (const o of s.outliers) consider(o.value);
     }
     if (!Number.isFinite(min)) return 0;
-    return Math.max(ChartFormat.numeric(min, config).length, ChartFormat.numeric(max, config).length);
+    return Math.max(
+      ChartFormat.numeric(min, config).length,
+      ChartFormat.numeric(max, config).length,
+    );
   }
 }

@@ -38,7 +38,9 @@ export class FilterGroupModel extends EditorNode {
   );
 
   /** Null until the schema loads. */
-  public readonly datasetId: Signal<number | null> = computed(() => this.context.schema()?.id ?? null);
+  public readonly datasetId: Signal<number | null> = computed(
+    () => this.context.schema()?.id ?? null,
+  );
 
   constructor(
     dto: FilterGroup | null,
@@ -113,7 +115,9 @@ export class FilterGroupModel extends EditorNode {
   }
 
   private project(keep: (condition: FilterConditionModel) => boolean): FilterGroup | null {
-    const children = this.children().filter(keep).map((c) => c.toDto());
+    const children = this.children()
+      .filter(keep)
+      .map((c) => c.toDto());
     return children.length === 0 ? null : { kind: 'group', join: this.join(), children };
   }
 }

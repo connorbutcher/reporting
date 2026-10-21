@@ -18,7 +18,19 @@ export class GuideLineOutline {
       return { axis: line.axis, warnLow: low, warnHigh: high, failLow: low, failHigh: high };
     }
     return line.direction === 'below'
-      ? { axis: line.axis, warnLow: line.value, warnHigh: Infinity, failLow: line.value, failHigh: Infinity }
-      : { axis: line.axis, warnLow: -Infinity, warnHigh: line.value, failLow: -Infinity, failHigh: line.value };
+      ? {
+          axis: line.axis,
+          warnLow: line.value,
+          warnHigh: Infinity,
+          failLow: line.value,
+          failHigh: Infinity,
+        }
+      : {
+          axis: line.axis,
+          warnLow: -Infinity,
+          warnHigh: line.value,
+          failLow: -Infinity,
+          failHigh: line.value,
+        };
   }
 }

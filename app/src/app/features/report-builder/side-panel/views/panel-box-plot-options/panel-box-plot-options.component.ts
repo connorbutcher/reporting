@@ -27,5 +27,7 @@ export class PanelBoxPlotOptionsComponent {
   public readonly showFactor = computed(() => this.chart().whisker() !== 'minMax');
 
   /** The unit the multiplier is measured in, for the field's suffix. */
-  public readonly factorUnit = computed(() => (this.chart().whisker() === 'stdDev' ? '× σ' : '× IQR'));
+  public readonly factorUnit = computed(() =>
+    this.chart().whisker() === 'stdDev' ? '× σ' : '× IQR',
+  );
 }

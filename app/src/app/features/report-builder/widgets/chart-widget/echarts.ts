@@ -1,5 +1,11 @@
 import * as echarts from 'echarts/core';
-import { BarChart, BoxplotChart, EffectScatterChart, LineChart, ScatterChart } from 'echarts/charts';
+import {
+  BarChart,
+  BoxplotChart,
+  EffectScatterChart,
+  LineChart,
+  ScatterChart,
+} from 'echarts/charts';
 import {
   AriaComponent,
   AxisPointerComponent,

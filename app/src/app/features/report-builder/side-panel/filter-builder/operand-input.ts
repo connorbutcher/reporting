@@ -2,14 +2,23 @@ import { DatasetColumnType } from '../../../../core/models/dataset';
 import { FilterOperator, OperatorDescriptor } from '../../../../core/models/filter';
 
 /** Text operators whose operand is one of the column's values, so are picked rather than typed. */
-const VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>(['equals', 'notEquals', 'in']);
+const VALUE_LIST_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOperator>([
+  'equals',
+  'notEquals',
+  'in',
+]);
 
-export function usesValueList(type: DatasetColumnType | undefined, operator: FilterOperator): boolean {
+export function usesValueList(
+  type: DatasetColumnType | undefined,
+  operator: FilterOperator,
+): boolean {
   return type === 'string' && VALUE_LIST_OPERATORS.has(operator);
 }
 
 /** The native input type that best fits an operand. */
-export function operandInputType(descriptor: OperatorDescriptor | null): 'number' | 'date' | 'text' {
+export function operandInputType(
+  descriptor: OperatorDescriptor | null,
+): 'number' | 'date' | 'text' {
   switch (descriptor?.operandKind) {
     case 'number':
       return 'number';

@@ -40,7 +40,8 @@ export class PanelReportFiltersComponent {
     return this.datasetIds().map((id) => {
       const name = datasets.find((d) => d.id === id)?.name ?? 'Dataset';
       const count = model?.reportFilter(id)?.group.count() ?? 0;
-      const conditions = count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+      const conditions =
+        count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
       return { id, name, count, label: `${name}, ${conditions}` };
     });
   });

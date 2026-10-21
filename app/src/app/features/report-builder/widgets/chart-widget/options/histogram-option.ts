@@ -6,8 +6,16 @@ import {
   readChartAxes,
   readChartBindings,
 } from '../../../../../core/models/report';
-import { HistogramQueryResult, ResolvedToleranceBand } from '../../../../../core/models/widget-query';
-import { BarSeriesOption, ECOption, LabelCallbackParams, LineSeriesOption } from './chart-option.types';
+import {
+  HistogramQueryResult,
+  ResolvedToleranceBand,
+} from '../../../../../core/models/widget-query';
+import {
+  BarSeriesOption,
+  ECOption,
+  LabelCallbackParams,
+  LineSeriesOption,
+} from './chart-option.types';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
@@ -43,7 +51,8 @@ export class HistogramOption {
     const binAxisLabel = config.xAxisLabel.trim() || valueColumn.name;
     // The count/frequency axis is the primary value axis; its label falls back to what's plotted.
     const countAxisConfig = readChartAxes(config)[0];
-    const countLabel = countAxisConfig.label.trim() || HistogramOption.normalizeLabel(config.normalize);
+    const countLabel =
+      countAxisConfig.label.trim() || HistogramOption.normalizeLabel(config.normalize);
 
     const showLegend = series.length > 1 && config.showLegend;
     const horizontal = config.horizontal;
@@ -66,7 +75,10 @@ export class HistogramOption {
       ...GuideLineMarks.areas(guideLines, () => binAxisKey),
     ];
 
-    const binRotate = ChartScale.labelRotate(config.xAxisRotate, !horizontal && bins.length > 6 ? 30 : 0);
+    const binRotate = ChartScale.labelRotate(
+      config.xAxisRotate,
+      !horizontal && bins.length > 6 ? 30 : 0,
+    );
     const binScale = ChartScale.categoryAxis(binLabels, config.xAxisInterval);
     const binAxis = {
       ...binScale,
@@ -94,7 +106,9 @@ export class HistogramOption {
         ...countScale.axisLabel,
         // Count / frequency (%) / density share one formatter across the axis, tooltip, and labels.
         formatter: (value: number | string) =>
-          typeof value === 'number' ? HistogramOption.formatCount(value, config.normalize) : String(value),
+          typeof value === 'number'
+            ? HistogramOption.formatCount(value, config.normalize)
+            : String(value),
         ...(countRotate !== 0 ? { rotate: countRotate } : {}),
       },
       name: countLabel,
@@ -139,7 +153,14 @@ export class HistogramOption {
         : [];
 
     return {
-      grid: { left: 56, right: 20, top: showLegend ? 40 : 20, bottom: 56, containLabel: true, outerBoundsContain: 'all' },
+      grid: {
+        left: 56,
+        right: 20,
+        top: showLegend ? 40 : 20,
+        bottom: 56,
+        containLabel: true,
+        outerBoundsContain: 'all',
+      },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
@@ -184,7 +205,9 @@ export class HistogramOption {
                   show: true,
                   position: (horizontal ? 'right' : 'top') as 'right' | 'top',
                   formatter: (p: LabelCallbackParams) =>
-                    typeof p.value === 'number' ? HistogramOption.formatCount(p.value, config.normalize) : '',
+                    typeof p.value === 'number'
+                      ? HistogramOption.formatCount(p.value, config.normalize)
+                      : '',
                 },
               }
             : {};
@@ -234,7 +257,8 @@ export class HistogramOption {
     if (mean == null || stdDev == null || !(stdDev > 0) || bins.length === 0) return null;
     const width = bins[0].upper - bins[0].lower;
     if (!(width > 0)) return null;
-    const scale = normalize === 'density' ? 1 : normalize === 'frequency' ? width : (count ?? 0) * width;
+    const scale =
+      normalize === 'density' ? 1 : normalize === 'frequency' ? width : (count ?? 0) * width;
     return bins.map((bin) => {
       const z = ((bin.lower + bin.upper) / 2 - mean) / stdDev;
       return (scale * Math.exp(-0.5 * z * z)) / (stdDev * Math.sqrt(2 * Math.PI));
@@ -293,7 +317,10 @@ export class HistogramOption {
       .map((line) => ({
         ...line,
         value: toIndex(line.value),
-        valueTo: line.valueTo === null || line.valueTo === undefined ? line.valueTo : toIndex(line.valueTo),
+        valueTo:
+          line.valueTo === null || line.valueTo === undefined
+            ? line.valueTo
+            : toIndex(line.valueTo),
       }));
   }
 
@@ -301,7 +328,10 @@ export class HistogramOption {
    * Each bin's axis label, its edges formatted like the column's cells (prefix, units, decimals).
    * Falls back to the server's label when the column's decimals would print both edges the same.
    */
-  private static binLabels(bins: HistogramQueryResult['bins'], config: NumericColumnConfig | undefined): string[] {
+  private static binLabels(
+    bins: HistogramQueryResult['bins'],
+    config: NumericColumnConfig | undefined,
+  ): string[] {
     return bins.map((bin) => {
       const lower = ChartFormat.numeric(bin.lower, config);
       const upper = ChartFormat.numeric(bin.upper, config);

@@ -79,16 +79,12 @@ describe('PanelReportFiltersComponent', () => {
   });
 
   it('shows a chip per dataset in use, named, with its condition count', () => {
-    expect(chips().map((c) => c.querySelector('.dataset-chip-label')!.textContent!.trim())).toEqual([
-      'Bearings',
-      'Torque',
-      'Gearbox',
-    ]);
-    expect(chips().map((c) => c.querySelector('.dataset-chip-count')?.textContent?.trim() ?? null)).toEqual([
-      '2',
-      '1',
-      null,
-    ]);
+    expect(chips().map((c) => c.querySelector('.dataset-chip-label')!.textContent!.trim())).toEqual(
+      ['Bearings', 'Torque', 'Gearbox'],
+    );
+    expect(
+      chips().map((c) => c.querySelector('.dataset-chip-count')?.textContent?.trim() ?? null),
+    ).toEqual(['2', '1', null]);
   });
 
   it('words each chip’s accessible name with its conditions', () => {

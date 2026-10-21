@@ -17,7 +17,9 @@ describe('FilterGroupModel', () => {
     });
 
     it('reads the join and conditions from a dto', () => {
-      const model = build(groupOf('or', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])));
+      const model = build(
+        groupOf('or', condition('a', 'equals', ['x']), condition('b', 'equals', ['1'])),
+      );
 
       expect(model.join()).toBe('or');
       expect(model.children().map((c) => c.columnId())).toEqual(['a', 'b']);
@@ -25,7 +27,15 @@ describe('FilterGroupModel', () => {
 
     it('flattens nested groups to their conditions rather than dropping them', () => {
       const model = build(
-        groupOf('and', condition('a', 'equals', ['1']), groupOf('or', condition('b', 'equals', ['2']), groupOf('and', condition('c', 'equals', ['3'])))),
+        groupOf(
+          'and',
+          condition('a', 'equals', ['1']),
+          groupOf(
+            'or',
+            condition('b', 'equals', ['2']),
+            groupOf('and', condition('c', 'equals', ['3'])),
+          ),
+        ),
       );
 
       expect(model.children().map((c) => c.columnId())).toEqual(['a', 'b', 'c']);
@@ -97,7 +107,11 @@ describe('FilterGroupModel', () => {
 
   describe('columns', () => {
     it('offers the whole schema when nothing narrows it', () => {
-      expect(build().columns().map((c) => c.id)).toEqual(['a', 'b']);
+      expect(
+        build()
+          .columns()
+          .map((c) => c.id),
+      ).toEqual(['a', 'b']);
     });
 
     it('offers only the scoped columns', () => {
@@ -132,7 +146,13 @@ describe('FilterGroupModel', () => {
   describe('counts', () => {
     it('counts all conditions, the switched-on ones, and those on removed columns', () => {
       const model = build(
-        groupOf('and', condition('a', 'equals', ['x']), condition('a', 'equals', ['y'], false), condition('gone', 'equals', ['z']), condition('gone', 'equals', ['z'], false)),
+        groupOf(
+          'and',
+          condition('a', 'equals', ['x']),
+          condition('a', 'equals', ['y'], false),
+          condition('gone', 'equals', ['z']),
+          condition('gone', 'equals', ['z'], false),
+        ),
       );
 
       expect(model.count()).toBe(4);
@@ -168,7 +188,9 @@ describe('FilterGroupModel', () => {
     });
 
     it('toCompleteDto keeps every finished condition, enabled or not, missing column or not', () => {
-      const values = mixed().toCompleteDto()!.children.map((c) => (c as { values: string[] }).values[0]);
+      const values = mixed()
+        .toCompleteDto()!
+        .children.map((c) => (c as { values: string[] }).values[0]);
 
       expect(values).toEqual(['x', 'off', 'z']);
     });
@@ -180,7 +202,9 @@ describe('FilterGroupModel', () => {
 
   describe('as an editor node', () => {
     it('rolls its conditions’ issues up, and raises none of its own', () => {
-      const model = build(groupOf('and', condition('a', 'equals'), condition('gone', 'equals', ['x'])));
+      const model = build(
+        groupOf('and', condition('a', 'equals'), condition('gone', 'equals', ['x'])),
+      );
 
       expect(model.ownIssues()).toEqual([]);
       expect(model.issues().map((i) => i.id)).toEqual([

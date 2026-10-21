@@ -32,19 +32,29 @@ export function findProblem(facts: ConditionFacts): ConditionProblem | null {
 }
 
 /** The inline note under a row. */
-export function problemCue(problem: ConditionProblem): { severity: 'error' | 'warning'; message: string } {
+export function problemCue(problem: ConditionProblem): {
+  severity: 'error' | 'warning';
+  message: string;
+} {
   switch (problem.kind) {
     case 'missingColumn':
       return { severity: 'error', message: 'This column no longer exists.' };
     case 'missingTolerance':
       return { severity: 'warning', message: 'No tolerance banding here, so nothing matches.' };
     case 'missingValue':
-      return { severity: 'error', message: problem.needed > 1 ? 'Enter both values.' : 'Enter a value.' };
+      return {
+        severity: 'error',
+        message: problem.needed > 1 ? 'Enter both values.' : 'Enter a value.',
+      };
   }
 }
 
 /** The same problem for the Issues panel, so the cue and the panel never disagree. */
-export function problemIssue(problem: ConditionProblem, id: string, context: FilterContext): ValidationIssue {
+export function problemIssue(
+  problem: ConditionProblem,
+  id: string,
+  context: FilterContext,
+): ValidationIssue {
   const where = { widgetId: context.widgetId, view: context.view ?? { kind: 'root' as const } };
   const issueId = `${id}:${problem.kind}`;
 

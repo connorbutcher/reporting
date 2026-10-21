@@ -1,6 +1,14 @@
 import { Signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetCountResult, FilterGroup } from '../../../../core/models/filter';
 
@@ -26,7 +34,10 @@ const DEBOUNCE_MS = 300;
  * burst of edits makes one request, an unchanged query makes none, counting is server-side, and a
  * failed count becomes `error` rather than throwing. Call in an injection context.
  */
-export function liveMatchCount(key: Signal<CountKey | null>, api: DatasetApiService): Signal<MatchState> {
+export function liveMatchCount(
+  key: Signal<CountKey | null>,
+  api: DatasetApiService,
+): Signal<MatchState> {
   return toSignal(
     toObservable(key).pipe(
       debounceTime(DEBOUNCE_MS),

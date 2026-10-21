@@ -49,7 +49,9 @@ describe('operandPlaceholder', () => {
 
 describe('operandDisplayValue', () => {
   it('leaves non-date operands as they are', () => {
-    expect(operandDisplayValue(descriptor('text'), '2026-03-04T10:00:00Z')).toBe('2026-03-04T10:00:00Z');
+    expect(operandDisplayValue(descriptor('text'), '2026-03-04T10:00:00Z')).toBe(
+      '2026-03-04T10:00:00Z',
+    );
     expect(operandDisplayValue(null, 'x')).toBe('x');
   });
 

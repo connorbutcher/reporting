@@ -1,12 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  inject,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { GRID_GAP, ROW_HEIGHT, GridPreview } from '../../grid.util';
 import { ReportLifecycle } from '../../state/report-lifecycle';
 import { ReportSession } from '../../state/report-session';

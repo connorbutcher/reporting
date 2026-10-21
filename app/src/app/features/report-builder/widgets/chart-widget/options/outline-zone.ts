@@ -33,7 +33,8 @@ export class OutlineSeverity {
       let color: string | null = null;
       for (const zone of zones) {
         const value = zone.axis === 'x' ? x : y;
-        if (typeof value === 'number') color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
+        if (typeof value === 'number')
+          color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
       }
       return color;
     };
@@ -45,7 +46,8 @@ export class OutlineSeverity {
 
     return (value) => {
       let color: string | null = null;
-      for (const zone of zones) color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
+      for (const zone of zones)
+        color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
       return color;
     };
   }
@@ -55,7 +57,9 @@ export class OutlineSeverity {
    * the whole range is in spec. Flagged by whichever end is furthest out — the most severe colour
    * across both ends and every zone wins.
    */
-  public static forExtent(zones: readonly OutlineZone[]): (low: number, high: number) => string | null {
+  public static forExtent(
+    zones: readonly OutlineZone[],
+  ): (low: number, high: number) => string | null {
     const forValue = OutlineSeverity.forValue(zones);
     return (low, high) => OutlineSeverity.worse(forValue(low), forValue(high));
   }

@@ -77,7 +77,10 @@ export class WidgetDragDirective {
     const rowStep = ROW_HEIGHT + GRID_GAP;
 
     // Clamp the group as a unit so its members keep their relative positions.
-    const deltaCols = this.clampGroupDelta(columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0, 'x');
+    const deltaCols = this.clampGroupDelta(
+      columnStep > GRID_GAP ? Math.round(dx / columnStep) : 0,
+      'x',
+    );
     const deltaRows = this.clampGroupDelta(Math.round(dy / rowStep), 'y');
 
     const invalid = this.groupCollides(deltaCols, deltaRows);

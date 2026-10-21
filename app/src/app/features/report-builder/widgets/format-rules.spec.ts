@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { FormatRule } from '../../../core/models/report';
 import { dataBarPercent, matchFormatRule, ruleMatches } from './format-rules';
 
-const rule = (over: Partial<FormatRule>): FormatRule => ({ operator: 'greaterThan', value: '', style: 'red', ...over });
+const rule = (over: Partial<FormatRule>): FormatRule => ({
+  operator: 'greaterThan',
+  value: '',
+  style: 'red',
+  ...over,
+});
 
 describe('format rules', () => {
   it('compares numbers by value', () => {
@@ -21,13 +26,19 @@ describe('format rules', () => {
   });
 
   it('compares dates by time', () => {
-    expect(ruleMatches('2026-03-02T00:00:00', rule({ operator: 'greaterThan', value: '2026-03-01' }))).toBe(true);
-    expect(ruleMatches('2026-02-02T00:00:00', rule({ operator: 'greaterThan', value: '2026-03-01' }))).toBe(false);
+    expect(
+      ruleMatches('2026-03-02T00:00:00', rule({ operator: 'greaterThan', value: '2026-03-01' })),
+    ).toBe(true);
+    expect(
+      ruleMatches('2026-02-02T00:00:00', rule({ operator: 'greaterThan', value: '2026-03-01' })),
+    ).toBe(false);
   });
 
   it('compares text ignoring case, and never orders it', () => {
     expect(ruleMatches('Rejected', rule({ operator: 'equals', value: 'rejected' }))).toBe(true);
-    expect(ruleMatches('Batch rejected', rule({ operator: 'contains', value: 'REJECT' }))).toBe(true);
+    expect(ruleMatches('Batch rejected', rule({ operator: 'contains', value: 'REJECT' }))).toBe(
+      true,
+    );
     expect(ruleMatches('b', rule({ operator: 'greaterThan', value: 'a' }))).toBe(false);
   });
 

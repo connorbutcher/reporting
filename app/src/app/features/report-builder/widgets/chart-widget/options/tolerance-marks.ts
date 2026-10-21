@@ -16,7 +16,10 @@ const CONCESSION_FILL = 'rgba(217, 119, 6, 0.13)';
 /** Reference lines and shaded zones drawn from resolved tolerance bands. */
 export class ToleranceMarks {
   /** Dashed line entries for every band's bounds, coloured by what crossing them means. */
-  public static lines(bands: readonly ResolvedToleranceBand[], axisKeyFor: AxisKeyFor): MarkLineData {
+  public static lines(
+    bands: readonly ResolvedToleranceBand[],
+    axisKeyFor: AxisKeyFor,
+  ): MarkLineData {
     const entries: MarkLineData = [];
 
     for (const band of bands) {
@@ -43,7 +46,10 @@ export class ToleranceMarks {
   }
 
   /** Shaded regions for every band whose `fill` is on: the in-spec zone plus amber concession shoulders. */
-  public static areas(bands: readonly ResolvedToleranceBand[], axisKeyFor: AxisKeyFor): MarkAreaData {
+  public static areas(
+    bands: readonly ResolvedToleranceBand[],
+    axisKeyFor: AxisKeyFor,
+  ): MarkAreaData {
     const areas: MarkAreaData = [];
 
     for (const band of bands) {

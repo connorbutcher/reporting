@@ -33,7 +33,12 @@ describe('FilterConditionModel', () => {
     it('offers the operators for the column’s type', () => {
       const model = build(condition('a'));
 
-      expect(model.availableOperators().map((o) => o.value)).toEqual(['equals', 'notEquals', 'in', 'isEmpty']);
+      expect(model.availableOperators().map((o) => o.value)).toEqual([
+        'equals',
+        'notEquals',
+        'in',
+        'isEmpty',
+      ]);
     });
 
     it('hides tolerance operators unless the column has banding', () => {
@@ -54,7 +59,11 @@ describe('FilterConditionModel', () => {
     it('keeps an orphaned tolerance operator that is currently selected', () => {
       const model = build(condition('b', 'inTolerance'));
 
-      expect(model.availableOperators().map((o) => o.value)).toEqual(['equals', 'between', 'inTolerance']);
+      expect(model.availableOperators().map((o) => o.value)).toEqual([
+        'equals',
+        'between',
+        'inTolerance',
+      ]);
       expect(model.descriptor()?.value).toBe('inTolerance');
     });
 
@@ -184,7 +193,10 @@ describe('FilterConditionModel', () => {
     });
 
     it('asks for the missing value, or both values for a range', () => {
-      expect(build(condition('a', 'equals')).problem()).toEqual({ severity: 'error', message: 'Enter a value.' });
+      expect(build(condition('a', 'equals')).problem()).toEqual({
+        severity: 'error',
+        message: 'Enter a value.',
+      });
       expect(build(condition('b', 'between', ['1'])).problem()).toEqual({
         severity: 'error',
         message: 'Enter both values.',
@@ -192,7 +204,9 @@ describe('FilterConditionModel', () => {
     });
 
     it('reports the column first when several things are wrong', () => {
-      expect(build(condition('gone', 'inTolerance')).problem()?.message).toBe('This column no longer exists.');
+      expect(build(condition('gone', 'inTolerance')).problem()?.message).toBe(
+        'This column no longer exists.',
+      );
     });
   });
 
@@ -203,7 +217,9 @@ describe('FilterConditionModel', () => {
     });
 
     it('raises a missing column as an error, and stops there', () => {
-      const [issue, ...rest] = build(condition('gone', 'inTolerance'), { widgetId: 'w1' }).ownIssues();
+      const [issue, ...rest] = build(condition('gone', 'inTolerance'), {
+        widgetId: 'w1',
+      }).ownIssues();
 
       expect(rest).toEqual([]);
       expect(issue).toMatchObject({
@@ -259,7 +275,9 @@ describe('FilterConditionModel', () => {
     });
 
     it('writes enabled: false when off', () => {
-      expect(build(condition('a', 'equals', ['x'], false)).toDto()).toMatchObject({ enabled: false });
+      expect(build(condition('a', 'equals', ['x'], false)).toDto()).toMatchObject({
+        enabled: false,
+      });
     });
 
     it('returns a copy of the values', () => {

@@ -166,9 +166,7 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public updateMeasure(id: string, patch: Partial<Omit<PivotMeasure, 'id'>>): void {
-    this.measures.update((measures) =>
-      measures.map((m) => (m.id === id ? { ...m, ...patch } : m)),
-    );
+    this.measures.update((measures) => measures.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }
 
   /**
@@ -280,7 +278,8 @@ export class PivotTableWidgetModel extends WidgetModel {
           id: `${this.id}:missingRowField`,
           severity: 'error',
           title: `${name} groups by a column that no longer exists`,
-          detail: 'A dimension column was removed from the dataset. Remove it or replace it with another.',
+          detail:
+            'A dimension column was removed from the dataset. Remove it or replace it with another.',
           widgetId: this.id,
           view,
         });

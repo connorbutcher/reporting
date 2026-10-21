@@ -10,7 +10,11 @@ const col = (id: string, name: string, type: DatasetColumn['type'] = 'string'): 
 const data = {
   id: 1,
   name: 'Parts',
-  columns: [col('supplier', 'Supplier'), col('made', 'Made', 'dateTime'), col('cost', 'Cost', 'double')],
+  columns: [
+    col('supplier', 'Supplier'),
+    col('made', 'Made', 'dateTime'),
+    col('cost', 'Cost', 'double'),
+  ],
 } as unknown as DatasetSchema;
 
 function pivot(config: Partial<PivotTableWidget['config']> = {}): PivotTableWidgetModel {
@@ -23,7 +27,10 @@ function pivot(config: Partial<PivotTableWidget['config']> = {}): PivotTableWidg
     type: 'pivotTable',
     config: { ...DEFAULT_PIVOT_CONFIG, type: 'pivotTable', datasetId: 1, ...config },
   };
-  return new PivotTableWidgetModel(widget, { schemas: signal({ 1: data }), catalogue: signal(null) });
+  return new PivotTableWidgetModel(widget, {
+    schemas: signal({ 1: data }),
+    catalogue: signal(null),
+  });
 }
 
 describe('PivotTableWidgetModel', () => {
@@ -51,7 +58,11 @@ describe('PivotTableWidgetModel', () => {
     expect(config.columnFields).toEqual(['made']);
     expect(config.fieldGroupings).toEqual([{ columnId: 'made', grouping: 'month' }]);
     expect(config.showSubtotals).toBe(true);
-    expect(config.measures[0]).toMatchObject({ aggregate: 'median', showAs: 'percentOfTotal', dataBars: true });
+    expect(config.measures[0]).toMatchObject({
+      aggregate: 'median',
+      showAs: 'percentOfTotal',
+      dataBars: true,
+    });
     expect(model.issues()).toEqual([]);
   });
 
@@ -69,7 +80,9 @@ describe('PivotTableWidgetModel', () => {
   });
 
   it('keeps a text column for a distinct count but not for a numeric aggregate', () => {
-    const model = pivot({ measures: [{ id: 'm1', columnId: null, aggregate: 'count', label: '' }] });
+    const model = pivot({
+      measures: [{ id: 'm1', columnId: null, aggregate: 'count', label: '' }],
+    });
     model.setMeasureAggregate('m1', 'countDistinct');
     model.updateMeasure('m1', { columnId: 'supplier' });
 
@@ -81,7 +94,10 @@ describe('PivotTableWidgetModel', () => {
   });
 
   it('flags a column field whose column was removed from the dataset', () => {
-    const model = pivot({ columnFields: ['gone'], measures: [{ id: 'm1', columnId: null, aggregate: 'count', label: '' }] });
+    const model = pivot({
+      columnFields: ['gone'],
+      measures: [{ id: 'm1', columnId: null, aggregate: 'count', label: '' }],
+    });
 
     expect(model.issues().map((i) => i.id)).toContain('p1:missingRowField');
   });

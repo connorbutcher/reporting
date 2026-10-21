@@ -121,7 +121,8 @@ export class ChartBindingModel extends EditorNode {
     this.axisColumns = computed(
       () =>
         this.schema()?.columns.filter(
-          (c) => c.type === 'int' || c.type === 'double' || c.type === 'string' || c.type === 'dateTime',
+          (c) =>
+            c.type === 'int' || c.type === 'double' || c.type === 'string' || c.type === 'dateTime',
         ) ?? [],
     );
 

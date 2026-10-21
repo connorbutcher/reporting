@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterApiService } from '../../../../core/api/filter-api.service';
 import { DEFAULT_TABLE_CONFIG, DataTableWidgetConfig } from '../../../../core/models/report';
-import { TableQueryRequest, TableQueryResult, TableRowResult } from '../../../../core/models/widget-query';
+import {
+  TableQueryRequest,
+  TableQueryResult,
+  TableRowResult,
+} from '../../../../core/models/widget-query';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { DataTableWidgetComponent, SCROLL_WINDOW, csvValue } from './data-table-widget.component';
 
@@ -20,8 +24,9 @@ const row = (i: number): TableRowResult => ({
 const page = (request: TableQueryRequest, matched: number): TableQueryResult => ({
   id: '1',
   name: 'D',
-  rows: Array.from({ length: Math.max(0, Math.min(request.take || matched, matched - request.skip)) }, (_, i) =>
-    row(request.skip + i),
+  rows: Array.from(
+    { length: Math.max(0, Math.min(request.take || matched, matched - request.skip)) },
+    (_, i) => row(request.skip + i),
   ),
   totalRowCount: matched,
   matchedRowCount: matched,
@@ -55,7 +60,9 @@ describe('DataTableWidgetComponent', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     queryTable = vi.fn((_id: number, request: TableQueryRequest) => of(page(request, matched)));
-    exportTable = vi.fn((_id: number, request: TableQueryRequest) => of(page({ ...request, take: 0 }, matched)));
+    exportTable = vi.fn((_id: number, request: TableQueryRequest) =>
+      of(page({ ...request, take: 0 }, matched)),
+    );
     warn = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -90,7 +97,8 @@ describe('DataTableWidgetComponent', () => {
     return fixture.componentInstance as unknown as Internals;
   }
 
-  const lastRequest = (): TableQueryRequest => queryTable.mock.calls.at(-1)![1] as TableQueryRequest;
+  const lastRequest = (): TableQueryRequest =>
+    queryTable.mock.calls.at(-1)![1] as TableQueryRequest;
 
   it('holds a placeholder for every matched row and fills the first window', async () => {
     const table = await render();
@@ -145,7 +153,9 @@ describe('DataTableWidgetComponent', () => {
   });
 
   it('warns when the export hit the server’s cap', async () => {
-    exportTable.mockReturnValueOnce(of({ ...page({ skip: 0, take: 10 } as TableQueryRequest, matched) }));
+    exportTable.mockReturnValueOnce(
+      of({ ...page({ skip: 0, take: 10 } as TableQueryRequest, matched) }),
+    );
     const table = await render();
 
     await table.exportCsv();
@@ -155,20 +165,33 @@ describe('DataTableWidgetComponent', () => {
 
   it('highlights a cell by the first conditional-format rule it matches', async () => {
     const table = await render({
-      columns: [{ columnId: 'cost', formatRules: [{ operator: 'greaterThan', value: '5', style: 'green' }] }],
+      columns: [
+        {
+          columnId: 'cost',
+          formatRules: [{ operator: 'greaterThan', value: '5', style: 'green' }],
+        },
+      ],
     });
     const [cost] = table.displayColumns();
 
-    expect(table.cellClass(cost, { displayValue: '9', value: 9, tolerance: 'none' })).toContain('fmt-green');
-    expect(table.cellClass(cost, { displayValue: '1', value: 1, tolerance: 'fail' })).toBe('cell-red');
+    expect(table.cellClass(cost, { displayValue: '9', value: 9, tolerance: 'none' })).toContain(
+      'fmt-green',
+    );
+    expect(table.cellClass(cost, { displayValue: '1', value: 1, tolerance: 'fail' })).toBe(
+      'cell-red',
+    );
   });
 });
 
 describe('csvValue', () => {
   it('writes numbers raw and dates in a form spreadsheets read', () => {
     expect(csvValue({ displayValue: '£1,234.50', value: 1234.5, tolerance: 'none' })).toBe(1234.5);
-    expect(csvValue({ displayValue: '05/01/2026', value: '2026-01-05T00:00:00', tolerance: 'none' })).toBe('2026-01-05');
-    expect(csvValue({ displayValue: 'x', value: '2026-01-05T14:30:00Z', tolerance: 'none' })).toBe('2026-01-05 14:30:00');
+    expect(
+      csvValue({ displayValue: '05/01/2026', value: '2026-01-05T00:00:00', tolerance: 'none' }),
+    ).toBe('2026-01-05');
+    expect(csvValue({ displayValue: 'x', value: '2026-01-05T14:30:00Z', tolerance: 'none' })).toBe(
+      '2026-01-05 14:30:00',
+    );
     expect(csvValue({ displayValue: 'Yes', value: true, tolerance: 'none' })).toBe('Yes');
     expect(csvValue(undefined)).toBe('');
   });

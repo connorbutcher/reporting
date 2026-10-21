@@ -144,6 +144,12 @@ export class FilterConditionModel extends EditorNode {
   public override ownIssues(): ValidationIssue[] {
     const problem = this.currentProblem();
     if (!problem) return [];
-    return [problemIssue(problem, `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`, this.context)];
+    return [
+      problemIssue(
+        problem,
+        `${this.context.ownerId}:filter:${this.columnId()}:${this.operator()}`,
+        this.context,
+      ),
+    ];
   }
 }

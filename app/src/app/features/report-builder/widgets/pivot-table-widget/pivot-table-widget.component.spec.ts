@@ -44,7 +44,10 @@ describe('PivotTableWidgetComponent header sort', () => {
     queryPivot = vi.fn(() => of(result));
     TestBed.configureTestingModule({
       providers: [
-        { provide: DatasetApiService, useValue: { getSchema: () => of({ columns: [] }), queryPivot } },
+        {
+          provide: DatasetApiService,
+          useValue: { getSchema: () => of({ columns: [] }), queryPivot },
+        },
         { provide: FilterApiService, useValue: { operators: () => of({}) } },
       ],
     });
@@ -61,7 +64,8 @@ describe('PivotTableWidgetComponent header sort', () => {
     fixture.detectChanges();
   }
 
-  const lastRequest = (): PivotQueryRequest => queryPivot.mock.calls.at(-1)![1] as PivotQueryRequest;
+  const lastRequest = (): PivotQueryRequest =>
+    queryPivot.mock.calls.at(-1)![1] as PivotQueryRequest;
   const header = (i: number) => fixture.nativeElement.querySelectorAll('th')[i] as HTMLElement;
 
   async function clickMeasure(i: number): Promise<void> {
@@ -83,7 +87,11 @@ describe('PivotTableWidgetComponent header sort', () => {
     await render();
 
     await clickMeasure(0);
-    expect(lastRequest()).toMatchObject({ sortRowFieldIndex: 0, sortMeasureIndex: null, sortDescending: false });
+    expect(lastRequest()).toMatchObject({
+      sortRowFieldIndex: 0,
+      sortMeasureIndex: null,
+      sortDescending: false,
+    });
     expect(header(0).getAttribute('aria-sort')).toBe('ascending');
 
     await clickMeasure(0);
@@ -140,7 +148,10 @@ describe('PivotTableWidgetComponent layout', () => {
   let queryPivot: ReturnType<typeof vi.fn>;
   let open: ReturnType<typeof vi.fn>;
 
-  const cell = (value: number | null) => ({ value, displayValue: value === null ? null : String(value) });
+  const cell = (value: number | null) => ({
+    value,
+    displayValue: value === null ? null : String(value),
+  });
 
   const crossTab: PivotQueryResult = {
     ...result,
@@ -151,18 +162,67 @@ describe('PivotTableWidgetComponent layout', () => {
     columnFields: [{ columnId: 'year', label: 'Year' }],
     measures: [{ key: 'm0', label: 'Sum of Qty', columnId: 'qty', aggregate: 'sum' }],
     columnKeys: [
-      { labels: ['2025'], drill: { kind: 'group', join: 'and', children: [{ kind: 'condition', columnId: 'year', operator: 'equals', values: ['2025'] }] } },
+      {
+        labels: ['2025'],
+        drill: {
+          kind: 'group',
+          join: 'and',
+          children: [{ kind: 'condition', columnId: 'year', operator: 'equals', values: ['2025'] }],
+        },
+      },
       { labels: ['2026'], drill: null },
     ],
     hasRowTotals: true,
     rows: [
-      { dimensions: ['North', ''], values: [cell(3), cell(4), cell(7)], isGrandTotal: false, isSubtotal: true, depth: 1, drill: { kind: 'group', join: 'and', children: [] } },
-      { dimensions: ['North', 'Bolt'], values: [cell(1), cell(4), cell(5)], isGrandTotal: false, depth: 2, drill: { kind: 'group', join: 'and', children: [{ kind: 'condition', columnId: 'product', operator: 'equals', values: ['Bolt'] }] } },
-      { dimensions: ['North', 'Nut'], values: [cell(2), cell(null), cell(2)], isGrandTotal: false, depth: 2, drill: null },
-      { dimensions: ['South', ''], values: [cell(1), cell(null), cell(1)], isGrandTotal: false, isSubtotal: true, depth: 1, drill: null },
-      { dimensions: ['South', 'Nut'], values: [cell(1), cell(null), cell(1)], isGrandTotal: false, depth: 2, drill: null },
+      {
+        dimensions: ['North', ''],
+        values: [cell(3), cell(4), cell(7)],
+        isGrandTotal: false,
+        isSubtotal: true,
+        depth: 1,
+        drill: { kind: 'group', join: 'and', children: [] },
+      },
+      {
+        dimensions: ['North', 'Bolt'],
+        values: [cell(1), cell(4), cell(5)],
+        isGrandTotal: false,
+        depth: 2,
+        drill: {
+          kind: 'group',
+          join: 'and',
+          children: [
+            { kind: 'condition', columnId: 'product', operator: 'equals', values: ['Bolt'] },
+          ],
+        },
+      },
+      {
+        dimensions: ['North', 'Nut'],
+        values: [cell(2), cell(null), cell(2)],
+        isGrandTotal: false,
+        depth: 2,
+        drill: null,
+      },
+      {
+        dimensions: ['South', ''],
+        values: [cell(1), cell(null), cell(1)],
+        isGrandTotal: false,
+        isSubtotal: true,
+        depth: 1,
+        drill: null,
+      },
+      {
+        dimensions: ['South', 'Nut'],
+        values: [cell(1), cell(null), cell(1)],
+        isGrandTotal: false,
+        depth: 2,
+        drill: null,
+      },
     ],
-    grandTotal: { dimensions: ['Total', ''], values: [cell(4), cell(4), cell(8)], isGrandTotal: true },
+    grandTotal: {
+      dimensions: ['Total', ''],
+      values: [cell(4), cell(4), cell(8)],
+      isGrandTotal: true,
+    },
   };
 
   beforeEach(() => {
@@ -171,7 +231,10 @@ describe('PivotTableWidgetComponent layout', () => {
     open = vi.fn();
     TestBed.configureTestingModule({
       providers: [
-        { provide: DatasetApiService, useValue: { getSchema: () => of({ columns: [] }), queryPivot } },
+        {
+          provide: DatasetApiService,
+          useValue: { getSchema: () => of({ columns: [] }), queryPivot },
+        },
         { provide: FilterApiService, useValue: { operators: () => of({}) } },
         { provide: Dialog, useValue: { open } },
       ],
@@ -198,13 +261,22 @@ describe('PivotTableWidgetComponent layout', () => {
   }
 
   const bodyRows = () => [...fixture.nativeElement.querySelectorAll('tbody tr')] as HTMLElement[];
-  const texts = (row: HTMLElement) => [...row.querySelectorAll('td')].map((td) => td.textContent!.trim());
+  const texts = (row: HTMLElement) =>
+    [...row.querySelectorAll('td')].map((td) => td.textContent!.trim());
 
   it('heads each column key and the totals over their measures', async () => {
     await render();
 
-    const [top, measures] = [...fixture.nativeElement.querySelectorAll('thead tr')] as HTMLElement[];
-    expect([...top.querySelectorAll('th')].map((th) => th.textContent!.trim())).toEqual(['Region', 'Product', '2025', '2026', 'Total']);
+    const [top, measures] = [
+      ...fixture.nativeElement.querySelectorAll('thead tr'),
+    ] as HTMLElement[];
+    expect([...top.querySelectorAll('th')].map((th) => th.textContent!.trim())).toEqual([
+      'Region',
+      'Product',
+      '2025',
+      '2026',
+      'Total',
+    ]);
     expect(measures.querySelectorAll('th').length).toBe(3);
     expect(lastCall().columnFields).toEqual(['year']);
     expect(lastCall().showSubtotals).toBe(true);
@@ -258,7 +330,13 @@ describe('PivotTableWidgetComponent layout', () => {
   it('highlights values by their measure’s rules', async () => {
     await render({
       measures: [
-        { id: 'qty', columnId: 'qty', aggregate: 'sum', label: '', formatRules: [{ operator: 'greaterThanOrEqual', value: '5', style: 'red' }] },
+        {
+          id: 'qty',
+          columnId: 'qty',
+          aggregate: 'sum',
+          label: '',
+          formatRules: [{ operator: 'greaterThanOrEqual', value: '5', style: 'red' }],
+        },
       ],
     });
 
@@ -267,7 +345,15 @@ describe('PivotTableWidgetComponent layout', () => {
   });
 
   it('says plainly when only part of the data was summarised', async () => {
-    queryPivot.mockReturnValue(of({ ...crossTab, scanTruncated: true, scannedRowCount: 200000, matchedRowCount: 250000, truncated: true }));
+    queryPivot.mockReturnValue(
+      of({
+        ...crossTab,
+        scanTruncated: true,
+        scannedRowCount: 200000,
+        matchedRowCount: 250000,
+        truncated: true,
+      }),
+    );
     await render();
 
     expect(fixture.nativeElement.querySelector('app-widget-count-bar').textContent).toContain(

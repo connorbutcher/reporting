@@ -163,9 +163,7 @@ export class PanelChartSeriesComponent {
    */
   public toggleValueColumn(binding: ChartBindingModel, columnId: string, checked: boolean): void {
     const current = binding.barValueColumnIds();
-    const next = checked
-      ? [...current, columnId]
-      : current.filter((id) => id !== columnId);
+    const next = checked ? [...current, columnId] : current.filter((id) => id !== columnId);
     binding.setValueColumnIds(next);
   }
 
@@ -173,11 +171,13 @@ export class PanelChartSeriesComponent {
    * Adds or removes one column from a histogram series. Checking appends (so the series order
    * follows the order the user picked); unchecking drops it.
    */
-  public toggleHistogramValueColumn(binding: ChartBindingModel, columnId: string, checked: boolean): void {
+  public toggleHistogramValueColumn(
+    binding: ChartBindingModel,
+    columnId: string,
+    checked: boolean,
+  ): void {
     const current = binding.histogramValueColumnIds();
-    const next = checked
-      ? [...current, columnId]
-      : current.filter((id) => id !== columnId);
+    const next = checked ? [...current, columnId] : current.filter((id) => id !== columnId);
     binding.setHistogramValueColumnIds(next);
   }
 

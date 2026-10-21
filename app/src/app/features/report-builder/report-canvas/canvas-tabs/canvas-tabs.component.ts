@@ -180,7 +180,11 @@ export class CanvasTabsComponent {
   }
 
   protected startRename(tabId: string): void {
-    this.draft.set(this.tabs().find((t) => t.id === tabId)?.name() ?? '');
+    this.draft.set(
+      this.tabs()
+        .find((t) => t.id === tabId)
+        ?.name() ?? '',
+    );
     this.editingId.set(tabId);
     // Focus and select once the input has rendered, so the name is ready to overtype.
     afterNextRender(

@@ -112,7 +112,11 @@ export const PANEL_VIEWS: { readonly [K in PanelView['kind']]: PanelDescriptor<K
   },
   columnTolerance: {
     component: PanelColumnToleranceComponent,
-    parent: (view) => ({ kind: 'columnSettings', widgetId: view.widgetId, columnId: view.columnId }),
+    parent: (view) => ({
+      kind: 'columnSettings',
+      widgetId: view.widgetId,
+      columnId: view.columnId,
+    }),
   },
   kpiTolerance: {
     component: PanelWidgetDetailKpiToleranceComponent,

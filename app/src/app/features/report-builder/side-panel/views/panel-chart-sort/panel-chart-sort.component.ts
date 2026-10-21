@@ -14,7 +14,9 @@ import {
 
 /** The aggregates a column type can be reduced by — text has no sum/average/median/spread, and
  * summing dates has no meaning either. */
-function aggregateOptionsFor(type: DatasetColumnType | null): { label: string; value: SortAggregate }[] {
+function aggregateOptionsFor(
+  type: DatasetColumnType | null,
+): { label: string; value: SortAggregate }[] {
   if (type === 'string') {
     return [
       { label: 'First (A–Z)', value: 'min' },
@@ -142,7 +144,9 @@ export class PanelChartSortComponent {
     // numeric column's "Sum" to a text one) — fall back to its first valid aggregate instead of
     // carrying over a now-meaningless choice.
     const validValues = aggregateOptionsFor(type).map((o) => o.value);
-    const aggregate = validValues.includes(resolved.aggregate) ? resolved.aggregate : validValues[0];
+    const aggregate = validValues.includes(resolved.aggregate)
+      ? resolved.aggregate
+      : validValues[0];
     this.sortChange.emit({ ...resolved, columnId, aggregate });
   }
 
@@ -155,7 +159,10 @@ export class PanelChartSortComponent {
   }
 
   public setLimit(limit: number | null): void {
-    this.sortChange.emit({ ...this.resolved(), limit: limit != null && limit > 0 ? Math.floor(limit) : null });
+    this.sortChange.emit({
+      ...this.resolved(),
+      limit: limit != null && limit > 0 ? Math.floor(limit) : null,
+    });
   }
 
   public setShowOther(showOther: boolean): void {

@@ -34,7 +34,10 @@ export abstract class WidgetExportBase {
 
   /** Saves a screenshot of the widget as a PNG. Charts override this to export their canvas directly. */
   public async downloadScreenshot(): Promise<void> {
-    const dataUrl = await toPng(this.exportHost.nativeElement, { pixelRatio: 2, backgroundColor: '#fff' });
+    const dataUrl = await toPng(this.exportHost.nativeElement, {
+      pixelRatio: 2,
+      backgroundColor: '#fff',
+    });
     this.downloadUrl(dataUrl, `${this.exportName()}.png`);
   }
 

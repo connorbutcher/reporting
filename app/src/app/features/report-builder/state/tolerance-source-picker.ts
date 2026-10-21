@@ -112,7 +112,8 @@ export class ToleranceSourcePicker {
     const maxColumnId = this.maxColumnId();
     const columnId = this.matchColumnId();
     const sourceColumnId = this.sourceMatchColumnId();
-    if (!sourceDatasetId || !minColumnId || !maxColumnId || !columnId || !sourceColumnId) return null;
+    if (!sourceDatasetId || !minColumnId || !maxColumnId || !columnId || !sourceColumnId)
+      return null;
 
     const concessionLowerColumnId = this.concessionLowerColumnId();
     const concessionUpperColumnId = this.concessionUpperColumnId();

@@ -5,7 +5,11 @@ import type { ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
-import { ChartWidgetConfig, barValueColumnIds, readChartBindings } from '../../../../core/models/report';
+import {
+  ChartWidgetConfig,
+  barValueColumnIds,
+  readChartBindings,
+} from '../../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
 import { WidgetComment } from '../../../../core/models/widget-comment.model';
 import {
@@ -20,8 +24,14 @@ import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
-import { ChartSkeletonComponent, ChartSkeletonShape } from '../chart-skeleton/chart-skeleton.component';
-import { DrillThroughDialogComponent, DrillThroughDialogData } from '../drill-through-dialog/drill-through-dialog.component';
+import {
+  ChartSkeletonComponent,
+  ChartSkeletonShape,
+} from '../chart-skeleton/chart-skeleton.component';
+import {
+  DrillThroughDialogComponent,
+  DrillThroughDialogData,
+} from '../drill-through-dialog/drill-through-dialog.component';
 import { ChartDrill } from './chart-drill';
 import { ChartZoomMemory, ChartZoomRange } from './chart-zoom';
 import { BoxOption } from './options/box-option';
@@ -32,7 +42,11 @@ import { ComboOption } from './options/combo-option';
 import { ECOption } from './options/chart-option.types';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
-import { ChartCommentAnchor, CommentAnchorPoint, COMMENT_ANCHOR_SERIES_NAME } from './options/point-types';
+import {
+  ChartCommentAnchor,
+  CommentAnchorPoint,
+  COMMENT_ANCHOR_SERIES_NAME,
+} from './options/point-types';
 import { SeriesPalette } from './options/series-colors';
 import { XBarROption } from './options/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
@@ -99,7 +113,10 @@ export class ChartWidgetComponent extends DataWidgetBase {
     };
     // The remembered zoom is read untracked: zooming mustn't rebuild the option on every drag, only
     // be carried over when something else (a reload, a filter) does.
-    return ChartZoomMemory.apply(described, untracked(() => this.zoomRange));
+    return ChartZoomMemory.apply(
+      described,
+      untracked(() => this.zoomRange),
+    );
   });
 
   /** Whether the chart is showing its values as a table instead of the plot. */
@@ -134,7 +151,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   );
 
   /** The loading skeleton's silhouette: a trend for scatter and line, columns for everything else. */
-  public readonly skeletonShape = computed<ChartSkeletonShape>(() => (this.isPointChart() ? 'line' : 'bars'));
+  public readonly skeletonShape = computed<ChartSkeletonShape>(() =>
+    this.isPointChart() ? 'line' : 'bars',
+  );
 
   /** Prompt shown when the chart isn't configured enough to plot, worded per kind. */
   public readonly configHint = computed(() => {
@@ -158,16 +177,16 @@ export class ChartWidgetComponent extends DataWidgetBase {
    * prompt, a load error, a first-load spinner, an empty-result notice, or the
    * chart itself.
    */
-  public readonly view = computed<'noDataset' | 'needsConfig' | 'error' | 'loading' | 'empty' | 'ready'>(
-    () => {
-      if (!this.datasetId()) return 'noDataset';
-      if (this.error()) return 'error';
-      if (!this.configured()) return 'needsConfig';
-      // A first load (nothing shown yet) gets a spinner; a reload keeps the chart.
-      if (this.loading() && this.source.result() === null) return 'loading';
-      return this.empty() ? 'empty' : 'ready';
-    },
-  );
+  public readonly view = computed<
+    'noDataset' | 'needsConfig' | 'error' | 'loading' | 'empty' | 'ready'
+  >(() => {
+    if (!this.datasetId()) return 'noDataset';
+    if (this.error()) return 'error';
+    if (!this.configured()) return 'needsConfig';
+    // A first load (nothing shown yet) gets a spinner; a reload keeps the chart.
+    if (this.loading() && this.source.result() === null) return 'loading';
+    return this.empty() ? 'empty' : 'ready';
+  });
 
   /** A reload while a chart is already on screen — dims it rather than blanking to a spinner. */
   public readonly reloading = computed(() => this.loading() && this.source.result() !== null);
@@ -175,14 +194,19 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** This widget's own anchored comments, as markers — independent of whichever thread the aside panel has focused. */
   public readonly commentAnchors = computed<ChartCommentAnchor[]>(() =>
     (this.anchorsResource.value() ?? [])
-      .filter((c): c is WidgetComment & { anchorX: number; anchorY: number } => c.anchorX != null && c.anchorY != null)
+      .filter(
+        (c): c is WidgetComment & { anchorX: number; anchorY: number } =>
+          c.anchorX != null && c.anchorY != null,
+      )
       .map((c) => ({ x: c.anchorX, y: c.anchorY, yAxisIndex: c.anchorYAxisIndex })),
   );
 
   /** The anchor currently drawing attention, when it's one of this widget's own — a chip in the comments panel or one of this chart's own markers was just clicked. */
   public readonly highlightedAnchor = computed<ChartCommentAnchor | null>(() => {
     const target = this.reportComments?.highlightedAnchor();
-    return target && target.widgetId === this.widgetId() ? { x: target.x, y: target.y, yAxisIndex: target.yAxisIndex } : null;
+    return target && target.widgetId === this.widgetId()
+      ? { x: target.x, y: target.y, yAxisIndex: target.yAxisIndex }
+      : null;
   });
 
   private readonly datasetApi = inject(DatasetApiService);
@@ -253,7 +277,8 @@ export class ChartWidgetComponent extends DataWidgetBase {
     // Whether a trend line is fitted per series — a point-chart-only option, but harmless to
     // include unconditionally (every grouping chart ignores it server-side too).
     const trend = config.showTrendLine ?? false;
-    const aggregate = config.type === 'barChart' || config.type === 'comboChart' ? config.aggregate : null;
+    const aggregate =
+      config.type === 'barChart' || config.type === 'comboChart' ? config.aggregate : null;
     // A bar/combo chart's category order, resolved against the primary binding's dataset.
     const barSort = config.type === 'barChart' || config.type === 'comboChart' ? config.sort : null;
     // Box options that change the server response: whisker mode/length (which values become
@@ -280,10 +305,18 @@ export class ChartWidgetComponent extends DataWidgetBase {
     // Server-side grouping options: a date category's period (every grouping chart), a line chart's
     // aggregate, and the control chart's order, mode, baseline and run rules.
     const grouping = 'categoryGrouping' in config ? (config.categoryGrouping ?? null) : null;
-    const line = config.type === 'lineChart' ? { a: config.aggregate ?? null, g: config.xGrouping ?? null } : null;
+    const line =
+      config.type === 'lineChart'
+        ? { a: config.aggregate ?? null, g: config.xGrouping ?? null }
+        : null;
     const control =
       config.type === 'xbarRChart'
-        ? { s: config.sort, m: config.mode ?? 'xBarR', b: config.baselineSubgroups ?? null, r: config.runRules ?? false }
+        ? {
+            s: config.sort,
+            m: config.mode ?? 'xBarR',
+            b: config.baselineSubgroups ?? null,
+            r: config.runRules ?? false,
+          }
         : null;
     return JSON.stringify({
       bindings,
@@ -308,7 +341,13 @@ export class ChartWidgetComponent extends DataWidgetBase {
     version: this.datasetVersion,
     api: this.datasetApi,
     fetch: () =>
-      ChartQuery.build(this.datasetApi, this.config(), this.bindingFilters(), this.queryCache, this.source.columns()),
+      ChartQuery.build(
+        this.datasetApi,
+        this.config(),
+        this.bindingFilters(),
+        this.queryCache,
+        this.source.columns(),
+      ),
   });
 
   private readonly loading = this.source.loading;
@@ -357,10 +396,16 @@ export class ChartWidgetComponent extends DataWidgetBase {
     const type = this.config().type;
     // Bar and box both report emptiness by their category axis; a histogram by its bins; point
     // charts by their series.
-    if (type === 'barChart' || type === 'comboChart' || type === 'boxPlot' || type === 'xbarRChart') {
+    if (
+      type === 'barChart' ||
+      type === 'comboChart' ||
+      type === 'boxPlot' ||
+      type === 'xbarRChart'
+    ) {
       return (
-        (data as BarChartQueryResult | BoxPlotQueryResult | XBarRChartQueryResult).categories?.length ?? 0
-      ) === 0;
+        ((data as BarChartQueryResult | BoxPlotQueryResult | XBarRChartQueryResult).categories
+          ?.length ?? 0) === 0
+      );
     }
     if (type === 'histogram') {
       return ((data as HistogramQueryResult).bins?.length ?? 0) === 0;
@@ -481,11 +526,13 @@ export class ChartWidgetComponent extends DataWidgetBase {
       return;
     }
     const value = event.value;
-    if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number') return;
+    if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number')
+      return;
     const [x, y] = value;
     const series = this.chartOption()?.series;
     const clicked = Array.isArray(series) ? series[event.seriesIndex ?? -1] : undefined;
-    const yAxisIndex = clicked && 'yAxisIndex' in clicked ? (clicked.yAxisIndex as number | undefined) : undefined;
+    const yAxisIndex =
+      clicked && 'yAxisIndex' in clicked ? (clicked.yAxisIndex as number | undefined) : undefined;
     comments.pickAnchor(widgetId, { x, y, yAxisIndex, label: formatAnchorLabel(x, y) });
   }
 
@@ -496,7 +543,11 @@ export class ChartWidgetComponent extends DataWidgetBase {
    */
   public override async downloadScreenshot(): Promise<void> {
     if (!this.chartInstance) return;
-    const url = this.chartInstance.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' });
+    const url = this.chartInstance.getDataURL({
+      type: 'png',
+      pixelRatio: 2,
+      backgroundColor: '#fff',
+    });
     this.downloadUrl(url, `${this.exportName()}.png`);
   }
 

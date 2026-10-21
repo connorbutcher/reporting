@@ -28,7 +28,12 @@ import {
   FormatRule,
   SortDirection,
 } from '../../../../core/models/report';
-import { TableCell, TableQueryRequest, TableQueryResult, TableRowResult } from '../../../../core/models/widget-query';
+import {
+  TableCell,
+  TableQueryRequest,
+  TableQueryResult,
+  TableRowResult,
+} from '../../../../core/models/widget-query';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { toCsv } from '../csv.util';
 import { FORMAT_STYLE_CLASS, dataBarPercent, matchFormatRule } from '../format-rules';
@@ -65,7 +70,13 @@ export interface DisplayColumn {
 
 @Component({
   selector: 'app-data-table-widget',
-  imports: [FormsModule, NgTemplateOutlet, TableModule, WidgetCountBarComponent, WidgetStatusComponent],
+  imports: [
+    FormsModule,
+    NgTemplateOutlet,
+    TableModule,
+    WidgetCountBarComponent,
+    WidgetStatusComponent,
+  ],
   templateUrl: './data-table-widget.component.html',
   styleUrl: './data-table-widget.component.scss',
   host: {
@@ -139,7 +150,10 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       this.windowsInFlight.clear();
 
       return this.config().paginator
-        ? this.datasetApi.queryTable(datasetId, this.request(this.first(), this.config().rowsPerPage || 10))
+        ? this.datasetApi.queryTable(
+            datasetId,
+            this.request(this.first(), this.config().rowsPerPage || 10),
+          )
         : this.datasetApi.queryTable(datasetId, this.request(0, SCROLL_WINDOW));
     },
   });
@@ -163,7 +177,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     if (!result) return [];
     if (this.config().paginator) return result.rows;
 
-    const rows = new Array<TableRowResult | undefined>(Math.max(result.matchedRowCount, result.rows.length));
+    const rows = new Array<TableRowResult | undefined>(
+      Math.max(result.matchedRowCount, result.rows.length),
+    );
     result.rows.forEach((row, i) => (rows[i] = row));
     for (const [index, windowRows] of this.windows()) {
       windowRows.forEach((row, i) => (rows[index * SCROLL_WINDOW + i] = row));
@@ -174,8 +190,12 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   /** Row counts from the last query, for the paginator and the footer. */
   protected readonly matchedRowCount = computed(() => this.source.result()?.matchedRowCount ?? 0);
   protected readonly totalRowCount = computed(() => this.source.result()?.totalRowCount ?? 0);
-  private readonly searchTerm = computed(() => (this.config().showSearch ? this.searchText().trim() : ''));
-  protected readonly isFiltered = computed(() => this.effectiveFilter() !== null || this.searchTerm() !== '');
+  private readonly searchTerm = computed(() =>
+    this.config().showSearch ? this.searchText().trim() : '',
+  );
+  protected readonly isFiltered = computed(
+    () => this.effectiveFilter() !== null || this.searchTerm() !== '',
+  );
 
   /** Each column's total over every matched row, and the range of each data-bar column. */
   protected readonly totals = computed(() => this.source.result()?.totals ?? {});
@@ -187,7 +207,8 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   /** The always-on footer text: how many rows match, and of how many when something narrows them. */
   protected readonly countLabel = computed(() => {
     const matched = this.matchedRowCount().toLocaleString();
-    if (this.isFiltered()) return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
+    if (this.isFiltered())
+      return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
     return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
   });
 
@@ -370,22 +391,28 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     if (!datasetId || !result) return;
 
     const last = Math.min(to, result.matchedRowCount) - 1;
-    for (let index = Math.floor(from / SCROLL_WINDOW); index <= Math.floor(last / SCROLL_WINDOW); index++) {
+    for (
+      let index = Math.floor(from / SCROLL_WINDOW);
+      index <= Math.floor(last / SCROLL_WINDOW);
+      index++
+    ) {
       // Window 0 is the first query's own rows.
       if (index === 0 || this.windows().has(index) || this.windowsInFlight.has(index)) continue;
 
       const generation = this.windowGeneration;
       this.windowsInFlight.add(index);
-      this.datasetApi.queryTable(datasetId, this.request(index * SCROLL_WINDOW, SCROLL_WINDOW)).subscribe({
-        next: (window) => {
-          if (generation !== this.windowGeneration) return;
-          this.windowsInFlight.delete(index);
-          this.windows.update((windows) => new Map(windows).set(index, window.rows));
-        },
-        error: () => {
-          if (generation === this.windowGeneration) this.windowsInFlight.delete(index);
-        },
-      });
+      this.datasetApi
+        .queryTable(datasetId, this.request(index * SCROLL_WINDOW, SCROLL_WINDOW))
+        .subscribe({
+          next: (window) => {
+            if (generation !== this.windowGeneration) return;
+            this.windowsInFlight.delete(index);
+            this.windows.update((windows) => new Map(windows).set(index, window.rows));
+          },
+          error: () => {
+            if (generation === this.windowGeneration) this.windowsInFlight.delete(index);
+          },
+        });
     }
   }
 
@@ -457,10 +484,17 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     });
     // The table's own columns lead, in its order, then the rest of the dataset's.
     const order = new Map(this.config().columns.map((c, i) => [c.columnId, i]));
-    fields.sort((a, b) => (order.get(a.setting.columnId) ?? 1e6) - (order.get(b.setting.columnId) ?? 1e6));
+    fields.sort(
+      (a, b) => (order.get(a.setting.columnId) ?? 1e6) - (order.get(b.setting.columnId) ?? 1e6),
+    );
 
     this.dialog.open<void, RowDetailDialogData>(RowDetailDialogComponent, {
-      data: { datasetId, rowId: row.id, title: this.config().title?.trim() || 'Row details', fields },
+      data: {
+        datasetId,
+        rowId: row.id,
+        title: this.config().title?.trim() || 'Row details',
+        fields,
+      },
       positionStrategy: this.overlay.position().global().right('0').top('0'),
       height: '100vh',
       ariaLabelledBy: 'row-detail-title',
@@ -533,7 +567,11 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     const header = cols.map((c) => c.header);
     const body = result.rows.map((row) => cols.map((c) => csvValue(row.cells[c.column.id])));
     if (this.config().showTotals && result.totals && cols.some((c) => c.total)) {
-      body.push(cols.map((c, i) => result.totals![c.column.id]?.value ?? (i === 0 && !c.total ? 'Total' : '')));
+      body.push(
+        cols.map(
+          (c, i) => result.totals![c.column.id]?.value ?? (i === 0 && !c.total ? 'Total' : ''),
+        ),
+      );
     }
     return toCsv([header, ...body]);
   }

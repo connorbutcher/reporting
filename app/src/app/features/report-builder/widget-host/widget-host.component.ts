@@ -114,7 +114,9 @@ export class WidgetHostComponent {
   };
 
   /** Only the finished conditions, so a half-typed row doesn't blank the table or pivot. */
-  protected readonly widgetFilter = computed(() => this.filterableModel()?.filter.toQueryDto() ?? null);
+  protected readonly widgetFilter = computed(
+    () => this.filterableModel()?.filter.toQueryDto() ?? null,
+  );
 
   /** The report-level filter for a table's or pivot's dataset, layered over its own. */
   protected readonly reportFilter = computed(() => {

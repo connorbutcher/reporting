@@ -94,9 +94,17 @@ export class TabModel extends EditorNode {
   private emptyWidgetDto(type: WidgetType, base: Omit<Widget, 'type' | 'config'>): Widget {
     switch (type) {
       case 'dataTable':
-        return { ...base, type: 'dataTable', config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG } };
+        return {
+          ...base,
+          type: 'dataTable',
+          config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG },
+        };
       case 'pivotTable':
-        return { ...base, type: 'pivotTable', config: { type: 'pivotTable', ...DEFAULT_PIVOT_CONFIG } };
+        return {
+          ...base,
+          type: 'pivotTable',
+          config: { type: 'pivotTable', ...DEFAULT_PIVOT_CONFIG },
+        };
       case 'scatterChart':
         return {
           ...base,
@@ -140,7 +148,11 @@ export class TabModel extends EditorNode {
           config: { type: 'xbarRChart', ...DEFAULT_XBAR_R_CHART_CONFIG },
         };
       case 'staticText':
-        return { ...base, type: 'staticText', config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG } };
+        return {
+          ...base,
+          type: 'staticText',
+          config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG },
+        };
       case 'kpi':
         return { ...base, type: 'kpi', config: { type: 'kpi', ...DEFAULT_KPI_CONFIG } };
     }

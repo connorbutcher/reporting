@@ -15,7 +15,10 @@ export type RawCellValue = number | string | boolean | null | undefined;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
 
 /** The style of the first rule `value` satisfies, or null when none does (or there are no rules). */
-export function matchFormatRule(value: RawCellValue, rules: readonly FormatRule[] | null | undefined): FormatRuleStyle | null {
+export function matchFormatRule(
+  value: RawCellValue,
+  rules: readonly FormatRule[] | null | undefined,
+): FormatRuleStyle | null {
   for (const rule of rules ?? []) {
     if (ruleMatches(value, rule)) return rule.style;
   }
@@ -70,8 +73,19 @@ export function ruleMatches(value: RawCellValue, rule: FormatRule): boolean {
  * How far along its bar a value sits, as a percentage of the column's range, which always includes
  * zero so bars grow from a common baseline. Null when the value or range isn't numeric.
  */
-export function dataBarPercent(value: RawCellValue, min: number | null | undefined, max: number | null | undefined): number | null {
-  if (typeof value !== 'number' || min === null || min === undefined || max === null || max === undefined) return null;
+export function dataBarPercent(
+  value: RawCellValue,
+  min: number | null | undefined,
+  max: number | null | undefined,
+): number | null {
+  if (
+    typeof value !== 'number' ||
+    min === null ||
+    min === undefined ||
+    max === null ||
+    max === undefined
+  )
+    return null;
   const low = Math.min(0, min);
   const high = Math.max(0, max);
   if (high === low) return null;
@@ -81,7 +95,10 @@ export function dataBarPercent(value: RawCellValue, min: number | null | undefin
 type ValueKind = 'number' | 'date' | 'text';
 
 /** A value in a form that compares by meaning: a number, a date as its time, or lower-cased text. */
-function comparable(value: Exclude<RawCellValue, null | undefined>): { kind: ValueKind; v: number | string } {
+function comparable(value: Exclude<RawCellValue, null | undefined>): {
+  kind: ValueKind;
+  v: number | string;
+} {
   if (typeof value === 'number') return { kind: 'number', v: value };
   if (typeof value === 'boolean') return { kind: 'text', v: value ? 'true' : 'false' };
   if (ISO_DATE.test(value)) {

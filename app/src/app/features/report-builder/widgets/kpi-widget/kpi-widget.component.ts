@@ -2,7 +2,11 @@ import { Component, Signal, computed, effect, inject, input, untracked } from '@
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
 import { KpiWidgetConfig } from '../../../../core/models/report';
-import { KpiGroupResult, KpiHistoryPoint, KpiQueryResult } from '../../../../core/models/widget-query';
+import {
+  KpiGroupResult,
+  KpiHistoryPoint,
+  KpiQueryResult,
+} from '../../../../core/models/widget-query';
 import { toCsv } from '../csv.util';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
@@ -38,7 +42,10 @@ function sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
   const points = history
     .map((point, index) => (point.value === null ? null : { x: index * stepX, y: point.value }))
     .filter((p): p is { x: number; y: number } => p !== null)
-    .map((p) => `${p.x.toFixed(1)},${(SPARKLINE_HEIGHT - ((p.y - min) / span) * SPARKLINE_HEIGHT).toFixed(1)}`);
+    .map(
+      (p) =>
+        `${p.x.toFixed(1)},${(SPARKLINE_HEIGHT - ((p.y - min) / span) * SPARKLINE_HEIGHT).toFixed(1)}`,
+    );
 
   return points.length >= 2 ? points.join(' ') : null;
 }
@@ -77,7 +84,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   });
 
   /** Set when the widget groups by a column — a row of mini-tiles replaces the single value. */
-  public readonly groups = computed<KpiGroupResult[] | null>(() => this.source.result()?.groups ?? null);
+  public readonly groups = computed<KpiGroupResult[] | null>(
+    () => this.source.result()?.groups ?? null,
+  );
 
   public readonly displayValue = computed(() => this.source.result()?.displayValue ?? '—');
   public readonly status = computed(() => this.source.result()?.status ?? 'none');
@@ -103,7 +112,10 @@ export class KpiWidgetComponent extends DataWidgetBase {
   });
 
   public readonly showMeter = computed(
-    () => this.config().showAsMeter && this.config().comparisonMode === 'fixedTarget' && this.meterPercent() !== null,
+    () =>
+      this.config().showAsMeter &&
+      this.config().comparisonMode === 'fixedTarget' &&
+      this.meterPercent() !== null,
   );
 
   /** An SVG polyline for the trailing-history sparkline; null when there's nothing to plot. */
@@ -148,10 +160,17 @@ export class KpiWidgetComponent extends DataWidgetBase {
     fetch: () => {
       const config = this.config();
       if (!config.datasetId) return null;
-      if (config.valueSource === 'aggregate' && config.aggregate !== 'count' && !config.valueColumnId) {
+      if (
+        config.valueSource === 'aggregate' &&
+        config.aggregate !== 'count' &&
+        !config.valueColumnId
+      ) {
         return null;
       }
-      if (config.valueSource === 'toleranceOutOfLimits' && (!config.valueColumnId || !config.tolerance)) {
+      if (
+        config.valueSource === 'toleranceOutOfLimits' &&
+        (!config.valueColumnId || !config.tolerance)
+      ) {
         return null;
       }
 
@@ -257,7 +276,10 @@ export class KpiWidgetComponent extends DataWidgetBase {
     const data = this.source.result();
     if (!data) return null;
     if (data.groups) {
-      return toCsv([['Group', 'Value'], ...data.groups.map((g) => [g.label, g.displayValue ?? ''])]);
+      return toCsv([
+        ['Group', 'Value'],
+        ...data.groups.map((g) => [g.label, g.displayValue ?? '']),
+      ]);
     }
     return toCsv([
       ['Value', 'Comparison'],

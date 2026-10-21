@@ -54,7 +54,9 @@ export class FormatRulesEditorComponent {
   }
 
   public update(index: number, patch: Partial<FormatRule>): void {
-    this.rulesChange.emit(this.rules().map((rule, i) => (i === index ? { ...rule, ...patch } : rule)));
+    this.rulesChange.emit(
+      this.rules().map((rule, i) => (i === index ? { ...rule, ...patch } : rule)),
+    );
   }
 
   public remove(index: number): void {

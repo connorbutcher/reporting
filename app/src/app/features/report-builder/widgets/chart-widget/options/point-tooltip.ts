@@ -12,8 +12,11 @@ export class PointTooltip {
     dateCfg: DateColumnConfig | undefined,
   ): (value: Coord) => string {
     if (isText) return (value) => String(value);
-    if (isDate) return (value) => (typeof value === 'number' ? ChartFormat.date(value, dateCfg) : String(value));
-    return (value) => (typeof value === 'number' ? ChartFormat.numeric(value, numConfig) : String(value));
+    if (isDate)
+      return (value) =>
+        typeof value === 'number' ? ChartFormat.date(value, dateCfg) : String(value);
+    return (value) =>
+      typeof value === 'number' ? ChartFormat.numeric(value, numConfig) : String(value);
   }
 
   public static format(

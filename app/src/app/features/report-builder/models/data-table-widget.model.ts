@@ -70,7 +70,12 @@ export class DataTableWidgetModel extends WidgetModel {
       // The columns on this table that have fixed tolerance banding, so the filter can offer
       // "in/out of tolerance" on them. A column whose limits are matched per row has no single band.
       tolerantColumns: computed(
-        () => new Set(this.columns().filter((c) => hasFixedLimits(c.tolerance())).map((c) => c.columnId)),
+        () =>
+          new Set(
+            this.columns()
+              .filter((c) => hasFixedLimits(c.tolerance()))
+              .map((c) => c.columnId),
+          ),
       ),
       view: { kind: 'widgetFilters', widgetId: this.id },
       ownerId: this.id,

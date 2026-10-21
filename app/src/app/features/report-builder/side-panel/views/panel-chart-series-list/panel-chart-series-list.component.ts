@@ -51,7 +51,10 @@ export class PanelChartSeriesListComponent {
     const x = nameOf(binding.xColumnId());
 
     // A bar or combo series groups by a category and can reduce several measures; a point series plots X→Y.
-    if (this.chart() instanceof BarChartWidgetModel || this.chart() instanceof ComboChartWidgetModel) {
+    if (
+      this.chart() instanceof BarChartWidgetModel ||
+      this.chart() instanceof ComboChartWidgetModel
+    ) {
       if (!x) return 'Choose a category';
       const values = binding
         .barValueColumnIds()

@@ -78,7 +78,10 @@ export class ReportLifecycle {
           error: (err) => {
             this.loadFailed.set(true);
             // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.
-            this.notify.apiError(err, "This report couldn't be opened for editing. Please try again.");
+            this.notify.apiError(
+              err,
+              "This report couldn't be opened for editing. Please try again.",
+            );
           },
         });
       });
@@ -103,7 +106,8 @@ export class ReportLifecycle {
         this.router.navigate(['/reports', model.reportId]);
         this.notify.success('Report published.');
       },
-      error: (err) => this.notify.apiError(err, "The report couldn't be published. Please try again."),
+      error: (err) =>
+        this.notify.apiError(err, "The report couldn't be published. Please try again."),
     });
   }
 
