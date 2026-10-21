@@ -1,4 +1,6 @@
-import { LineSeriesOption, MarkAreaData, MarkLineData } from './chart-option.types';
+import type { LineSeriesOption } from 'echarts/charts';
+import { MarkAreaData } from './types/mark-area-data';
+import { MarkLineData } from './types/mark-line-data';
 
 /**
  * The series a chart's reference lines and shaded zones (tolerance bands, guide lines) hang on.

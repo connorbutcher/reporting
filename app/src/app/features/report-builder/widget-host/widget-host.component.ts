@@ -4,7 +4,7 @@ import { FilterGroup, combineFilters } from '../../../core/models/filter';
 import { SortDirection, widgetFragment } from '../../../core/models/report';
 import { isExportableWidgetType } from '../../../core/models/widget-catalog';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
-import { GridPreview } from '../grid.util';
+import { GridPreview } from '../grid/grid-preview';
 import {
   ChartWidgetModel,
   DataTableWidgetModel,
@@ -17,11 +17,10 @@ import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
 import { WidgetSelection } from '../state/widget-selection';
 import { WidgetExportActionsComponent } from '../widgets/widget-export-actions/widget-export-actions.component';
-import {
-  WidgetFullscreenDialogComponent,
-  WidgetFullscreenDialogData,
-} from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
-import { WidgetOutletDirective, WidgetOutputHandler } from '../widgets/widget-outlet.directive';
+import { WidgetFullscreenDialogComponent } from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
+import { WidgetFullscreenDialogData } from '../widgets/widget-fullscreen-dialog/widget-fullscreen-dialog-data';
+import { WidgetOutletDirective } from '../widgets/widget-outlet.directive';
+import { WidgetOutputHandler } from '../widgets/widget-output-handler';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
 

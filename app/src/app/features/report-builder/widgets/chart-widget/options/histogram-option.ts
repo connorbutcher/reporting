@@ -10,12 +10,9 @@ import {
   HistogramQueryResult,
   ResolvedToleranceBand,
 } from '../../../../../core/models/widget-query';
-import {
-  BarSeriesOption,
-  ECOption,
-  LabelCallbackParams,
-  LineSeriesOption,
-} from './chart-option.types';
+import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
+import { ECOption } from './types/ec-option';
+import { LabelCallbackParams } from './types/label-callback-params';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';

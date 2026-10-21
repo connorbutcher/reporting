@@ -1,9 +1,7 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
 import {
   ChartGuideLine,
-  ChartSymbol,
   ComboChartWidgetConfig,
-  LineDashStyle,
   chartAxisIndex,
   readChartAxes,
   readChartBindings,
@@ -13,13 +11,10 @@ import {
   BarSeriesResult,
   ResolvedToleranceBand,
 } from '../../../../../core/models/widget-query';
-import {
-  BarSeriesOption,
-  ECOption,
-  LabelCallbackParams,
-  LineSeriesOption,
-  YAXisComponentOption,
-} from './chart-option.types';
+import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
+import type { YAXisComponentOption } from 'echarts';
+import { ECOption } from './types/ec-option';
+import { LabelCallbackParams } from './types/label-callback-params';
 import { BarOption } from './bar-option';
 import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
@@ -27,24 +22,13 @@ import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-zone';
+import { OutlineSeverity } from './outline-severity';
 import { AXIS_OFFSET } from './point-types';
 import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
-
-/** One resolved series ready to draw: its query result plus the axis, render kind, and styling it plots with. */
-interface ComboSeries {
-  result: BarSeriesResult;
-  axisIndex: number;
-  renderAs: 'bar' | 'line';
-  color: string;
-  /** Line marker override from the binding; null uses the default (or none per `showPoints`). */
-  symbol: ChartSymbol | null;
-  /** Line dash override from the binding; null draws solid. */
-  dashStyle: LineDashStyle | null;
-}
+import { ComboSeries } from './types/combo-series';
 
 /**
  * Builds the combination echarts option: a shared category axis with one aggregated value per

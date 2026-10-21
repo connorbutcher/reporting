@@ -15,14 +15,7 @@ import { FilterGroup } from '../../../core/models/filter';
 import { Widget, WidgetType } from '../../../core/models/report';
 import { WIDGET_COMPONENTS } from './widget-component.registry';
 import { WidgetExportBase } from './widget-export-base';
-
-/**
- * A handler for one of a widget's outputs. Its parameter is `never` so a host can
- * register handlers typed with each output's own concrete value — a function of a
- * specific type is assignable to `(value: never) => void` — while the outlet, which
- * only sees the output generically, passes the emitted value straight through.
- */
-export type WidgetOutputHandler = (value: never) => void;
+import { WidgetOutputHandler } from './widget-output-handler';
 
 /**
  * Renders a widget by creating the component the registry maps its type to, rather

@@ -1,5 +1,5 @@
 import { ChartGuideLine } from '../../../../../core/models/report';
-import { OutlineZone } from './outline-zone';
+import { OutlineZone } from './types/outline-zone';
 
 /**
  * Turns guide lines with outlining on into generic {@link OutlineZone}s — a single boundary (or,

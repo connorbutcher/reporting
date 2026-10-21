@@ -6,7 +6,9 @@ import {
   XBarRChartWidgetConfig,
 } from '../../../../../core/models/report';
 import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../core/models/widget-query';
-import { ECOption, LineSeriesOption, TooltipCallbackParams } from './chart-option.types';
+import type { LineSeriesOption } from 'echarts/charts';
+import { ECOption } from './types/ec-option';
+import { TooltipCallbackParams } from './types/tooltip-callback-params';
 import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
@@ -15,6 +17,7 @@ import { GuideLineMarks } from './guide-line-marks';
 import { ReferenceSeries } from './reference-series';
 import { ToleranceMarks } from './tolerance-marks';
 import { TooltipHtml } from './tooltip-html';
+import { SubgroupTooltipContext } from './types/subgroup-tooltip-context';
 
 // In-control points/line stay blue; a point breaching its own control limits turns red — the same
 // alarm colour tolerance bands use for an out-of-spec value, since both mean "something's wrong
@@ -24,18 +27,6 @@ const IN_CONTROL_COLOR = '#2563eb';
 const OUT_OF_CONTROL_COLOR = '#dc2626';
 const CENTER_LINE_COLOR = '#475569';
 const LIMIT_LINE_COLOR = '#7c3aed';
-
-/** What the subgroup tooltip needs beyond its value: which chart it's on and how to format it. */
-interface SubgroupTooltipContext {
-  kind: 'mean' | 'range';
-  /** The plotted value's name on this chart (Mean, Value, Range, Std dev, Moving range). */
-  valueLabel: string;
-  categories: readonly string[];
-  subgroups: readonly XBarRSubgroup[];
-  /** How this chart's values and limits read: the measure's format, or a percentage on a p chart. */
-  format: (value: number) => string;
-  centerLine: number;
-}
 
 /**
  * Builds the Xbar-R echarts option: two stacked grids sharing one category (subgroup) axis — the

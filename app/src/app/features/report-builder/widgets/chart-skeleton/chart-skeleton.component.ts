@@ -1,7 +1,5 @@
 import { Component, input } from '@angular/core';
-
-/** The silhouette a loading chart hints at: columns for the aggregating charts, a trend for scatter and line. */
-export type ChartSkeletonShape = 'bars' | 'line';
+import { ChartSkeletonShape } from './chart-skeleton-shape';
 
 /**
  * A placeholder drawn where a chart will be on its first load — axes and a softly pulsing outline of

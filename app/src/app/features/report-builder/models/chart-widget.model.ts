@@ -1,4 +1,4 @@
-import { Signal, WritableSignal, computed, signal } from '@angular/core';
+import { Signal, WritableSignal, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   AxisLabelRotation,
@@ -16,7 +16,8 @@ import { ChartBindingModel } from './chart-binding.model';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /**
  * Shared behaviour for every chart kind (scatter, line, bar). Owns the series bindings, value

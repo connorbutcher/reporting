@@ -11,7 +11,7 @@ import {
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ValidationIssue } from './validation-issue';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /**
  * A combination chart. It shares the bar chart's data model — categories reduced by an aggregate,

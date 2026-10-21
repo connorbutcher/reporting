@@ -1,25 +1,8 @@
 import { signal } from '@angular/core';
-import { DataTableWidgetConfig, TableDensity } from '../../../core/models/report';
+import { TableDensity } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
-
-/** The presentation options for a table, independent of which data it shows. */
-export type TableAppearanceDto = Pick<
-  DataTableWidgetConfig,
-  | 'showColumnHeaders'
-  | 'resizableColumns'
-  | 'stripedRows'
-  | 'showGridlines'
-  | 'rowHover'
-  | 'density'
-  | 'paginator'
-  | 'rowsPerPage'
-  | 'emptyMessage'
-  | 'showTotals'
-  | 'showSearch'
-  | 'frozenColumns'
-  | 'rowDetails'
->;
+import { TableAppearanceDto } from './table-appearance.dto';
 
 export class TableAppearanceModel extends EditorNode {
   readonly showColumnHeaders = signal(true);

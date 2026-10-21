@@ -1,4 +1,6 @@
 import { FormatRule, FormatRuleStyle } from '../../../core/models/report';
+import { RawCellValue } from './format-rules/raw-cell-value';
+import { ValueKind } from './format-rules/value-kind';
 
 /** The CSS class each rule style puts on a cell; the classes live in `_cell-format.scss`. */
 export const FORMAT_STYLE_CLASS: Record<FormatRuleStyle, string> = {
@@ -8,9 +10,6 @@ export const FORMAT_STYLE_CLASS: Record<FormatRuleStyle, string> = {
   blue: 'fmt-blue',
   bold: 'fmt-bold',
 };
-
-/** A raw cell value as the table and pivot queries return it: a number, true/false, an ISO date, or text. */
-export type RawCellValue = number | string | boolean | null | undefined;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
 
@@ -91,8 +90,6 @@ export function dataBarPercent(
   if (high === low) return null;
   return Math.max(0, Math.min(100, ((value - low) / (high - low)) * 100));
 }
-
-type ValueKind = 'number' | 'date' | 'text';
 
 /** A value in a form that compares by meaning: a number, a date as its time, or lower-cased text. */
 function comparable(value: Exclude<RawCellValue, null | undefined>): {

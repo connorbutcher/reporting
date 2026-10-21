@@ -6,25 +6,9 @@ import {
   HistogramQueryResult,
   XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
-
-/** What clicking a mark on a grouping chart opens: the rows behind it, from one binding's dataset. */
-export interface ChartDrillTarget {
-  datasetId: number;
-  /** The heading parts after the chart title, e.g. the category and series. */
-  path: string[];
-  /** The binding's own filter combined with the clicked mark's conditions. */
-  filter: FilterGroup | null;
-}
-
-/** The click a drill reads: which series (by name) and which data point (category, bin or subgroup) was hit. */
-export interface ChartDrillClick {
-  seriesName?: string;
-  seriesType?: string;
-  dataIndex?: number;
-}
-
-type GroupingResult =
-  BarChartQueryResult | BoxPlotQueryResult | HistogramQueryResult | XBarRChartQueryResult;
+import { ChartDrillTarget } from './models/chart-drill-target';
+import { ChartDrillClick } from './models/chart-drill-click';
+import { GroupingResult } from './models/grouping-result';
 
 /**
  * Turns a click on a bar, box, histogram bin or control-chart point into the rows behind it — the

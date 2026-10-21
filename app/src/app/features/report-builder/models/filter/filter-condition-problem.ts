@@ -1,21 +1,7 @@
 import { ValidationIssue } from '../validation-issue';
 import { FilterContext } from './filter-context';
-
-/** Why an enabled condition isn't narrowing the data. Only the first that applies is reported. */
-export type ConditionProblem =
-  | { kind: 'missingColumn' }
-  | { kind: 'missingTolerance'; columnName: string | null }
-  | { kind: 'missingValue'; columnName: string | null; operatorLabel: string; needed: number };
-
-export interface ConditionFacts {
-  readonly columnMissing: boolean;
-  /** A tolerance operator on a column that has no banding. */
-  readonly toleranceMissing: boolean;
-  readonly complete: boolean;
-  readonly columnName: string | null;
-  readonly operatorLabel: string;
-  readonly needed: number;
-}
+import { ConditionProblem } from './condition-problem';
+import { ConditionFacts } from './condition-facts';
 
 export function findProblem(facts: ConditionFacts): ConditionProblem | null {
   if (facts.columnMissing) return { kind: 'missingColumn' };

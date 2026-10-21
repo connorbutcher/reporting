@@ -24,39 +24,29 @@ import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetDataSource } from '../widget-data-source';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
-import {
-  ChartSkeletonComponent,
-  ChartSkeletonShape,
-} from '../chart-skeleton/chart-skeleton.component';
-import {
-  DrillThroughDialogComponent,
-  DrillThroughDialogData,
-} from '../drill-through-dialog/drill-through-dialog.component';
+import { ChartSkeletonComponent } from '../chart-skeleton/chart-skeleton.component';
+import { ChartSkeletonShape } from '../chart-skeleton/chart-skeleton-shape';
+import { DrillThroughDialogComponent } from '../drill-through-dialog/drill-through-dialog.component';
+import { DrillThroughDialogData } from '../drill-through-dialog/drill-through-dialog-data';
 import { ChartDrill } from './chart-drill';
-import { ChartZoomMemory, ChartZoomRange } from './chart-zoom';
+import { ChartZoomMemory } from './chart-zoom';
+import { ChartZoomRange } from './models/chart-zoom-range';
 import { BoxOption } from './options/box-option';
-import { ChartCountBar, ChartCountBarContent } from './chart-count-bar';
+import { ChartCountBar } from './chart-count-bar';
+import { ChartCountBarContent } from './models/chart-count-bar-content';
 import { ChartExport } from './chart-export';
 import { BarOption } from './options/bar-option';
 import { ComboOption } from './options/combo-option';
-import { ECOption } from './options/chart-option.types';
+import { ECOption } from './options/types/ec-option';
 import { HistogramOption } from './options/histogram-option';
 import { PointOption } from './options/point-option';
-import {
-  ChartCommentAnchor,
-  CommentAnchorPoint,
-  COMMENT_ANCHOR_SERIES_NAME,
-} from './options/point-types';
-import { SeriesPalette } from './options/series-colors';
+import { COMMENT_ANCHOR_SERIES_NAME } from './options/point-types';
+import { ChartCommentAnchor } from './options/types/chart-comment-anchor';
+import { CommentAnchorPoint } from './options/types/comment-anchor-point';
+import { SeriesPalette } from './options/series-palette';
 import { XBarROption } from './options/xbar-r-option';
 import { ChartQuery } from './query/chart-query';
-
-type AnyChartResult =
-  | ChartQueryResult
-  | BarChartQueryResult
-  | BoxPlotQueryResult
-  | HistogramQueryResult
-  | XBarRChartQueryResult;
+import { AnyChartResult } from './models/any-chart-result';
 
 /**
  * Renders a scatter, line, or bar chart. This host owns only the shared plumbing — inputs, the

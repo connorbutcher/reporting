@@ -1,5 +1,7 @@
 import { Directive, DestroyRef, computed, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GRID_GAP, ROW_HEIGHT, clamp, rectsOverlap } from '../grid.util';
+import { GridPreview } from '../grid/grid-preview';
+import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
 import { ReportSession } from '../state/report-session';
 

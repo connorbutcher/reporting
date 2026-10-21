@@ -10,7 +10,8 @@ import { PivotTableWidgetModel } from './pivot-table-widget.model';
 import { ScatterChartWidgetModel } from './scatter-chart-widget.model';
 import { StaticTextWidgetModel } from './static-text-widget.model';
 import { XBarRChartWidgetModel } from './xbar-r-chart-widget.model';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 export * from './widget-model-base';
 export * from './data-table-widget.model';

@@ -1,13 +1,8 @@
 import { ResolvedToleranceBand } from '../../../../../core/models/widget-query';
-import { MarkAreaData, MarkLineData } from './chart-option.types';
-
-/** Which axis a band's marks bind to — chosen by the caller (a bar's value axis flips with orientation). */
-type AxisKeyFor = (band: ResolvedToleranceBand) => 'xAxis' | 'yAxis';
-
-// The value goes on whichever axis the band binds to; kept as a helper so the two
-// mark builders set `xAxis`/`yAxis` explicitly rather than through a computed key
-// (which would erase the specific field echarts types expect).
-type AxisKey = 'xAxis' | 'yAxis';
+import { MarkAreaData } from './types/mark-area-data';
+import { MarkLineData } from './types/mark-line-data';
+import { AxisKey } from './types/axis-key';
+import { AxisKeyFor } from './types/axis-key-for';
 
 // Translucent so plotted marks stay readable through the shading.
 const IN_SPEC_FILL = 'rgba(22, 163, 74, 0.10)';
@@ -18,7 +13,7 @@ export class ToleranceMarks {
   /** Dashed line entries for every band's bounds, coloured by what crossing them means. */
   public static lines(
     bands: readonly ResolvedToleranceBand[],
-    axisKeyFor: AxisKeyFor,
+    axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
   ): MarkLineData {
     const entries: MarkLineData = [];
 
@@ -48,7 +43,7 @@ export class ToleranceMarks {
   /** Shaded regions for every band whose `fill` is on: the in-spec zone plus amber concession shoulders. */
   public static areas(
     bands: readonly ResolvedToleranceBand[],
-    axisKeyFor: AxisKeyFor,
+    axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
   ): MarkAreaData {
     const areas: MarkAreaData = [];
 

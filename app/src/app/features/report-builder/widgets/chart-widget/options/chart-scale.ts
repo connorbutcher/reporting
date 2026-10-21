@@ -1,7 +1,9 @@
 import { DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
 import { AxisLabelRotation } from '../../../../../core/models/report';
 import { ChartFormat } from './chart-format';
-import { CategoryAxisFragment, DateAxisFragment, ValueAxisFragment } from './chart-option.types';
+import { CategoryAxisFragment } from './types/category-axis-fragment';
+import { DateAxisFragment } from './types/date-axis-fragment';
+import { ValueAxisFragment } from './types/value-axis-fragment';
 
 /**
  * The scale-dependent echarts axis fields: axis `type` plus, for numeric axes, fixed

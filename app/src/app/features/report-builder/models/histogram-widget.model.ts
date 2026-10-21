@@ -9,7 +9,7 @@ import {
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /**
  * A histogram. It reuses the shared chart base for dataset/series/filter binding, reading

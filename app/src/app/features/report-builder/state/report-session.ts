@@ -20,11 +20,11 @@ import {
   ChartWidgetModel,
   DataTableWidgetModel,
   KpiWidgetModel,
-  ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
 } from '../models/widget.model';
 import { WidgetSelection } from './widget-selection';
+import { ModelSources } from '../models/sources/model-sources';
 
 /**
  * The report-builder's shared session state: the loaded {@link ReportModel} tree

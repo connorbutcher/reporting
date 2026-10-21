@@ -17,8 +17,9 @@ import {
 } from '../../../core/models/report';
 import { clamp, rectsOverlap } from '../grid.util';
 import { EditorNode } from './editor-node';
-import { ModelSources, WidgetModel, widgetModelFromDto } from './widget.model';
+import { WidgetModel, widgetModelFromDto } from './widget.model';
 import { ValidationIssue } from './validation-issue';
+import { ModelSources } from './sources/model-sources';
 
 const MIN_GRID_SIZE = 1;
 // Columns fill the canvas width, so a fine column count is normal now; rows can

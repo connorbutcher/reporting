@@ -1,23 +1,8 @@
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DataTableColumnSetting } from '../../../../core/models/report';
 import { TableRowResult } from '../../../../core/models/widget-query';
-
-/** One field the row-detail panel lists: the column and the label to show it under. */
-export interface RowDetailField {
-  setting: DataTableColumnSetting;
-  label: string;
-}
-
-/** What a table hands the row-detail panel: which row of which dataset, and the fields to list. */
-export interface RowDetailDialogData {
-  datasetId: number;
-  rowId: string;
-  title: string;
-  /** Every dataset column, the table's own settings (header, tolerance) applied where it has them. */
-  fields: RowDetailField[];
-}
+import { RowDetailDialogData } from './row-detail-dialog-data';
 
 /**
  * A side panel listing every column of one table row, opened by clicking the row. It fetches the row

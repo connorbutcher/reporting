@@ -11,7 +11,8 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
-import { ModelSources, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 import { ValidationIssue } from './validation-issue';
 
 /** Numeric column types an aggregate other than Count can reduce. */

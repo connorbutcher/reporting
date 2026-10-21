@@ -1,15 +1,8 @@
 import { signal } from '@angular/core';
-import {
-  StaticTextWidgetConfig,
-  TextAlign,
-  TextFontWeight,
-  TextVerticalAlign,
-} from '../../../core/models/report';
+import { TextAlign, TextFontWeight, TextVerticalAlign } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
-
-/** Everything about how a text widget looks, separate from what it says. */
-export type TextStyleDto = Omit<StaticTextWidgetConfig, 'type' | 'title' | 'showTitle' | 'content'>;
+import { TextStyleDto } from './text-style.dto';
 
 export class TextStyleModel extends EditorNode {
   readonly fontSize = signal(16);

@@ -12,7 +12,7 @@ import {
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
 import { ValidationIssue } from './validation-issue';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /**
  * One dataset's contribution to a chart: its dataset, axes, per-value split, and row filter,

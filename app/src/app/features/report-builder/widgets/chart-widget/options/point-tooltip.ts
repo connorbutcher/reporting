@@ -1,6 +1,7 @@
 import { DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
 import { ChartFormat } from './chart-format';
-import { Coord, ScatterTooltipParams } from './point-types';
+import { Coord } from './types/coord';
+import { ScatterTooltipParams } from './types/scatter-tooltip-params';
 
 /** Builds the per-point tooltip for scatter/line charts and the per-axis value formatters it uses. */
 export class PointTooltip {

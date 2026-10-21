@@ -24,24 +24,9 @@ import {
   HistogramSeriesResult,
   XBarRChartQueryResult,
 } from '../../../../../core/models/widget-query';
-
-/** One binding's point-chart response, tagged with the binding it came from. */
-interface ChartQueryPart {
-  binding: ChartSeriesBinding;
-  result: ChartQueryResult;
-}
-
-/** One binding's bar-chart response, tagged with the binding it came from. */
-interface BarChartPart {
-  binding: ChartSeriesBinding;
-  result: BarChartQueryResult;
-}
-
-/** One binding's histogram response, tagged with the binding it came from. */
-interface HistogramPart {
-  binding: ChartSeriesBinding;
-  result: HistogramQueryResult;
-}
+import { ChartQueryPart } from './chart-query-part';
+import { BarChartPart } from './bar-chart-part';
+import { HistogramPart } from './histogram-part';
 
 /** Builds the server query for a chart's current config. */
 export class ChartQuery {

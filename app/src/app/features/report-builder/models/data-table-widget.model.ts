@@ -9,7 +9,9 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
-import { ModelSources, SchemaSource, WidgetModel } from './widget-model-base';
+import { WidgetModel } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
+import { SchemaSource } from './sources/schema-source';
 import { TableAppearanceModel } from './table-appearance.model';
 import { TableColumnModel } from './table-column.model';
 import { ValidationIssue } from './validation-issue';

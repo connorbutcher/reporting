@@ -10,18 +10,8 @@ import {
   switchMap,
 } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { DatasetCountResult, FilterGroup } from '../../../../core/models/filter';
-
-export interface CountKey {
-  datasetId: number;
-  filter: FilterGroup | null;
-}
-
-export type MatchState =
-  | { state: 'idle' }
-  | { state: 'loading' }
-  | { state: 'ready'; result: DatasetCountResult }
-  | { state: 'error' };
+import { CountKey } from './count-key';
+import { MatchState } from './match-state';
 
 const IDLE: MatchState = { state: 'idle' };
 const LOADING: MatchState = { state: 'loading' };

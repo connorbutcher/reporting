@@ -22,56 +22,13 @@ import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
-import {
-  DrillThroughDialogComponent,
-  DrillThroughDialogData,
-} from '../drill-through-dialog/drill-through-dialog.component';
-
-/** A dimension column of the pivot: one per row field, left of the values. */
-interface PivotDimensionColumn {
-  label: string;
-  /** Its position among the row fields — what a dimension sort request names. */
-  fieldIndex: number;
-}
-
-/**
- * One rendered value column: a measure within a block. A block is one column-field combination, or
- * the row totals; without column fields there is a single block.
- */
-interface PivotValueColumn {
-  label: string;
-  /** The measure's position in the widget's configured measures (what a sort request names). */
-  measureIndex: number;
-  /** Which block it belongs to: a column-key index, or null for the totals (or only) block. */
-  columnKeyIndex: number | null;
-  /** Its position in each row's `values`. */
-  valueIndex: number;
-}
-
-/** A group of value columns under one heading across the top. */
-interface PivotColumnBlock {
-  label: string;
-  span: number;
-}
-
-/** A sort the reader chose by clicking a header, or the report's saved default. */
-type PivotSort =
-  | { kind: 'measure'; index: number; descending: boolean }
-  | { kind: 'field'; index: number; descending: boolean };
-
-/** A row flattened for display, aligned to the dimension and value columns. */
-interface PivotDisplayRow {
-  /** The dimension cells as shown, with values repeated from the row above blanked. */
-  dimensions: string[];
-  /** The row's own dimension values, unblanked. */
-  path: string[];
-  values: PivotRow['values'];
-  isSubtotal: boolean;
-  depth: number;
-  /** The outline key of this row's group ("North\u0001Bolt"), for collapsing a subtotal's children. */
-  groupKey: string;
-  drill: FilterGroup | null;
-}
+import { DrillThroughDialogComponent } from '../drill-through-dialog/drill-through-dialog.component';
+import { DrillThroughDialogData } from '../drill-through-dialog/drill-through-dialog-data';
+import { PivotDimensionColumn } from './models/pivot-dimension-column';
+import { PivotValueColumn } from './models/pivot-value-column';
+import { PivotColumnBlock } from './models/pivot-column-block';
+import { PivotSort } from './models/pivot-sort';
+import { PivotDisplayRow } from './models/pivot-display-row';
 
 @Component({
   selector: 'app-pivot-table-widget',

@@ -1,10 +1,8 @@
 import { ChartGuideLine } from '../../../../../core/models/report';
-import { MarkAreaData, MarkLineData } from './chart-option.types';
-
-/** Which axis a line's marks bind to — chosen by the caller (a bar's value axis flips with orientation). */
-type AxisKeyFor = (line: Pick<ChartGuideLine, 'axis'>) => 'xAxis' | 'yAxis';
-
-type AxisKey = 'xAxis' | 'yAxis';
+import { MarkAreaData } from './types/mark-area-data';
+import { MarkLineData } from './types/mark-line-data';
+import { AxisKey } from './types/axis-key';
+import { AxisKeyFor } from './types/axis-key-for';
 
 // A neutral tone, deliberately distinct from tolerance's red/amber so the two kinds of line
 // read as different things at a glance.
@@ -19,7 +17,10 @@ export class GuideLineMarks {
    * One dashed line entry per guide line edge — one for a single value, two (start and end,
    * both captioned) when `valueTo` turns it into a region.
    */
-  public static lines(lines: readonly ChartGuideLine[], axisKeyFor: AxisKeyFor): MarkLineData {
+  public static lines(
+    lines: readonly ChartGuideLine[],
+    axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
+  ): MarkLineData {
     const entries: MarkLineData = [];
 
     for (const line of lines) {
@@ -41,7 +42,10 @@ export class GuideLineMarks {
   }
 
   /** Shaded regions for every guide line that has a `valueTo` and `fill` on. */
-  public static areas(lines: readonly ChartGuideLine[], axisKeyFor: AxisKeyFor): MarkAreaData {
+  public static areas(
+    lines: readonly ChartGuideLine[],
+    axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
+  ): MarkAreaData {
     const areas: MarkAreaData = [];
 
     for (const line of lines) {

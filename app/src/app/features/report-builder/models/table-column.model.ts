@@ -9,7 +9,7 @@ import {
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { ValidationIssue } from './validation-issue';
-import { SchemaSource } from './widget-model-base';
+import { SchemaSource } from './sources/schema-source';
 
 /** One column placed on a table, owning how that column is presented. */
 export class TableColumnModel extends EditorNode {

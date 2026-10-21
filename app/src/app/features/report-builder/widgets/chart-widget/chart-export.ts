@@ -11,16 +11,8 @@ import { toCsv } from '../csv.util';
 import { ChartColumns } from './options/chart-columns';
 import { ChartFormat } from './options/chart-format';
 import { XBarROption } from './options/xbar-r-option';
-
-type AnyChartResult =
-  | ChartQueryResult
-  | BarChartQueryResult
-  | BoxPlotQueryResult
-  | HistogramQueryResult
-  | XBarRChartQueryResult;
-
-/** A chart's plotted values as a table: a header row, then one row per point, category, box, bin or subgroup. */
-export type ChartTable = (string | number | boolean)[][];
+import { AnyChartResult } from './models/any-chart-result';
+import { ChartTable } from './models/chart-table';
 
 /**
  * The rows plotted behind a chart, shaped per chart kind — exported as CSV, and shown as the

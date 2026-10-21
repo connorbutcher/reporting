@@ -1,0 +1,13 @@
+import { ToleranceMatch } from '../../../core/models/report/index';
+
+/** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
+export interface ToleranceSeed {
+  readonly sourceDatasetId?: number | null;
+  readonly sourceRowId?: string | null;
+  /** Only a table column's tolerance can match per row; a chart band never carries this. */
+  readonly match?: ToleranceMatch | null;
+  readonly minColumnId?: string | null;
+  readonly maxColumnId?: string | null;
+  readonly concessionLowerColumnId?: string | null;
+  readonly concessionUpperColumnId?: string | null;
+}

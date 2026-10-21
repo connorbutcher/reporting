@@ -1,4 +1,3 @@
-import { Type } from '@angular/core';
 import { PanelView } from './panel-view';
 import { PanelAddColumnComponent } from './views/panel-add-column/panel-add-column.component';
 import { PanelAddWidgetComponent } from './views/panel-add-widget/panel-add-widget.component';
@@ -19,35 +18,9 @@ import { PanelTextStyleComponent } from './views/panel-text-style/panel-text-sty
 import { PanelWidgetDetailComponent } from './views/panel-widget-detail/panel-widget-detail.component';
 import { PanelWidgetFiltersComponent } from './views/panel-widget-filters/panel-widget-filters.component';
 import { PanelWidgetListComponent } from './views/panel-widget-list/panel-widget-list.component';
-
-/**
- * A panel component, carrying its own heading. The `static title` lives with the
- * component so each screen names itself; the chrome reads it for both the header
- * and the breadcrumb (which needs a label even for panels that aren't loaded, so
- * the title has to be readable off the class without instantiating it).
- */
-export interface PanelComponentType extends Type<unknown> {
-  readonly title: string;
-}
-
-/** The specific {@link PanelView} for one kind — e.g. `ViewOf<'columnSettings'>` carries `columnId`. */
-type ViewOf<K extends PanelView['kind']> = Extract<PanelView, { kind: K }>;
-
-/**
- * Everything the panel chrome needs to know about one screen, in a single row:
- * which component renders it, and where it sits in the breadcrumb hierarchy.
- * The heading isn't here — each component names itself through its `static title`.
- */
-export interface PanelDescriptor<K extends PanelView['kind']> {
-  readonly component: PanelComponentType;
-  /**
-   * The view one step up the panel's *logical* hierarchy — what the breadcrumb
-   * walks — or null at the root. Deliberately independent of chronological
-   * back/forward history, which can jump sideways between unrelated screens;
-   * this always answers "what is this screen part of", not "what did I see last".
-   */
-  readonly parent: (view: ViewOf<K>) => PanelView | null;
-}
+import { PanelComponentType } from './registry/panel-component-type';
+import { ViewOf } from './registry/view-of';
+import { PanelDescriptor } from './registry/panel-descriptor';
 
 /**
  * The single place to wire a new side-panel screen. As a mapped type over every

@@ -5,7 +5,7 @@ import {
 } from '../../../core/models/report';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
-import { ModelSources } from './widget-model-base';
+import { ModelSources } from './sources/model-sources';
 
 /** A scatter chart: X/Y points, one mark per row. Adds no options beyond the shared chart base. */
 export class ScatterChartWidgetModel extends ChartWidgetModel {

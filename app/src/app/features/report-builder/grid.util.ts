@@ -1,3 +1,5 @@
+import { GridRect } from './grid/grid-rect';
+
 /**
  * Rows are a fixed, short height so cells read as wide rectangles; columns instead
  * stretch to fill the canvas width (see the grid template), so the report never
@@ -6,17 +8,6 @@
  */
 export const ROW_HEIGHT = 24;
 export const GRID_GAP = 6;
-
-export interface GridRect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-export interface GridPreview extends GridRect {
-  invalid: boolean;
-}
 
 export function rectsOverlap(a: GridRect, b: GridRect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;

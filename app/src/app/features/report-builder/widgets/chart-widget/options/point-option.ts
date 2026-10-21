@@ -11,25 +11,25 @@ import {
   ChartSeriesResult,
   ResolvedToleranceBand,
 } from '../../../../../core/models/widget-query';
-import { ECOption, LabelCallbackParams, TooltipCallbackParams } from './chart-option.types';
+import { ECOption } from './types/ec-option';
+import { LabelCallbackParams } from './types/label-callback-params';
+import { TooltipCallbackParams } from './types/tooltip-callback-params';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { PointAxes } from './point-axes';
 import { PointSeries } from './point-series';
 import { PointTooltip } from './point-tooltip';
-import {
-  AXIS_OFFSET,
-  ChartCommentAnchor,
-  Coord,
-  PointChartConfig,
-  ScatterTooltipParams,
-  SeriesStyle,
-  SizeScale,
-} from './point-types';
+import { AXIS_OFFSET } from './point-types';
+import { ChartCommentAnchor } from './types/chart-comment-anchor';
+import { Coord } from './types/coord';
+import { PointChartConfig } from './types/point-chart-config';
+import { ScatterTooltipParams } from './types/scatter-tooltip-params';
+import { SeriesStyle } from './types/series-style';
+import { SizeScale } from './types/size-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-zone';
+import { OutlineSeverity } from './outline-severity';
 import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';

@@ -1,21 +1,7 @@
-import {
-  ComponentRef,
-  Directive,
-  Type,
-  ViewContainerRef,
-  effect,
-  inject,
-  input,
-} from '@angular/core';
+import { ComponentRef, Directive, ViewContainerRef, effect, inject, input } from '@angular/core';
 import { WidgetType } from '../../../core/models/report';
 import { ChartWidgetModel } from '../models/widget.model';
-
-/**
- * A chart's type mapped to the panel component that edits one facet of it (its data
- * source, its appearance, …). Partial because only the chart types are ever keys — a
- * chart's `.type` is always one of them, so a miss means the map is simply incomplete.
- */
-export type ChartTypePanels = Partial<Record<WidgetType, Type<unknown>>>;
+import { ChartTypePanels } from './chart-type-panels';
 
 /**
  * Renders the panel for a chart's *type* by creating it imperatively, so a chart-detail

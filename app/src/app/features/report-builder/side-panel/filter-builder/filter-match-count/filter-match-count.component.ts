@@ -3,7 +3,8 @@ import { Component, computed, inject, input, linkedSignal } from '@angular/core'
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
 import { DatasetCountResult, FilterGroup, combineFilters } from '../../../../../core/models/filter';
 import { FilterGroupModel } from '../../../models/filter';
-import { MatchState, liveMatchCount } from '../live-match-count';
+import { liveMatchCount } from '../live-match-count';
+import { MatchState } from '../match-state';
 
 /** "Matches N of M rows" for the filter being edited, folded together with whatever else already narrows the dataset. */
 @Component({

@@ -2,19 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetData, DatasetRow, DatasetSchema } from '../../../core/models/dataset';
-import { FixedToleranceConfig, ToleranceConfig, ToleranceMatch } from '../../../core/models/report';
-
-/** The tolerance-pointer fields a saved config or band carries, loosely typed for either shape. */
-export interface ToleranceSeed {
-  readonly sourceDatasetId?: number | null;
-  readonly sourceRowId?: string | null;
-  /** Only a table column's tolerance can match per row; a chart band never carries this. */
-  readonly match?: ToleranceMatch | null;
-  readonly minColumnId?: string | null;
-  readonly maxColumnId?: string | null;
-  readonly concessionLowerColumnId?: string | null;
-  readonly concessionUpperColumnId?: string | null;
-}
+import { FixedToleranceConfig, ToleranceConfig } from '../../../core/models/report';
+import { ToleranceSeed } from './tolerance-seed';
 
 /**
  * Picks a limits dataset, a spec row in it, and which of that row's columns

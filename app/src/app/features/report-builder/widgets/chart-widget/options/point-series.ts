@@ -1,20 +1,18 @@
 import { ChartSeriesResult } from '../../../../../core/models/widget-query';
-import {
+import type {
   EffectScatterSeriesOption,
   LineSeriesOption,
-  PointSeriesOption,
   ScatterSeriesOption,
-} from './chart-option.types';
-import { OutlineSeverity } from './outline-zone';
-import {
-  ChartCommentAnchor,
-  COMMENT_ANCHOR_SERIES_NAME,
-  Coord,
-  PointChartConfig,
-  ScatterPoint,
-  SeriesStyle,
-  SizeScale,
-} from './point-types';
+} from 'echarts/charts';
+import { PointSeriesOption } from './types/point-series-option';
+import { OutlineSeverity } from './outline-severity';
+import { COMMENT_ANCHOR_SERIES_NAME } from './point-types';
+import { ChartCommentAnchor } from './types/chart-comment-anchor';
+import { Coord } from './types/coord';
+import { PointChartConfig } from './types/point-chart-config';
+import { ScatterPoint } from './types/scatter-point';
+import { SeriesStyle } from './types/series-style';
+import { SizeScale } from './types/size-scale';
 
 /** The fixed colour every comment-anchor marker draws in — distinct from any series' own palette colour. */
 const ANCHOR_COLOR = '#152a55';

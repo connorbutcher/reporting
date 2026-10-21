@@ -21,11 +21,8 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
 import { FilterGroup } from '../../../../core/models/filter';
 import {
-  Aggregate,
-  ColumnAlign,
   DataTableColumnSetting,
   DataTableWidgetConfig,
-  FormatRule,
   SortDirection,
 } from '../../../../core/models/report';
 import {
@@ -37,36 +34,20 @@ import {
 import { NotificationService } from '../../../../core/services/notification.service';
 import { toCsv } from '../csv.util';
 import { FORMAT_STYLE_CLASS, dataBarPercent, matchFormatRule } from '../format-rules';
-import {
-  RowDetailDialogComponent,
-  RowDetailDialogData,
-} from '../row-detail-dialog/row-detail-dialog.component';
+import { RowDetailDialogComponent } from '../row-detail-dialog/row-detail-dialog.component';
+import { RowDetailDialogData } from '../row-detail-dialog/row-detail-dialog-data';
 import { resolveWidgetFilter } from '../effective-filter';
 import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
+import { DisplayColumn } from './display-column';
 
 /**
  * How many rows a scrolling (non-paginated) table fetches at a time. The table holds a placeholder
  * for every matched row and fills windows in as the reader scrolls to them, so there is no row cap.
  */
 export const SCROLL_WINDOW = 200;
-
-/** A dataset column paired with the widget's settings for it. */
-export interface DisplayColumn {
-  column: DatasetColumn;
-  header: string;
-  align: ColumnAlign;
-  sortable: boolean;
-  width?: number;
-  wrap: boolean;
-  dataBars: boolean;
-  formatRules: readonly FormatRule[];
-  total: Aggregate | null;
-  /** Stays put while the table scrolls sideways (one of the leading frozen columns). */
-  frozen: boolean;
-}
 
 @Component({
   selector: 'app-data-table-widget',

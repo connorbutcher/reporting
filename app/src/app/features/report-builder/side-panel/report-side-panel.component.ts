@@ -5,6 +5,7 @@ import { DividerModule } from 'primeng/divider';
 import { PanelNavigation } from '../state/panel-navigation';
 import { ReportSession } from '../state/report-session';
 import { PANEL_VIEWS, panelComponentFor, parentOf } from './panel-component.registry';
+import { Crumb } from './crumb';
 import { PanelView } from './panel-view';
 
 /**
@@ -22,7 +23,6 @@ function viewKey(view: PanelView): string {
 
 /** Stands in for the ancestors hidden between the first and last couple of crumbs. */
 const ELLIPSIS = 'ellipsis' as const;
-type Crumb = PanelView | typeof ELLIPSIS;
 
 /** Above this many ancestors, the middle of the trail collapses behind "…". */
 const COLLAPSE_THRESHOLD = 4;

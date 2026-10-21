@@ -9,34 +9,22 @@ import {
   BoxPlotQueryResult,
   ResolvedToleranceBand,
 } from '../../../../../core/models/widget-query';
-import {
-  BoxplotSeriesOption,
-  ECOption,
-  ScatterSeriesOption,
-  TooltipCallbackParams,
-} from './chart-option.types';
+import type { BoxplotSeriesOption, ScatterSeriesOption } from 'echarts/charts';
+import { ECOption } from './types/ec-option';
+import { TooltipCallbackParams } from './types/tooltip-callback-params';
 import { CategoryZoom } from './category-zoom';
 import { ChartColumns } from './chart-columns';
 import { ChartFormat } from './chart-format';
 import { ChartScale } from './chart-scale';
 import { GuideLineMarks } from './guide-line-marks';
 import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-zone';
+import { OutlineSeverity } from './outline-severity';
 import { ReferenceSeries } from './reference-series';
 import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
 import { TooltipHtml } from './tooltip-html';
-
-/** What the box tooltip needs beyond the summary: the value formatting and the optional engineering extras. */
-interface BoxTooltipContext {
-  config: NumericColumnConfig | undefined;
-  horizontal: boolean;
-  showMean: boolean;
-  showCapability: boolean;
-  /** The single value-axis spec band (min & max resolved) capability is measured against, or null. */
-  spec: ResolvedToleranceBand | null;
-}
+import { BoxTooltipContext } from './types/box-tooltip-context';
 
 /** Builds the box-and-whisker echarts option: a category axis with one box per category, per series. */
 export class BoxOption {

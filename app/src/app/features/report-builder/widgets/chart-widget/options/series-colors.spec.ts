@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SeriesColors, SeriesPalette } from './series-colors';
+import { SeriesColors } from './series-colors';
+import { SeriesPalette } from './series-palette';
 
 describe('SeriesPalette', () => {
   it('gives a label the same colour in every chart, whatever else that chart plots', () => {

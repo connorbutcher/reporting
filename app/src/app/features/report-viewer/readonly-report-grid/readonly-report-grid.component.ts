@@ -12,11 +12,10 @@ import { isChartWidget, isExportableWidgetType } from '../../../core/models/widg
 import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
-import {
-  WidgetFullscreenDialogComponent,
-  WidgetFullscreenDialogData,
-} from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
-import { WidgetOutletDirective, WidgetOutputHandler } from '../../report-builder/widgets/widget-outlet.directive';
+import { WidgetFullscreenDialogComponent } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
+import { WidgetFullscreenDialogData } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog-data';
+import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
+import { WidgetOutputHandler } from '../../report-builder/widgets/widget-output-handler';
 import { ReportComments } from '../comments/report-comments';
 import { chartBindingKey } from '../filters/view-filter-entry';
 

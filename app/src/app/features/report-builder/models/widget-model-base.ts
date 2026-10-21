@@ -1,21 +1,7 @@
 import { Signal, computed, signal } from '@angular/core';
-import { DatasetSchema } from '../../../core/models/dataset';
 import { Widget, WidgetType } from '../../../core/models/report';
-import { OperatorCatalogue } from '../../../core/models/filter';
-import { GridRect } from '../grid.util';
+import { GridRect } from '../grid/grid-rect';
 import { EditorNode } from './editor-node';
-
-/** Look-up of dataset schemas by dataset id, supplied by the store's cache. */
-export type SchemaSource = Signal<Record<number, DatasetSchema>>;
-
-/** Filter operators per column type, supplied by the store once fetched. */
-export type CatalogueSource = Signal<OperatorCatalogue | null>;
-
-/** The shared look-ups every model node needs to describe and validate itself. */
-export interface ModelSources {
-  readonly schemas: SchemaSource;
-  readonly catalogue: CatalogueSource;
-}
 
 /** Shared behaviour for anything that can sit on the report grid. */
 export abstract class WidgetModel extends EditorNode {

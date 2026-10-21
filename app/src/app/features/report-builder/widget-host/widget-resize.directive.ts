@@ -1,9 +1,10 @@
 import { Directive, DestroyRef, inject, input, output, signal } from '@angular/core';
-import { GRID_GAP, ROW_HEIGHT, GridPreview, GridRect, clamp, rectsOverlap } from '../grid.util';
+import { GRID_GAP, ROW_HEIGHT, clamp, rectsOverlap } from '../grid.util';
+import { GridPreview } from '../grid/grid-preview';
+import { GridRect } from '../grid/grid-rect';
 import { WidgetModel } from '../models/widget.model';
 import { ReportSession } from '../state/report-session';
-
-export type ResizeDirection = 'right' | 'bottom' | 'corner';
+import { ResizeDirection } from './resize-direction';
 
 /**
  * The resize half of a widget's pointer interaction, split out of the host so

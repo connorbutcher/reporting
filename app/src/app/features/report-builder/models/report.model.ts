@@ -13,11 +13,11 @@ import {
   ChartWidgetModel,
   DataTableWidgetModel,
   KpiWidgetModel,
-  ModelSources,
   PivotTableWidgetModel,
   WidgetModel,
 } from './widget.model';
 import { ValidationIssue } from './validation-issue';
+import { ModelSources } from './sources/model-sources';
 
 // Re-exported so the store and settings panel keep importing the grid defaults
 // from here, unaware they now originate on the tab.

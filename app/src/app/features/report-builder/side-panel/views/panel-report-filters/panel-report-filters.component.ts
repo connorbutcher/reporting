@@ -2,14 +2,7 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
-
-interface DatasetChip {
-  readonly id: number;
-  readonly name: string;
-  readonly count: number;
-  /** The chip's accessible name: dataset and conditions. */
-  readonly label: string;
-}
+import { DatasetChip } from './dataset-chip';
 
 /** Report-level filters, one per dataset, applied to every widget bound to that dataset. */
 @Component({
