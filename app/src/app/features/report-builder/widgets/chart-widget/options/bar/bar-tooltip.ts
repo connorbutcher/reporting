@@ -3,7 +3,7 @@ import { BarSeriesResult } from '../../../../../../core/models/widget-query';
 import { ChartFormat } from '../format/chart-format';
 import { TooltipHtml } from '../format/tooltip-html';
 import { BarAxisTooltipParam } from './bar-axis-tooltip-param';
-import { BarValues } from './bar-values';
+import { BarValueFormats } from './values/bar-value-formats';
 
 /** The axis tooltip for bar and combo charts, hand-built so user-supplied text is escaped. */
 export class BarTooltip {
@@ -42,7 +42,7 @@ export class BarTooltip {
     config: NumericColumnConfig | undefined,
     percent: boolean,
   ): string {
-    const formatted = BarValues.formatValue(value, percent, config);
+    const formatted = BarValueFormats.format(value, percent, config);
     const actual = s.values[p.dataIndex];
     const shown =
       percent && actual != null ? `${formatted} (${ChartFormat.numeric(actual)})` : formatted;

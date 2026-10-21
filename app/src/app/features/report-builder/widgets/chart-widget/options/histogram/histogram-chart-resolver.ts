@@ -28,13 +28,7 @@ export class HistogramChartResolver {
 
     const bins = data?.bins ?? [];
     const results = data?.series ?? [];
-    // A colour override applies only to a single, unsplit distribution.
-    const override = results.length === 1 ? (primary?.color ?? null) : null;
-    const series: HistogramSeries[] = results.map((result, i) => ({
-      result,
-      name: result.label || config.title || 'Series',
-      color: override ?? SeriesColors.forSeries(colors, result.label, i),
-    }));
+    const series = HistogramChartResolver.series(config, results, primary?.color ?? null, colors);
 
     return {
       config,
@@ -47,5 +41,20 @@ export class HistogramChartResolver {
       horizontal: config.horizontal,
       showLegend: series.length > 1 && config.showLegend,
     };
+  }
+
+  /** A colour override applies only to a single, unsplit distribution. */
+  private static series(
+    config: HistogramWidgetConfig,
+    results: HistogramQueryResult['series'],
+    color: string | null,
+    colors: Map<string, string>,
+  ): HistogramSeries[] {
+    const override = results.length === 1 ? color : null;
+    return results.map((result, i) => ({
+      result,
+      name: result.label || config.title || 'Series',
+      color: override ?? SeriesColors.forSeries(colors, result.label, i),
+    }));
   }
 }

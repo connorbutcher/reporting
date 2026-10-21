@@ -9,7 +9,7 @@ import { BarLayout } from './bar-layout';
 import { BarMarks } from './bar-marks';
 import { BarSeriesOptions } from './bar-series-options';
 import { BarTooltip } from './bar-tooltip';
-import { BarValues } from './bar-values';
+import { BarSeriesName } from './values/bar-series-name';
 
 /** Bar chart: one aggregated value per category, per series. */
 export class BarOption {
@@ -43,7 +43,7 @@ export class BarOption {
 
   private static tooltip(chart: BarChart) {
     const seriesByName = new Map(
-      chart.series.map((s) => [BarValues.seriesName(s, chart.config.title), s]),
+      chart.series.map((s) => [BarSeriesName.of(s, chart.config.title), s]),
     );
     return {
       trigger: 'axis' as const,

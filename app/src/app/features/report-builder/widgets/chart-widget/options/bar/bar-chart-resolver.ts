@@ -10,7 +10,9 @@ import { CategoryZoom } from '../axes/category-zoom';
 import { ChartColumns } from '../format/chart-columns';
 import { ChartFormat } from '../format/chart-format';
 import { BarChart } from './bar-chart';
-import { BarValues } from './bar-values';
+import { BarSeriesColors } from './values/bar-series-colors';
+import { BarStacks } from './values/bar-stacks';
+import { BarValueFormats } from './values/bar-value-formats';
 
 /** Resolves a bar chart's config and data into a {@link BarChart}. */
 export class BarChartResolver {
@@ -40,17 +42,17 @@ export class BarChartResolver {
       categoryColumn,
       categories,
       series,
-      seriesColors: BarValues.seriesColors(series, bindings, colors),
+      seriesColors: BarSeriesColors.of(series, bindings, colors),
       valueColumn,
       valueConfig,
-      seriesConfigs: BarValues.seriesConfigs(config.aggregate, series, columns, valueConfig),
+      seriesConfigs: BarValueFormats.bySeries(config.aggregate, series, columns, valueConfig),
       valueAxisConfig: readChartAxes(config)[0],
       horizontal: config.horizontal,
       percent,
       stacked,
       showLegend: series.length > 1 && config.showLegend,
       zoom: CategoryZoom.enabled(config.zoom, categories.length),
-      stackTotals: stacked ? BarChartResolver.stackTotals(series, categories) : new Map(),
+      stackTotals: stacked ? BarStacks.totals(series, categories) : new Map(),
     };
   }
 
@@ -68,19 +70,5 @@ export class BarChartResolver {
       ),
     ];
     return measureIds.length === 1 ? ChartColumns.byId(columns, measureIds[0]) : null;
-  }
-
-  private static stackTotals(
-    series: readonly BarSeriesResult[],
-    categories: string[],
-  ): Map<string, number[]> {
-    const stackTotals = new Map<string, number[]>();
-    for (const s of series) {
-      const stack = BarValues.stackOf(s);
-      const totals = stackTotals.get(stack) ?? categories.map(() => 0);
-      s.values.forEach((v, c) => (totals[c] += v ?? 0));
-      stackTotals.set(stack, totals);
-    }
-    return stackTotals;
   }
 }

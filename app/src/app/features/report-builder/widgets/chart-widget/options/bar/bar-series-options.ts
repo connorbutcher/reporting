@@ -5,7 +5,9 @@ import { OutlineSeverity } from '../marks/outline-severity';
 import { LabelCallbackParams } from '../types/label-callback-params';
 import { BarChart } from './bar-chart';
 import { BarMarks } from './bar-marks';
-import { BarValues } from './bar-values';
+import { BarSeriesName } from './values/bar-series-name';
+import { BarStacks } from './values/bar-stacks';
+import { BarValueFormats } from './values/bar-value-formats';
 
 /** The echarts series of a bar chart: its data bars and optional stack totals. */
 export class BarSeriesOptions {
@@ -18,7 +20,7 @@ export class BarSeriesOptions {
   public static totals(chart: BarChart): BarSeriesOption[] {
     if (!chart.config.showStackTotals || !chart.stacked || chart.percent) return [];
     return [...chart.stackTotals].map(([stack, totals]) => ({
-      name: `${BarValues.TOTAL_PREFIX}${stack}`,
+      name: `${BarStacks.TOTAL_PREFIX}${stack}`,
       type: 'bar',
       stack,
       silent: true,
@@ -44,13 +46,13 @@ export class BarSeriesOptions {
   ): BarSeriesOption {
     const color = chart.seriesColors.get(s) ?? '';
     return {
-      name: BarValues.seriesName(s, chart.config.title),
+      name: BarSeriesName.of(s, chart.config.title),
       type: 'bar',
       // Stack per binding, so overlaid datasets stand as side-by-side stacks.
-      ...(chart.stacked ? { stack: BarValues.stackOf(s) } : {}),
+      ...(chart.stacked ? { stack: BarStacks.of(s) } : {}),
       itemStyle: { color },
       ...(chart.config.showValueLabels ? { label: BarSeriesOptions.valueLabel(chart, s) } : {}),
-      data: BarValues.plotted(s, chart.percent, chart.stackTotals).map((v) => {
+      data: BarStacks.plotted(s, chart.percent, chart.stackTotals).map((v) => {
         const border = v !== null ? outlineColor(v) : null;
         return border ? { value: v, itemStyle: OutlineSeverity.itemStyle(color, border) } : v;
       }),
@@ -64,7 +66,7 @@ export class BarSeriesOptions {
       position: chart.stacked ? 'inside' : chart.horizontal ? 'right' : 'top',
       formatter: (p: LabelCallbackParams) =>
         typeof p.value === 'number'
-          ? BarValues.formatValue(p.value, chart.percent, numericConfig)
+          ? BarValueFormats.format(p.value, chart.percent, numericConfig)
           : '',
     } as const;
   }

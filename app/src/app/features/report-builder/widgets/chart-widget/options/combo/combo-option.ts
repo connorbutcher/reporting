@@ -2,7 +2,6 @@ import { DatasetColumn } from '../../../../../../core/models/dataset';
 import { ComboChartWidgetConfig } from '../../../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import { BarTooltip } from '../bar/bar-tooltip';
-import { BarValues } from '../bar/bar-values';
 import { ECOption } from '../types/ec-option';
 import { ComboAxes } from './combo-axes';
 import { ComboChart } from './combo-chart';
@@ -10,6 +9,7 @@ import { ComboChartResolver } from './combo-chart-resolver';
 import { ComboLayout } from './combo-layout';
 import { ComboMarks } from './combo-marks';
 import { ComboSeriesOptions } from './combo-series-options';
+import { BarSeriesName } from '../bar/values/bar-series-name';
 
 /**
  * Combination chart: the bar chart's data, with each series drawn as bars or a line and
@@ -40,7 +40,7 @@ export class ComboOption {
 
   private static tooltip(chart: ComboChart) {
     const seriesByName = new Map(
-      chart.series.map((s) => [BarValues.seriesName(s.result, chart.config.title), s.result]),
+      chart.series.map((s) => [BarSeriesName.of(s.result, chart.config.title), s.result]),
     );
     return {
       trigger: 'axis' as const,

@@ -1,10 +1,14 @@
 import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query';
+import { AxisKey } from '../types/axis-key';
+import { MarkAxis } from './mark-axis';
+import { AxisKeyFor } from './types/axis-key-for';
 import { MarkAreaData } from './types/mark-area-data';
 import { MarkLineData } from './types/mark-line-data';
-import { AxisKey } from '../types/axis-key';
-import { AxisKeyFor } from './types/axis-key-for';
 
+/** Dashed limit lines and shaded in-spec zones for tolerance bands with both limits. */
 export class ToleranceMarks {
+  private static readonly LIMIT_COLOR = '#dc2626';
+  private static readonly CONCESSION_COLOR = '#d97706';
   private static readonly IN_SPEC_FILL = 'rgba(22, 163, 74, 0.10)';
   private static readonly CONCESSION_FILL = 'rgba(217, 119, 6, 0.13)';
 
@@ -12,30 +16,9 @@ export class ToleranceMarks {
     bands: readonly ResolvedToleranceBand[],
     axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
   ): MarkLineData {
-    const entries: MarkLineData = [];
-
-    for (const band of bands) {
-      if (band.min === null || band.max === null) continue;
-
-      const axisKey = axisKeyFor(band);
-      const hasConcession = band.concessionLower !== null || band.concessionUpper !== null;
-      const minMaxColor = hasConcession ? '#d97706' : '#dc2626';
-
-      entries.push(
-        ToleranceMarks.line(axisKey, band.min, 'Min', minMaxColor),
-        ToleranceMarks.line(axisKey, band.max, 'Max', minMaxColor),
-      );
-      if (band.concessionLower !== null)
-        entries.push(
-          ToleranceMarks.line(axisKey, band.concessionLower, 'Concession lower', '#dc2626'),
-        );
-      if (band.concessionUpper !== null)
-        entries.push(
-          ToleranceMarks.line(axisKey, band.concessionUpper, 'Concession upper', '#dc2626'),
-        );
-    }
-
-    return entries;
+    return bands.flatMap((band) =>
+      ToleranceMarks.hasLimits(band) ? ToleranceMarks.bandLines(band, axisKeyFor(band)) : [],
+    );
   }
 
   /** The in-spec zone plus amber concession shoulders for every filled band. */
@@ -43,34 +26,45 @@ export class ToleranceMarks {
     bands: readonly ResolvedToleranceBand[],
     axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
   ): MarkAreaData {
-    const areas: MarkAreaData = [];
+    return bands.flatMap((band) =>
+      band.fill && ToleranceMarks.hasLimits(band)
+        ? ToleranceMarks.bandAreas(band, axisKeyFor(band))
+        : [],
+    );
+  }
 
-    for (const band of bands) {
-      if (!band.fill || band.min === null || band.max === null) continue;
+  private static hasLimits(band: ResolvedToleranceBand): boolean {
+    return band.min !== null && band.max !== null;
+  }
 
-      const axisKey = axisKeyFor(band);
-      areas.push(ToleranceMarks.region(axisKey, band.min, band.max, ToleranceMarks.IN_SPEC_FILL));
-      if (band.concessionLower !== null)
-        areas.push(
-          ToleranceMarks.region(
-            axisKey,
-            band.concessionLower,
-            band.min,
-            ToleranceMarks.CONCESSION_FILL,
-          ),
-        );
-      if (band.concessionUpper !== null)
-        areas.push(
-          ToleranceMarks.region(
-            axisKey,
-            band.max,
-            band.concessionUpper,
-            ToleranceMarks.CONCESSION_FILL,
-          ),
-        );
-    }
+  /** Min and max turn amber when concessions sit outside them; the concession limits are red. */
+  private static bandLines(band: ResolvedToleranceBand, axisKey: AxisKey): MarkLineData {
+    const hasConcession = band.concessionLower !== null || band.concessionUpper !== null;
+    const limitColor = hasConcession ? ToleranceMarks.CONCESSION_COLOR : ToleranceMarks.LIMIT_COLOR;
+    const red = ToleranceMarks.LIMIT_COLOR;
+    return [
+      ToleranceMarks.line(axisKey, band.min!, 'Min', limitColor),
+      ToleranceMarks.line(axisKey, band.max!, 'Max', limitColor),
+      ...(band.concessionLower !== null
+        ? [ToleranceMarks.line(axisKey, band.concessionLower, 'Concession lower', red)]
+        : []),
+      ...(band.concessionUpper !== null
+        ? [ToleranceMarks.line(axisKey, band.concessionUpper, 'Concession upper', red)]
+        : []),
+    ];
+  }
 
-    return areas;
+  private static bandAreas(band: ResolvedToleranceBand, axisKey: AxisKey): MarkAreaData {
+    const { IN_SPEC_FILL, CONCESSION_FILL } = ToleranceMarks;
+    return [
+      ToleranceMarks.region(axisKey, band.min!, band.max!, IN_SPEC_FILL),
+      ...(band.concessionLower !== null
+        ? [ToleranceMarks.region(axisKey, band.concessionLower, band.min!, CONCESSION_FILL)]
+        : []),
+      ...(band.concessionUpper !== null
+        ? [ToleranceMarks.region(axisKey, band.max!, band.concessionUpper, CONCESSION_FILL)]
+        : []),
+    ];
   }
 
   private static line(
@@ -80,7 +74,7 @@ export class ToleranceMarks {
     color: string,
   ): MarkLineData[number] {
     return {
-      ...ToleranceMarks.onAxis(axisKey, value),
+      ...MarkAxis.at(axisKey, value),
       label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
       lineStyle: { color, type: 'dashed', width: 1.5 },
     };
@@ -93,14 +87,6 @@ export class ToleranceMarks {
     to: number,
     color: string,
   ): MarkAreaData[number] {
-    return [
-      { ...ToleranceMarks.onAxis(axisKey, from), itemStyle: { color } },
-      ToleranceMarks.onAxis(axisKey, to),
-    ];
-  }
-
-  /** A typed `{ xAxis }` or `{ yAxis }` fragment. */
-  private static onAxis(axisKey: AxisKey, value: number): { xAxis: number } | { yAxis: number } {
-    return axisKey === 'xAxis' ? { xAxis: value } : { yAxis: value };
+    return [{ ...MarkAxis.at(axisKey, from), itemStyle: { color } }, MarkAxis.at(axisKey, to)];
   }
 }

@@ -55,25 +55,27 @@ export class BoxTooltip {
     box: Box,
     ctx: BoxTooltipContext,
   ): string {
-    const summary: [label: string, value: number][] = [
+    const body = BoxTooltip.summaryRows(box, ctx)
+      .map(([label, value]) => `${label}: ${ChartFormat.numeric(value, ctx.config)}`)
+      .join('<br/>');
+    const capability = ctx.showCapability ? BoxCapability.text(box, ctx.spec) : null;
+    return (
+      `<strong>${TooltipHtml.escape(seriesName || 'Box')}</strong><br/>${body}<br/>n = ${box.count}` +
+      (capability ? `<br/>${capability}` : '') +
+      (box.tooltipLines ?? []).map((line) => `<br/>${TooltipHtml.escape(line)}`).join('')
+    );
+  }
+
+  private static summaryRows(box: Box, ctx: BoxTooltipContext): [label: string, value: number][] {
+    const rows: [label: string, value: number][] = [
       ['Maximum', box.max],
       ['Upper quartile', box.q3],
       ['Median', box.median],
       ['Lower quartile', box.q1],
       ['Minimum', box.min],
     ];
-    if (ctx.showMean || ctx.showCapability) {
-      summary.push(['Mean', box.mean], ['Std dev', box.stdDev]);
-    }
-    const capability = ctx.showCapability ? BoxCapability.text(box, ctx.spec) : null;
-    const body = summary
-      .map(([label, value]) => `${label}: ${ChartFormat.numeric(value, ctx.config)}`)
-      .join('<br/>');
-    return (
-      `<strong>${TooltipHtml.escape(seriesName || 'Box')}</strong><br/>${body}<br/>n = ${box.count}` +
-      (capability ? `<br/>${capability}` : '') +
-      (box.tooltipLines ?? []).map((line) => `<br/>${TooltipHtml.escape(line)}`).join('')
-    );
+    if (ctx.showMean || ctx.showCapability) rows.push(['Mean', box.mean], ['Std dev', box.stdDev]);
+    return rows;
   }
 
   /** An overlay names itself through its series id; its value sits on the non-category axis. */

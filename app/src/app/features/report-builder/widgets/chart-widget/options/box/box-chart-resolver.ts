@@ -28,13 +28,7 @@ export class BoxChartResolver {
 
     const categories = data?.categories ?? [];
     const results = data?.series ?? [];
-    // A colour override applies only to a single series.
-    const override = results.length === 1 ? primary?.color : null;
-    const series: BoxSeries[] = results.map((result, i) => ({
-      result,
-      name: result.label || config.title || 'Series',
-      color: override ?? SeriesColors.forSeries(colors, result.label, i),
-    }));
+    const series = BoxChartResolver.series(config, results, primary?.color ?? null, colors);
 
     return {
       config,
@@ -50,5 +44,20 @@ export class BoxChartResolver {
       showLegend: series.length > 1 && config.showLegend,
       zoom: CategoryZoom.enabled(config.zoom, categories.length),
     };
+  }
+
+  /** A colour override applies only to a single series. */
+  private static series(
+    config: BoxPlotWidgetConfig,
+    results: BoxPlotQueryResult['series'],
+    color: string | null,
+    colors: Map<string, string>,
+  ): BoxSeries[] {
+    const override = results.length === 1 ? color : null;
+    return results.map((result, i) => ({
+      result,
+      name: result.label || config.title || 'Series',
+      color: override ?? SeriesColors.forSeries(colors, result.label, i),
+    }));
   }
 }

@@ -1,18 +1,15 @@
 import { CategoryZoom } from '../axes/category-zoom';
-import { BarValues } from '../bar/bar-values';
 import { ChartLegend } from '../layout/chart-legend';
-import { PointChartConstants } from '../point/point-chart-constants';
+import { SideAxes } from '../axes/side-axes';
 import { ComboChart } from './combo-chart';
+import { BarSeriesName } from '../bar/values/bar-series-name';
 
 /** A combination chart's grid margins, legend and zoom. */
 export class ComboLayout {
   /** Extra value axes on a side widen that side's margin. */
   public static grid(chart: ComboChart) {
-    const leftCount = chart.axes.filter((a) => a.side === 'left').length;
-    const rightCount = chart.axes.filter((a) => a.side === 'right').length;
     return {
-      left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,
-      right: 20 + rightCount * PointChartConstants.AXIS_OFFSET,
+      ...SideAxes.margins(chart.axes),
       top: chart.showLegend ? 40 : 20,
       bottom: chart.zoom ? 76 : 56,
       containLabel: true,
@@ -21,7 +18,7 @@ export class ComboLayout {
   }
 
   public static legend(chart: ComboChart) {
-    const names = chart.series.map((s) => BarValues.seriesName(s.result, chart.config.title));
+    const names = chart.series.map((s) => BarSeriesName.of(s.result, chart.config.title));
     return ChartLegend.of(chart.showLegend, names);
   }
 

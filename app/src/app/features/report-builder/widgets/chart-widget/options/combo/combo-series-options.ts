@@ -1,11 +1,11 @@
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
-import { BarValues } from '../bar/bar-values';
 import { ChartFormat } from '../format/chart-format';
 import { OutlineSeverity } from '../marks/outline-severity';
 import { LabelCallbackParams } from '../types/label-callback-params';
 import { ComboChart } from './combo-chart';
 import { ComboMarks } from './combo-marks';
 import { ComboSeries } from './combo-series';
+import { BarSeriesName } from '../bar/values/bar-series-name';
 
 /** Each combo series as an echarts bar or line series. */
 export class ComboSeriesOptions {
@@ -55,7 +55,7 @@ export class ComboSeriesOptions {
   /** The name, axis and value label shared by bar and line series. */
   private static base(chart: ComboChart, s: ComboSeries) {
     return {
-      name: BarValues.seriesName(s.result, chart.config.title),
+      name: BarSeriesName.of(s.result, chart.config.title),
       ...(chart.multiAxis ? { yAxisIndex: Math.min(s.axisIndex, chart.axes.length - 1) } : {}),
       ...(chart.config.showValueLabels ? { label: ComboSeriesOptions.valueLabel(chart, s) } : {}),
     };

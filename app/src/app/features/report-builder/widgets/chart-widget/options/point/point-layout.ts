@@ -1,7 +1,7 @@
 import { ChartZoomMemory } from '../../chart-zoom';
 import { ChartLegend } from '../layout/chart-legend';
 import { PointChart } from './point-chart';
-import { PointChartConstants } from './point-chart-constants';
+import { SideAxes } from '../axes/side-axes';
 import { TrendLineSeries } from './series/trend-line-series';
 
 /** A point chart's grid margins, legend, colour scale and zoom. */
@@ -18,14 +18,13 @@ export class PointLayout {
   /** Extra Y axes widen their side; trend stats text needs room past the last point. */
   public static grid(chart: PointChart) {
     const { axes, config } = chart;
-    const leftCount = axes.filter((a) => a.side === 'left').length;
-    const rightCount = axes.filter((a) => a.side === 'right').length;
+    const margins = SideAxes.margins(axes);
     const trendReserve = config.showTrendLine
       ? TrendLineSeries.labelReserve(chart.series, chart.xIsDate)
       : 0;
     return {
-      left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,
-      right: 20 + rightCount * PointChartConstants.AXIS_OFFSET + trendReserve,
+      left: margins.left,
+      right: margins.right + trendReserve,
       // The legend and the colour scale share the top strip.
       top: chart.showLegend || chart.colorByValue ? 40 : 20,
       bottom: chart.zoom ? 76 : 48,

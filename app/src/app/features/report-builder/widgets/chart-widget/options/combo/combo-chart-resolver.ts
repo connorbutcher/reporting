@@ -9,11 +9,12 @@ import {
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 import { CategoryZoom } from '../axes/category-zoom';
-import { BarValues } from '../bar/bar-values';
 import { ChartColumns } from '../format/chart-columns';
 import { ChartFormat } from '../format/chart-format';
 import { ComboChart } from './combo-chart';
 import { ComboSeries } from './combo-series';
+import { BarSeriesColors } from '../bar/values/bar-series-colors';
+import { BarValueFormats } from '../bar/values/bar-value-formats';
 
 /** Resolves a combination chart's config and data into a {@link ComboChart}. */
 export class ComboChartResolver {
@@ -46,7 +47,7 @@ export class ComboChartResolver {
       multiAxis: axes.length > 1,
       valueColumn,
       valueConfig,
-      seriesConfigs: BarValues.seriesConfigs(config.aggregate, rawSeries, columns, valueConfig),
+      seriesConfigs: BarValueFormats.bySeries(config.aggregate, rawSeries, columns, valueConfig),
       showLegend: series.length > 1 && config.showLegend,
       zoom: CategoryZoom.enabled(config.zoom, categories.length),
     };
@@ -60,7 +61,7 @@ export class ComboChartResolver {
     colors: Map<string, string>,
   ): ComboSeries[] {
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
-    const seriesColors = BarValues.seriesColors(rawSeries, bindings, colors);
+    const seriesColors = BarSeriesColors.of(rawSeries, bindings, colors);
     return rawSeries.map((result) => {
       const binding = result.bindingId ? bindingsById.get(result.bindingId) : undefined;
       return {

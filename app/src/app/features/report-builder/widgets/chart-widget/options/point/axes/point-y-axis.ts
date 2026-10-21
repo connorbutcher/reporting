@@ -2,10 +2,10 @@ import type { YAXisComponentOption } from 'echarts';
 import { ChartValueAxis } from '../../../../../../../core/models/report';
 import { ChartSeriesResult } from '../../../../../../../core/models/widget-query';
 import { ChartScale } from '../../axes/chart-scale';
+import { SideAxes } from '../../axes/side-axes';
 import { ValueExtent } from '../../axes/value-extent';
 import { ChartFormat } from '../../format/chart-format';
 import { PointChart } from '../point-chart';
-import { PointChartConstants } from '../point-chart-constants';
 import { PointYAxisShape } from '../types/point-y-axis-shape';
 import { PointCategories } from './point-categories';
 
@@ -15,8 +15,8 @@ import { PointCategories } from './point-categories';
  */
 export class PointYAxis {
   public static all(chart: PointChart): YAXisComponentOption[] {
-    const sideOrder: Record<'left' | 'right', number> = { left: 0, right: 0 };
-    return chart.axes.map((axis, k) => PointYAxis.build(chart, axis, k, sideOrder[axis.side]++));
+    const order = SideAxes.orderOnSide(chart.axes);
+    return chart.axes.map((axis, k) => PointYAxis.build(chart, axis, k, order[k]));
   }
 
   private static build(
@@ -35,10 +35,7 @@ export class PointYAxis {
       name: shape.isPrimary ? chart.yLabel : axis.label.trim(),
       nameLocation: 'middle',
       nameGap: ChartScale.nameGap(PointYAxis.longestLabel(chart, shape), rotate, 'y'),
-      ...(color ? { nameTextStyle: { color } } : {}),
-      position: axis.side,
-      ...(orderOnSide > 0 ? { offset: orderOnSide * PointChartConstants.AXIS_OFFSET } : {}),
-      ...PointYAxis.axisLine(shape.isPrimary, color),
+      ...SideAxes.placement(axis, shape.isPrimary, color, orderOnSide),
       // Gridlines ride the primary only, so stacked scales don't compete.
       splitLine: { show: shape.isPrimary && (chart.config.showGridLines ?? true) },
     };
@@ -79,15 +76,6 @@ export class PointYAxis {
         ? (v) => ChartFormat.date(v, chart.yDateConfig)
         : (v) => ChartFormat.numeric(v, shape.numericConfig),
     );
-  }
-
-  /** Secondary and coloured axes draw their line, so readers can tell the scales apart. */
-  private static axisLine(
-    isPrimary: boolean,
-    color: string | null,
-  ): { axisLine?: { show: boolean; lineStyle?: { color: string } } } {
-    if (isPrimary && !color) return {};
-    return { axisLine: { show: true, ...(color ? { lineStyle: { color } } : {}) } };
   }
 
   /** An axis carrying a single series is drawn in its colour, so readers can match them. */

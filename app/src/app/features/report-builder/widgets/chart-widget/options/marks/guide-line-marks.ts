@@ -1,8 +1,9 @@
 import { ChartGuideLine } from '../../../../../../core/models/report';
+import { AxisKey } from '../types/axis-key';
+import { MarkAxis } from './mark-axis';
+import { AxisKeyFor } from './types/axis-key-for';
 import { MarkAreaData } from './types/mark-area-data';
 import { MarkLineData } from './types/mark-line-data';
-import { AxisKey } from '../types/axis-key';
-import { AxisKeyFor } from './types/axis-key-for';
 
 /** Reference lines and optional shaded regions from fixed values: the simpler tolerance band. */
 export class GuideLineMarks {
@@ -15,54 +16,40 @@ export class GuideLineMarks {
     lines: readonly ChartGuideLine[],
     axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
   ): MarkLineData {
-    const entries: MarkLineData = [];
-
-    for (const line of lines) {
-      const axisKey = axisKeyFor(line);
-      const color = line.color ?? GuideLineMarks.DEFAULT_COLOR;
-      const label = line.label.trim() || GuideLineMarks.formatValue(line.value);
-
-      const values =
-        line.valueTo !== null && line.valueTo !== undefined
-          ? [line.value, line.valueTo]
-          : [line.value];
-      for (const value of values) {
-        entries.push({
-          ...GuideLineMarks.onAxis(axisKey, value),
-          label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
-          lineStyle: { color, type: line.dashStyle ?? 'dashed', width: 1.5 },
-        });
-      }
-    }
-
-    return entries;
+    return lines.flatMap((line) => GuideLineMarks.edges(line, axisKeyFor(line)));
   }
 
   public static areas(
     lines: readonly ChartGuideLine[],
     axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
   ): MarkAreaData {
-    const areas: MarkAreaData = [];
-
-    for (const line of lines) {
-      if (!line.fill || line.valueTo === null || line.valueTo === undefined) continue;
-
-      const axisKey = axisKeyFor(line);
-      areas.push([
-        {
-          ...GuideLineMarks.onAxis(axisKey, line.value),
-          itemStyle: { color: GuideLineMarks.DEFAULT_FILL },
-        },
-        GuideLineMarks.onAxis(axisKey, line.valueTo),
-      ]);
-    }
-
-    return areas;
+    return lines.flatMap((line) =>
+      line.fill && GuideLineMarks.hasRegion(line)
+        ? [GuideLineMarks.region(line, axisKeyFor(line))]
+        : [],
+    );
   }
 
-  /** A typed `{ xAxis }` or `{ yAxis }` fragment. */
-  private static onAxis(axisKey: AxisKey, value: number): { xAxis: number } | { yAxis: number } {
-    return axisKey === 'xAxis' ? { xAxis: value } : { yAxis: value };
+  private static edges(line: ChartGuideLine, axisKey: AxisKey): MarkLineData {
+    const color = line.color ?? GuideLineMarks.DEFAULT_COLOR;
+    const label = line.label.trim() || GuideLineMarks.formatValue(line.value);
+    const values = GuideLineMarks.hasRegion(line) ? [line.value, line.valueTo!] : [line.value];
+    return values.map((value) => ({
+      ...MarkAxis.at(axisKey, value),
+      label: { formatter: label, position: 'insideEndTop', color, fontSize: 10 },
+      lineStyle: { color, type: line.dashStyle ?? 'dashed', width: 1.5 },
+    }));
+  }
+
+  private static region(line: ChartGuideLine, axisKey: AxisKey): MarkAreaData[number] {
+    return [
+      { ...MarkAxis.at(axisKey, line.value), itemStyle: { color: GuideLineMarks.DEFAULT_FILL } },
+      MarkAxis.at(axisKey, line.valueTo!),
+    ];
+  }
+
+  private static hasRegion(line: ChartGuideLine): boolean {
+    return line.valueTo !== null && line.valueTo !== undefined;
   }
 
   private static formatValue(value: number): string {

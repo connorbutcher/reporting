@@ -3,7 +3,7 @@ import { ChartScale } from '../axes/chart-scale';
 import { ValueExtent } from '../axes/value-extent';
 import { ChartFormat } from '../format/chart-format';
 import { BarChart } from './bar-chart';
-import { BarValues } from './bar-values';
+import { BarMeasureLabel } from './values/bar-measure-label';
 
 /** The category and value axes of a bar chart, on X or Y depending on orientation. */
 export class BarAxes {
@@ -47,6 +47,6 @@ export class BarAxes {
     const label = chart.valueAxisConfig.label.trim();
     if (label) return label;
     if (chart.percent) return '% of total';
-    return BarValues.measureLabel(chart.config.aggregate, chart.valueColumn?.name ?? null);
+    return BarMeasureLabel.of(chart.config.aggregate, chart.valueColumn?.name ?? null);
   }
 }

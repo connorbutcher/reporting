@@ -3,10 +3,10 @@ import { ChartValueAxis } from '../../../../../../core/models/report';
 import { CategoryAxis } from '../axes/category-axis';
 import { ChartScale } from '../axes/chart-scale';
 import { ValueExtent } from '../axes/value-extent';
-import { BarValues } from '../bar/bar-values';
 import { ChartFormat } from '../format/chart-format';
-import { PointChartConstants } from '../point/point-chart-constants';
+import { SideAxes } from '../axes/side-axes';
 import { ComboChart } from './combo-chart';
+import { BarMeasureLabel } from '../bar/values/bar-measure-label';
 
 /** The shared category axis and one value axis per configured Y axis. */
 export class ComboAxes {
@@ -17,8 +17,8 @@ export class ComboAxes {
 
   /** Secondary axes are offset per side; gridlines ride the primary only. */
   public static values(chart: ComboChart): YAXisComponentOption[] {
-    const sideOrder: Record<'left' | 'right', number> = { left: 0, right: 0 };
-    return chart.axes.map((axis, k) => ComboAxes.value(chart, axis, k, sideOrder[axis.side]++));
+    const order = SideAxes.orderOnSide(chart.axes);
+    return chart.axes.map((axis, k) => ComboAxes.value(chart, axis, k, order[k]));
   }
 
   private static value(
@@ -49,12 +49,7 @@ export class ComboAxes {
       name: isPrimary ? ComboAxes.primaryName(chart) : axis.label.trim(),
       nameLocation: 'middle',
       nameGap: ChartScale.nameGap(labelLen, rotate, 'y'),
-      ...(color ? { nameTextStyle: { color } } : {}),
-      position: axis.side,
-      ...(orderOnSide > 0 ? { offset: orderOnSide * PointChartConstants.AXIS_OFFSET } : {}),
-      ...(!isPrimary || color
-        ? { axisLine: { show: true, ...(color ? { lineStyle: { color } } : {}) } }
-        : {}),
+      ...SideAxes.placement(axis, isPrimary, color, orderOnSide),
       splitLine: { show: isPrimary && (chart.config.showGridLines ?? true) },
     };
   }
@@ -69,7 +64,7 @@ export class ComboAxes {
   private static primaryName(chart: ComboChart): string {
     return (
       chart.axes[0].label.trim() ||
-      BarValues.measureLabel(chart.config.aggregate, chart.valueColumn?.name ?? null)
+      BarMeasureLabel.of(chart.config.aggregate, chart.valueColumn?.name ?? null)
     );
   }
 }
