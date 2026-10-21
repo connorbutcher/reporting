@@ -1,6 +1,7 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
-import { Aggregate } from '../../../../../../core/models/report';
+import { Aggregate, ChartSeriesBinding } from '../../../../../../core/models/report';
 import { BarSeriesResult } from '../../../../../../core/models/widget-query';
+import { SeriesColors } from '../colors/series-colors';
 import { ChartColumns } from '../format/chart-columns';
 import { ChartFormat } from '../format/chart-format';
 
@@ -21,6 +22,43 @@ export class BarValues {
     columns: DatasetColumn[],
   ): NumericColumnConfig | undefined {
     return ChartFormat.numericConfig(ChartColumns.byId(columns, s.valueColumnId ?? null));
+  }
+
+  /** Each series reads through its own measure's format, else the shared one. A count has none. */
+  public static seriesConfigs(
+    aggregate: Aggregate,
+    series: readonly BarSeriesResult[],
+    columns: DatasetColumn[],
+    sharedConfig: NumericColumnConfig | undefined,
+  ): Map<BarSeriesResult, NumericColumnConfig | undefined> {
+    const isCount = aggregate === 'count';
+    return new Map(
+      series.map((s) => [
+        s,
+        isCount ? undefined : (BarValues.seriesNumericConfig(s, columns) ?? sharedConfig),
+      ]),
+    );
+  }
+
+  /**
+   * Each series' colour: its binding's override while that binding yields a single series, else
+   * its palette colour.
+   */
+  public static seriesColors(
+    series: readonly BarSeriesResult[],
+    bindings: readonly ChartSeriesBinding[],
+    colors: Map<string, string>,
+  ): Map<BarSeriesResult, string> {
+    const bindingsById = new Map(bindings.map((b) => [b.id, b]));
+    const seriesPerBinding = BarValues.seriesPerBinding(series);
+    return new Map(
+      series.map((s, i) => {
+        const binding = s.bindingId ? bindingsById.get(s.bindingId) : undefined;
+        const count = s.bindingId ? (seriesPerBinding.get(s.bindingId) ?? 1) : series.length;
+        const override = count === 1 ? (binding?.color ?? null) : null;
+        return [s, override ?? SeriesColors.forSeries(colors, s.label, i)];
+      }),
+    );
   }
 
   public static formatValue(
@@ -54,6 +92,14 @@ export class BarValues {
       const total = totals?.[c] ?? 0;
       return v === null || total === 0 ? null : (v / total) * 100;
     });
+  }
+
+  private static seriesPerBinding(series: readonly BarSeriesResult[]): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const s of series) {
+      if (s.bindingId) counts.set(s.bindingId, (counts.get(s.bindingId) ?? 0) + 1);
+    }
+    return counts;
   }
 
   private static aggregateLabel(aggregate: Aggregate): string {

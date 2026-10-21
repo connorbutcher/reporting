@@ -1,6 +1,5 @@
 import type { BarSeriesOption } from 'echarts/charts';
 import { BarSeriesResult } from '../../../../../../core/models/widget-query';
-import { SeriesColors } from '../colors/series-colors';
 import { ChartFormat } from '../format/chart-format';
 import { OutlineSeverity } from '../marks/outline-severity';
 import { LabelCallbackParams } from '../types/label-callback-params';
@@ -12,7 +11,7 @@ import { BarValues } from './bar-values';
 export class BarSeriesOptions {
   public static data(chart: BarChart): BarSeriesOption[] {
     const outlineColor = BarMarks.outlineColor(chart);
-    return chart.series.map((s, i) => BarSeriesOptions.dataSeries(chart, s, i, outlineColor));
+    return chart.series.map((s) => BarSeriesOptions.dataSeries(chart, s, outlineColor));
   }
 
   /** Stack totals ride an invisible zero-height bar on top of each stack. */
@@ -41,10 +40,9 @@ export class BarSeriesOptions {
   private static dataSeries(
     chart: BarChart,
     s: BarSeriesResult,
-    index: number,
     outlineColor: (value: number) => string | null,
   ): BarSeriesOption {
-    const color = BarSeriesOptions.color(chart, s, index);
+    const color = chart.seriesColors.get(s) ?? '';
     return {
       name: BarValues.seriesName(s, chart.config.title),
       type: 'bar',
@@ -57,16 +55,6 @@ export class BarSeriesOptions {
         return border ? { value: v, itemStyle: OutlineSeverity.itemStyle(color, border) } : v;
       }),
     };
-  }
-
-  /** A binding's colour override applies only while it yields a single series. */
-  private static color(chart: BarChart, s: BarSeriesResult, index: number): string {
-    const binding = s.bindingId ? chart.bindingsById.get(s.bindingId) : undefined;
-    const seriesCount = s.bindingId
-      ? (chart.seriesPerBinding.get(s.bindingId) ?? 1)
-      : chart.series.length;
-    const override = seriesCount === 1 ? (binding?.color ?? null) : null;
-    return override ?? SeriesColors.forSeries(chart.colors, s.label, index);
   }
 
   private static valueLabel(chart: BarChart, s: BarSeriesResult) {

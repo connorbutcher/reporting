@@ -1,4 +1,4 @@
-import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
+import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   BarChartWidgetConfig,
   ChartSeriesBinding,
@@ -37,15 +37,13 @@ export class BarChartResolver {
     return {
       config,
       data,
-      colors,
       categoryColumn,
       categories,
       series,
-      bindingsById: new Map(bindings.map((b) => [b.id, b])),
-      seriesPerBinding: BarChartResolver.seriesPerBinding(series),
+      seriesColors: BarValues.seriesColors(series, bindings, colors),
       valueColumn,
       valueConfig,
-      seriesConfigs: BarChartResolver.seriesConfigs(config, series, columns, valueConfig),
+      seriesConfigs: BarValues.seriesConfigs(config.aggregate, series, columns, valueConfig),
       valueAxisConfig: readChartAxes(config)[0],
       horizontal: config.horizontal,
       percent,
@@ -70,30 +68,6 @@ export class BarChartResolver {
       ),
     ];
     return measureIds.length === 1 ? ChartColumns.byId(columns, measureIds[0]) : null;
-  }
-
-  /** Each series reads through its own measure's format, else the shared one. */
-  private static seriesConfigs(
-    config: BarChartWidgetConfig,
-    series: readonly BarSeriesResult[],
-    columns: DatasetColumn[],
-    valueConfig: NumericColumnConfig | undefined,
-  ): Map<BarSeriesResult, NumericColumnConfig | undefined> {
-    const isCount = config.aggregate === 'count';
-    return new Map(
-      series.map((s) => [
-        s,
-        isCount ? undefined : (BarValues.seriesNumericConfig(s, columns) ?? valueConfig),
-      ]),
-    );
-  }
-
-  private static seriesPerBinding(series: readonly BarSeriesResult[]): Map<string, number> {
-    const counts = new Map<string, number>();
-    for (const s of series) {
-      if (s.bindingId) counts.set(s.bindingId, (counts.get(s.bindingId) ?? 0) + 1);
-    }
-    return counts;
   }
 
   private static stackTotals(

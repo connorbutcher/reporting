@@ -1,22 +1,15 @@
 import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
-import {
-  BarChartWidgetConfig,
-  ChartValueAxis,
-  ChartSeriesBinding,
-} from '../../../../../../core/models/report';
+import { BarChartWidgetConfig, ChartValueAxis } from '../../../../../../core/models/report';
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 
 /** A bar chart's config and data, resolved once and shared by each part of its option. */
 export interface BarChart {
   readonly config: BarChartWidgetConfig;
   readonly data: BarChartQueryResult | null;
-  readonly colors: Map<string, string>;
   readonly categoryColumn: DatasetColumn;
   readonly categories: string[];
   readonly series: readonly BarSeriesResult[];
-  readonly bindingsById: Map<string, ChartSeriesBinding>;
-  /** How many series each binding yields. */
-  readonly seriesPerBinding: Map<string, number>;
+  readonly seriesColors: Map<BarSeriesResult, string>;
   /** The shared measure, when every series plots the same one. */
   readonly valueColumn: DatasetColumn | null;
   readonly valueConfig: NumericColumnConfig | undefined;
