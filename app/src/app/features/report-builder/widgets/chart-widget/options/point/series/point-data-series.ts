@@ -1,10 +1,12 @@
 import type { LineSeriesOption } from 'echarts/charts';
-import { ChartSeriesResult } from '../../../../../../core/models/widget-query';
-import { LabelCallbackParams } from '../types/label-callback-params';
-import { PointChart } from './point-chart';
-import { PointMarks } from './point-marks';
-import { PointSeries } from './point-series';
-import { Coord } from './types/coord';
+import { ChartSeriesResult } from '../../../../../../../core/models/widget-query';
+import { LabelCallbackParams } from '../../types/label-callback-params';
+import { PointChart } from '../point-chart';
+import { PointMarks } from '../point-marks';
+import { PointData } from './point-data';
+import { PointKindOptions } from './point-kind-options';
+import { TrendLineSeries } from './trend-line-series';
+import { Coord } from '../types/coord';
 
 /** Each result series as its plotted points, plus its trend line when enabled. */
 export class PointDataSeries {
@@ -24,10 +26,10 @@ export class PointDataSeries {
     const yAxisIndex = PointDataSeries.yAxisIndex(chart, index);
     return {
       name,
-      ...PointSeries.kindOptions(config, color, chart.seriesStyles[index], chart.sizeScale),
+      ...PointKindOptions.of(config, color, chart.seriesStyles[index], chart.sizeScale),
       // The visualMap drives the fill under colour-by-value.
       ...(colorByValue ? {} : { itemStyle: { color } }),
-      data: PointSeries.points(s, color, PointMarks.outlineColor(chart, axisIndex)),
+      data: PointData.points(s, color, PointMarks.outlineColor(chart, axisIndex)),
       ...(config.showValueLabels ? { label: PointDataSeries.valueLabel(chart, axisIndex) } : {}),
       ...(yAxisIndex !== null ? { yAxisIndex } : {}),
     };
@@ -41,7 +43,7 @@ export class PointDataSeries {
     mainName: string,
   ): LineSeriesOption | null {
     if (!chart.config.showTrendLine) return null;
-    return PointSeries.trendLine(
+    return TrendLineSeries.series(
       s,
       mainName,
       chart.seriesColors[index],

@@ -2,7 +2,7 @@ import { ChartZoomMemory } from '../../chart-zoom';
 import { ChartLegend } from '../layout/chart-legend';
 import { PointChart } from './point-chart';
 import { PointChartConstants } from './point-chart-constants';
-import { PointSeries } from './point-series';
+import { TrendLineSeries } from './series/trend-line-series';
 
 /** A point chart's grid margins, legend, colour scale and zoom. */
 export class PointLayout {
@@ -21,7 +21,7 @@ export class PointLayout {
     const leftCount = axes.filter((a) => a.side === 'left').length;
     const rightCount = axes.filter((a) => a.side === 'right').length;
     const trendReserve = config.showTrendLine
-      ? PointSeries.trendLabelReserve(chart.series, chart.xIsDate)
+      ? TrendLineSeries.labelReserve(chart.series, chart.xIsDate)
       : 0;
     return {
       left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,

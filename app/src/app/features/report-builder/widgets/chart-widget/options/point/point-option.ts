@@ -1,12 +1,13 @@
 import { DatasetColumn } from '../../../../../../core/models/dataset';
 import { ChartQueryResult } from '../../../../../../core/models/widget-query';
 import { ECOption } from '../types/ec-option';
-import { PointAxes } from './point-axes';
+import { PointXAxis } from './axes/point-x-axis';
+import { PointYAxis } from './axes/point-y-axis';
 import { PointChartResolver } from './point-chart-resolver';
-import { PointDataSeries } from './point-data-series';
+import { PointDataSeries } from './series/point-data-series';
 import { PointLayout } from './point-layout';
 import { PointMarks } from './point-marks';
-import { PointSeries } from './point-series';
+import { CommentMarkers } from './series/comment-markers';
 import { PointTooltip } from './point-tooltip';
 import { ChartCommentAnchor } from './types/chart-comment-anchor';
 import { PointChartConfig } from './types/point-chart-config';
@@ -33,7 +34,7 @@ export class PointOption {
     if (!chart) return null;
 
     const { multiAxis, axes } = chart;
-    const yAxes = PointAxes.y(chart);
+    const yAxes = PointYAxis.all(chart);
     return {
       // Dates are UTC epoch millis, so lay time axes out in UTC to avoid local-midnight ticks.
       useUTC: true,
@@ -42,13 +43,13 @@ export class PointOption {
       ...PointLayout.legend(chart),
       ...PointLayout.visualMap(chart),
       ...PointLayout.dataZoom(chart),
-      xAxis: PointAxes.x(chart),
+      xAxis: PointXAxis.build(chart),
       yAxis: multiAxis ? yAxes : yAxes[0],
       series: [
         ...PointDataSeries.all(chart),
         ...PointMarks.references(chart),
-        ...PointSeries.anchorMarkers(chart.commentAnchors, multiAxis, axes.length),
-        ...PointSeries.highlightMarker(chart.highlightedAnchor, multiAxis, axes.length),
+        ...CommentMarkers.pins(chart.commentAnchors, multiAxis, axes.length),
+        ...CommentMarkers.highlight(chart.highlightedAnchor, multiAxis, axes.length),
       ],
     };
   }
