@@ -1,5 +1,6 @@
 import type { YAXisComponentOption } from 'echarts';
 import { ChartValueAxis } from '../../../../../../core/models/report';
+import { CategoryAxis } from '../axes/category-axis';
 import { ChartScale } from '../axes/chart-scale';
 import { ValueExtent } from '../axes/value-extent';
 import { BarValues } from '../bar/bar-values';
@@ -10,18 +11,8 @@ import { ComboChart } from './combo-chart';
 /** The shared category axis and one value axis per configured Y axis. */
 export class ComboAxes {
   public static category(chart: ComboChart) {
-    const { config, categories } = chart;
-    // Tilt long category lists unless the user picked an orientation.
-    const autoRotate = categories.length > 6 ? 30 : 0;
-    const rotate = ChartScale.labelRotate(config.xAxisRotate, autoRotate);
-    const scale = ChartScale.categoryAxis(categories, config.xAxisInterval);
-    return {
-      ...scale,
-      name: config.xAxisLabel.trim() || chart.categoryColumn.name,
-      nameLocation: 'middle' as const,
-      nameGap: ChartScale.nameGap(ChartScale.longestLen(categories), rotate, 'x'),
-      axisLabel: { ...scale.axisLabel, rotate },
-    };
+    const name = chart.config.xAxisLabel.trim() || chart.categoryColumn.name;
+    return CategoryAxis.build(chart.categories, chart.config, name, false);
   }
 
   /** Secondary axes are offset per side; gridlines ride the primary only. */

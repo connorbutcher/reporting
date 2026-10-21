@@ -1,5 +1,6 @@
 import { CategoryZoom } from '../axes/category-zoom';
 import { BarValues } from '../bar/bar-values';
+import { ChartLegend } from '../layout/chart-legend';
 import { PointChartConstants } from '../point/point-chart-constants';
 import { ComboChart } from './combo-chart';
 
@@ -20,14 +21,8 @@ export class ComboLayout {
   }
 
   public static legend(chart: ComboChart) {
-    if (!chart.showLegend) return {};
-    return {
-      legend: {
-        top: 0,
-        data: chart.series.map((s) => BarValues.seriesName(s.result, chart.config.title)),
-        type: 'scroll' as const,
-      },
-    };
+    const names = chart.series.map((s) => BarValues.seriesName(s.result, chart.config.title));
+    return ChartLegend.of(chart.showLegend, names);
   }
 
   public static dataZoom(chart: ComboChart) {

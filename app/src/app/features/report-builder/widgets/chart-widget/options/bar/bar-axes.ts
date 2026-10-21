@@ -1,3 +1,4 @@
+import { CategoryAxis } from '../axes/category-axis';
 import { ChartScale } from '../axes/chart-scale';
 import { ValueExtent } from '../axes/value-extent';
 import { ChartFormat } from '../format/chart-format';
@@ -7,24 +8,8 @@ import { BarValues } from './bar-values';
 /** The category and value axes of a bar chart, on X or Y depending on orientation. */
 export class BarAxes {
   public static category(chart: BarChart) {
-    const { config, categories, horizontal } = chart;
-    // Tilt long vertical category lists unless the user picked an orientation.
-    const autoRotate = !horizontal && categories.length > 6 ? 30 : 0;
-    const rotate = ChartScale.labelRotate(config.xAxisRotate, autoRotate);
-    const scale = ChartScale.categoryAxis(categories, config.xAxisInterval);
-    return {
-      ...scale,
-      name: config.xAxisLabel.trim() || chart.categoryColumn.name,
-      nameLocation: 'middle' as const,
-      nameGap: ChartScale.nameGap(
-        ChartScale.longestLen(categories),
-        rotate,
-        horizontal ? 'y' : 'x',
-      ),
-      axisLabel: { ...scale.axisLabel, rotate },
-      // echarts draws the first category at the bottom; read top-down instead.
-      ...(horizontal ? { inverse: true } : {}),
-    };
+    const name = chart.config.xAxisLabel.trim() || chart.categoryColumn.name;
+    return CategoryAxis.build(chart.categories, chart.config, name, chart.horizontal);
   }
 
   public static value(chart: BarChart) {
