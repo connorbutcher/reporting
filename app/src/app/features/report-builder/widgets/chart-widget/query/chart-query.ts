@@ -6,7 +6,6 @@ import {
   BarChartWidgetConfig,
   BoxPlotWidgetConfig,
   ChartSeriesBinding,
-  ChartSort,
   ChartTooltipColumn,
   ChartWidgetConfig,
   ComboChartWidgetConfig,
@@ -20,20 +19,19 @@ import {
 } from '../../../../../core/models/report';
 import {
   BarChartQueryResult,
-  BarSeriesResult,
   BoxPlotQueryResult,
-  ChartCategoryDetail,
+  ChartQueryRequest,
   ChartQueryResult,
-  ChartRowCounts,
-  ChartSeriesResult,
   HistogramQueryRequest,
   HistogramQueryResult,
-  HistogramSeriesResult,
   XBarRChartQueryResult,
 } from '../../../../../core/models/widget-query';
 import { ChartQueryPart } from './chart-query-part';
 import { BarChartPart } from './bar-chart-part';
 import { HistogramPart } from './histogram-part';
+import { BarMerge } from './merge/bar-merge';
+import { HistogramMerge } from './merge/histogram-merge';
+import { PointMerge } from './merge/point-merge';
 
 export class ChartQuery {
   /**
@@ -117,7 +115,7 @@ export class ChartQuery {
         const ok = results.filter((r): r is BarChartPart => r !== null);
         if (ok.length === 0) throw new Error('Every chart dataset failed to load');
         return {
-          ...ChartQuery.mergeBar(ok, config.sort),
+          ...BarMerge.merge(ok, config.sort),
           failedBindingCount: results.length - ok.length,
         };
       }),
@@ -198,22 +196,11 @@ export class ChartQuery {
       ).pipe(map((results) => ChartQuery.histogramResult(results)));
     }
 
-    // Probe each binding's natural bins, then pin all of them to the overall range and finest count.
+    // Probe each binding's natural bins, then re-query them on shared edges.
     return ChartQuery.queryHistograms(api, config, bound, bindingFilters, tooltipColumns, {}).pipe(
       switchMap((probe) => {
         const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
         if (ok.length === 0) return of(ChartQuery.histogramResult(probe));
-
-        const rangeMin = config.rangeMin ?? Math.min(...ok.map((r) => r.result.bins[0].lower));
-        const rangeMax =
-          config.rangeMax ??
-          Math.max(...ok.map((r) => r.result.bins[r.result.bins.length - 1].upper));
-        const sharedCount = Math.max(...ok.map((r) => r.result.bins.length));
-
-        const finalOverrides =
-          config.binMode === 'auto'
-            ? { rangeMin, rangeMax, binMode: 'count' as const, binCount: sharedCount }
-            : { rangeMin, rangeMax };
 
         return ChartQuery.queryHistograms(
           api,
@@ -221,10 +208,24 @@ export class ChartQuery {
           bound,
           bindingFilters,
           tooltipColumns,
-          finalOverrides,
+          ChartQuery.sharedBinOverrides(config, ok),
         ).pipe(map((results) => ChartQuery.histogramResult(results)));
       }),
     );
+  }
+
+  /** Pins every binding to the overall range and, for Auto bins, the finest probed count. */
+  private static sharedBinOverrides(
+    config: HistogramWidgetConfig,
+    probed: readonly HistogramPart[],
+  ): Partial<HistogramQueryRequest> {
+    const rangeMin = config.rangeMin ?? Math.min(...probed.map((r) => r.result.bins[0].lower));
+    const rangeMax =
+      config.rangeMax ??
+      Math.max(...probed.map((r) => r.result.bins[r.result.bins.length - 1].upper));
+    if (config.binMode !== 'auto') return { rangeMin, rangeMax };
+    const binCount = Math.max(...probed.map((r) => r.result.bins.length));
+    return { rangeMin, rangeMax, binMode: 'count', binCount };
   }
 
   private static queryHistograms(
@@ -264,7 +265,7 @@ export class ChartQuery {
   private static histogramResult(results: (HistogramPart | null)[]): HistogramQueryResult {
     const ok = results.filter((r): r is HistogramPart => r !== null);
     if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-    return { ...ChartQuery.mergeHistogram(ok), failedBindingCount: results.length - ok.length };
+    return { ...HistogramMerge.merge(ok), failedBindingCount: results.length - ok.length };
   }
 
   private static pointQuery(
@@ -283,7 +284,7 @@ export class ChartQuery {
       .map((binding): Observable<ChartQueryPart | null> | null => {
         if (!binding.datasetId || !binding.xColumnId || !binding.yColumnId) return null;
 
-        const request = {
+        const request: ChartQueryRequest = {
           filter: bindingFilters?.[binding.id] ?? null,
           xColumnId: binding.xColumnId,
           yColumnId: binding.yColumnId,
@@ -299,17 +300,7 @@ export class ChartQuery {
         const key = `${binding.datasetId}|${JSON.stringify(request)}`;
         wanted.add(key);
 
-        const cached = cache?.get(key);
-        const source = cached
-          ? of(cached)
-          : api.queryChart(binding.datasetId, request).pipe(
-              map((result) => {
-                cache?.set(key, result);
-                return result;
-              }),
-            );
-
-        return source.pipe(
+        return ChartQuery.cachedChart(api, binding.datasetId, request, key, cache).pipe(
           map((result): ChartQueryPart => ({ binding, result })),
           catchError(() => of(null)),
         );
@@ -324,58 +315,26 @@ export class ChartQuery {
       map((results) => {
         const ok = results.filter((r): r is ChartQueryPart => r !== null);
         if (ok.length === 0) throw new Error('Every chart dataset failed to load');
-        return { ...ChartQuery.merge(ok), failedBindingCount: results.length - ok.length };
+        return { ...PointMerge.merge(ok), failedBindingCount: results.length - ok.length };
       }),
     );
   }
 
-  /**
-   * Flattens each binding's series into one result tagged by binding. With several bindings, each
-   * series is named for its binding and repeated names are suffixed.
-   */
-  private static merge(parts: ChartQueryPart[]): ChartQueryResult {
-    const first = parts[0].result;
-
-    if (parts.length === 1) {
-      const bindingId = parts[0].binding.id;
-      return { ...first, series: first.series.map((s) => ({ ...s, bindingId })) };
-    }
-
-    const bases = parts.map(({ binding, result }) => binding.label.trim() || result.name);
-    const counts = new Map<string, number>();
-    for (const base of bases) counts.set(base, (counts.get(base) ?? 0) + 1);
-    const seen = new Map<string, number>();
-    const uniqueBases = bases.map((base) => {
-      if ((counts.get(base) ?? 0) <= 1) return base;
-      const n = (seen.get(base) ?? 0) + 1;
-      seen.set(base, n);
-      return `${base} (${n})`;
-    });
-
-    const series: ChartSeriesResult[] = parts.flatMap((part, i) => {
-      const { binding, result } = part;
-      const base = uniqueBases[i];
-      const split = result.series.length > 1;
-      return result.series.map((s) => ({
-        points: s.points,
-        label: split && s.label ? `${base} · ${s.label}` : base,
-        bindingId: binding.id,
-      }));
-    });
-
-    const totalPoints = parts.reduce((sum, p) => sum + (p.result.totalPoints ?? 0), 0);
-    const truncated = parts.some((p) => p.result.truncated);
-
-    return {
-      id: first.id,
-      name: first.name,
-      series,
-      toleranceBands: first.toleranceBands,
-      ...ChartQuery.sumRowCounts(parts),
-      totalPoints,
-      truncated,
-      sampled: parts.some((p) => p.result.sampled),
-    };
+  private static cachedChart(
+    api: DatasetApiService,
+    datasetId: number,
+    request: ChartQueryRequest,
+    key: string,
+    cache: Map<string, ChartQueryResult> | undefined,
+  ): Observable<ChartQueryResult> {
+    const cached = cache?.get(key);
+    if (cached) return of(cached);
+    return api.queryChart(datasetId, request).pipe(
+      map((result) => {
+        cache?.set(key, result);
+        return result;
+      }),
+    );
   }
 
   private static namedTooltipColumns(
@@ -386,209 +345,5 @@ export class ChartQuery {
       ...t,
       columnName: columns.find((c) => c.id === t.columnId)?.name ?? t.columnName,
     }));
-  }
-
-  /**
-   * The merged category order. A natural sort is re-applied across every dataset (blank, then
-   * "Other", last). A column sort's metric exists only on the primary dataset, so its order leads.
-   */
-  private static mergedCategoryOrder(
-    categories: string[],
-    details: (ChartCategoryDetail | undefined)[],
-    sort: ChartSort | undefined,
-  ): number[] {
-    const indices = categories.map((_, i) => i);
-    if (sort?.by === 'column') return indices;
-    const sorted = [...indices].sort((a, b) => {
-      const da = details[a];
-      const db = details[b];
-      const byRank = ChartQuery.categoryRank(da) - ChartQuery.categoryRank(db);
-      if (byRank !== 0) return byRank;
-      if (da?.sortNumber != null && db?.sortNumber != null) return da.sortNumber - db.sortNumber;
-      const ta = da?.sortText ?? categories[a];
-      const tb = db?.sortText ?? categories[b];
-      return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
-    });
-    if (!sort?.descending) return sorted;
-    // Descending keeps blank and "Other" at the end.
-    const real = sorted.filter((i) => ChartQuery.categoryRank(details[i]) === 0).reverse();
-    return [...real, ...sorted.filter((i) => ChartQuery.categoryRank(details[i]) !== 0)];
-  }
-
-  /** Re-indexes one binding's values onto the merged axis, filling `missing` for gaps. */
-  private static reindex<T>(
-    categories: readonly string[],
-    localIndex: ReadonlyMap<string, number>,
-    values: readonly T[] | undefined,
-    missing: T,
-  ): T[] {
-    return categories.map((category) => {
-      const i = localIndex.get(category);
-      return i === undefined ? missing : (values?.[i] ?? missing);
-    });
-  }
-
-  private static categoryRank(detail: ChartCategoryDetail | undefined): number {
-    return detail?.isOther ? 2 : detail?.isBlank ? 1 : 0;
-  }
-
-  /**
-   * Merges each binding's bar response onto one category axis, re-indexing values and filling null
-   * for gaps. Legend labels compose binding, measure and split from only the parts that vary, and
-   * repeats are suffixed.
-   */
-  private static mergeBar(parts: BarChartPart[], sort?: ChartSort): BarChartQueryResult {
-    const first = parts[0].result;
-    const multiBinding = parts.length > 1;
-
-    // With several datasets, re-sort the union so a later dataset's categories don't just trail.
-    const unionCategories: string[] = [];
-    const unionDetails: (ChartCategoryDetail | undefined)[] = [];
-    const seenCategories = new Set<string>();
-    for (const { result } of parts) {
-      result.categories.forEach((category, i) => {
-        if (seenCategories.has(category)) return;
-        seenCategories.add(category);
-        unionCategories.push(category);
-        unionDetails.push(result.categoryDetails?.[i]);
-      });
-    }
-    const order = multiBinding
-      ? ChartQuery.mergedCategoryOrder(unionCategories, unionDetails, sort)
-      : unionCategories.map((_, i) => i);
-    const categories = order.map((i) => unionCategories[i]);
-    const categoryDetails = order.map((i) => unionDetails[i] ?? {});
-
-    const series: BarSeriesResult[] = parts.flatMap(({ binding, result }) => {
-      const base = binding.label.trim() || result.name;
-      const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
-      const multiMeasure = measureIds.size > 1;
-      const hasSplit = result.series.some((s) => s.label !== '');
-
-      const localIndex = new Map(result.categories.map((c, i) => [c, i]));
-
-      return result.series.map((s): BarSeriesResult => {
-        const labelParts: string[] = [];
-        if (multiBinding) labelParts.push(base);
-        if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
-        if (hasSplit) labelParts.push(s.label || '(blank)');
-        const label =
-          labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
-
-        return {
-          label,
-          bindingId: binding.id,
-          valueColumnId: s.valueColumnId,
-          drill: s.drill ?? null,
-          values: ChartQuery.reindex(categories, localIndex, s.values, null),
-          rowCounts: ChartQuery.reindex(categories, localIndex, s.rowCounts, null),
-          tooltipLines: ChartQuery.reindex(categories, localIndex, s.tooltipLines, [] as string[]),
-          // Drill conditions name this binding's own dataset's columns.
-          categoryDrills: ChartQuery.reindex(
-            categories,
-            localIndex,
-            result.categoryDetails?.map((d) => d.drill ?? null),
-            null as FilterGroup | null,
-          ),
-        };
-      });
-    });
-
-    const counts = new Map<string, number>();
-    for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
-    const seen = new Map<string, number>();
-    for (const s of series) {
-      if ((counts.get(s.label) ?? 0) <= 1) continue;
-      const n = (seen.get(s.label) ?? 0) + 1;
-      seen.set(s.label, n);
-      s.label = `${s.label} (${n})`;
-    }
-
-    return {
-      id: first.id,
-      name: first.name,
-      categories,
-      categoryDetails,
-      series,
-      // Bands resolve against the primary binding's dataset, matching the panel's schema.
-      toleranceBands: first.toleranceBands,
-      ...ChartQuery.sumRowCounts(parts),
-    };
-  }
-
-  /**
-   * Flattens each binding's distribution into one result. The caller has already aligned their
-   * bins, so the first binding with data supplies the axis. Labels compose like the bar overlay's.
-   */
-  private static mergeHistogram(parts: HistogramPart[]): HistogramQueryResult {
-    const first = parts[0].result;
-    const multiBinding = parts.length > 1;
-
-    const basis = parts.find((p) => p.result.bins.length > 0) ?? parts[0];
-
-    const series: HistogramSeriesResult[] = parts.flatMap(({ binding, result }) => {
-      const base = binding.label.trim() || result.name;
-      const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
-      const multiMeasure = measureIds.size > 1;
-      const hasSplit = result.series.some((s) => s.label !== '');
-
-      return result.series.map((s): HistogramSeriesResult => {
-        const labelParts: string[] = [];
-        if (multiBinding) labelParts.push(base);
-        if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
-        if (hasSplit) labelParts.push(s.label || '(blank)');
-        const label =
-          labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
-
-        return { ...s, label, bindingId: binding.id };
-      });
-    });
-
-    const counts = new Map<string, number>();
-    for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
-    const seen = new Map<string, number>();
-    for (const s of series) {
-      if ((counts.get(s.label) ?? 0) <= 1) continue;
-      const n = (seen.get(s.label) ?? 0) + 1;
-      seen.set(s.label, n);
-      s.label = `${s.label} (${n})`;
-    }
-
-    return {
-      id: first.id,
-      name: first.name,
-      bins: basis.result.bins,
-      series,
-      // Every binding resolves the same spec, so the first non-empty bounds stand for all.
-      toleranceBands: basis.result.toleranceBands,
-      ...ChartQuery.sumRowCounts(parts),
-      truncated: parts.some((p) => p.result.truncated),
-      scannedRowCount: parts.reduce((sum, p) => sum + (p.result.scannedRowCount ?? 0), 0),
-    };
-  }
-
-  /**
-   * Row counts for the footer, counting each dataset once. Bindings sharing a dataset contribute the
-   * widest slice any of them plots.
-   */
-  private static sumRowCounts(
-    parts: { binding: ChartSeriesBinding; result: ChartRowCounts }[],
-  ): ChartRowCounts {
-    const byDataset = new Map<number | null, ChartRowCounts>();
-    for (const { binding, result } of parts) {
-      const seen = byDataset.get(binding.datasetId);
-      byDataset.set(binding.datasetId, {
-        totalRowCount: result.totalRowCount,
-        matchedRowCount: Math.max(seen?.matchedRowCount ?? 0, result.matchedRowCount),
-      });
-    }
-
-    let totalRowCount = 0;
-    let matchedRowCount = 0;
-    for (const counts of byDataset.values()) {
-      totalRowCount += counts.totalRowCount;
-      matchedRowCount += counts.matchedRowCount;
-    }
-    return { totalRowCount, matchedRowCount };
   }
 }
