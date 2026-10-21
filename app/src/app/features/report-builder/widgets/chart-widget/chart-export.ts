@@ -10,7 +10,7 @@ import {
 import { Csv } from '../csv';
 import { ChartColumns } from './options/format/chart-columns';
 import { ChartFormat } from './options/format/chart-format';
-import { XBarROption } from './options/xbar-r/xbar-r-option';
+import { ControlChartNaming } from './options/xbar-r/control-chart-naming';
 import { AnyChartResult } from './models/any-chart-result';
 import { ChartTable } from './models/chart-table';
 
@@ -103,7 +103,7 @@ export class ChartExport {
   /** One row per subgroup, with its limits and breaches. Attribute charts (p, np) have no spread. */
   private static xBarRTable(data: XBarRChartQueryResult): ChartTable {
     const mode = data.mode ?? 'xBarR';
-    const names = XBarROption.names(mode);
+    const names = ControlChartNaming.of(mode);
     const attribute = mode === 'p' || mode === 'np';
     const rows: ChartTable = [
       [
