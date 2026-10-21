@@ -179,6 +179,10 @@ namespace Reporting.Database.Migrations
                     b.HasIndex("ColumnId", "NumberValue")
                         .HasFilter("[NumberValue] IS NOT NULL");
 
+                    b.HasIndex("ColumnId", "RowId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ColumnId", "RowId"), new[] { "StringValue", "NumberValue", "DateValue", "BoolValue" });
+
                     b.HasIndex("ColumnId", "StringValue")
                         .HasFilter("[StringValue] IS NOT NULL");
 
