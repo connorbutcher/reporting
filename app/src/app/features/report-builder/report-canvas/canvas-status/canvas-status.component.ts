@@ -4,11 +4,7 @@ import { ReportSession } from '../../state/report-session';
 import { WidgetSelection } from '../../state/widget-selection';
 import { SaveStatusComponent } from '../../../../shared/save-status/save-status.component';
 
-/**
- * The slim strip along the bottom of the canvas — an editor-style status bar for
- * the passive facts about what's on it: grid size, widget count, current
- * selection, and a live save dot. This is where the top bar's old grid meta went.
- */
+/** The canvas status bar: grid size, widget count, selection and a live save dot. */
 @Component({
   selector: 'app-canvas-status',
   imports: [SaveStatusComponent],

@@ -7,13 +7,7 @@ import { PanelNavigation } from './panel-navigation';
 import { ReportSession } from './report-session';
 import { WidgetSelection } from './widget-selection';
 
-/**
- * The verbs that add, remove, duplicate and move widgets — each one a small
- * dance across the model tree, the selection, and the panel. Kept together so
- * the read-model stays declarative, and driving the panel through
- * {@link PanelNavigation} (rather than the raw history) so selection stays in
- * sync, exactly as when the user drives it.
- */
+/** Adds, removes, duplicates and moves widgets, keeping the selection and panel in sync. */
 @Injectable()
 export class WidgetCommands {
   private readonly session = inject(ReportSession);
@@ -26,7 +20,7 @@ export class WidgetCommands {
     if (!widget) return;
     this.selection.select(widget.id);
     this.navigation.navigate({ kind: 'widget', widgetId: widget.id });
-    // Scrolls the canvas to the new widget, same as jumping to a shared link.
+    // Scroll the canvas to the new widget.
     this.fragments.navigate(widgetFragment(widget.id));
   }
 
@@ -34,7 +28,6 @@ export class WidgetCommands {
     this.removeWidgets([widgetId]);
   }
 
-  /** Removes every given widget, then drops them from the selection. */
   removeWidgets(widgetIds: readonly string[]): void {
     if (widgetIds.length === 0) return;
     this.session.model()?.removeWidgets(widgetIds);
@@ -44,7 +37,7 @@ export class WidgetCommands {
       this.navigation.navigate({ kind: 'widgets' });
   }
 
-  /** Copies the current selection, and selects the copies. */
+  /** Selects the copies. */
   duplicateSelection(): void {
     const model = this.session.model();
     const ids = this.selection.selectedWidgetIds();
@@ -57,7 +50,7 @@ export class WidgetCommands {
     this.navigation.navigate({ kind: 'widget', widgetId: copies[copies.length - 1].id });
   }
 
-  /** Nudges every selected widget, refusing the move if any would collide. */
+  /** Refuses the move if any widget would collide. */
   nudgeSelection(dx: number, dy: number): void {
     const widgets = this.session.selectedWidgets();
     if (widgets.length === 0) return;
@@ -83,7 +76,7 @@ export class WidgetCommands {
     for (const { widget, rect } of targets) widget.moveTo(rect.x, rect.y);
   }
 
-  /** Moves the panel to the widget `offset` places along, without adding history. */
+  /** Moves the panel `offset` widgets along, without adding history. */
   stepWidget(offset: number): void {
     const widgets = this.session.widgets();
     const index = widgets.findIndex((w) => w.id === this.selection.selectedWidgetId());

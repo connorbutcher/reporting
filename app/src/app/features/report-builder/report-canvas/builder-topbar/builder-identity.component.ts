@@ -1,7 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { ReportSession } from '../../state/report-session';
 
-/** The name of the report being edited. */
 @Component({
   selector: 'app-builder-identity',
   template: `<h1 class="name">{{ name() }}</h1>`,

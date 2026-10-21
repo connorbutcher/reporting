@@ -7,19 +7,13 @@ import { UndoHistory } from '../models/undo-history';
 import { ReportSession } from './report-session';
 
 /**
- * Keeps the server draft and the undo stack in step with the edited model, so
- * no one else has to think about persistence timing. Watching the model tree, it
- * debounces two things off every change: a write-back to the server (coalesced,
- * with superseded writes dropped) and an undo snapshot.
- *
- * The store just reads {@link saving} / {@link saveFailed} / {@link canUndo} /
- * {@link canRedo}, calls {@link reset} on load, and {@link undo} / {@link redo}
- * for the toolbar — the last two restoring straight into {@link ReportSession}.
+ * Keeps the server draft and undo stack in step with the model: every change debounces a coalesced
+ * save (superseded writes dropped) and an undo snapshot.
  */
 @Injectable()
 export class ReportAutosave {
   private static readonly SAVE_DEBOUNCE_MS = 250;
-  /** Long enough that a burst of typing collapses into one undo step. */
+  /** Long enough that a burst of typing is one undo step. */
   private static readonly HISTORY_DEBOUNCE_MS = 400;
 
   private readonly session = inject(ReportSession);
@@ -30,9 +24,8 @@ export class ReportAutosave {
   private readonly historyQueue = new Subject<void>();
   private readonly history = new UndoHistory();
 
-  /** True while a save request is in flight, for a "Saving…" indicator. */
   readonly saving = signal(false);
-  /** True when the last save failed, so the canvas can warn instead of losing work quietly. */
+  /** Lets the canvas warn instead of losing work quietly. */
   readonly saveFailed = signal(false);
 
   readonly canUndo = this.history.canUndo;
@@ -41,9 +34,8 @@ export class ReportAutosave {
   constructor() {
     const model = this.session.model;
 
-    // Any change anywhere in the tree shows up as a new snapshot here, so this
-    // one effect covers every edit without each caller remembering to save.
-    // Reading isValid too means fixing an error re-triggers the held-back save.
+    // Every edit changes the snapshot, so this one effect covers them all. Reading isValid means fixing
+    // an error re-triggers the held-back save.
     effect(() => {
       const current = model();
       if (!current) return;
@@ -55,8 +47,6 @@ export class ReportAutosave {
       untracked(() => this.saveQueue.next());
     });
 
-    // Undo steps read the model's memoized serialization — the same value the
-    // dirty check uses — so a change is serialized once and shared between them.
     effect(() => {
       const current = model();
       if (!current) return;
@@ -72,12 +62,11 @@ export class ReportAutosave {
         if (current) this.history.capture(current.serialized());
       });
 
-    // Saves are coalesced so dragging, typing and toggling stay responsive;
     // switchMap drops superseded writes rather than racing them.
     this.saveQueue
       .pipe(
         debounceTime(ReportAutosave.SAVE_DEBOUNCE_MS),
-        // A broken report is never written; the effect above re-queues once fixed.
+        // A broken report is never written; the effect above re-queues once it's fixed.
         filter(() => model()?.isValid() ?? false),
         tap(() => this.saving.set(true)),
         switchMap(() => {
@@ -85,12 +74,10 @@ export class ReportAutosave {
           if (!current) return EMPTY;
 
           return this.reportApi.updateDraft(current.reportId, current.toDto()).pipe(
-            // Ride out transient network blips before giving up; a fresh edit
-            // supersedes this whole inner (switchMap) and cancels the retries.
+            // Ride out network blips; a fresh edit cancels this inner stream and its retries.
             retry({ count: 2, delay: 400 }),
             map(() => current),
-            // Catch inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and silently stop all saving.
+            // Caught inside the switchMap, since an error reaching the outer stream would stop all saving.
             catchError((error: unknown) => {
               this.logger.error('Failed to save report draft', error);
               this.saveFailed.set(true);
@@ -104,23 +91,19 @@ export class ReportAutosave {
       .subscribe((current) => {
         this.saveFailed.set(false);
         this.saving.set(false);
-        // Any edit made while the request was in flight has already queued a
-        // fresh save, which cancels this one before it can mark it clean.
+        // An edit made during the request has already queued a save that cancels this one.
         current.markPristine();
       });
   }
 
-  /** Starts a fresh undo timeline from a loaded snapshot's serialized form. */
   reset(serialized: string): void {
     this.history.reset(serialized);
   }
 
-  /** Restores the previous snapshot into the session, if there's anything to undo. */
   undo(): void {
     this.session.restore(this.history.undo());
   }
 
-  /** Restores the next snapshot into the session, if there's anything to redo. */
   redo(): void {
     this.session.restore(this.history.redo());
   }

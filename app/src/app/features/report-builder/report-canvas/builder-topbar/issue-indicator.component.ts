@@ -2,11 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { PanelNavigation } from '../../state/panel-navigation';
 import { ReportSession } from '../../state/report-session';
 
-/**
- * The report's validation state, as a button into the issues panel. Stays quiet
- * (a plain check) while the report is clean, and only takes on colour when there
- * are warnings or errors to draw attention to.
- */
+/** Opens the issues panel; a plain check while clean, coloured for warnings or errors. */
 @Component({
   selector: 'app-issue-indicator',
   template: `

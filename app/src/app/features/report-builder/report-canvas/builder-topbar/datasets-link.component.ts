@@ -2,7 +2,6 @@ import { Component, computed, inject } from '@angular/core';
 import { ReportSession } from '../../state/report-session';
 import { TopbarLinkComponent } from './topbar-link.component';
 
-/** Secondary navigation to the report's dataset editor. */
 @Component({
   selector: 'app-datasets-link',
   imports: [TopbarLinkComponent],

@@ -7,13 +7,8 @@ import { WidgetSelection } from '../../state/widget-selection';
 import { WidgetHostComponent } from '../../widget-host/widget-host.component';
 
 /**
- * The editable grid: the report's widgets laid out on the snap grid, plus the
- * drop-preview overlay shown while a widget is being dragged or resized.
- *
- * Columns stretch to fill the canvas width so the report never scrolls
- * horizontally; only the number of columns changes how fine the grid is. The
- * grid element is measured on resize (and whenever the column count changes) so
- * the drag/resize maths and the background grid lines track the real column width.
+ * The editable grid: widgets on the snap grid, plus the drop preview while dragging or resizing.
+ * Columns stretch to the canvas width, so the column width is measured on resize.
  */
 @Component({
   selector: 'app-canvas-grid',
@@ -37,14 +32,11 @@ export class CanvasGridComponent {
 
   private readonly gridEl = viewChild<ElementRef<HTMLElement>>('grid');
 
-  /** Fixed vertical pitch between rows; horizontal pitch is measured (see below). */
   protected readonly rowStep = GridLayout.ROW_HEIGHT + GridLayout.GRID_GAP;
-  /** Horizontal pitch between columns, from the measured column width. */
   protected readonly columnStep = computed(() => this.session.columnWidth() + GridLayout.GRID_GAP);
 
   constructor() {
-    // Measure the column width from the live grid, re-running whenever the column
-    // count changes and whenever the element resizes with the window/panel.
+    // Re-measure when the column count changes or the element resizes.
     effect((onCleanup) => {
       const el = this.gridEl()?.nativeElement;
       const columns = this.session.gridColumns();
@@ -61,12 +53,12 @@ export class CanvasGridComponent {
     this.dropPreview.set(preview);
   }
 
-  /** Clicking empty canvas drops the selection. */
+  /** Clicking empty canvas clears the selection. */
   protected onCanvasPointerDown(event: PointerEvent): void {
     if (event.target === event.currentTarget) this.selection.clear();
   }
 
-  /** One column's width: the grid has no padding, so its client width less the gaps is the track area. */
+  /** The grid has no padding, so its client width less the gaps is the track area. */
   private measureColumnWidth(el: HTMLElement, columns: number): void {
     const columnWidth =
       columns > 0 ? (el.clientWidth - (columns - 1) * GridLayout.GRID_GAP) / columns : 0;

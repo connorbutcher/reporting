@@ -9,11 +9,7 @@ import {
 } from '../models/widget.model';
 import { ReportSession } from './report-session';
 
-/**
- * The report's relationship to the dataset schemas its widgets draw on: making
- * sure every referenced schema is loaded, exposing the selected table's columns,
- * and funnelling column-configuration edits back through the shared cache.
- */
+/** Loads every schema the report's widgets use and routes column-configuration edits through the shared cache. */
 @Injectable()
 export class DatasetSchema {
   private readonly schemaCache = inject(DatasetSchemaCacheService);
@@ -22,21 +18,16 @@ export class DatasetSchema {
   /** Bumped when a column's configuration changes, so widgets re-read it. */
   readonly datasetVersion = signal(0);
 
-  /** Columns of the selected table's dataset, or empty until they arrive. */
+  /** Empty until the selected table's schema arrives. */
   readonly activeSchemaColumns = computed(
     () => this.session.selectedTableWidget()?.schema()?.columns ?? [],
   );
 
-  /** A table needs a dataset before columns can be chosen. */
   readonly hasDataset = computed(() => !!this.session.selectedTableWidget()?.datasetId());
 
   constructor() {
-    // Every referenced dataset is needed, not just the selected one, so column
-    // validation can tell a missing column from a schema that hasn't loaded.
-    // This also covers every tolerance pointer's *own* limits dataset — separate
-    // from whatever the widget itself plots — so a table column's or chart band's
-    // tolerance columns can be checked the same way; see ChartWidgetModel/
-    // TableColumnModel's dangling-column validation.
+    // Load every referenced dataset, including each tolerance's limits dataset, so validation can tell
+    // a removed column from a schema that hasn't loaded.
     effect(() => {
       for (const widget of this.session.widgets()) {
         if (widget instanceof DataTableWidgetModel) {
@@ -47,8 +38,7 @@ export class DatasetSchema {
             if (toleranceSourceId) this.schemaCache.ensure(toleranceSourceId);
           }
         } else if (widget instanceof ChartWidgetModel) {
-          // A chart can overlay several datasets — one per binding — so every
-          // bound binding's schema is needed, not just the first.
+          // A chart overlays one dataset per binding.
           for (const binding of widget.bindings()) {
             const datasetId = binding.datasetId();
             if (datasetId) this.schemaCache.ensure(datasetId);
@@ -57,10 +47,6 @@ export class DatasetSchema {
             if (band.sourceDatasetId) this.schemaCache.ensure(band.sourceDatasetId);
           }
         } else if (widget instanceof PivotTableWidgetModel) {
-          // Previously missing entirely: a pivot's own dataset was never explicitly
-          // fetched, so its schema (and therefore its column pickers and validation)
-          // only ever worked by accident, when some other widget on the report
-          // happened to already be using the same dataset.
           const datasetId = widget.datasetId();
           if (datasetId) this.schemaCache.ensure(datasetId);
         } else if (widget instanceof KpiWidgetModel) {

@@ -9,12 +9,7 @@ import { HistoryControlsComponent } from './history-controls.component';
 import { IssueIndicatorComponent } from './issue-indicator.component';
 import { PublishButtonComponent } from './publish-button.component';
 
-/**
- * The report bar at the top of the canvas card — the builder's own header,
- * below the app's global nav. Pure layout: two zones, identity on the left and
- * tools plus actions on the right, composed from small single-purpose controls
- * that each read the shared store.
- */
+/** The builder's header bar: identity on the left, tools and actions on the right. */
 @Component({
   selector: 'app-builder-topbar',
   imports: [

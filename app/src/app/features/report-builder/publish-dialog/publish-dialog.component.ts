@@ -3,10 +3,8 @@ import { DialogRef } from '@angular/cdk/dialog';
 import Quill from 'quill';
 
 /**
- * Prompts for a rich-text description of what changed before publishing.
- * Closes with the entered HTML, `null` if left empty, or `undefined` if
- * cancelled/dismissed — the caller only publishes when the result isn't
- * `undefined`.
+ * Asks what changed before publishing. Closes with the HTML, `null` if empty, or `undefined` if
+ * cancelled.
  */
 @Component({
   selector: 'app-publish-dialog',

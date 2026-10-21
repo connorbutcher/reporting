@@ -3,11 +3,7 @@ import { ReportAutosave } from '../state/report-autosave';
 import { WidgetCommands } from '../state/widget-commands';
 import { WidgetSelection } from '../state/widget-selection';
 
-/**
- * Keyboard shortcuts for editing the canvas: undo/redo, duplicate, delete,
- * arrow-key nudging, and clearing the selection. Listens on the document so
- * the shortcuts work wherever focus is, except inside a text field.
- */
+/** Canvas keyboard shortcuts, listening on the document but never inside a text field. */
 @Directive({
   selector: '[appBuilderShortcuts]',
   host: {
@@ -15,7 +11,6 @@ import { WidgetSelection } from '../state/widget-selection';
   },
 })
 export class BuilderShortcutsDirective {
-  /** Nudging by a whole cell keeps widgets on the grid. */
   private static readonly NUDGE = 1;
   private static readonly NUDGE_KEYS: Record<string, { dx: number; dy: number }> = {
     ArrowLeft: { dx: -BuilderShortcutsDirective.NUDGE, dy: 0 },
@@ -29,7 +24,6 @@ export class BuilderShortcutsDirective {
   private readonly selection = inject(WidgetSelection);
 
   protected onKeyDown(event: KeyboardEvent): void {
-    // Never steal keys from a field the user is typing in.
     if (BuilderShortcutsDirective.isTextEntry(event.target)) return;
 
     const ctrl = event.ctrlKey || event.metaKey;

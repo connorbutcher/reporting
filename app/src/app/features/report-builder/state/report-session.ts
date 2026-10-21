@@ -28,14 +28,9 @@ import { WidgetSelection } from './widget-selection';
 import { ModelSources } from '../models/sources/model-sources';
 
 /**
- * The report-builder's shared session state: the loaded {@link ReportModel} tree
- * and the look-ups it validates against, plus a read-model derived from it (the
- * active tab's widgets and grid, the report's validation, and the current
- * selection resolved to widget instances).
- *
- * Every other collaborator reads the report through this service, so the model
- * signal and the derived views live in exactly one place. Mutating verbs live on
- * the command services; this holds state and exposes it.
+ * The report builder's shared state: the {@link ReportModel} tree, the look-ups it validates
+ * against, and views derived from it (active tab, validation, selection). Mutations live on the
+ * command services.
  */
 @Injectable()
 export class ReportSession {
@@ -46,9 +41,7 @@ export class ReportSession {
   private readonly filterApi = inject(FilterApiService);
   private readonly fragments = inject(UrlFragmentService);
 
-  // --- shared session state --------------------------------------------------
-
-  /** The report being edited, taken from the route so it survives a reload/deep-link. */
+  /** From the route, so it survives a reload or deep link. */
   private readonly params = toSignal(this.route.paramMap);
   readonly reportId = computed(() => {
     const raw = this.params()?.get('reportId');
@@ -57,10 +50,7 @@ export class ReportSession {
 
   readonly model = signal<ReportModel | null>(null);
 
-  /**
-   * The datasets available to this report's draft, for the pickers. Keyed off the route id. A 404
-   * is expected when the draft isn't checked out yet, so it opts out of the global not-found toast.
-   */
+  /** A 404 is expected before the draft is checked out, so the global not-found toast is skipped. */
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
     () =>
       this.reportId() !== null
@@ -70,12 +60,11 @@ export class ReportSession {
   );
   readonly datasets = this.datasetsResource.value;
 
-  /** Filter operators per column type; static for the server's lifetime, so loaded once. */
+  /** Static for the server's lifetime, so loaded once. */
   readonly operatorCatalogue = signal<OperatorCatalogue | null>(null);
 
-  // The active tab is the `tab` query param, so the URL is the source of truth:
-  // reloading, deep-linking and back/forward all restore the open tab. The value
-  // is a tab's stable id (its RefId).
+  // The `tab` query param (a tab's stable id) is the source of truth, so reload, deep links and
+  // back/forward restore the open tab.
   private readonly tabParam = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('tab'))),
     { initialValue: this.route.snapshot.queryParamMap.get('tab') },
@@ -87,12 +76,8 @@ export class ReportSession {
       .pipe(takeUntilDestroyed())
       .subscribe((catalogue) => this.operatorCatalogue.set(catalogue));
 
-    // Drive the model's active tab from the URL: a valid `tab` param selects that
-    // tab; anything else (missing, or pointing at a removed tab) falls back to
-    // the tab owning the widget a URL fragment names — so a shared link to a
-    // widget lands on the right tab — or the first one, and cleans the URL up
-    // (replacing history so the bare URL isn't a back-button trap). Re-runs when
-    // the tabs change (add/remove/undo) too.
+    // A valid `tab` param selects that tab. Otherwise fall back to the tab owning the widget in the
+    // URL fragment, else the first tab, and fix the URL without adding a history entry.
     effect(() => {
       const model = this.model();
       const param = this.tabParam();
@@ -112,11 +97,7 @@ export class ReportSession {
     });
   }
 
-  /**
-   * Writes the active tab to the `tab` query param, which the URL drives back
-   * into the model. Preserves any fragment already on the URL — a switch to the
-   * tab a fragment's widget lives on must not then erase that same fragment.
-   */
+  /** Keeps any URL fragment, so switching to a fragment's tab doesn't erase it. */
   goToTab(tabId: string, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -127,25 +108,15 @@ export class ReportSession {
     });
   }
 
-  /**
-   * The measured pixel width of one grid column. Columns stretch to fill the
-   * canvas, so this is only known at runtime; the canvas measures it and the
-   * drag/resize directives read it to convert pointer movement into whole cells.
-   */
+  /** One grid column's measured width, which the drag and resize directives snap to. */
   readonly columnWidth = signal(0);
 
-  /** The look-ups every model node validates and describes itself against. */
   readonly sources: ModelSources = {
     schemas: this.schemaCache.schemas,
     catalogue: this.operatorCatalogue.asReadonly(),
   };
 
-  // --- report state, delegated to the model tree -----------------------------
-
-  // The active tab (resolved from the model's tabs and the route param) is the one
-  // grid surface on screen, so its widgets and grid are what the canvas reads and
-  // the placement verbs act on. Reading it directly keeps ReportModel out of the
-  // per-tab business — it just holds the tabs and the report-level state.
+  // The canvas and placement verbs work on the active tab.
   readonly widgets = computed<readonly WidgetModel[]>(() => this.activeTab()?.widgets() ?? []);
   readonly gridColumns = computed(
     () => this.activeTab()?.gridColumns() ?? TabModel.DEFAULT_GRID_COLUMNS,
@@ -160,7 +131,7 @@ export class ReportSession {
     this.activeTab()?.setGridRows(value);
   }
 
-  /** Adds an empty widget to the active tab; null if there's no tab to add it to. */
+  /** Null if there's no tab to add it to. */
   addWidget(type: WidgetType): WidgetModel | null {
     return this.activeTab()?.addWidget(type) ?? null;
   }
@@ -185,7 +156,7 @@ export class ReportSession {
     return id ? (this.model()?.widget(id) ?? null) : null;
   });
 
-  /** All selected widgets, skipping any that have since been removed. */
+  /** Skips any that have since been removed. */
   readonly selectedWidgets = computed<WidgetModel[]>(() => {
     const model = this.model();
     if (!model) return [];
@@ -195,25 +166,22 @@ export class ReportSession {
       .filter((w): w is WidgetModel => !!w);
   });
 
-  /** The selected widget, narrowed to a table — null for every other type. */
   readonly selectedTableWidget = computed<DataTableWidgetModel | null>(() => {
     const widget = this.selectedWidget();
     return widget instanceof DataTableWidgetModel ? widget : null;
   });
 
-  /** The selected widget, narrowed to a chart — null for every other type. */
   readonly selectedChartWidget = computed<ChartWidgetModel | null>(() => {
     const widget = this.selectedWidget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
 
-  /** The selected widget, narrowed to a KPI — null for every other type. */
   readonly selectedKpiWidget = computed<KpiWidgetModel | null>(() => {
     const widget = this.selectedWidget();
     return widget instanceof KpiWidgetModel ? widget : null;
   });
 
-  /** The selected widget, when it's a kind that carries its own filter. */
+  /** The selected widget, when it has its own filter. */
   readonly selectedFilterableWidget = computed<
     DataTableWidgetModel | PivotTableWidgetModel | KpiWidgetModel | ChartWidgetModel | null
   >(() => {
@@ -227,15 +195,13 @@ export class ReportSession {
   });
 
   /**
-   * Rebuilds the tree from a snapshot (undo/redo). Built through the constructor
-   * rather than `fromDto` so the restored state counts as unsaved and gets
-   * written back — an undo the server never hears about would be lost on reload.
+   * Rebuilds the tree from an undo or redo snapshot. Built through the constructor, not `fromDto`, so
+   * it counts as unsaved and is written back.
    */
   restore(report: ReportRevisionContent | null): void {
     if (!report) return;
     this.model.set(new ReportModel(report, this.sources));
-    // The active tab follows the `tab` query param, so the sync effect reselects
-    // it against the rebuilt tabs — no need to carry it across here.
+    // The tab sync effect reselects the active tab against the rebuilt tabs.
 
     const present = new Set(report.tabs.flatMap((t) => t.widgets.map((w) => w.id)));
     this.selection.set(this.selection.selectedWidgetIds().filter((id) => present.has(id)));

@@ -6,19 +6,9 @@ import { ReportLifecycle } from '../../state/report-lifecycle';
 import { ReportSession } from '../../state/report-session';
 
 /**
- * The builder's one primary action: publish the draft as a new version.
- *
- * A checked-out draft is itself the pending version, so it can be published as
- * soon as it's loaded, valid, and fully saved — no edit in this session is
- * required. Publishing snapshots the server-side draft, so it's held back while a
- * save is still in flight or has failed, while the report has validation errors,
- * and while it has warnings (an unconfigured/blank widget, most commonly) — see
- * {@link ReportSession.warnings}. Warnings deliberately stay non-blocking for
- * *autosave* (see `report-autosave.ts` / `validation-issue.ts`: a freshly-added,
- * still-blank widget must remain saveable, or it could never be persisted while
- * being set up) but a report shouldn't actually ship with a blank widget in it,
- * so publish is the stricter gate. The button's enabled state and tooltip carry
- * that status on their own.
+ * Publishes the draft as a new version. Allowed once the draft is loaded, fully saved and free of
+ * errors and warnings. Warnings never block autosave, since a new blank widget must stay saveable,
+ * but a published report shouldn't contain one.
  */
 @Component({
   selector: 'app-publish-button',
@@ -68,25 +58,17 @@ export class PublishButtonComponent {
   private readonly lifecycle = inject(ReportLifecycle);
   private readonly dialog = inject(Dialog);
 
-  /** A draft is loaded and being edited — the checked-out draft is itself what would be published. */
   private readonly draftLoaded = computed(() => this.session.model() !== null);
 
-  /** True once every edit has reached the server, so a publish snapshots the latest. */
+  /** Every edit has reached the server, so a publish snapshots the latest. */
   private readonly allSaved = computed(
     () => !this.session.dirty() && !this.autosave.saving() && !this.autosave.saveFailed(),
   );
 
-  /** No unconfigured/blank widgets, dangling references, or other loose ends — see the class doc. */
   private readonly noIssues = computed(
     () => this.session.isValid() && this.session.warnings().length === 0,
   );
 
-  /**
-   * A loaded draft can be published as soon as it's issue-free and fully saved —
-   * no edit in this session is required, since the checked-out draft is already
-   * the pending version. Publishing snapshots the server-side draft, so it's held
-   * back while a save is still in flight or has failed.
-   */
   protected readonly canPublish = computed(
     () => this.draftLoaded() && this.noIssues() && this.allSaved(),
   );
@@ -104,7 +86,7 @@ export class PublishButtonComponent {
   protected publish(): void {
     const ref = this.dialog.open<string | null>(PublishDialogComponent);
     ref.closed.subscribe((notes) => {
-      // undefined means the dialog was cancelled or dismissed.
+      // Undefined means the dialog was cancelled.
       if (notes === undefined) return;
       this.lifecycle.publish(notes);
     });

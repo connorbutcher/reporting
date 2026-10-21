@@ -13,10 +13,8 @@ import { ReportSession } from '../../state/report-session';
 import { TabCommands } from '../../state/tab-commands';
 
 /**
- * The tab strip along the top of the canvas. Each tab is its own grid surface;
- * clicking one switches the canvas to it, double-clicking renames it inline,
- * dragging one reorders the strip, and the trailing button adds another. The last
- * remaining tab can't be deleted — a revision always needs at least one surface.
+ * The canvas tab strip: click to switch, double-click to rename, drag to reorder. The last tab can't
+ * be deleted, since a revision needs at least one.
  */
 @Component({
   selector: 'app-canvas-tabs',
@@ -186,7 +184,7 @@ export class CanvasTabsComponent {
         ?.name() ?? '',
     );
     this.editingId.set(tabId);
-    // Focus and select once the input has rendered, so the name is ready to overtype.
+    // Select the name once the input renders, ready to overtype.
     afterNextRender(
       () => {
         const el = this.renameInput()?.nativeElement;
@@ -208,8 +206,6 @@ export class CanvasTabsComponent {
     this.editingId.set(null);
   }
 
-  // --- drag to reorder -------------------------------------------------------
-
   protected onDragStart(tabId: string, event: DragEvent): void {
     this.draggingId.set(tabId);
     event.dataTransfer?.setData('text/plain', tabId);
@@ -217,7 +213,7 @@ export class CanvasTabsComponent {
   }
 
   protected onDragOver(event: DragEvent): void {
-    // Only a tab drag (not, say, a file) is a valid drop; preventDefault allows it.
+    // Only a tab drag is a valid drop, not a file.
     if (!this.draggingId()) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';

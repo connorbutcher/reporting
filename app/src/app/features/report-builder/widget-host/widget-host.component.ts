@@ -54,7 +54,7 @@ export class WidgetHostComponent {
   protected readonly selected = computed(() =>
     this.selection.selectedWidgetIds().includes(this.widget().id),
   );
-  /** The one the side panel is editing, when several are selected at once. */
+  /** The widget the side panel edits when several are selected. */
   protected readonly primary = computed(
     () => this.selection.selectedWidgetId() === this.widget().id,
   );
@@ -79,11 +79,10 @@ export class WidgetHostComponent {
 
   protected readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
 
-  /** The widget's current DTO — its config reflects live edits — for the render outlet. */
+  /** Reflects live edits. */
   protected readonly widgetDto = computed(() => this.widget().toDto());
 
-  // Narrowed once here rather than in the template, since Angular's control
-  // flow can't infer that two separate `widget()` calls refer to the same value.
+  // Narrowed here because template control flow can't tell two `widget()` calls are the same value.
   private readonly tableModel = computed(() => {
     const widget = this.widget();
     return widget instanceof DataTableWidgetModel ? widget : null;
@@ -92,7 +91,7 @@ export class WidgetHostComponent {
     const widget = this.widget();
     return widget instanceof ChartWidgetModel ? widget : null;
   });
-  /** The table, pivot, and KPI all carry a single dataset + own filter, wired identically. */
+  /** Tables, pivots and KPIs share one dataset-plus-filter wiring. */
   private readonly filterableModel = computed(() => {
     const widget = this.widget();
     return widget instanceof DataTableWidgetModel ||
@@ -104,7 +103,7 @@ export class WidgetHostComponent {
 
   protected readonly datasetVersion = computed(() => this.schema.datasetVersion());
 
-  /** Wired by name onto the created widget's outputs; only a table emits these. */
+  /** Bound by name to the widget's outputs; only a table emits these. */
   protected readonly widgetOutputs: Record<string, WidgetOutputHandler> = {
     sortChange: (sort: { columnId: string; direction: SortDirection }) => this.onSortChange(sort),
     columnResize: (widths: { columnId: string; width: number }[]) => this.onColumnResize(widths),
@@ -112,23 +111,19 @@ export class WidgetHostComponent {
       this.onColumnReorder(move),
   };
 
-  /** Only the finished conditions, so a half-typed row doesn't blank the table or pivot. */
+  /** Only finished conditions, so a half-typed row doesn't blank the widget. */
   protected readonly widgetFilter = computed(
     () => this.filterableModel()?.filter.toQueryDto() ?? null,
   );
 
-  /** The report-level filter for a table's or pivot's dataset, layered over its own. */
+  /** The report-level filter for a table's or pivot's dataset. */
   protected readonly reportFilter = computed(() => {
     const datasetId = this.filterableModel()?.datasetId();
     if (!datasetId) return null;
     return this.reportFilterFor(datasetId);
   });
 
-  /**
-   * Each chart binding's resolved, query-safe filter — the report filter for the
-   * binding's dataset layered under the binding's own finished conditions — keyed
-   * by binding id, so every overlaid dataset narrows its own rows.
-   */
+  /** Each chart binding's report filter layered under its own finished conditions, keyed by binding id. */
   protected readonly bindingFilters = computed(() => {
     const chart = this.chartModel();
     if (!chart) return null;
@@ -147,14 +142,13 @@ export class WidgetHostComponent {
     return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   }
 
-  /** Ctrl/⌘ or shift extends the selection; a plain click replaces it. */
+  /** Ctrl/⌘ or shift extends the selection. */
   protected select(event: PointerEvent | MouseEvent): void {
     if (event.ctrlKey || event.metaKey || event.shiftKey) {
       this.navigation.toggleWidgetSelection(this.widget().id);
       return;
     }
-    // Clicking a widget already in a multi-selection keeps the group intact so
-    // the whole thing can be dragged.
+    // Keep a multi-selection intact so the group can be dragged.
     if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) return;
     this.navigation.selectWidget(this.widget().id);
   }
@@ -164,7 +158,7 @@ export class WidgetHostComponent {
     this.navigation.navigate({ kind: 'issues' });
   }
 
-  /** Opens this widget at near-fullscreen size, fed the same reactive inputs its outlet already gets. */
+  /** Opens near-fullscreen with the same inputs as the outlet. */
   protected openFullscreen(): void {
     this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
       data: {
@@ -187,11 +181,7 @@ export class WidgetHostComponent {
     this.tableModel()?.reorderColumn(move.draggedColumnId, move.targetColumnId);
   }
 
-  /**
-   * Persists widths after a drag-resize so the layout survives a reload. This
-   * only ever updates widths on columns the user already chose: it must never
-   * add or reorder columns, since layout reflows can trigger it too.
-   */
+  /** Persists resized widths. Only updates existing columns, since layout reflows trigger this too. */
   protected onColumnResize(widths: { columnId: string; width: number }[]): void {
     const table = this.tableModel();
     if (!table?.appearance.resizableColumns()) return;

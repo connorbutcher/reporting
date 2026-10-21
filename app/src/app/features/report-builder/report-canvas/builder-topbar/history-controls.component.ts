@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { ReportAutosave } from '../../state/report-autosave';
 
-/** Undo/redo for the report's edit history, as one segmented control. */
 @Component({
   selector: 'app-history-controls',
   template: `

@@ -4,11 +4,8 @@ import { ReportSession } from './report-session';
 import { WidgetSelection } from './widget-selection';
 
 /**
- * Adding, removing, renaming, reordering and switching tabs. Which tab is active
- * lives in the route's `tab` query param, so switching (and add/remove) navigates
- * that param via {@link ReportSession.goToTab} rather than mutating the model
- * directly. Each also drops the canvas selection and resets the panel — the
- * selected widget belongs to the tab being left behind.
+ * Adds, removes, renames, reorders and switches tabs. The active tab lives in the `tab` query param,
+ * so switching navigates it. Each also clears the selection and resets the panel.
  */
 @Injectable()
 export class TabCommands {
@@ -16,7 +13,6 @@ export class TabCommands {
   private readonly selection = inject(WidgetSelection);
   private readonly navigation = inject(PanelNavigation);
 
-  /** Switches the visible tab by navigating the `tab` query param. */
   selectTab(tabId: string): void {
     if (this.session.activeTabId() === tabId) return;
     this.session.goToTab(tabId);
@@ -38,8 +34,7 @@ export class TabCommands {
     const tabs = model.tabs();
     if (tabs.length <= 1) return;
 
-    // Pick the survivor to open up front so removing the active tab lands on its
-    // neighbour rather than briefly pointing the URL at a tab that's gone.
+    // Pick the neighbour first so the URL never points at a removed tab.
     const index = tabs.findIndex((t) => t.id === tabId);
     const remaining = tabs.filter((t) => t.id !== tabId);
     const neighbour = remaining[Math.min(index, remaining.length - 1)];

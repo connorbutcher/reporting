@@ -6,13 +6,7 @@ import { WidgetModel } from '../models/widget.model';
 import { ReportSession } from '../state/report-session';
 import { ResizeDirection } from './resize-direction';
 
-/**
- * The resize half of a widget's pointer interaction, split out of the host so
- * the component keeps only widget dispatch and selection. Sits on the widget
- * surface and is started from a resize handle's `pointerdown`; the widget grows
- * or shrinks by whole grid cells, refusing sizes that would collide or leave
- * the grid.
- */
+/** Resizes a widget from a handle by whole cells, refusing sizes that collide or leave the grid. */
 @Directive({
   selector: '[appWidgetResize]',
   exportAs: 'widgetResize',
@@ -20,7 +14,7 @@ import { ResizeDirection } from './resize-direction';
 export class WidgetResizeDirective {
   readonly widget = input.required<WidgetModel>({ alias: 'appWidgetResize' });
 
-  /** Live preview of the widget's candidate rect, for the canvas overlay. */
+  /** The candidate rect, for the canvas overlay. */
   readonly gridPreview = output<GridPreview | null>();
 
   private readonly session = inject(ReportSession);
@@ -96,7 +90,7 @@ export class WidgetResizeDirective {
     this.gridPreview.emit(null);
   }
 
-  /** The pixel footprint of a w×h span: cells plus the gaps between them. */
+  /** Cells plus the gaps between them. */
   private pixelSize(w: number, h: number): { width: number; height: number } {
     const columnStep = this.session.columnWidth() + GridLayout.GRID_GAP;
     return {
