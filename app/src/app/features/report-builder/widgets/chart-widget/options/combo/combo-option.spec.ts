@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   ComboChartWidgetConfig,
   DEFAULT_COMBO_CHART_CONFIG,
-} from '../../../../../core/models/report';
-import { BarChartQueryResult } from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/report';
+import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import { ComboOption } from './combo-option';
-import { ReferenceSeries } from './reference-series';
+import { ReferenceSeries } from '../marks/reference-series';
 
 const columns = [
   { id: 'month', name: 'Month', type: 'string', order: 0, configuration: { kind: 'text' } },

@@ -1,29 +1,29 @@
-import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
+import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
 import {
   ComboChartWidgetConfig,
   chartAxisIndex,
   readChartAxes,
   readChartBindings,
-} from '../../../../../core/models/report';
-import { BarChartQueryResult } from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/report';
+import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { YAXisComponentOption } from 'echarts';
-import { ECOption } from './types/ec-option';
-import { LabelCallbackParams } from './types/label-callback-params';
-import { BarOption } from './bar-option';
-import { CategoryZoom } from './category-zoom';
-import { ChartColumns } from './chart-columns';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
-import { GuideLineMarks } from './guide-line-marks';
-import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-severity';
-import { PointChartConstants } from './point-chart-constants';
-import { ReferenceSeries } from './reference-series';
-import { SeriesColors } from './series-colors';
-import { ToleranceMarks } from './tolerance-marks';
-import { ToleranceOutline } from './tolerance-outline';
-import { ComboSeries } from './types/combo-series';
+import { ECOption } from '../types/ec-option';
+import { LabelCallbackParams } from '../types/label-callback-params';
+import { BarOption } from '../bar/bar-option';
+import { CategoryZoom } from '../axes/category-zoom';
+import { ChartColumns } from '../format/chart-columns';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
+import { GuideLineMarks } from '../marks/guide-line-marks';
+import { GuideLineOutline } from '../marks/guide-line-outline';
+import { OutlineSeverity } from '../marks/outline-severity';
+import { PointChartConstants } from '../point/point-chart-constants';
+import { ReferenceSeries } from '../marks/reference-series';
+import { SeriesColors } from '../colors/series-colors';
+import { ToleranceMarks } from '../marks/tolerance-marks';
+import { ToleranceOutline } from '../marks/tolerance-outline';
+import { ComboSeries } from './combo-series';
 
 /**
  * Combination chart: the bar chart's data, with each series drawn as bars or a line and

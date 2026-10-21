@@ -3,7 +3,7 @@ import {
   DatasetColumn,
   DateColumnConfig,
   NumericColumnConfig,
-} from '../../../../../core/models/dataset';
+} from '../../../../../../core/models/dataset';
 
 /** Mirrors the server's CellFormatter so ticks and tooltips match the table cells. */
 export class ChartFormat {

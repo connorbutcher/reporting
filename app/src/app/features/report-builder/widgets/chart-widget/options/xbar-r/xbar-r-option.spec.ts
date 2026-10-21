@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   DEFAULT_XBAR_R_CHART_CONFIG,
   XBarRChartWidgetConfig,
-} from '../../../../../core/models/report';
-import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/report';
+import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../../core/models/widget-query';
 import { XBarROption } from './xbar-r-option';
 
 const columns = [

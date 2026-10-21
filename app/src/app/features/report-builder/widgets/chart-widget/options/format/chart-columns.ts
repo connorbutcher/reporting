@@ -1,4 +1,4 @@
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { DatasetColumn } from '../../../../../../core/models/dataset';
 
 export class ChartColumns {
   public static byId(columns: DatasetColumn[], id: string | null): DatasetColumn | null {

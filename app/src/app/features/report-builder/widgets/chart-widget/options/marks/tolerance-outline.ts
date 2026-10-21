@@ -1,4 +1,4 @@
-import { ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query';
 import { OutlineZone } from './types/outline-zone';
 
 /** Turns resolved tolerance bands with outlining on into generic {@link OutlineZone}s. */

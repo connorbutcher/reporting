@@ -1,4 +1,4 @@
-import { ChartGuideLine } from '../../../../../core/models/report';
+import { ChartGuideLine } from '../../../../../../core/models/report';
 import { OutlineZone } from './types/outline-zone';
 
 /** Outline zones from guide lines; with no concession tier, crossing one always fails. */

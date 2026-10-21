@@ -1,7 +1,7 @@
-import { ResolvedToleranceBand } from '../../../../../core/models/widget-query';
+import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query';
 import { MarkAreaData } from './types/mark-area-data';
 import { MarkLineData } from './types/mark-line-data';
-import { AxisKey } from './types/axis-key';
+import { AxisKey } from '../types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
 export class ToleranceMarks {

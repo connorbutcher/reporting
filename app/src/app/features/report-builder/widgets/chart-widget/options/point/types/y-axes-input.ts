@@ -1,6 +1,6 @@
-import { DateColumnConfig, NumericColumnConfig } from '../../../../../../core/models/dataset';
-import { ChartValueAxis } from '../../../../../../core/models/report';
-import { ChartSeriesResult } from '../../../../../../core/models/widget-query';
+import { DateColumnConfig, NumericColumnConfig } from '../../../../../../../core/models/dataset';
+import { ChartValueAxis } from '../../../../../../../core/models/report';
+import { ChartSeriesResult } from '../../../../../../../core/models/widget-query';
 import { PointAxes } from '../point-axes';
 
 /** Everything {@link PointAxes.buildY} needs about the plotted data and the primary column. */

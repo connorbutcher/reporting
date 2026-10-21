@@ -1,26 +1,26 @@
-import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
+import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
 import {
   ChartGuideLine,
   HistogramNormalize,
   HistogramWidgetConfig,
   readChartAxes,
   readChartBindings,
-} from '../../../../../core/models/report';
+} from '../../../../../../core/models/report';
 import {
   HistogramQueryResult,
   ResolvedToleranceBand,
-} from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/widget-query';
 import type { BarSeriesOption, LineSeriesOption } from 'echarts/charts';
-import { ECOption } from './types/ec-option';
-import { LabelCallbackParams } from './types/label-callback-params';
-import { ChartColumns } from './chart-columns';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
-import { GuideLineMarks } from './guide-line-marks';
-import { ReferenceSeries } from './reference-series';
-import { TooltipHtml } from './tooltip-html';
-import { SeriesColors } from './series-colors';
-import { ToleranceMarks } from './tolerance-marks';
+import { ECOption } from '../types/ec-option';
+import { LabelCallbackParams } from '../types/label-callback-params';
+import { ChartColumns } from '../format/chart-columns';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
+import { GuideLineMarks } from '../marks/guide-line-marks';
+import { ReferenceSeries } from '../marks/reference-series';
+import { TooltipHtml } from '../format/tooltip-html';
+import { SeriesColors } from '../colors/series-colors';
+import { ToleranceMarks } from '../marks/tolerance-marks';
 
 /**
  * Histogram: one bar per value bin, per series. Spec bands are mapped onto the bin axis's

@@ -1,6 +1,6 @@
-import { DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { AxisLabelRotation } from '../../../../../core/models/report';
-import { ChartFormat } from './chart-format';
+import { DateColumnConfig, NumericColumnConfig } from '../../../../../../core/models/dataset';
+import { AxisLabelRotation } from '../../../../../../core/models/report';
+import { ChartFormat } from '../format/chart-format';
 import { CategoryAxisFragment } from './types/category-axis-fragment';
 import { DateAxisFragment } from './types/date-axis-fragment';
 import { ValueAxisFragment } from './types/value-axis-fragment';

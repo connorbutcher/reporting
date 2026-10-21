@@ -1,27 +1,27 @@
-import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
+import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
 import {
   Aggregate,
   BarChartWidgetConfig,
   readChartAxes,
   readChartBindings,
-} from '../../../../../core/models/report';
-import { BarChartQueryResult, BarSeriesResult } from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/report';
+import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 import type { BarSeriesOption } from 'echarts/charts';
-import { ECOption } from './types/ec-option';
-import { LabelCallbackParams } from './types/label-callback-params';
-import { CategoryZoom } from './category-zoom';
-import { AxisKey } from './types/axis-key';
-import { ChartColumns } from './chart-columns';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
-import { GuideLineMarks } from './guide-line-marks';
-import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-severity';
-import { ReferenceSeries } from './reference-series';
-import { SeriesColors } from './series-colors';
-import { ToleranceMarks } from './tolerance-marks';
-import { ToleranceOutline } from './tolerance-outline';
-import { TooltipHtml } from './tooltip-html';
+import { ECOption } from '../types/ec-option';
+import { LabelCallbackParams } from '../types/label-callback-params';
+import { CategoryZoom } from '../axes/category-zoom';
+import { AxisKey } from '../types/axis-key';
+import { ChartColumns } from '../format/chart-columns';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
+import { GuideLineMarks } from '../marks/guide-line-marks';
+import { GuideLineOutline } from '../marks/guide-line-outline';
+import { OutlineSeverity } from '../marks/outline-severity';
+import { ReferenceSeries } from '../marks/reference-series';
+import { SeriesColors } from '../colors/series-colors';
+import { ToleranceMarks } from '../marks/tolerance-marks';
+import { ToleranceOutline } from '../marks/tolerance-outline';
+import { TooltipHtml } from '../format/tooltip-html';
 
 /** Bar chart: one aggregated value per category, per series. */
 export class BarOption {

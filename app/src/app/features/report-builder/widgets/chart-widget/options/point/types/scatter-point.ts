@@ -1,4 +1,4 @@
-import { OutlineItemStyle } from './outline-item-style';
+import { OutlineItemStyle } from '../../marks/types/outline-item-style';
 import { Coord } from './coord';
 
 export interface ScatterPoint {

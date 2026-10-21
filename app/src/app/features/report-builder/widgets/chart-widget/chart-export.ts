@@ -8,9 +8,9 @@ import {
   XBarRChartQueryResult,
 } from '../../../../core/models/widget-query';
 import { Csv } from '../csv';
-import { ChartColumns } from './options/chart-columns';
-import { ChartFormat } from './options/chart-format';
-import { XBarROption } from './options/xbar-r-option';
+import { ChartColumns } from './options/format/chart-columns';
+import { ChartFormat } from './options/format/chart-format';
+import { XBarROption } from './options/xbar-r/xbar-r-option';
 import { AnyChartResult } from './models/any-chart-result';
 import { ChartTable } from './models/chart-table';
 

@@ -1,5 +1,5 @@
-import { DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { ChartFormat } from './chart-format';
+import { DateColumnConfig, NumericColumnConfig } from '../../../../../../core/models/dataset';
+import { ChartFormat } from '../format/chart-format';
 import { Coord } from './types/coord';
 import { ScatterTooltipParams } from './types/scatter-tooltip-params';
 

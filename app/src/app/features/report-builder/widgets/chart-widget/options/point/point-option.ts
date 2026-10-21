@@ -1,17 +1,17 @@
-import { ChartZoomMemory } from '../chart-zoom';
-import { DatasetColumn } from '../../../../../core/models/dataset';
+import { ChartZoomMemory } from '../../chart-zoom';
+import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   chartAxisIndex,
   readChartAxes,
   readChartBindings,
-} from '../../../../../core/models/report';
-import { ChartQueryResult, ChartSeriesResult } from '../../../../../core/models/widget-query';
-import { ECOption } from './types/ec-option';
-import { LabelCallbackParams } from './types/label-callback-params';
-import { TooltipCallbackParams } from './types/tooltip-callback-params';
-import { ChartColumns } from './chart-columns';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
+} from '../../../../../../core/models/report';
+import { ChartQueryResult, ChartSeriesResult } from '../../../../../../core/models/widget-query';
+import { ECOption } from '../types/ec-option';
+import { LabelCallbackParams } from '../types/label-callback-params';
+import { TooltipCallbackParams } from '../types/tooltip-callback-params';
+import { ChartColumns } from '../format/chart-columns';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
 import { PointAxes } from './point-axes';
 import { PointSeries } from './point-series';
 import { PointTooltip } from './point-tooltip';
@@ -22,14 +22,14 @@ import { PointChartConfig } from './types/point-chart-config';
 import { ScatterTooltipParams } from './types/scatter-tooltip-params';
 import { SeriesStyle } from './types/series-style';
 import { SizeScale } from './types/size-scale';
-import { GuideLineMarks } from './guide-line-marks';
-import { GuideLineOutline } from './guide-line-outline';
-import { OutlineSeverity } from './outline-severity';
-import { ReferenceSeries } from './reference-series';
-import { SeriesColors } from './series-colors';
-import { ToleranceMarks } from './tolerance-marks';
-import { ToleranceOutline } from './tolerance-outline';
-import { AxisKey } from './types/axis-key';
+import { GuideLineMarks } from '../marks/guide-line-marks';
+import { GuideLineOutline } from '../marks/guide-line-outline';
+import { OutlineSeverity } from '../marks/outline-severity';
+import { ReferenceSeries } from '../marks/reference-series';
+import { SeriesColors } from '../colors/series-colors';
+import { ToleranceMarks } from '../marks/tolerance-marks';
+import { ToleranceOutline } from '../marks/tolerance-outline';
+import { AxisKey } from '../types/axis-key';
 
 /** Scatter/line chart: value axes with one mark per row, grouped into series. */
 export class PointOption {

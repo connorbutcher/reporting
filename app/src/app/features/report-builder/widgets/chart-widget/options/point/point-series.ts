@@ -1,11 +1,11 @@
-import { ChartSeriesResult } from '../../../../../core/models/widget-query';
+import { ChartSeriesResult } from '../../../../../../core/models/widget-query';
 import type {
   EffectScatterSeriesOption,
   LineSeriesOption,
   ScatterSeriesOption,
 } from 'echarts/charts';
 import { PointSeriesOption } from './types/point-series-option';
-import { OutlineSeverity } from './outline-severity';
+import { OutlineSeverity } from '../marks/outline-severity';
 import { PointChartConstants } from './point-chart-constants';
 import { ChartCommentAnchor } from './types/chart-comment-anchor';
 import { Coord } from './types/coord';

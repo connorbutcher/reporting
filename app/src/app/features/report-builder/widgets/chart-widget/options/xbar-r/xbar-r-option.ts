@@ -1,23 +1,23 @@
-import { DatasetColumn, NumericColumnConfig } from '../../../../../core/models/dataset';
+import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/models/dataset';
 import {
   ControlChartMode,
   readChartAxes,
   readChartBindings,
   XBarRChartWidgetConfig,
-} from '../../../../../core/models/report';
-import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../core/models/widget-query';
+} from '../../../../../../core/models/report';
+import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../../core/models/widget-query';
 import type { LineSeriesOption } from 'echarts/charts';
-import { ECOption } from './types/ec-option';
-import { TooltipCallbackParams } from './types/tooltip-callback-params';
-import { CategoryZoom } from './category-zoom';
-import { ChartColumns } from './chart-columns';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
-import { GuideLineMarks } from './guide-line-marks';
-import { ReferenceSeries } from './reference-series';
-import { ToleranceMarks } from './tolerance-marks';
-import { TooltipHtml } from './tooltip-html';
-import { SubgroupTooltipContext } from './types/subgroup-tooltip-context';
+import { ECOption } from '../types/ec-option';
+import { TooltipCallbackParams } from '../types/tooltip-callback-params';
+import { CategoryZoom } from '../axes/category-zoom';
+import { ChartColumns } from '../format/chart-columns';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
+import { GuideLineMarks } from '../marks/guide-line-marks';
+import { ReferenceSeries } from '../marks/reference-series';
+import { ToleranceMarks } from '../marks/tolerance-marks';
+import { TooltipHtml } from '../format/tooltip-html';
+import { SubgroupTooltipContext } from './subgroup-tooltip-context';
 
 /**
  * Xbar-R chart: the X-bar chart above the R chart on a shared subgroup axis. Limits are step-line

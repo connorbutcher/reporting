@@ -1,8 +1,8 @@
-import { DateColumnConfig, NumericColumnConfig } from '../../../../../core/models/dataset';
-import { ChartSeriesResult } from '../../../../../core/models/widget-query';
+import { DateColumnConfig, NumericColumnConfig } from '../../../../../../core/models/dataset';
+import { ChartSeriesResult } from '../../../../../../core/models/widget-query';
 import type { YAXisComponentOption } from 'echarts';
-import { ChartFormat } from './chart-format';
-import { ChartScale } from './chart-scale';
+import { ChartFormat } from '../format/chart-format';
+import { ChartScale } from '../axes/chart-scale';
 import { PointChartConstants } from './point-chart-constants';
 import { YAxesInput } from './types/y-axes-input';
 

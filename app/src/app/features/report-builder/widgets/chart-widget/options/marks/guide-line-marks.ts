@@ -1,7 +1,7 @@
-import { ChartGuideLine } from '../../../../../core/models/report';
+import { ChartGuideLine } from '../../../../../../core/models/report';
 import { MarkAreaData } from './types/mark-area-data';
 import { MarkLineData } from './types/mark-line-data';
-import { AxisKey } from './types/axis-key';
+import { AxisKey } from '../types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
 /** Reference lines and optional shaded regions from fixed values: the simpler tolerance band. */
