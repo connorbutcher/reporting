@@ -1,8 +1,7 @@
-/** Layout constants shared by the point chart builders. */
 export class PointChartConstants {
-  /** Pixels a second (or later) axis on one side is pushed out, so its scale clears the first. */
+  /** How far each extra axis on one side is pushed out. */
   public static readonly AXIS_OFFSET = 60;
 
-  /** The series `name` every comment-anchor marker series shares, so a click handler can tell them apart from real data. */
+  /** Shared by comment-anchor series so click handlers can tell them from data. */
   public static readonly COMMENT_ANCHOR_SERIES_NAME = '__commentAnchors';
 }

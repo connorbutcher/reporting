@@ -3,9 +3,7 @@ import { ChartFormat } from './chart-format';
 import { Coord } from './types/coord';
 import { ScatterTooltipParams } from './types/scatter-tooltip-params';
 
-/** Builds the per-point tooltip for scatter/line charts and the per-axis value formatters it uses. */
 export class PointTooltip {
-  /** A value formatter for one axis: date, number, or passthrough by the axis kind. */
   public static formatterFor(
     isText: boolean,
     isDate: boolean,

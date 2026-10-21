@@ -1,4 +1,3 @@
-/** Small helpers for hand-built (HTML) chart tooltips. */
 export class TooltipHtml {
   /** Escapes text for an HTML tooltip — labels and cell values are user data. */
   public static escape(text: string): string {
@@ -10,7 +9,6 @@ export class TooltipHtml {
       .replace(/'/g, '&#39;');
   }
 
-  /** The coloured dot echarts puts before a series in its own tooltips. */
   public static marker(color: string): string {
     return `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${TooltipHtml.escape(color)};"></span>`;
   }

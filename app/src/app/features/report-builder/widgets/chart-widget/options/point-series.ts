@@ -14,25 +14,16 @@ import { ScatterPoint } from './types/scatter-point';
 import { SeriesStyle } from './types/series-style';
 import { SizeScale } from './types/size-scale';
 
-/** The per-kind echarts series options and the plotted points for a point chart. */
 export class PointSeries {
-  /** The fixed colour every comment-anchor marker draws in — distinct from any series' own palette colour. */
   private static readonly ANCHOR_COLOR = '#152a55';
 
-  /**
-   * The echarts series options specific to one point-chart kind — its type and per-kind styling.
-   * Name, colour, data and mark lines are shared by the caller. `sizeScale`, when a scatter series
-   * has at least one bound bubble size, maps each point's raw size value to its marker's pixel
-   * diameter; null/omitted keeps every marker at the chart's fixed `pointSize` (unbound, or a line
-   * chart, where a varying marker size over a connected line reads poorly).
-   */
+  /** The per-kind series options; `sizeScale` maps a scatter point's size value to its diameter. */
   public static kindOptions(
     config: PointChartConfig,
     color: string,
     style: SeriesStyle,
     sizeScale?: SizeScale | null,
   ): PointSeriesOption {
-    // A per-binding symbol override wins over the kind's default marker; 'none' hides it.
     const symbol = style.symbol;
     switch (config.type) {
       case 'lineChart':
@@ -42,7 +33,7 @@ export class PointSeries {
           showSymbol: symbol ? symbol !== 'none' : config.showPoints,
           symbol: symbol && symbol !== 'none' ? symbol : 'circle',
           symbolSize: config.pointSize,
-          // LTTB thins a dense line to ~one point per pixel column while keeping its shape.
+          // LTTB thins a dense line to about one point per pixel column, keeping its shape.
           sampling: 'lttb',
           ...(style.dashStyle && style.dashStyle !== 'solid'
             ? { lineStyle: { type: style.dashStyle } }
@@ -50,8 +41,7 @@ export class PointSeries {
           ...(config.areaFill ? { areaStyle: { opacity: 0.15, color } } : {}),
         };
       case 'scatterChart':
-        // `large` switches scatter to a batched renderer past the threshold. 'none' is ignored —
-        // scatter has no line to fall back on, so honouring it would blank the series.
+        // 'none' is ignored: scatter has no line to fall back on.
         return {
           type: 'scatter',
           ...(symbol && symbol !== 'none' ? { symbol } : {}),
@@ -66,14 +56,8 @@ export class PointSeries {
   }
 
   /**
-   * A dashed overlay fitting {@link ChartSeriesResult.trendLine}, drawn in the series' own colour
-   * so it reads as "that series, straightened out". Null when the series has no fit — the trend
-   * toggle is off, the axes aren't both numeric, or there weren't enough points. Shares `mainName`
-   * with the series it fits (the caller's main series `name`, already in `legend.data`) rather than
-   * a name of its own, so toggling that legend entry hides the trend line along with its series
-   * instead of leaving it stranded on screen. Its fit stats (slope and R²) are always shown at the
-   * line's end, rather than only on hover, so the numbers are readable at a glance; hovering
-   * anywhere on the line shows the same text.
+   * A dashed trend line in the series' colour, with its slope and R² shown at the line's end.
+   * Shares `mainName` so it toggles with its series. Null when the series has no fit.
    */
   public static trendLine(
     series: ChartSeriesResult,
@@ -113,9 +97,8 @@ export class PointSeries {
   }
 
   /**
-   * The fit stats text drawn at a trend line's end and on its hover tooltip. On a date X the fit runs
-   * on epoch milliseconds, so the slope is rescaled to per day (per month over long spans) and says so.
-   * The slope keeps three significant figures, so a small but real trend never prints as 0.00.
+   * The trend stats text. On a date X the slope is rescaled from epoch millis to per day (or per
+   * month over long spans), to three significant figures.
    */
   public static trendStatsText(
     trend: NonNullable<ChartSeriesResult['trendLine']>,
@@ -133,11 +116,8 @@ export class PointSeries {
   }
 
   /**
-   * One pin-shaped marker per widget comment anchored to this chart, grouped into a series per Y
-   * axis (most charts need only one). Shares {@link COMMENT_ANCHOR_SERIES_NAME} across every group
-   * rather than each series' own name, so clicking one is unambiguous in the chart's click handler
-   * and so toggling a data series off in the legend never hides a comment pinned near it — the two
-   * are independent. Kept off the legend the same way a trend line is.
+   * One pin marker per anchored comment, grouped per Y axis. All share one series name, so clicks
+   * are unambiguous and legend toggles never hide them.
    */
   public static anchorMarkers(
     anchors: readonly ChartCommentAnchor[],
@@ -168,13 +148,7 @@ export class PointSeries {
     }));
   }
 
-  /**
-   * A rippling halo drawn at a comment's point, so clicking its marker — or its chip in the
-   * comments panel — actually draws the eye there rather than just opening the thread and leaving
-   * the reader to hunt for which point it was. `null` when nothing is currently highlighted, or the
-   * highlighted anchor belongs to a different widget (the caller already filtered for that, but
-   * stays defensive here since a stray cross-widget value would otherwise silently misplace a ring).
-   */
+  /** A rippling halo at the highlighted comment's point, or null when none is on this widget. */
   public static highlightMarker(
     point: ChartCommentAnchor | null,
     multiAxis: boolean,
@@ -198,12 +172,8 @@ export class PointSeries {
   }
 
   /**
-   * The pixel width to reserve on the chart's trailing edge so a trend line's end-of-line stats
-   * text (drawn just past its last point, in the direction the grid's right margin already backs
-   * onto) stays inside the canvas instead of getting clipped at its edge. 0 when no series has a
-   * fit. Estimated from the widest stats string across every series, same approach as
-   * {@link ChartScale.nameGap} for axis names — echarts can't size this itself since it lays the
-   * label out after the grid rect is fixed.
+   * The right-edge width to reserve so trend stats text isn't clipped; echarts lays the label out
+   * after fixing the grid, so it can't size this itself.
    */
   public static trendLabelReserve(series: readonly ChartSeriesResult[], xIsDate = false): number {
     const CHAR_W = 6.5; // ~px per char at the endLabel's 11px font (proportional; erring wide)
@@ -229,7 +199,7 @@ export class PointSeries {
         value: [p.x, p.y],
         tooltipLines: p.tooltipLines,
         size: p.size,
-        // An outlined point also turns into a triangle, so its status isn't carried by colour alone.
+        // Outlined points also become triangles, so status isn't carried by colour alone.
         ...(border
           ? { symbol: 'triangle', itemStyle: OutlineSeverity.itemStyle(color, border) }
           : {}),

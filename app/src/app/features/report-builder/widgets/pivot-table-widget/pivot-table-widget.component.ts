@@ -46,22 +46,19 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   public readonly widgetFilter = input<FilterGroup | null | undefined>(undefined);
 
   public readonly datasetId = computed(() => this.config().datasetId);
-  /** True once a dataset is bound and at least one measure is configured. */
   public readonly configured = computed(
     () => !!this.config().datasetId && this.config().measures.length > 0,
   );
 
-  /** The dimension columns, one per row field. */
   public readonly dimensionColumns = computed<PivotDimensionColumn[]>(
     () =>
       this.source.result()?.rowFields.map((f, fieldIndex) => ({ label: f.label, fieldIndex })) ??
       [],
   );
 
-  /** True when column fields spread the measures across the top, so the header takes two rows. */
+  /** Column fields spread the measures across the top, so the header takes two rows. */
   public readonly crossTab = computed(() => (this.source.result()?.columnFields?.length ?? 0) > 0);
 
-  /** The headings over each block of value columns (only drawn for a cross-tab). */
   public readonly columnBlocks = computed<PivotColumnBlock[]>(() => {
     const data = this.source.result();
     if (!data || !this.crossTab()) return [];
@@ -71,11 +68,10 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return blocks;
   });
 
-  /** Every value column in render order: each block's measures, block by block. */
   public readonly valueColumns = computed<PivotValueColumn[]>(() => {
     const data = this.source.result();
     if (!data) return [];
-    // The key is "m<request position>" — the server drops unusable measures but keeps the numbering.
+    // "m<request position>": the server drops unusable measures but keeps the numbering.
     const measures = data.measures.map((m) => ({
       label: m.label,
       measureIndex: Number(m.key.slice(1)),
@@ -91,9 +87,8 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   });
 
   /**
-   * The sort the table is showing: the reader's own choice from clicking a header (null = they
-   * turned sorting off), else the report's saved one. Clicking is a view choice for this session —
-   * it never edits the report — and is dropped whenever the widget's configuration changes.
+   * The reader's header-click sort (null turns sorting off), else the saved one. It never edits
+   * the report and resets when the configuration changes.
    */
   public readonly effectiveSort = computed<PivotSort | null>(() => {
     const override = this.viewSort();
@@ -105,7 +100,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return index >= 0 ? { kind: 'measure', index, descending: config.sortDescending } : null;
   });
 
-  /** The rows shown: everything, less the children of any subtotal the reader has collapsed. */
   public readonly rows = computed<PivotDisplayRow[]>(() => {
     const collapsed = this.collapsed();
     if (collapsed.size === 0) return this.allRows();
@@ -121,7 +115,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
   });
 
-  /** The totals row when the server returned one, else null. */
   public readonly grandTotal = computed<PivotDisplayRow | null>(() => {
     const total = this.source.result()?.grandTotal;
     if (!total) return null;
@@ -138,15 +131,11 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   public readonly isTruncated = computed(() => !!this.source.result()?.truncated);
 
-  /** What is narrowing the rows, for the count bar's hover text. */
   public readonly filterLines = computed(() =>
     this.describeFilters([this.effectiveFilter()], this.source.columns()),
   );
 
-  /**
-   * The always-on footer text, mirroring the data table's "N of M rows" — and, above all, saying
-   * plainly when the figures are incomplete because only part of the data was summarised.
-   */
+  /** "N of M rows", saying plainly when only part of the data was summarised. */
   public readonly countLabel = computed(() => {
     const data = this.source.result();
     if (!data) return '';
@@ -171,10 +160,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return `${groupsText} · ${rowsText}${columnsText}`;
   });
 
-  /** Subtotal groups the reader has folded away, by outline key. */
   private readonly collapsed = signal<ReadonlySet<string>>(new Set());
 
-  /** Every row from the server, flattened, with repeated outer dimensions blanked into an outline. */
+  /** Every row, flattened, with repeated outer dimensions blanked into an outline. */
   private readonly allRows = computed<PivotDisplayRow[]>(() => {
     const data = this.source.result();
     if (!data) return [];
@@ -186,7 +174,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       const depth = row.depth ?? dimCount;
       const dimensions = [...row.dimensions];
       if (previous) {
-        // Blank leading dimension cells while the whole prefix still matches the row above.
         for (let i = 0; i < Math.min(depth, dimCount); i++) {
           if (row.dimensions[i] === previous[i]) dimensions[i] = '';
           else break;
@@ -205,7 +192,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
   });
 
-  /** Each value column's range over the detail rows, for scaling its data bars. */
   private readonly valueRanges = computed(() => {
     const ranges = new Map<number, { min: number; max: number }>();
     for (const column of this.valueColumns()) {
@@ -223,7 +209,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   private readonly datasetApi = inject(DatasetApiService);
   private readonly dialog = inject(Dialog);
 
-  /** The reader's header-click sort: undefined follows the report's saved sort, null is "unsorted". */
+  /** Undefined follows the saved sort; null is unsorted. */
   private readonly viewSort = signal<PivotSort | null | undefined>(undefined);
 
   private readonly effectiveFilter = computed(() =>
@@ -240,7 +226,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       const measures = config.measures;
       if (!datasetId || measures.length === 0) return null;
 
-      // The request names the sort measure (or field) by its position.
       const sort = this.effectiveSort();
 
       return this.datasetApi.queryPivot(datasetId, {
@@ -265,13 +250,12 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   constructor() {
     super();
-    // Switching datasets reloads immediately; the config-driven reload below debounces.
+    // Switching datasets reloads immediately; the reload below debounces.
     effect(() => {
       const ready = this.configured();
       this.datasetVersion();
 
-      // With no dataset or no measures there's nothing to ask for, so clear rather than
-      // leaving the spinner up — `fetch` would return null and never resolve the load.
+      // Clear rather than leave the spinner up, since there's nothing to fetch.
       if (!ready) {
         untracked(() => {
           this.source.result.set(null);
@@ -287,7 +271,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       });
     });
 
-    // Re-aggregate whenever the grouping, measures, totals toggles, or filter change.
     effect(() => {
       if (!this.configured()) return;
       this.effectiveFilter();
@@ -302,7 +285,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       config.showSubtotals;
 
       untracked(() => {
-        // A configuration change resets the view to the report's own sort and expands every group.
         this.viewSort.set(undefined);
         this.collapsed.set(new Set());
         this.source.loading.set(true);
@@ -312,7 +294,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
   }
 
-  /** A measure header was clicked: highest first, then lowest first, then unsorted. */
+  /** Highest first, then lowest first, then unsorted. */
   public toggleSort(measureIndex: number): void {
     const current = this.effectiveSort();
     if (current?.kind !== 'measure' || current.index !== measureIndex) {
@@ -323,7 +305,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     this.reloadForSort();
   }
 
-  /** A dimension header was clicked: A–Z, then Z–A, then the default order. */
+  /** A–Z, then Z–A, then the default order. */
   public toggleFieldSort(fieldIndex: number): void {
     const current = this.effectiveSort();
     if (current?.kind !== 'field' || current.index !== fieldIndex) {
@@ -334,21 +316,18 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     this.reloadForSort();
   }
 
-  /** A measure header's sort state, for aria-sort and its icon. */
   public sortState(column: PivotValueColumn): 'ascending' | 'descending' | 'none' {
     const sort = this.effectiveSort();
     if (sort?.kind !== 'measure' || sort.index !== column.measureIndex) return 'none';
     return sort.descending ? 'descending' : 'ascending';
   }
 
-  /** A dimension header's sort state, for aria-sort and its icon. */
   public fieldSortState(column: PivotDimensionColumn): 'ascending' | 'descending' | 'none' {
     const sort = this.effectiveSort();
     if (sort?.kind !== 'field' || sort.index !== column.fieldIndex) return 'none';
     return sort.descending ? 'descending' : 'ascending';
   }
 
-  /** Folds or unfolds the rows under a subtotal. */
   public toggleGroup(row: PivotDisplayRow, event: Event): void {
     event.stopPropagation();
     this.collapsed.update((collapsed) => {
@@ -362,14 +341,12 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return this.collapsed().has(row.groupKey);
   }
 
-  /** The value cell's highlight from its measure's first matching conditional-format rule. */
   public valueClass(column: PivotValueColumn, row: PivotDisplayRow): string | null {
     const rules: FormatRule[] | undefined = this.measureConfig(column.measureIndex)?.formatRules;
     const style = FormatRules.match(row.values[column.valueIndex]?.value, rules);
     return style ? FormatRules.STYLE_CLASS[style] : null;
   }
 
-  /** How long a value's data bar is, as a percentage of its column's range; null for no bar. */
   public barPercent(column: PivotValueColumn, row: PivotDisplayRow): number | null {
     if (row.isSubtotal) return null;
     const range = this.valueRanges().get(column.valueIndex);
@@ -378,14 +355,12 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       : null;
   }
 
-  /** Whether clicking a cell can open the rows behind it. */
   public canDrill(row: PivotDisplayRow, column: PivotValueColumn | null): boolean {
     if (!row.drill) return false;
     if (column?.columnKeyIndex == null) return true;
     return !!this.source.result()?.columnKeys?.[column.columnKeyIndex]?.drill;
   }
 
-  /** Opens the rows behind a row (a dimension cell) or one of its values (a value cell), as a table. */
   public drill(row: PivotDisplayRow, column: PivotValueColumn | null): void {
     const datasetId = this.datasetId();
     if (!datasetId || !this.canDrill(row, column)) return;
@@ -406,14 +381,13 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
   }
 
-  /** Retries the last query after a load failure. */
   public retry(): void {
     this.source.error.set(false);
     this.source.loading.set(true);
     this.source.reloadNow();
   }
 
-  /** The pivot as CSV rows: a header, one line per row (subtotals included), then the grand total. */
+  /** A header, one line per row (subtotals included), then the grand total. */
   protected exportCsv(): string | null {
     const data = this.source.result();
     if (!data) return null;
@@ -433,7 +407,6 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return this.config().title?.trim() || 'pivot';
   }
 
-  /** Source-derived signals, exposed as getters so their backing field stays below the public block. */
   public get loading(): Signal<boolean> {
     return this.source.loading;
   }
@@ -441,12 +414,12 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     return this.source.error;
   }
 
-  /** Raw numeric measure values (not the £/% display), so the CSV drops straight into a spreadsheet. */
+  /** Raw values rather than the display text, for spreadsheets. */
   private static csvRow(row: PivotRow, columns: readonly PivotValueColumn[]): unknown[] {
     return [...row.dimensions, ...columns.map((c) => row.values[c.valueIndex]?.value ?? '')];
   }
 
-  /** A value column's CSV heading: its measure, prefixed by its column block in a cross-tab. */
+  /** Prefixed by its column block in a cross-tab. */
   private csvValueHeader(data: PivotQueryResult, column: PivotValueColumn): string {
     const label =
       data.measures.find((m) => Number(m.key.slice(1)) === column.measureIndex)?.label ?? '';

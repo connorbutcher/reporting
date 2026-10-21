@@ -1,2 +1,2 @@
-/** A chart's plotted values as a table: a header row, then one row per point, category, box, bin or subgroup. */
+/** A chart's plotted values: a header row, then one row per plotted item. */
 export type ChartTable = (string | number | boolean)[][];

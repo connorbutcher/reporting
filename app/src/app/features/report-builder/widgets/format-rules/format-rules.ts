@@ -2,9 +2,8 @@ import { FormatRule, FormatRuleStyle } from '../../../../core/models/report';
 import { RawCellValue } from './raw-cell-value';
 import { ValueKind } from './value-kind';
 
-/** Evaluates conditional formatting rules against cell values. */
 export class FormatRules {
-  /** The CSS class each rule style puts on a cell; the classes live in `_cell-format.scss`. */
+  /** The CSS class per rule style; the classes live in `_cell-format.scss`. */
   public static readonly STYLE_CLASS: Record<FormatRuleStyle, string> = {
     red: 'fmt-red',
     amber: 'fmt-amber',
@@ -15,7 +14,7 @@ export class FormatRules {
 
   private static readonly ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
 
-  /** The style of the first rule `value` satisfies, or null when none does (or there are no rules). */
+  /** The style of the first rule `value` satisfies, or null. */
   public static match(
     value: RawCellValue,
     rules: readonly FormatRule[] | null | undefined,
@@ -26,7 +25,7 @@ export class FormatRules {
     return null;
   }
 
-  /** Whether one rule holds for a value. Numbers and dates compare by value; anything else as text, ignoring case. */
+  /** Numbers and dates compare by value; anything else as case-insensitive text. */
   public static ruleMatches(value: RawCellValue, rule: FormatRule): boolean {
     const blank = value === null || value === undefined || value === '';
     if (rule.operator === 'isEmpty') return blank;
@@ -47,7 +46,6 @@ export class FormatRules {
         return FormatRules.compare(left.v, right) !== 0;
     }
 
-    // Ordering operators only mean something for numbers and dates.
     if (left.kind === 'text') return false;
     const order = FormatRules.compare(left.v, right);
     switch (rule.operator) {
@@ -70,10 +68,7 @@ export class FormatRules {
     }
   }
 
-  /**
-   * How far along its bar a value sits, as a percentage of the column's range, which always includes
-   * zero so bars grow from a common baseline. Null when the value or range isn't numeric.
-   */
+  /** A value's bar length as a percentage of a range that always includes zero; null if not numeric. */
   public static dataBarPercent(
     value: RawCellValue,
     min: number | null | undefined,
@@ -93,7 +88,6 @@ export class FormatRules {
     return Math.max(0, Math.min(100, ((value - low) / (high - low)) * 100));
   }
 
-  /** A value in a form that compares by meaning: a number, a date as its time, or lower-cased text. */
   private static comparable(value: Exclude<RawCellValue, null | undefined>): {
     kind: ValueKind;
     v: number | string;
@@ -107,7 +101,6 @@ export class FormatRules {
     return { kind: 'text', v: value.toLowerCase() };
   }
 
-  /** A rule operand read the same way as the value it's compared to; null when it can't be. */
   private static operand(raw: string, kind: ValueKind): number | string | null {
     const text = raw.trim();
     if (kind === 'text') return text.toLowerCase();

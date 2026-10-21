@@ -1,8 +1,6 @@
 /**
- * The tick-label config the scale fragments set. echarts parameterises `axisLabel` by axis kind
- * (its `formatter` value is a number for value/time axes, a string for category), so there's no
- * single exported type that fits every axis; this covers the fields we set and stays assignable
- * to all of them (a wider `formatter` param is contravariantly compatible).
+ * The tick-label fields the scale fragments set. echarts types `axisLabel` per axis kind, so this
+ * shape is the one assignable to all of them.
  */
 export interface AxisLabelFormatting {
   formatter?: (value: number | string, index?: number) => string;

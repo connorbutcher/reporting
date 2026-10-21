@@ -1,4 +1,4 @@
-/** The click a drill reads: which series (by name) and which data point (category, bin or subgroup) was hit. */
+/** The clicked series name and data point (category, bin or subgroup). */
 export interface ChartDrillClick {
   seriesName?: string;
   seriesType?: string;

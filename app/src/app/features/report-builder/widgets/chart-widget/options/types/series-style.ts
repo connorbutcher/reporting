@@ -1,10 +1,6 @@
 import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report';
 
-/**
- * One series' presentation, resolved live from its binding's current config so appearance
- * edits reflect without a refetch. A null colour falls back to the palette (kept for a
- * colour-by split so its per-value colours survive); marker and dash apply when set.
- */
+/** One series' presentation, read live from its binding. A null colour uses the palette. */
 export interface SeriesStyle {
   color: string | null;
   symbol: ChartSymbol | null;

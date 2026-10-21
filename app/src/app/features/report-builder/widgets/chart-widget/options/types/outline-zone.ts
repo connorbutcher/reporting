@@ -1,9 +1,6 @@
 /**
- * A one-axis test for whether a plotted value should be outlined, and how severely —
- * the shared shape a tolerance band's two tiers ({@link OutlineZone.warnLow}/`warnHigh`
- * milder than `failLow`/`failHigh`) and a guide line's single boundary (both tiers
- * equal, so a guide line is always "fail", never the milder "concession") both reduce
- * to. `Infinity`/`-Infinity` disables a side that has no bound.
+ * A one-axis outline test. Tolerance bands have a milder warn tier inside the fail tier; guide
+ * lines set both tiers equal. An infinite bound disables that side.
  */
 export interface OutlineZone {
   axis: 'x' | 'y';

@@ -3,21 +3,13 @@ import { MarkAreaData } from './types/mark-area-data';
 import { MarkLineData } from './types/mark-line-data';
 
 /**
- * The series a chart's reference lines and shaded zones (tolerance bands, guide lines) hang on.
- *
- * ECharts draws a `markLine`/`markArea` as part of a series, and hides it when that series is toggled
- * off in the legend. Hung on a data series, every reference line vanished as soon as the reader hid
- * that series. Instead they ride an empty, unnamed line series of their own, which the legend never
- * lists (each chart's legend names its data series explicitly) and so can never be hidden.
+ * An empty, unnamed carrier series for reference lines and zones. echarts hides marks with their
+ * series, so hanging them on a data series made them vanish when it was toggled off.
  */
 export class ReferenceSeries {
-  /** The series name the reference carrier uses — never shown, and never in a legend's data. */
   public static readonly NAME = '​reference';
 
-  /**
-   * A carrier for `marks` and `areas`, plotted against the given axes (by index, for multi-axis and
-   * multi-grid charts); null when there's nothing to draw.
-   */
+  /** A carrier on the given axis indexes, or null when there's nothing to draw. */
   public static build(
     marks: MarkLineData,
     areas: MarkAreaData,

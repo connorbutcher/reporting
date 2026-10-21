@@ -15,10 +15,8 @@ import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.co
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 
 /**
- * One headline number reduced from a dataset: a plain aggregate, or the count/percent of rows
- * failing a tolerance band, with an optional trend against a fixed target or the previous period,
- * absolute status thresholds, a trailing-history sparkline, a target meter, or — in place of the
- * single value — a capped row of mini-tiles grouped by a dimension column.
+ * A headline number from a dataset (an aggregate, or rows failing a tolerance band), with optional
+ * trend, thresholds, sparkline and target meter, or a row of tiles grouped by a column.
  */
 @Component({
   selector: 'app-kpi-widget',
@@ -40,7 +38,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   public readonly datasetId = computed(() => this.config().datasetId);
 
-  /** True once a dataset is bound and the value is fully specified for its source. */
   public readonly configured = computed(() => {
     const config = this.config();
     if (!config.datasetId) return false;
@@ -50,7 +47,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
     return !!config.valueColumnId && !!config.tolerance;
   });
 
-  /** Set when the widget groups by a column — a row of mini-tiles replaces the single value. */
   public readonly groups = computed<KpiGroupResult[] | null>(
     () => this.source.result()?.groups ?? null,
   );
@@ -71,7 +67,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
     return `vs ${caption} — ${result.comparisonDisplayValue}${pctText}`;
   });
 
-  /** The fixed-target comparison as a 0–100 fill percent, clamped; null when a meter isn't showable. */
+  /** The target comparison as a clamped 0–100 fill percent, or null. */
   public readonly meterPercent = computed(() => {
     const result = this.source.result();
     if (!result || result.value === null || !result.comparisonValue) return null;
@@ -85,7 +81,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
       this.meterPercent() !== null,
   );
 
-  /** An SVG polyline for the trailing-history sparkline; null when there's nothing to plot. */
   public readonly sparklinePath = computed(() => {
     if (!this.config().showSparkline) return null;
     return KpiWidgetComponent.sparklinePoints(this.source.result()?.history ?? []);
@@ -93,12 +88,10 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   public readonly isTruncated = computed(() => !!this.source.result()?.truncated);
 
-  /** What is narrowing the rows, for the count bar's hover text. */
   public readonly filterLines = computed(() =>
     this.describeFilters([this.effectiveFilter()], this.source.columns()),
   );
 
-  /** The always-on footer text, mirroring the other data widgets' "N of M rows". */
   public readonly countLabel = computed(() => {
     const data = this.source.result();
     if (!data) return '';
@@ -170,7 +163,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   constructor() {
     super();
-    // Switching datasets reloads immediately; the config-driven reload below debounces.
+    // Switching datasets reloads immediately; the reload below debounces.
     effect(() => {
       const ready = this.configured();
       this.datasetVersion();
@@ -190,7 +183,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
       });
     });
 
-    // Re-reduce whenever the value source, comparison, thresholds, sparkline, grouping, or filter change.
     effect(() => {
       if (!this.configured()) return;
       this.effectiveFilter();
@@ -227,7 +219,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
     });
   }
 
-  /** A short word for what the figure is being measured against, for the trend caption. */
   private static comparisonCaption(config: KpiWidgetConfig): string {
     switch (config.comparisonMode) {
       case 'fixedTarget':
@@ -239,7 +230,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
     }
   }
 
-  /** An SVG `<polyline>` points string tracing a trailing history, normalized into a fixed viewBox. Gaps (null buckets) are simply skipped, so the line draws straight across them. */
+  /** A polyline points string in a fixed viewBox; null buckets are skipped. */
   private static sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
     const present = history.map((h) => h.value).filter((v): v is number => v !== null);
     if (present.length < 2) return null;
@@ -261,7 +252,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
     return points.length >= 2 ? points.join(' ') : null;
   }
 
-  /** Retries the last query after a load failure. */
   public retry(): void {
     this.source.error.set(false);
     this.source.loading.set(true);
@@ -272,7 +262,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
     return this.config().title?.trim() || 'kpi';
   }
 
-  /** The figure and its comparison as a one-row CSV, or one row per tile when grouped. */
+  /** One row, or one per tile when grouped. */
   public exportCsv(): string | null {
     const data = this.source.result();
     if (!data) return null;
@@ -288,7 +278,6 @@ export class KpiWidgetComponent extends DataWidgetBase {
     ]);
   }
 
-  /** Source-derived signals, exposed as getters so their backing field stays below the public block. */
   public get loading(): Signal<boolean> {
     return this.source.loading;
   }

@@ -5,23 +5,14 @@ import { DatasetColumn } from '../../../core/models/dataset';
 import { WidgetDataSourceOptions } from './widget-data-source-options';
 
 /**
- * The shared data engine behind the table and chart widgets: it loads a
- * dataset's schema and runs the debounced, cancel-on-supersede query pipeline,
- * exposing `columns`/`loading`/`error`/`result`. Each widget keeps its own
- * effects deciding *when* to reload — immediately for discrete interactions
- * (paging, sorting, switching datasets) via {@link reloadNow}, or coalesced for
- * typing via {@link reloadDebounced} — so their distinct trigger semantics are
- * preserved while the boilerplate lives in one place.
- *
- * Must be constructed in an injection context (a component's field initializer
- * or constructor) so its effect and subscription are torn down with the widget.
+ * Loads a widget's schema and runs its debounced, cancel-on-supersede query pipeline. Each widget
+ * decides when to reload: {@link reloadNow} for discrete interactions, {@link reloadDebounced}
+ * for typing. Construct in an injection context so it's torn down with the widget.
  */
 export class WidgetDataSource<T> {
   private static readonly DEFAULT_DEBOUNCE_MS = 300;
 
-  /** Discrete interactions reload immediately. */
   private readonly interactionQueue = new Subject<void>();
-  /** Typing a filter value settles into one request instead of one per keystroke. */
   private readonly filterQueue = new Subject<void>();
 
   readonly columns = signal<DatasetColumn[]>([]);
@@ -30,8 +21,7 @@ export class WidgetDataSource<T> {
   readonly result = signal<T | null>(null);
 
   constructor(private readonly options: WidgetDataSourceOptions<T>) {
-    // The schema describes the widget and changes only with the dataset, so it
-    // loads immediately rather than through the debounced query pipeline.
+    // The schema changes only with the dataset, so it loads immediately.
     effect((onCleanup) => {
       const datasetId = options.datasetId();
       options.version();
@@ -63,8 +53,7 @@ export class WidgetDataSource<T> {
           if (!request) return EMPTY;
 
           return request.pipe(
-            // Caught inside the switchMap: an error reaching the outer stream
-            // would tear down the subscription and stop all future reloads.
+            // Caught inside the switchMap, since an outer error would stop all future reloads.
             catchError(() => {
               this.error.set(true);
               this.loading.set(false);
@@ -80,12 +69,10 @@ export class WidgetDataSource<T> {
       });
   }
 
-  /** Reloads at once, for discrete interactions (paging, sorting, switching datasets). */
   reloadNow(): void {
     this.interactionQueue.next();
   }
 
-  /** Reloads after the debounce, for changes that arrive in a burst (typing a filter value). */
   reloadDebounced(): void {
     this.filterQueue.next();
   }

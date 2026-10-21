@@ -4,10 +4,7 @@ import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { TableRowResult } from '../../../../core/models/widget-query';
 import { RowDetailDialogData } from './row-detail-dialog-data';
 
-/**
- * A side panel listing every column of one table row, opened by clicking the row. It fetches the row
- * afresh with every dataset column, so it shows what the table's own (narrower) column list leaves out.
- */
+/** Every column of one table row, fetched afresh with the full dataset column list. */
 @Component({
   selector: 'app-row-detail-dialog',
   templateUrl: './row-detail-dialog.component.html',

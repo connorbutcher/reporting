@@ -27,7 +27,7 @@ import { TooltipHtml } from './tooltip-html';
 import { BoxTooltipContext } from './types/box-tooltip-context';
 import { AxisKey } from './types/axis-key';
 
-/** Builds the box-and-whisker echarts option: a category axis with one box per category, per series. */
+/** Box-and-whisker chart: one box per category, per series. */
 export class BoxOption {
   /** Null until there's a dataset and both a category and a value column bound. */
   public static build(
@@ -36,7 +36,6 @@ export class BoxOption {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): ECOption | null {
-    // A box plot is single-binding; its one binding holds the category/value axes.
     const primary = readChartBindings(config)[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
@@ -47,7 +46,6 @@ export class BoxOption {
 
     const valueConfig = ChartFormat.numericConfig(valueColumn);
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
-    // A box plot uses only the primary value axis; its label, interval, and rotation live there.
     const valueAxisConfig = readChartAxes(config)[0];
     const valueLabel = valueAxisConfig.label.trim() || valueColumn.name;
 
@@ -56,8 +54,6 @@ export class BoxOption {
     const showGridLines = config.showGridLines ?? true;
     const showPoints = config.showPoints ?? false;
 
-    // The value axis is whichever one isn't holding the categories, so reference lines and
-    // fills land on the measure regardless of orientation.
     const valueAxisKey: AxisKey = horizontal ? 'xAxis' : 'yAxis';
     const bands = data?.toleranceBands ?? [];
     const guideLines = config.guideLines ?? [];
@@ -69,7 +65,6 @@ export class BoxOption {
       ...ToleranceMarks.areas(bands, () => valueAxisKey),
       ...GuideLineMarks.areas(guideLines, () => valueAxisKey),
     ];
-    // Boxes whose whiskers breach an outlined spec band or guide line are bordered in the crossed one's colour.
     const outline = OutlineSeverity.forExtent([
       ...ToleranceOutline.zonesFor(bands),
       ...GuideLineOutline.zonesFor(guideLines),
@@ -91,7 +86,7 @@ export class BoxOption {
         categoryOrientation,
       ),
       axisLabel: { ...categoryScale.axisLabel, rotate: categoryRotate },
-      // Read a horizontal chart top-down, so a sorted chart leads with its first category.
+      // echarts draws the first category at the bottom; read top-down instead.
       ...(horizontal ? { inverse: true } : {}),
     };
     const valueScale = ChartScale.numericAxis(
@@ -113,8 +108,7 @@ export class BoxOption {
       splitLine: { show: showGridLines },
     };
 
-    // The resolved name and colour of each series, computed once and shared by the box series and
-    // every overlay (points, mean, n) so they stay visually paired and legend-toggle together.
+    // Shared by the box series and its overlays so they pair visually and toggle together.
     const resolved = series.map((s, i) => {
       const override = series.length === 1 ? primary?.color : null;
       return {
@@ -124,8 +118,7 @@ export class BoxOption {
       };
     });
 
-    // Box, keyed by "<series name>#<categoryIndex>" so the tooltip can recover its summary from
-    // an echarts callback param (the boxplot value array alone omits the mean, σ, and count).
+    // Keyed by "<series>#<category>" so the tooltip can recover the mean, σ and count.
     const boxByKey = new Map<string, Box>();
     for (const { series: s, name } of resolved) {
       s.boxes.forEach((box, i) => {
@@ -136,9 +129,7 @@ export class BoxOption {
     const boxSeries = resolved.map(({ series: s, name, color }): BoxplotSeriesOption => ({
       name,
       type: 'boxplot',
-      // One item per category so grouped series stay aligned; an all-NaN item is echarts' empty
-      // value (drawn as nothing). An out-of-spec box swaps its border for the crossed limit's colour;
-      // when raw points are overlaid the fill is dimmed so they read through it.
+      // An all-NaN item draws nothing but keeps grouped series aligned.
       data: s.boxes.map((box) => {
         if (!box) return { value: [NaN, NaN, NaN, NaN, NaN] };
         const border = outline(box.min, box.max);
@@ -148,7 +139,7 @@ export class BoxOption {
             color,
             borderColor: border ?? color,
             borderWidth: border ? 2.5 : 1.5,
-            // Dashed when out of spec, so the warning isn't carried by colour alone.
+            // Dashed so the warning isn't carried by colour alone.
             ...(border ? { borderType: 'dashed' as const } : {}),
             opacity: showPoints ? 0.35 : 1,
           },
@@ -158,7 +149,6 @@ export class BoxOption {
 
     const overlays: ScatterSeriesOption[] = [];
     for (const { series: s, name, color } of resolved) {
-      // Jittered raw points behind the emphasis marks, so a small group's shape is visible.
       if (showPoints) {
         const points: [number, number][] = [];
         s.boxes.forEach((box, c) => {
@@ -179,7 +169,7 @@ export class BoxOption {
         }
       }
 
-      // Outlier dots (Tukey/StdDev) — skipped when raw points already show every value.
+      // Raw points already show every value, outliers included.
       if (!showPoints && s.outliers.length > 0) {
         overlays.push({
           id: `outlier:${name}`,
@@ -193,7 +183,6 @@ export class BoxOption {
         });
       }
 
-      // Mean marker: a diamond alongside the median line.
       if (config.showMean) {
         const means = s.boxes.flatMap((box, c) =>
           box ? [horizontal ? [box.mean, c] : [c, box.mean]] : [],
@@ -211,7 +200,6 @@ export class BoxOption {
         }
       }
 
-      // Sample-size (n) annotation above each box — a label-only point, no marker, no tooltip.
       if (config.showSampleSize) {
         const labels = s.boxes.flatMap((box, c) =>
           box ? [{ value: horizontal ? [box.max, c] : [c, box.max], name: `n=${box.count}` }] : [],
@@ -270,16 +258,11 @@ export class BoxOption {
         : {}),
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
-      // Boxes first, then points, then the emphasis marks (outliers, mean, n) on top.
       series: [...boxSeries, ...overlays, ...(reference ? [reference] : [])],
     };
   }
 
-  /**
-   * The item tooltip. A box shows its five-number summary and row count, plus — when enabled —
-   * its mean and σ and the process performance (Pp/Ppk) against the spec band. The overlays name
-   * themselves through the callback's `seriesId`, so a mean/outlier/point shows just its value.
-   */
+  /** A box shows its summary and optional mean, σ and Pp/Ppk; an overlay shows its value. */
   private static tooltip(
     params: TooltipCallbackParams,
     boxByKey: Map<string, Box>,
@@ -311,7 +294,6 @@ export class BoxOption {
       );
     }
 
-    // An overlay point (mean/outlier/raw): its value sits on whichever axis isn't the category one.
     const value = param.value as [number, number];
     const measure = ctx.horizontal ? value[0] : value[1];
     const id = param.seriesId ?? '';
@@ -322,10 +304,8 @@ export class BoxOption {
   }
 
   /**
-   * Process performance against a spec band: Pp = (USL − LSL) / 6σ measures the spread against the
-   * tolerance width; Ppk additionally penalises being off-centre. σ here is the overall sample
-   * standard deviation, which makes these the performance indices (Pp/Ppk) — capability (Cp/Cpk)
-   * would need the within-subgroup σ. Null when σ is zero (a degenerate box) so we never divide by it.
+   * Pp = (USL − LSL) / 6σ and Ppk, using the overall σ (performance, not capability).
+   * Null when σ is zero.
    */
   private static capability(box: Box, spec: ResolvedToleranceBand | null): string | null {
     if (!spec || spec.min === null || spec.max === null || box.stdDev <= 0) return null;
@@ -334,22 +314,18 @@ export class BoxOption {
     return `Pp: ${pp.toFixed(2)} · Ppk: ${ppk.toFixed(2)}`;
   }
 
-  /** The single value-axis spec band (both bounds resolved) capability is measured against, else null. */
   private static specBand(bands: readonly ResolvedToleranceBand[]): ResolvedToleranceBand | null {
     const usable = bands.filter((b) => b.axis === 'y' && b.min !== null && b.max !== null);
     return usable.length === 1 ? usable[0] : null;
   }
 
-  /** A stable pseudo-random horizontal offset (~±0.17 of a category width) for a jittered point. */
+  /** A stable pseudo-random offset of about ±0.17 of a category width. */
   private static jitter(seed: number): number {
     const x = Math.sin(seed * 12.9898) * 43758.5453;
     return (x - Math.floor(x) - 0.5) * 0.34;
   }
 
-  /**
-   * The longest formatted value label, in characters, across every box's extent and outliers —
-   * enough to size a non-overlapping {@link ChartScale.nameGap} for the value axis.
-   */
+  /** The longest formatted value label, to size the value axis name gap. */
   private static valueLabelLen(
     series: BoxPlotQueryResult['series'],
     config: NumericColumnConfig | undefined,

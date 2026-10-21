@@ -5,10 +5,7 @@ import {
   NumericColumnConfig,
 } from '../../../../../core/models/dataset';
 
-/**
- * Number/date formatting that mirrors the server's CellFormatter, so axis ticks and
- * tooltips read the same as the dataset's table cells.
- */
+/** Mirrors the server's CellFormatter so ticks and tooltips match the table cells. */
 export class ChartFormat {
   private static readonly DEFAULT_DATE_FORMAT = 'dd/MM/yyyy';
 
@@ -36,17 +33,13 @@ export class ChartFormat {
     return `${config?.prefix ?? ''}${formatted}${config?.suffix ?? ''}`;
   }
 
-  /**
-   * Formats an epoch-millisecond timestamp in **UTC** — the server encodes a date cell as
-   * its wall-clock instant taken as UTC millis, so the viewer's local zone would shift a
-   * date-only value by up to a day. Pair with echarts' `useUTC`.
-   */
+  /** Formats in UTC, since the server encodes dates as wall-clock time in UTC millis. Pair with `useUTC`. */
   public static date(millis: number, config?: DateColumnConfig): string {
     const pattern = config?.dateFormat || ChartFormat.DEFAULT_DATE_FORMAT;
     try {
       return formatDate(millis, pattern, 'en-US', 'UTC');
     } catch {
-      // A bad custom pattern shouldn't blank the tick/tooltip.
+      // A bad custom pattern shouldn't blank the label.
       return formatDate(millis, ChartFormat.DEFAULT_DATE_FORMAT, 'en-US', 'UTC');
     }
   }

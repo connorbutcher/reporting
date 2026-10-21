@@ -1,9 +1,5 @@
-/** The palette plus the stateless label→colour lookup. */
 export class SeriesColors {
-  /**
-   * Cycles if there are more series than colours. Red stays out: it's the out-of-tolerance and
-   * out-of-control colour, so a red series would read as "failing".
-   */
+  /** Red is left out: it means out of tolerance or out of control. */
   public static readonly PALETTE = [
     '#2f6fed',
     '#f97316',
@@ -15,7 +11,6 @@ export class SeriesColors {
     '#65a30d',
   ];
 
-  /** A series' colour from the resolved map, falling back to index order. */
   public static forSeries(colors: Map<string, string>, label: string, index: number): string {
     return colors.get(label) ?? SeriesColors.PALETTE[index % SeriesColors.PALETTE.length];
   }

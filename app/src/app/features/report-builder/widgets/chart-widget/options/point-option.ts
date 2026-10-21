@@ -31,9 +31,9 @@ import { ToleranceMarks } from './tolerance-marks';
 import { ToleranceOutline } from './tolerance-outline';
 import { AxisKey } from './types/axis-key';
 
-/** Builds the scatter/line echarts option: value axes with one mark per row, grouped into series. */
+/** Scatter/line chart: value axes with one mark per row, grouped into series. */
 export class PointOption {
-  // A perceptual-ish, colourblind-safe blue→red ramp for the colour-by-value scale (RdYlBu, reversed).
+  // Colourblind-safe blue→red ramp (RdYlBu, reversed) for colour-by-value.
   private static readonly VALUE_COLOR_SCALE = [
     '#2c7bb6',
     '#abd9e9',
@@ -41,8 +41,7 @@ export class PointOption {
     '#fdae61',
     '#d7191c',
   ];
-  // A bubble's pixel diameter range; unbound points (or a series with no size column) keep the
-  // chart's fixed pointSize instead.
+  // Bubble diameter range; unsized points keep the chart's fixed pointSize.
   private static readonly MIN_BUBBLE_PX = 8;
   private static readonly MAX_BUBBLE_PX = 40;
 
@@ -55,7 +54,6 @@ export class PointOption {
     commentAnchors: readonly ChartCommentAnchor[] = [],
     highlightedAnchor: ChartCommentAnchor | null = null,
   ): ECOption | null {
-    // The first bound binding names the shared axes; its dataset's columns are `columns`.
     const primary = readChartBindings(config).find((b) => b.datasetId) ?? null;
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
@@ -64,11 +62,9 @@ export class PointOption {
     const series = data?.series ?? [];
     const axes = readChartAxes(config);
     const xLabel = config.xAxisLabel.trim() || x.name;
-    // The primary axis and the tooltip share this label; secondary axes carry their own.
     const yLabel = axes[0].label.trim() || y.name;
 
-    // The X axis is shared (reads the primary binding's column); only the primary Y column's
-    // kind is known here, so a date Y axis is supported on the primary only.
+    // Only the primary Y column's type is known here, so date Y axes are primary-only.
     const xIsText = x.type === 'string';
     const xIsDate = x.type === 'dateTime';
     const yPrimaryIsText = y.type === 'string';
@@ -86,8 +82,6 @@ export class PointOption {
     );
     const formatYOther = PointTooltip.formatterFor(false, false, undefined, undefined);
     const xData = xIsText ? PointAxes.categories(series, 'x') : null;
-    // The shared X axis's scale fragment and label rotation, hoisted so the assembled axis can
-    // layer rotation over the fragment's own label config.
     const xScale = xIsDate
       ? ChartScale.dateAxis(xDateCfg)
       : xIsText
@@ -102,27 +96,20 @@ export class PointOption {
           );
     const xRotate = ChartScale.labelRotate(config.xAxisRotate);
     const showGridLines = config.showGridLines ?? true;
-    // Colour-by-value maps the Y value to a continuous colour scale (visualMap). Only meaningful
-    // with a numeric Y and actual data; when on it drives the mark colours and replaces the legend.
+    // Colour-by-value needs a numeric Y and data; it replaces the legend.
     const yExtent = PointOption.extent(series, 'y');
     const colorByValue = !!config.colorByValue && !yPrimaryIsText && yExtent !== null;
-    // Bubble sizing: one shared scale across every series, so bubbles stay comparable across an
-    // overlay. Null when nothing plotted has a bound size value — every marker then keeps the
-    // chart's fixed pointSize, same as before this existed.
+    // One shared bubble scale so sizes compare across series; null when nothing is sized.
     const sizeScale = PointOption.sizeScale(series, config.pointSize);
-    // Size the X name's gap to clear its tick labels (category labels verbatim, else the
-    // widest formatted data value), so the two never overlap.
     const xLongest = xIsText
       ? ChartScale.longestLen(xData ?? [])
       : PointOption.extentLabelLen(series, 'x', formatX);
     const xNameGap = ChartScale.nameGap(xLongest, xRotate, 'x');
     const names = series.map((s) => s.label);
-    // A legend and per-series name only earn their place with more than one series.
     const showSeries = series.length > 1;
 
     const bands = data?.toleranceBands ?? [];
-    // Resolved bands don't carry their target axis, so read it from the config bands they came
-    // from; an x-band sits on the shared X axis and is grouped with the primary (index 0).
+    // Resolved bands lose their axis, so read it from the config; x-bands group with the primary.
     const bandYAxisId = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
     const bandAxis = new Map(
       bands.map((b) => [
@@ -131,9 +118,8 @@ export class PointOption {
       ]),
     );
 
-    // Each series' presentation comes from its binding's *current* config, so editing it
-    // re-renders without a refetch. A colour-by split drops the colour override to keep the
-    // palette's per-value colours; marker and dash apply either way.
+    // Read live from each binding so edits re-render without a refetch. A colour-by split
+    // keeps the palette colours.
     const bindingsById = new Map(readChartBindings(config).map((b) => [b.id, b]));
     const splitCounts = new Map<string, number>();
     for (const s of series) {
@@ -158,8 +144,6 @@ export class PointOption {
     const seriesColors = series.map(
       (s, i) => seriesStyle[i].color ?? SeriesColors.forSeries(colors, s.label, i),
     );
-    // Groups series by the Y axis they plot on — used to colour an axis to match its series,
-    // infer a secondary axis's type, and hang each axis's bands on one of its own series.
     const indicesByAxis = new Map<number, number[]>();
     series.forEach((_, i) => {
       const k = seriesAxisIndex[i];
@@ -184,8 +168,7 @@ export class PointOption {
     const leftCount = axes.filter((a) => a.side === 'left').length;
     const rightCount = axes.filter((a) => a.side === 'right').length;
 
-    // Reference lines and zones ride one carrier series per Y axis (X marks with the primary), so
-    // their coordinates read against the right scale and hiding a data series never hides them.
+    // Reference marks ride a carrier series per Y axis, so hiding a data series keeps them.
     const guideLines = config.guideLines ?? [];
     const guideLineAxis = new Map(
       guideLines.map((l) => [l, l.axis === 'x' ? 0 : chartAxisIndex(axes, l.yAxisId ?? null)]),
@@ -207,8 +190,6 @@ export class PointOption {
       return reference ? [reference] : [];
     });
 
-    // One out-of-tolerance test per Y axis in use, shared by every series on that axis —
-    // tolerance bands and outlined guide lines both contribute zones, worst-wins.
     const outlineByAxis = new Map(
       [...new Set(seriesAxisIndex)].map((k) => [
         k,
@@ -223,19 +204,13 @@ export class PointOption {
       ]),
     );
 
-    // A zoom slider needs room below the axis; leave the tighter margin when off.
     const zoom = config.zoom ?? true;
-    // The legend shows series colours; colour-by-value replaces it with the value scale, so only
-    // one of the two occupies the top strip at a time.
     const showLegendNow = showSeries && config.showLegend && !colorByValue;
     const topReserved = showLegendNow || colorByValue;
-    // A trend line's end-of-line stats text sits past the last point on the grid's trailing edge;
-    // reserve enough room there that it stays on-canvas instead of getting clipped.
     const trendReserve = config.showTrendLine ? PointSeries.trendLabelReserve(series, xIsDate) : 0;
 
     return {
-      // Date axes are plotted from UTC-epoch millis and labelled in UTC, so lay time axes out
-      // in UTC too — otherwise tick boundaries fall on the viewer's local midnights.
+      // Dates are UTC epoch millis, so lay time axes out in UTC to avoid local-midnight ticks.
       useUTC: true,
       grid: {
         left: 56 + Math.max(0, leftCount - 1) * PointChartConstants.AXIS_OFFSET,
@@ -243,24 +218,18 @@ export class PointOption {
         top: topReserved ? 40 : 20,
         bottom: zoom ? 76 : 48,
         containLabel: true,
-        // Contain the axis *names* too (not just their labels), so a name pushed further out by a
-        // wide/rotated label set is kept on-canvas — echarts shrinks the plot instead of clipping.
+        // Keep axis names on-canvas too; echarts shrinks the plot instead of clipping.
         outerBoundsContain: 'all',
       },
       tooltip: {
         trigger: 'item',
-        // The widget that hosts this chart clips its content to rounded corners (`overflow:
-        // hidden`), which would otherwise cut off a tooltip positioned near the widget's edge.
-        // `appendToBody` renders it as a direct child of <body> instead, outside that clip, and
-        // `confine` then keeps it within the browser viewport so it's always fully on screen.
+        // The widget clips to rounded corners, so render the tooltip on <body> and confine it
+        // to the viewport.
         appendToBody: true,
         confine: true,
         formatter: (raw: TooltipCallbackParams) => {
-          // echarts types the param loosely (it can be an array under other triggers); an item
-          // tooltip always gets one, carrying our per-point payload (`ScatterTooltipParams`).
           const params = raw as unknown as ScatterTooltipParams;
-          // The Y value reads through the axis it plots on: the primary's format, or plain
-          // grouping for a series on a secondary axis (whose column the shared schema lacks).
+          // A series on a secondary axis has no column in the shared schema, so use plain grouping.
           const onPrimary = (seriesAxisIndex[params.seriesIndex] ?? 0) === 0;
           return PointTooltip.format(
             params,
@@ -272,9 +241,7 @@ export class PointOption {
           );
         },
       },
-      // `scroll` paginates the legend rather than letting many colour-by series overflow the plot.
       ...(showLegendNow ? { legend: { top: 0, data: names, type: 'scroll' } } : {}),
-      // Colour marks by their Y value on a continuous scale, shown as a horizontal bar up top.
       ...(colorByValue && yExtent
         ? {
             visualMap: {
@@ -291,7 +258,6 @@ export class PointOption {
             },
           }
         : {}),
-      // Wheel/drag zoom: a slider + inside along X, and inside along Y when enabled.
       ...(zoom || config.zoomY
         ? {
             dataZoom: [
@@ -308,14 +274,11 @@ export class PointOption {
           }
         : {}),
       xAxis: {
-        // The scale fragment carries the axis `type` (and, for a category axis, its `data`);
-        // a non-default rotation layers over its own label config.
         ...xScale,
         ...(xRotate !== 0 ? { axisLabel: { ...xScale.axisLabel, rotate: xRotate } } : {}),
         name: xLabel,
         nameLocation: 'middle',
         nameGap: xNameGap,
-        // Vertical gridlines follow the chart-wide toggle; a category X never draws them.
         splitLine: { show: showGridLines && !xIsText },
       },
       yAxis: multiAxis ? yAxisDefs : yAxisDefs[0],
@@ -324,8 +287,7 @@ export class PointOption {
           const color = seriesColors[i];
           const axisK = seriesAxisIndex[i];
           const onPrimary = axisK === 0;
-          // Colour-by-value drives the fill from the visualMap, so drop the per-series colour and the
-          // per-point outline (the value colour already conveys where a mark sits).
+          // The visualMap drives the fill, so drop the series colour and per-point outline.
           const outlineColor = colorByValue
             ? () => null
             : (outlineByAxis.get(axisK) ?? (() => null));
@@ -348,8 +310,7 @@ export class PointOption {
               : {}),
             ...(yAxisIndex !== null ? { yAxisIndex } : {}),
           };
-          // Shares `mainName` rather than a name of its own, so it draws without a separate legend
-          // entry but still toggles off along with the series it fits.
+          // Shares `mainName` so it has no legend entry but toggles with its series.
           const trend = config.showTrendLine
             ? PointSeries.trendLine(s, mainName, color, yAxisIndex, xIsDate)
             : null;
@@ -362,16 +323,11 @@ export class PointOption {
     };
   }
 
-  /** X-axis marks bind to the X axis, everything else to the Y axis. */
   private static axisKeyOf(item: { axis: 'x' | 'y' }): AxisKey {
     return item.axis === 'x' ? 'xAxis' : 'yAxis';
   }
 
-  /**
-   * The longest tick label a numeric/date axis will show, in characters, from its data extent.
-   * Formatting just the min and max (widest by magnitude) approximates the widest tick without
-   * knowing echarts' chosen ticks — enough to size a non-overlapping {@link ChartScale.nameGap}.
-   */
+  /** The longest tick label, estimated by formatting the data extent, to size the name gap. */
   private static extentLabelLen(
     series: readonly ChartSeriesResult[],
     dim: 'x' | 'y',
@@ -383,11 +339,8 @@ export class PointOption {
   }
 
   /**
-   * A shared bubble-size scale fitted to every bound size value across every series, or null when
-   * none plotted one. Diameter grows with the square root of the value's position in that range,
-   * so a bubble's *area* — what the eye actually compares — scales with the value, the standard
-   * bubble-chart convention. A point with no size value (unbound, or missing on that row) falls
-   * back to the chart's fixed pointSize.
+   * A shared bubble scale over every bound size value, or null when none. Diameter grows with the
+   * square root so bubble area tracks the value.
    */
   private static sizeScale(
     series: readonly ChartSeriesResult[],
@@ -415,7 +368,6 @@ export class PointOption {
     };
   }
 
-  /** The numeric [min, max] of a dimension across all series, or null when it has no numbers. */
   private static extent(
     series: readonly ChartSeriesResult[],
     dim: 'x' | 'y',

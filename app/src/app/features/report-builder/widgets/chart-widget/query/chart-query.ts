@@ -35,21 +35,14 @@ import { ChartQueryPart } from './chart-query-part';
 import { BarChartPart } from './bar-chart-part';
 import { HistogramPart } from './histogram-part';
 
-/** Builds the server query for a chart's current config. */
 export class ChartQuery {
   /**
-   * Returns null when there isn't enough bound to ask. A bar chart aggregates a single dataset
-   * server-side (one endpoint, its first binding only). Point charts fan out one query per bound
-   * binding, each on its own dataset, and merge the returned series client-side.
+   * The server query for a chart's config, or null when too little is bound. Each bound binding is
+   * queried on its own dataset and the results merged client-side.
    *
-   * `bindingFilters` maps each binding's id to its fully-resolved, query-safe filter so a
-   * half-typed condition doesn't blank the chart; a binding absent from the map plots unfiltered.
-   *
-   * `cache`, when supplied, memoizes each binding's response by its full request so editing one
-   * binding doesn't refetch the others. It is pruned to the current binding set each call.
-   *
-   * `columns` is the axis-defining (first bound) dataset's schema, which the tooltip columns were
-   * picked from; each is sent with its name so other datasets can resolve their own column of it.
+   * `bindingFilters` holds each binding's query-safe filter. `cache` memoizes responses by request
+   * and is pruned to the current bindings. `columns` is the first bound dataset's schema; tooltip
+   * columns are sent by name so other datasets can resolve them.
    */
   public static build(
     api: DatasetApiService,
@@ -82,10 +75,7 @@ export class ChartQuery {
     }
   }
 
-  /**
-   * A combo chart shares the bar chart's aggregate-per-category data model, so both query the same
-   * endpoint: one aggregate query per bound binding, with categories aligned client-side.
-   */
+  /** Bar and combo charts share one aggregate endpoint, queried once per bound binding. */
   private static barQuery(
     api: DatasetApiService,
     config: BarChartWidgetConfig | ComboChartWidgetConfig,
@@ -114,7 +104,7 @@ export class ChartQuery {
           })
           .pipe(
             map((result): BarChartPart => ({ binding, result })),
-            // A failed binding drops out instead of blanking the chart; the merge counts drop-outs.
+            // A failed binding drops out instead of blanking the chart.
             catchError(() => of(null)),
           );
       })
@@ -181,10 +171,7 @@ export class ChartQuery {
     });
   }
 
-  /**
-   * Each bound binding overlays its own distribution, reading xColumnId as the value being binned.
-   * Several bindings are bound onto one shared set of bin edges so their bars line up.
-   */
+  /** Each binding overlays its own distribution, on shared bin edges so bars line up. */
   private static histogramQuery(
     api: DatasetApiService,
     config: HistogramWidgetConfig,
@@ -195,8 +182,7 @@ export class ChartQuery {
     const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
     if (bound.length === 0) return null;
 
-    // Only an auto-fit range or Auto mode's data-driven bin count would let several datasets pick
-    // different bins; otherwise each binding is queried exactly as configured.
+    // Only an auto-fit range or Auto bin count lets datasets pick different bins.
     const needsSharedEdges =
       bound.length > 1 &&
       (config.rangeMin == null || config.rangeMax == null || config.binMode === 'auto');
@@ -212,8 +198,7 @@ export class ChartQuery {
       ).pipe(map((results) => ChartQuery.histogramResult(results)));
     }
 
-    // Probe each binding's natural bins for the overall range and the finest Auto bin count, then
-    // pin every binding to that shared range (and count, in Auto mode) so their edges match.
+    // Probe each binding's natural bins, then pin all of them to the overall range and finest count.
     return ChartQuery.queryHistograms(api, config, bound, bindingFilters, tooltipColumns, {}).pipe(
       switchMap((probe) => {
         const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
@@ -242,7 +227,6 @@ export class ChartQuery {
     );
   }
 
-  /** One histogram query per binding; a failed binding becomes null instead of failing the rest. */
   private static queryHistograms(
     api: DatasetApiService,
     config: HistogramWidgetConfig,
@@ -283,10 +267,6 @@ export class ChartQuery {
     return { ...ChartQuery.mergeHistogram(ok), failedBindingCount: results.length - ok.length };
   }
 
-  /**
-   * Point charts fan out one query per bound binding and merge the series client-side. Each
-   * response is cached by its full request, and the cache is pruned to the current bindings.
-   */
   private static pointQuery(
     api: DatasetApiService,
     config: ScatterChartWidgetConfig | LineChartWidgetConfig,
@@ -295,7 +275,6 @@ export class ChartQuery {
     tooltipColumns: ChartTooltipColumn[],
     cache: Map<string, ChartQueryResult> | undefined,
   ): Observable<ChartQueryResult> | null {
-    // A line chart can reduce every row sharing an X value to one point.
     const aggregate = config.type === 'lineChart' ? (config.aggregate ?? null) : null;
     const xGrouping = aggregate && config.type === 'lineChart' ? (config.xGrouping ?? null) : null;
 
@@ -311,7 +290,6 @@ export class ChartQuery {
           seriesColumnId: binding.seriesColumnId,
           sizeColumnId: binding.sizeColumnId ?? null,
           toleranceBands: config.toleranceBands,
-          // Picked from the first dataset's schema; other datasets resolve them by name.
           tooltipColumns,
           sort: binding.sort ?? null,
           showTrendLine: config.showTrendLine ?? false,
@@ -352,10 +330,8 @@ export class ChartQuery {
   }
 
   /**
-   * Flattens each binding's series into one result, tagging every series with its binding's id.
-   * A single binding keeps its series and name untouched. With several, each series is named for
-   * its binding (label, else dataset name), colliding names suffixed so the legend can tell them
-   * apart. Presentation is left to the option builder, which resolves it live from each binding.
+   * Flattens each binding's series into one result tagged by binding. With several bindings, each
+   * series is named for its binding and repeated names are suffixed.
    */
   private static merge(parts: ChartQueryPart[]): ChartQueryResult {
     const first = parts[0].result;
@@ -369,7 +345,6 @@ export class ChartQuery {
     const counts = new Map<string, number>();
     for (const base of bases) counts.set(base, (counts.get(base) ?? 0) + 1);
     const seen = new Map<string, number>();
-    // Suffix only names that actually repeat; unique names are left bare.
     const uniqueBases = bases.map((base) => {
       if ((counts.get(base) ?? 0) <= 1) return base;
       const n = (seen.get(base) ?? 0) + 1;
@@ -383,13 +358,11 @@ export class ChartQuery {
       const split = result.series.length > 1;
       return result.series.map((s) => ({
         points: s.points,
-        // A colour-by split keeps both parts of the name; otherwise the binding name alone.
         label: split && s.label ? `${base} · ${s.label}` : base,
         bindingId: binding.id,
       }));
     });
 
-    // Roll per-binding point counts up so the widget can report the overlay's total.
     const totalPoints = parts.reduce((sum, p) => sum + (p.result.totalPoints ?? 0), 0);
     const truncated = parts.some((p) => p.result.truncated);
 
@@ -405,7 +378,6 @@ export class ChartQuery {
     };
   }
 
-  /** The tooltip columns, each tagged with its column's name so another dataset can resolve it. */
   private static namedTooltipColumns(
     tooltipColumns: readonly ChartTooltipColumn[] | undefined,
     columns: readonly DatasetColumn[],
@@ -417,11 +389,8 @@ export class ChartQuery {
   }
 
   /**
-   * The order a merged category axis takes. A default (natural) sort is re-applied across every
-   * dataset's categories — numbers and dates by value, text alphabetically, blank then "Other" last —
-   * so a category only one dataset has lands in its natural place, not at the end. A column sort's
-   * metric exists only on the primary dataset, so its order leads and the rest follow, as the server
-   * sinks categories with no metric.
+   * The merged category order. A natural sort is re-applied across every dataset (blank, then
+   * "Other", last). A column sort's metric exists only on the primary dataset, so its order leads.
    */
   private static mergedCategoryOrder(
     categories: string[],
@@ -441,12 +410,12 @@ export class ChartQuery {
       return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
     });
     if (!sort?.descending) return sorted;
-    // Descending reverses the real categories but keeps blank and "Other" at the end.
+    // Descending keeps blank and "Other" at the end.
     const real = sorted.filter((i) => ChartQuery.categoryRank(details[i]) === 0).reverse();
     return [...real, ...sorted.filter((i) => ChartQuery.categoryRank(details[i]) !== 0)];
   }
 
-  /** Re-indexes one binding's per-category values onto the merged axis, filling `missing` for categories it lacks. */
+  /** Re-indexes one binding's values onto the merged axis, filling `missing` for gaps. */
   private static reindex<T>(
     categories: readonly string[],
     localIndex: ReadonlyMap<string, number>,
@@ -459,25 +428,20 @@ export class ChartQuery {
     });
   }
 
-  /** Real categories sort first, then blank, then "Other". */
   private static categoryRank(detail: ChartCategoryDetail | undefined): number {
     return detail?.isOther ? 2 : detail?.isBlank ? 1 : 0;
   }
 
   /**
-   * Merges each binding's bar response onto one shared category axis: the categories are unioned
-   * in first-seen order (the first binding's ordering leads, novel categories from later bindings
-   * append), and every series' values are re-indexed onto it, filling null where a binding lacks a
-   * category. Each series is tagged with its binding (for its stack group and colour) and given a
-   * composed legend label — binding · measure · split — carrying only the parts that actually vary.
-   * Colliding labels are suffixed so the legend and colour palette can still tell them apart.
+   * Merges each binding's bar response onto one category axis, re-indexing values and filling null
+   * for gaps. Legend labels compose binding, measure and split from only the parts that vary, and
+   * repeats are suffixed.
    */
   private static mergeBar(parts: BarChartPart[], sort?: ChartSort): BarChartQueryResult {
     const first = parts[0].result;
     const multiBinding = parts.length > 1;
 
-    // Union the categories (first binding's order first), then — with several datasets — re-sort
-    // the union so categories only a later dataset has don't simply trail at the end.
+    // With several datasets, re-sort the union so a later dataset's categories don't just trail.
     const unionCategories: string[] = [];
     const unionDetails: (ChartCategoryDetail | undefined)[] = [];
     const seenCategories = new Set<string>();
@@ -497,12 +461,10 @@ export class ChartQuery {
 
     const series: BarSeriesResult[] = parts.flatMap(({ binding, result }) => {
       const base = binding.label.trim() || result.name;
-      // Which naming parts vary within this binding: several measures, or a colour-by split.
       const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
       const multiMeasure = measureIds.size > 1;
       const hasSplit = result.series.some((s) => s.label !== '');
 
-      // This binding's own category positions, to re-index its values onto the unified axis.
       const localIndex = new Map(result.categories.map((c, i) => [c, i]));
 
       return result.series.map((s): BarSeriesResult => {
@@ -510,7 +472,6 @@ export class ChartQuery {
         if (multiBinding) labelParts.push(base);
         if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
         if (hasSplit) labelParts.push(s.label || '(blank)');
-        // Nothing varies (one binding, one measure, no split): fall back to a sensible single name.
         const label =
           labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
@@ -522,7 +483,7 @@ export class ChartQuery {
           values: ChartQuery.reindex(categories, localIndex, s.values, null),
           rowCounts: ChartQuery.reindex(categories, localIndex, s.rowCounts, null),
           tooltipLines: ChartQuery.reindex(categories, localIndex, s.tooltipLines, [] as string[]),
-          // Drill conditions name this binding's own dataset's columns, so each series keeps its own.
+          // Drill conditions name this binding's own dataset's columns.
           categoryDrills: ChartQuery.reindex(
             categories,
             localIndex,
@@ -533,7 +494,6 @@ export class ChartQuery {
       });
     });
 
-    // Suffix only labels that actually repeat, so the palette keys stay distinct.
     const counts = new Map<string, number>();
     for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
     const seen = new Map<string, number>();
@@ -550,19 +510,15 @@ export class ChartQuery {
       categories,
       categoryDetails,
       series,
-      // Bands resolve against the primary binding's dataset, matching the schema the panel offers.
+      // Bands resolve against the primary binding's dataset, matching the panel's schema.
       toleranceBands: first.toleranceBands,
       ...ChartQuery.sumRowCounts(parts),
     };
   }
 
   /**
-   * Flattens each binding's distribution into one result: their bins are assumed identical (the
-   * caller aligns them onto a shared range and bin count before querying, needed only when more
-   * than one binding is in play) — the first binding with any data stands in for the shared axis.
-   * Each series is given a composed legend label — binding · measure · split — carrying only the
-   * parts that actually vary, mirroring how a bar chart's overlay composes its own legend.
-   * Colliding labels are suffixed so the legend and colour palette can still tell them apart.
+   * Flattens each binding's distribution into one result. The caller has already aligned their
+   * bins, so the first binding with data supplies the axis. Labels compose like the bar overlay's.
    */
   private static mergeHistogram(parts: HistogramPart[]): HistogramQueryResult {
     const first = parts[0].result;
@@ -572,7 +528,6 @@ export class ChartQuery {
 
     const series: HistogramSeriesResult[] = parts.flatMap(({ binding, result }) => {
       const base = binding.label.trim() || result.name;
-      // Which naming parts vary within this binding: several value columns, or a colour-by split.
       const measureIds = new Set(result.series.map((s) => s.valueColumnId ?? ''));
       const multiMeasure = measureIds.size > 1;
       const hasSplit = result.series.some((s) => s.label !== '');
@@ -582,7 +537,6 @@ export class ChartQuery {
         if (multiBinding) labelParts.push(base);
         if (multiMeasure) labelParts.push(s.valueColumnLabel || 'Value');
         if (hasSplit) labelParts.push(s.label || '(blank)');
-        // Nothing varies (one binding, one column, no split): fall back to a sensible single name.
         const label =
           labelParts.length > 0 ? labelParts.join(' · ') : base || s.valueColumnLabel || 'Value';
 
@@ -590,7 +544,6 @@ export class ChartQuery {
       });
     });
 
-    // Suffix only labels that actually repeat, so the palette keys stay distinct.
     const counts = new Map<string, number>();
     for (const s of series) counts.set(s.label, (counts.get(s.label) ?? 0) + 1);
     const seen = new Map<string, number>();
@@ -606,21 +559,17 @@ export class ChartQuery {
       name: first.name,
       bins: basis.result.bins,
       series,
-      // Bands resolve against each binding's own dataset but the same spec, so every binding's
-      // response carries the same resolved bounds — the first (non-empty) one stands for all.
+      // Every binding resolves the same spec, so the first non-empty bounds stand for all.
       toleranceBands: basis.result.toleranceBands,
       ...ChartQuery.sumRowCounts(parts),
-      // Any binding's scan hitting its cap makes the overlay incomplete; the rows actually read
-      // add up across bindings the same way the matched/total counts do.
       truncated: parts.some((p) => p.result.truncated),
       scannedRowCount: parts.reduce((sum, p) => sum + (p.result.scannedRowCount ?? 0), 0),
     };
   }
 
   /**
-   * The overlay's row counts for the "N of M rows" footer: each dataset counted once, summed across
-   * datasets. Bindings on the same dataset read the same rows, so they must not double the total;
-   * where their filters differ, the widest slice any of them plots stands for the dataset.
+   * Row counts for the footer, counting each dataset once. Bindings sharing a dataset contribute the
+   * widest slice any of them plots.
    */
   private static sumRowCounts(
     parts: { binding: ChartSeriesBinding; result: ChartRowCounts }[],

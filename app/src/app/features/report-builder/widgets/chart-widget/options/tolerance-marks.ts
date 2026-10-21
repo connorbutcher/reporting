@@ -4,13 +4,10 @@ import { MarkLineData } from './types/mark-line-data';
 import { AxisKey } from './types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
-/** Reference lines and shaded zones drawn from resolved tolerance bands. */
 export class ToleranceMarks {
-  // Translucent so plotted marks stay readable through the shading.
   private static readonly IN_SPEC_FILL = 'rgba(22, 163, 74, 0.10)';
   private static readonly CONCESSION_FILL = 'rgba(217, 119, 6, 0.13)';
 
-  /** Dashed line entries for every band's bounds, coloured by what crossing them means. */
   public static lines(
     bands: readonly ResolvedToleranceBand[],
     axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
@@ -41,7 +38,7 @@ export class ToleranceMarks {
     return entries;
   }
 
-  /** Shaded regions for every band whose `fill` is on: the in-spec zone plus amber concession shoulders. */
+  /** The in-spec zone plus amber concession shoulders for every filled band. */
   public static areas(
     bands: readonly ResolvedToleranceBand[],
     axisKeyFor: AxisKeyFor<ResolvedToleranceBand>,
@@ -89,7 +86,7 @@ export class ToleranceMarks {
     };
   }
 
-  /** A shaded [from, to] region; the fill colour rides on the first edge. */
+  /** The fill colour rides on the first edge. */
   private static region(
     axisKey: AxisKey,
     from: number,
@@ -102,7 +99,7 @@ export class ToleranceMarks {
     ];
   }
 
-  /** Pins a value to the chosen axis as a typed `{ xAxis }` or `{ yAxis }` fragment. */
+  /** A typed `{ xAxis }` or `{ yAxis }` fragment. */
   private static onAxis(axisKey: AxisKey, value: number): { xAxis: number } | { yAxis: number } {
     return axisKey === 'xAxis' ? { xAxis: value } : { yAxis: value };
   }

@@ -18,25 +18,16 @@ import { WidgetExportBase } from './widget-export-base';
 import { WidgetOutputHandler } from './widget-output-handler';
 
 /**
- * Renders a widget by creating the component the registry maps its type to, rather
- * than a per-type `@if` chain in every template. Put it on an `<ng-container>`; the
- * created component is inserted at that anchor.
- *
- * Everything is wired from the component's own metadata, so a new widget kind needs
- * no changes here — only a {@link WIDGET_COMPONENTS} entry:
- *  - `config` is always set; `widgetId`/`reportFilter`/`widgetFilter`/`datasetVersion` are set
- *    only on components that declare them (static text, say, has none of them).
- *  - each entry in {@link widgetOutputs} is subscribed only if the component actually
- *    declares that output (only a table emits `sortChange`/`columnResize`).
- *  - a data widget's `filterable` input is on exactly when the host handles its
- *    `filterRequest` output, so the count bar is only a button where it can do something.
+ * Renders a widget by creating the component the registry maps its type to. Inputs and outputs
+ * are wired only where the component declares them, so a new widget kind needs only a
+ * {@link WIDGET_COMPONENTS} entry. A data widget is `filterable` when the host handles its
+ * `filterRequest`.
  */
 @Directive({
   selector: '[appWidgetOutlet]',
   exportAs: 'widgetOutlet',
 })
 export class WidgetOutletDirective {
-  /** The widget to render; its `type` selects the component, its `config` seeds it. */
   readonly widget = input.required<Widget>({ alias: 'appWidgetOutlet' });
 
   /** The report-level filter for this widget's dataset, layered over its own (table only). */
@@ -54,7 +45,6 @@ export class WidgetOutletDirective {
 
   private ref: ComponentRef<unknown> | null = null;
   private renderedType: WidgetType | null = null;
-  /** The created component's declared input names, so we only set ones it accepts. */
   private declaredInputs = new Set<string>();
   private outputSubscriptions: OutputRefSubscription[] = [];
 
@@ -75,13 +65,11 @@ export class WidgetOutletDirective {
     });
   }
 
-  /** The rendered widget when it can be exported (chart, table, pivot); null for the rest. */
   public exporter(): WidgetExportBase | null {
     const instance = this.ref?.instance;
     return instance instanceof WidgetExportBase ? instance : null;
   }
 
-  /** (Re)creates the component when the widget's type changes; reuses it otherwise. */
   private ensureComponent(type: WidgetType): void {
     if (this.ref && this.renderedType === type) return;
 
@@ -95,8 +83,7 @@ export class WidgetOutletDirective {
     this.declaredInputs = new Set(mirror?.inputs.map((i) => i.templateName) ?? []);
     this.renderedType = type;
 
-    // Handlers are stable for a given host, so outputs are wired once per created
-    // component rather than on every input change.
+    // Handlers are stable per host, so outputs are wired once per component.
     const handlers = untracked(this.widgetOutputs);
     const instance = this.ref.instance as Record<string, OutputRef<unknown>>;
     for (const output of mirror?.outputs ?? []) {

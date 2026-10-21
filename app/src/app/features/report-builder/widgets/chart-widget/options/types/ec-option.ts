@@ -19,10 +19,8 @@ import type {
 import type { ComposeOption } from 'echarts/core';
 
 /**
- * The strongly-typed echarts option for this widget — every builder bundles up to one of these.
- * Composed from exactly the series and components registered in {@link file://../../echarts.ts},
- * so autocomplete offers the real option surface and a typo or wrong shape is a compile error.
- * Widen the union here whenever a new series or component is registered there.
+ * The typed echarts option, composed from exactly what {@link file://../../echarts.ts} registers.
+ * Widen it whenever a series or component is registered there.
  */
 export type ECOption = ComposeOption<
   | BarSeriesOption

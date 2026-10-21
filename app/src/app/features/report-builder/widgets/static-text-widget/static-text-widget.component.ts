@@ -12,12 +12,7 @@ export class StaticTextWidgetComponent {
 
   protected readonly hasContent = computed(() => this.config().content.trim().length > 0);
 
-  /**
-   * Only the properties that actually vary go through the style binding;
-   * layout structure stays in the stylesheet. Colours come from a native
-   * `<input type="color">` in the side panel, which only ever yields a valid
-   * `#rrggbb` value, so there is no free-text CSS to sanitise here.
-   */
+  /** Colours come from a native colour input, which only yields `#rrggbb`, so nothing needs sanitising. */
   protected readonly containerStyle = computed(() => {
     const c = this.config();
     return StaticTextWidgetComponent.joinStyle({

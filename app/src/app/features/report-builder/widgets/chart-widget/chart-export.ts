@@ -14,10 +14,7 @@ import { XBarROption } from './options/xbar-r-option';
 import { AnyChartResult } from './models/any-chart-result';
 import { ChartTable } from './models/chart-table';
 
-/**
- * The rows plotted behind a chart, shaped per chart kind — exported as CSV, and shown as the
- * chart's "View data" table so the values are reachable without a mouse.
- */
+/** The rows behind a chart, for CSV export and the "View data" table. */
 export class ChartExport {
   public static csv(
     config: ChartWidgetConfig,
@@ -33,8 +30,7 @@ export class ChartExport {
     columns: DatasetColumn[],
   ): ChartTable {
     if (config.type === 'barChart' || config.type === 'comboChart') {
-      // A combo chart's data is the bar result (one value per category per series), so its table is
-      // the same category × series grid regardless of which series draw as bars or lines.
+      // A combo chart's data is the bar result, whichever series draw as lines.
       return ChartExport.barTable(data as BarChartQueryResult);
     }
     if (config.type === 'boxPlot') return ChartExport.boxTable(data as BoxPlotQueryResult);
@@ -42,14 +38,14 @@ export class ChartExport {
       return ChartExport.histogramTable(data as HistogramQueryResult);
     if (config.type === 'xbarRChart') return ChartExport.xBarRTable(data as XBarRChartQueryResult);
 
-    // Date axes carry epoch-millis, so pass the axis columns to render readable dates.
+    // Date axes carry epoch millis.
     const primary = readChartBindings(config).find((b) => b.datasetId);
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     return ChartExport.pointTable(data as ChartQueryResult, x, y);
   }
 
-  /** One row per point, with a Series column once there's more than one and a Size column when any point has a bubble size. */
+  /** One row per point, with Series and Size columns when they apply. */
   private static pointTable(
     data: ChartQueryResult,
     xColumn: DatasetColumn | null,
@@ -73,7 +69,6 @@ export class ChartExport {
     return rows;
   }
 
-  /** One row per category, one column per series. */
   private static barTable(data: BarChartQueryResult): ChartTable {
     const rows: ChartTable = [['Category', ...data.series.map((s) => s.label || 'Value')]];
     data.categories.forEach((category, i) => {
@@ -82,7 +77,6 @@ export class ChartExport {
     return rows;
   }
 
-  /** One row per box: its category, series (when split), five-number summary, and row count. */
   private static boxTable(data: BoxPlotQueryResult): ChartTable {
     const multi = data.series.length > 1;
     const rows: ChartTable = [
@@ -106,10 +100,7 @@ export class ChartExport {
     return rows;
   }
 
-  /**
-   * One row per subgroup (or point): its value and spread, their control limits, and whether each
-   * breached them — named for the chart's mode. An attribute chart (p, np) has no spread columns.
-   */
+  /** One row per subgroup, with its limits and breaches. Attribute charts (p, np) have no spread. */
   private static xBarRTable(data: XBarRChartQueryResult): ChartTable {
     const mode = data.mode ?? 'xBarR';
     const names = XBarROption.names(mode);
@@ -149,7 +140,6 @@ export class ChartExport {
     return rows;
   }
 
-  /** One row per bin: its label and edges, then each series' height. */
   private static histogramTable(data: HistogramQueryResult): ChartTable {
     const multi = data.series.length > 1;
     const rows: ChartTable = [
@@ -166,7 +156,6 @@ export class ChartExport {
     return rows;
   }
 
-  /** A date column's millis rendered as its date pattern, else the raw value. */
   private static axisCell(value: unknown, column: DatasetColumn | null): string | number {
     if (column?.type === 'dateTime' && typeof value === 'number') {
       return ChartFormat.date(value, ChartFormat.dateConfig(column));

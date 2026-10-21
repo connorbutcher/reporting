@@ -3,19 +3,13 @@ import { Observable } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 
 export interface WidgetDataSourceOptions<T> {
-  /** The dataset to load, or null when the widget isn't configured yet. */
   datasetId: Signal<number | null>;
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   version: Signal<number>;
   api: DatasetApiService;
-  /**
-   * Builds the query for the current config, or returns null when there isn't
-   * enough to ask (no dataset, missing axes). Read at fire time, inside the
-   * pipeline, so it always sees the latest config.
-   */
+  /** The query for the current config, or null when too little is bound. Read at fire time. */
   fetch: () => Observable<T> | null;
-  /** Runs (untracked) each time a dataset's schema is about to load — e.g. to seed sort/page. */
+  /** Runs untracked before each schema load, e.g. to seed sort and page. */
   onSchemaLoad?: () => void;
-  /** Long enough that typing a filter value settles into one request. */
   debounceMs?: number;
 }

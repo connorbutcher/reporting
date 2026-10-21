@@ -11,10 +11,8 @@ import { ChartDrillClick } from './models/chart-drill-click';
 import { GroupingResult } from './models/grouping-result';
 
 /**
- * Turns a click on a bar, box, histogram bin or control-chart point into the rows behind it — the
- * same drill-through the pivot offers. The server supplies each category's (and split series')
- * conditions; a histogram bin's range is built here from its edges. Null when the click can't be
- * expressed as a filter (the "Other" category, a reference line, a comment marker).
+ * Turns a click on a bar, box, bin or control-chart point into a drill-through filter. Null when
+ * the click can't be a filter ("Other", a reference line, a comment marker).
  */
 export class ChartDrill {
   public static target(

@@ -1,16 +1,13 @@
 import { OutlineItemStyle } from './types/outline-item-style';
 import { OutlineZone } from './types/outline-zone'; // red: past the fail bound (or past warn, when there's no milder tier)
 
-/** Classifies plotted values against a set of outline zones — tolerance bands, guide lines, or both. */
+/** Classifies plotted values against outline zones from tolerance bands and guide lines. */
 export class OutlineSeverity {
   private static readonly OUTLINE_CONCESSION = '#d97706';
   // orange: past the warn bound, still inside the fail bound
   private static readonly OUTLINE_FAIL = '#dc2626';
 
-  /**
-   * Outline colour for a plotted point across every zone, or null when it's in spec on all of
-   * them. Each zone is tested on its own axis; a category value is never outlined. Most severe wins.
-   */
+  /** Outline colour for a point, or null when in spec on every zone. Most severe wins. */
   public static forPoints(
     zones: readonly OutlineZone[],
   ): (x: number | string, y: number | string) => string | null {
@@ -27,7 +24,7 @@ export class OutlineSeverity {
     };
   }
 
-  /** Outline colour for a single measure value (a bar's height); every zone is tested on its own axis's value. */
+  /** Outline colour for a single measure value, such as a bar's height. */
   public static forValue(zones: readonly OutlineZone[]): (value: number) => string | null {
     if (zones.length === 0) return () => null;
 
@@ -39,11 +36,7 @@ export class OutlineSeverity {
     };
   }
 
-  /**
-   * Outline colour for a value *range* (a box's whisker extent) against every zone, or null when
-   * the whole range is in spec. Flagged by whichever end is furthest out — the most severe colour
-   * across both ends and every zone wins.
-   */
+  /** Outline colour for a range, such as a box's whiskers, from whichever end is furthest out. */
   public static forExtent(
     zones: readonly OutlineZone[],
   ): (low: number, high: number) => string | null {
@@ -53,22 +46,17 @@ export class OutlineSeverity {
 
   /** An outlined mark: the series colour as fill, bordered in the crossed zone's colour. */
   public static itemStyle(seriesColor: string, borderColor: string): OutlineItemStyle {
-    // The dashed border carries the warning for readers who can't tell the colours apart.
+    // The dashed border carries the warning without relying on colour.
     return { color: seriesColor, borderColor, borderWidth: 2.5, borderType: 'dashed' };
   }
 
-  /**
-   * Outline colour for a value against one zone, or null in spec. Red past the fail bound — or
-   * past the warn bound, where the two coincide (a guide line has no milder tier) — and orange
-   * in a tolerance band's concession shoulder.
-   */
+  /** Red past the fail bound (or a guide line), orange in a tolerance band's concession shoulder. */
   private static colorFor(value: number, zone: OutlineZone): string | null {
     if (value < zone.failLow || value > zone.failHigh) return OutlineSeverity.OUTLINE_FAIL;
     if (value < zone.warnLow || value > zone.warnHigh) return OutlineSeverity.OUTLINE_CONCESSION;
     return null;
   }
 
-  /** The more severe of two outline colours (red beats orange beats none). */
   private static worse(a: string | null, b: string | null): string | null {
     if (a === OutlineSeverity.OUTLINE_FAIL || b === OutlineSeverity.OUTLINE_FAIL)
       return OutlineSeverity.OUTLINE_FAIL;

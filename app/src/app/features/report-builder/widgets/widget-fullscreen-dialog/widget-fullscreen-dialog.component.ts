@@ -4,11 +4,7 @@ import { WidgetExportActionsComponent } from '../widget-export-actions/widget-ex
 import { WidgetOutletDirective } from '../widget-outlet.directive';
 import { WidgetFullscreenDialogData } from './widget-fullscreen-dialog-data';
 
-/**
- * Re-renders one widget at near-fullscreen size, opened from its grid header's
- * "view full screen" button. Needs no size-awareness of its own — it feeds the
- * same outlet the grid does, just with more room to draw in.
- */
+/** Re-renders one widget at near-fullscreen size through the same outlet as the grid. */
 @Component({
   selector: 'app-widget-fullscreen-dialog',
   imports: [WidgetExportActionsComponent, WidgetOutletDirective],

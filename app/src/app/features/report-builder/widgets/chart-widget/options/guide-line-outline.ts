@@ -1,11 +1,7 @@
 import { ChartGuideLine } from '../../../../../core/models/report';
 import { OutlineZone } from './types/outline-zone';
 
-/**
- * Turns guide lines with outlining on into generic {@link OutlineZone}s — a single boundary (or,
- * once the line is a range, two) with no milder "concession" tier, so crossing it always reads
- * as a fail rather than tolerance's two-stage warn/fail.
- */
+/** Outline zones from guide lines; with no concession tier, crossing one always fails. */
 export class GuideLineOutline {
   public static zonesFor(lines: readonly ChartGuideLine[]): OutlineZone[] {
     return lines.filter((line) => line.outlinePoints).map(GuideLineOutline.zoneFor);

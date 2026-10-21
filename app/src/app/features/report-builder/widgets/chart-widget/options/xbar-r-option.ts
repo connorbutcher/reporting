@@ -20,29 +20,24 @@ import { TooltipHtml } from './tooltip-html';
 import { SubgroupTooltipContext } from './types/subgroup-tooltip-context';
 
 /**
- * Builds the Xbar-R echarts option: two stacked grids sharing one category (subgroup) axis — the
- * X-bar (mean) chart on top, the R (range) chart below — each with its own centre line and
- * control-limit lines. Limits are drawn as step-line series rather than a single markLine because
- * they can differ per subgroup when subgroup sizes aren't all equal.
+ * Xbar-R chart: the X-bar chart above the R chart on a shared subgroup axis. Limits are step-line
+ * series because they vary per subgroup when subgroup sizes differ.
  */
 export class XBarROption {
-  // In-control points/line stay blue; a point breaching its own control limits turns red — the same
-  // alarm colour tolerance bands use for an out-of-spec value, since both mean "something's wrong
-  // with this one". The limit lines themselves are violet, kept deliberately clear of red/amber so
-  // they never read as a spec band when a tolerance band is overlaid on the same X-bar axis.
+  // Breaches use the same red as out-of-spec values; limit lines are violet so they never read
+  // as a spec band.
   private static readonly IN_CONTROL_COLOR = '#2563eb';
   private static readonly OUT_OF_CONTROL_COLOR = '#dc2626';
   private static readonly CENTER_LINE_COLOR = '#475569';
   private static readonly LIMIT_LINE_COLOR = '#7c3aed';
 
-  /** An out-of-control point: red and a larger triangle, so its status isn't carried by colour alone. */
+  /** A larger triangle too, so status isn't carried by colour alone. */
   private static readonly OUT_OF_CONTROL_POINT = {
     symbol: 'triangle',
     symbolSize: 11,
     itemStyle: { color: XBarROption.OUT_OF_CONTROL_COLOR },
   };
 
-  /** What each Nelson rule means, for the tooltip. */
   private static readonly RULES: Record<number, string> = {
     1: 'beyond a control limit',
     2: '9 in a row on one side of the centre line',
@@ -70,8 +65,7 @@ export class XBarROption {
     const xBarCenterLine = data?.xBarCenterLine ?? 0;
     const rCenterLine = data?.rCenterLine ?? 0;
 
-    // An attribute chart (p, np) plots a defective share or count on one chart, not a measure and
-    // its spread on two: no second grid, and its values don't take the measure column's units.
+    // An attribute chart (p, np) has one grid and doesn't take the measure's units.
     const attribute = mode === 'p' || mode === 'np';
     const valueConfig = attribute ? undefined : ChartFormat.numericConfig(valueColumn);
     const formatMean =
@@ -79,8 +73,7 @@ export class XBarROption {
         ? (v: number) => `${ChartFormat.numeric(v * 100, { kind: 'numeric', decimals: 1 })}%`
         : (v: number) => ChartFormat.numeric(v, valueConfig);
     const categoryLabel = config.xAxisLabel.trim() || categoryColumn.name;
-    // An Xbar-R chart uses only the primary value axis, like a box plot — its label/bounds apply
-    // to the X-bar (mean) chart; the R chart's axis is always auto-scaled from zero.
+    // The value axis config applies to the X-bar chart; the R axis auto-scales from zero.
     const meanAxisConfig = readChartAxes(config)[0];
     const meanLabel = meanAxisConfig.label.trim() || (attribute ? names.value : valueColumn.name);
 
@@ -106,8 +99,6 @@ export class XBarROption {
       nameGap: categoryNameGap,
     };
 
-    // The mean axis fits the data rather than anchoring at zero — a control chart's measurements
-    // are rarely near it — while the range axis, never negative, keeps the usual zero floor.
     const meanScale = ChartScale.numericAxis(
       false,
       meanAxisConfig.min,
@@ -153,12 +144,10 @@ export class XBarROption {
       splitLine: { show: showGridLines },
     };
 
-    // Spec limits (a tolerance band), when set, overlay the X-bar chart only — a control chart's R
-    // side has no spec of its own to compare against. Only value-axis guide lines apply: the
-    // subgroup axis has no numeric scale to place an X line on.
+    // Spec limits and value-axis guide lines overlay the X-bar chart only.
     const bands = (data?.toleranceBands ?? []).filter((b) => b.axis === 'y');
     const guideLines = (config.guideLines ?? []).filter((l) => l.axis === 'y');
-    // Limits held from a baseline: a dotted marker after the last baseline subgroup says so.
+    // A dotted marker after the last baseline subgroup shows the limits are held from it.
     const baselineCount = data?.baselineCount ?? null;
     const baselineMark =
       baselineCount != null && baselineCount > 0 && baselineCount < categories.length
@@ -234,7 +223,7 @@ export class XBarROption {
       symbolSize: 7,
       lineStyle: { color: XBarROption.IN_CONTROL_COLOR, width: 1.5 },
       itemStyle: { color: XBarROption.IN_CONTROL_COLOR },
-      // A subgroup of one (or the first individual) has no range: leave a gap rather than plot 0.
+      // A subgroup of one has no range: leave a gap rather than plot 0.
       data: subgroups.map((s) => ({
         value: s.hasRange === false ? null : s.range,
         ...(highlight && s.rangeOutOfControl ? XBarROption.OUT_OF_CONTROL_POINT : {}),
@@ -242,7 +231,6 @@ export class XBarROption {
       tooltip: { formatter: (p) => XBarROption.tooltip(p, rangeTooltip) },
     };
 
-    // Many subgroups get a slider that pans both charts together.
     const zoom = CategoryZoom.enabled(config.zoom, categories.length);
 
     const meanSeriesSet = [
@@ -304,7 +292,6 @@ export class XBarROption {
     };
   }
 
-  /** What each chart and its plotted value are called in a control chart mode. */
   public static names(mode: ControlChartMode): {
     value: string;
     dispersion: string;
@@ -335,7 +322,6 @@ export class XBarROption {
     }
   }
 
-  /** One point's tooltip: its mean/range plus that subgroup's own control limits and sample size. */
   private static tooltip(params: TooltipCallbackParams, ctx: SubgroupTooltipContext): string {
     const param = Array.isArray(params) ? params[0] : params;
     const i = param.dataIndex;
@@ -366,7 +352,7 @@ export class XBarROption {
     return lines.join('<br/>');
   }
 
-  /** A flat (or stepped, when subgroup sizes differ) reference line for one control limit. */
+  /** A flat line, stepped when subgroup sizes differ. */
   private static limitSeries(
     chartName: string,
     categoryCount: number,
@@ -399,7 +385,6 @@ export class XBarROption {
     ];
   }
 
-  /** The flat centre line — always one constant value across every subgroup. */
   private static centerSeries(
     chartName: string,
     categoryCount: number,
@@ -421,7 +406,6 @@ export class XBarROption {
     };
   }
 
-  /** The longest formatted value label, in characters, across a set of plotted values. */
   private static labelLen(
     values: readonly number[],
     config: NumericColumnConfig | undefined,

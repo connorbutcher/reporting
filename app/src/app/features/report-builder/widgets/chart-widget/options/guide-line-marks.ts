@@ -4,19 +4,13 @@ import { MarkLineData } from './types/mark-line-data';
 import { AxisKey } from './types/axis-key';
 import { AxisKeyFor } from './types/axis-key-for';
 
-/** Reference lines (and optional shaded regions) drawn from fixed values and their captions — the simpler alternative to a tolerance band. */
+/** Reference lines and optional shaded regions from fixed values: the simpler tolerance band. */
 export class GuideLineMarks {
-  // A neutral tone, deliberately distinct from tolerance's red/amber so the two kinds of line
-  // read as different things at a glance.
+  // Neutral, so guide lines read differently from tolerance's red and amber.
   private static readonly DEFAULT_COLOR = '#4f46e5';
-  // Translucent, in the same indigo family as the default line colour, so a shaded guide
-  // region reads as "the same kind of thing" as a plain guide line rather than a spec band.
   private static readonly DEFAULT_FILL = 'rgba(79, 70, 229, 0.10)';
 
-  /**
-   * One dashed line entry per guide line edge — one for a single value, two (start and end,
-   * both captioned) when `valueTo` turns it into a region.
-   */
+  /** One dashed line per edge: one for a value, two for a `valueTo` region. */
   public static lines(
     lines: readonly ChartGuideLine[],
     axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
@@ -44,7 +38,6 @@ export class GuideLineMarks {
     return entries;
   }
 
-  /** Shaded regions for every guide line that has a `valueTo` and `fill` on. */
   public static areas(
     lines: readonly ChartGuideLine[],
     axisKeyFor: AxisKeyFor<Pick<ChartGuideLine, 'axis'>>,
@@ -67,7 +60,7 @@ export class GuideLineMarks {
     return areas;
   }
 
-  /** Pins a value to the chosen axis as a typed `{ xAxis }` or `{ yAxis }` fragment. */
+  /** A typed `{ xAxis }` or `{ yAxis }` fragment. */
   private static onAxis(axisKey: AxisKey, value: number): { xAxis: number } | { yAxis: number } {
     return axisKey === 'xAxis' ? { xAxis: value } : { yAxis: value };
   }

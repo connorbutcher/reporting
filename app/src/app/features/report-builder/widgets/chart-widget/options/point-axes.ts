@@ -6,13 +6,10 @@ import { ChartScale } from './chart-scale';
 import { PointChartConstants } from './point-chart-constants';
 import { YAxesInput } from './types/y-axes-input';
 
-/** Builds the Y axis definitions for a point chart, and the category labels a text axis carries. */
 export class PointAxes {
   /**
-   * One echarts axis per configured Y axis. Secondary axes are offset so their scales don't
-   * overlap; the primary takes its type from the bound column (works with no data), a secondary
-   * is inferred from its series' values (so it too can be a category axis). An axis carrying a
-   * single series is drawn in that series' colour so a reader can tell which scale it reads against.
+   * One axis per configured Y axis. The primary's type comes from its column; a secondary's is
+   * inferred from its values. Secondary axes are offset, and a single-series axis takes its colour.
    */
   public static buildY(input: YAxesInput): YAXisComponentOption[] {
     const { axes, series, indicesByAxis, seriesColors, yLabel, yConfig, yDateCfg } = input;
@@ -28,8 +25,6 @@ export class PointAxes {
       const isText = isPrimary ? input.yPrimaryIsText : PointAxes.firstPointIsText(axisSeries);
       const cats = isText ? PointAxes.categories(axisSeries, 'y') : null;
       const axisColor = multiAxis && onAxis.length === 1 ? seriesColors[onAxis[0]] : null;
-      // The category labels live inside the scale fragment so the axis `type` and its `data`
-      // stay correlated in one branch.
       const scale = isDate
         ? ChartScale.dateAxis(yDateCfg)
         : isText
@@ -43,14 +38,11 @@ export class PointAxes {
               axis.scale,
             );
       const rotate = ChartScale.labelRotate(axis.rotate);
-      // Size the name's gap to clear this axis's own tick labels so the two never overlap.
       const longest = isText
         ? ChartScale.longestLen(cats ?? [])
         : PointAxes.valueLabelLen(axisSeries, isDate, isPrimary ? yConfig : undefined, yDateCfg);
       return {
         ...scale,
-        // Only override the label config for a non-default rotation, so the scale's own
-        // formatter is otherwise left untouched.
         ...(rotate !== 0 ? { axisLabel: { ...scale.axisLabel, rotate } } : {}),
         name: isPrimary ? yLabel : axis.label.trim(),
         nameLocation: 'middle',
@@ -58,25 +50,16 @@ export class PointAxes {
         ...(axisColor ? { nameTextStyle: { color: axisColor } } : {}),
         position: axis.side,
         ...(orderOnSide > 0 ? { offset: orderOnSide * PointChartConstants.AXIS_OFFSET } : {}),
-        // Secondary axes show their line to anchor the added scale; a single-series axis is
-        // drawn in that series' colour. Split lines stay on the primary to avoid competing grids.
         ...(!isPrimary || axisColor
           ? { axisLine: { show: true, ...(axisColor ? { lineStyle: { color: axisColor } } : {}) } }
           : {}),
-        // Gridlines ride the primary axis (toggled chart-wide); secondaries never draw them so
-        // stacked scales don't produce competing grids.
+        // Gridlines ride the primary only, so stacked scales don't compete.
         splitLine: { show: isPrimary && input.showGridLines },
       };
     });
   }
 
-  /**
-   * The distinct category labels a text axis carries — the axis's `data`. Order follows each
-   * category's first appearance across the series' points, which the server has already arranged
-   * by the binding's sort (X ascending by default, so this reads alphabetical with no sort chosen
-   * — or by whatever column the user picked instead, e.g. a date, to make the axis read like a
-   * timeline).
-   */
+  /** A text axis's categories, in first-appearance order (the server already applied the sort). */
   public static categories(series: ChartSeriesResult[], axis: 'x' | 'y'): string[] {
     const values = new Set<string>();
     for (const s of series) {
@@ -85,11 +68,7 @@ export class PointAxes {
     return [...values];
   }
 
-  /**
-   * The longest tick label a numeric/date Y axis will show, in characters, from its series' data
-   * extent (min & max) — enough to size a non-overlapping {@link ChartScale.nameGap} without
-   * knowing echarts' chosen ticks.
-   */
+  /** The longest tick label, estimated by formatting the data extent, to size the name gap. */
   private static valueLabelLen(
     seriesForAxis: ChartSeriesResult[],
     isDate: boolean,
@@ -113,7 +92,6 @@ export class PointAxes {
     return Math.max(format(min).length, format(max).length);
   }
 
-  /** Whether a group of series plots text (category) values on its Y axis, from the first point present. */
   private static firstPointIsText(seriesForAxis: ChartSeriesResult[]): boolean {
     for (const s of seriesForAxis) {
       const p = s.points[0];

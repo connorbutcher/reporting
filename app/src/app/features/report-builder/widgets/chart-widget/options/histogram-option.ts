@@ -23,9 +23,8 @@ import { SeriesColors } from './series-colors';
 import { ToleranceMarks } from './tolerance-marks';
 
 /**
- * Builds the histogram echarts option: a category axis of value bins with one bar per bin
- * (per series). Spec bands sit on the binned variable, so — unlike the other charts — their
- * bounds are mapped onto the bin axis's fractional category positions before being drawn.
+ * Histogram: one bar per value bin, per series. Spec bands are mapped onto the bin axis's
+ * fractional category positions.
  */
 export class HistogramOption {
   /** Null until there's a dataset and a value column bound. */
@@ -35,7 +34,6 @@ export class HistogramOption {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): ECOption | null {
-    // A histogram bins one column of its primary binding; that column names the value (bin) axis.
     const bindings = readChartBindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const valueColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
@@ -46,7 +44,6 @@ export class HistogramOption {
     const binLabels = HistogramOption.binLabels(bins, ChartFormat.numericConfig(valueColumn));
 
     const binAxisLabel = config.xAxisLabel.trim() || valueColumn.name;
-    // The count/frequency axis is the primary value axis; its label falls back to what's plotted.
     const countAxisConfig = readChartAxes(config)[0];
     const countLabel =
       countAxisConfig.label.trim() || HistogramOption.normalizeLabel(config.normalize);
@@ -55,8 +52,6 @@ export class HistogramOption {
     const horizontal = config.horizontal;
     const showGridLines = config.showGridLines ?? true;
 
-    // The bins sit on the X axis for vertical bars, the Y axis for horizontal ones; the count axis
-    // takes whichever is left. Spec bands bind to the bin axis (the binned variable).
     const binAxisKey: 'xAxis' | 'yAxis' = horizontal ? 'yAxis' : 'xAxis';
     const binOrientation = horizontal ? 'y' : 'x';
     const countOrientation = horizontal ? 'x' : 'y';
@@ -101,7 +96,6 @@ export class HistogramOption {
       ...countScale,
       axisLabel: {
         ...countScale.axisLabel,
-        // Count / frequency (%) / density share one formatter across the axis, tooltip, and labels.
         formatter: (value: number | string) =>
           typeof value === 'number'
             ? HistogramOption.formatCount(value, config.normalize)
@@ -116,15 +110,13 @@ export class HistogramOption {
 
     const reference = ReferenceSeries.build(marks, areas);
     const names = series.map((s) => s.label || config.title || 'Series');
-    // A colour override applies only to a single, unsplit distribution; once a series column
-    // splits it, each series keeps its own palette colour.
+    // A colour override applies only to a single, unsplit distribution.
     const override = series.length === 1 ? (primary?.color ?? null) : null;
     const seriesColors = series.map(
       (s, i) => override ?? SeriesColors.forSeries(colors, s.label, i),
     );
 
-    // A fitted normal curve per distribution, on the same scale as its bars: sampled at each bin's
-    // centre and smoothed between them. A cumulative chart has no bell to fit.
+    // A fitted normal curve per distribution; a cumulative chart has none.
     const curves: LineSeriesOption[] =
       config.showNormalCurve && !config.cumulative
         ? series.flatMap((s, i) => {
@@ -163,8 +155,6 @@ export class HistogramOption {
         axisPointer: { type: 'shadow' },
         appendToBody: true,
         confine: true,
-        // Hand-built so each bin can carry its tooltip columns under its height; the fitted curve
-        // and reference carrier have no tooltip of their own.
         formatter: (raw: unknown) => {
           const params = (Array.isArray(raw) ? raw : [raw]) as {
             seriesName?: string;
@@ -209,8 +199,7 @@ export class HistogramOption {
               }
             : {};
 
-          // A cumulative distribution reads as a rising step line, not a bank of bars; the plain
-          // distribution stays as bars that butt together so adjacent bins read as continuous.
+          // Cumulative draws as a step line; plain bins butt together to read as continuous.
           if (config.cumulative) {
             return {
               name: names[i],
@@ -241,9 +230,8 @@ export class HistogramOption {
   }
 
   /**
-   * A normal curve fitted to one distribution (its mean and σ), as one value per bin centre on the
-   * histogram's own scale: count = n·w·pdf, frequency = w·pdf, density = pdf. Null when the series
-   * lacks its stats, has no spread, or the bins have no width.
+   * A normal curve per bin centre on the histogram's scale: count = n·w·pdf, frequency = w·pdf,
+   * density = pdf. Null without stats, spread or bin width.
    */
   public static normalCurve(
     series: { mean?: number; stdDev?: number; count?: number },
@@ -263,12 +251,8 @@ export class HistogramOption {
   }
 
   /**
-   * Re-expresses each spec band's bounds as positions on the bin *category* axis. A value v sits at
-   * fractional category index (v − firstLower) / binWidth − 0.5, so a spec line lands where its
-   * value falls across the bars rather than being snapped to a bin. Only bands on the binned
-   * variable (the X axis) are mapped — a band on the count axis has no meaning across the bins, so
-   * it's dropped rather than drawn in the wrong place. Bands are also dropped when the bins are
-   * missing or degenerate (no width to map onto).
+   * Maps X-axis spec bands onto the bin category axis: v sits at (v − firstLower) / binWidth − 0.5.
+   * Count-axis bands, and all bands when the bins are degenerate, are dropped.
    */
   private static bandsOnBinAxis(
     bands: readonly ResolvedToleranceBand[],
@@ -290,11 +274,7 @@ export class HistogramOption {
       }));
   }
 
-  /**
-   * The {@link bandsOnBinAxis} remap, for guide lines: only lines on the binned variable (the X
-   * axis) have a position across the bins, so — like a spec band — a line on the count axis is
-   * dropped rather than drawn in the wrong place.
-   */
+  /** {@link bandsOnBinAxis} for guide lines. */
   private static linesOnBinAxis(
     lines: readonly ChartGuideLine[],
     bins: HistogramQueryResult['bins'],
@@ -316,7 +296,6 @@ export class HistogramOption {
       }));
   }
 
-  /** A value's fractional position on the bin category axis; null stays null. */
   private static toBinIndex(value: number, firstLower: number, binWidth: number): number;
   private static toBinIndex(
     value: number | null,
@@ -331,10 +310,7 @@ export class HistogramOption {
     return value === null ? null : (value - firstLower) / binWidth - 0.5;
   }
 
-  /**
-   * Each bin's axis label, its edges formatted like the column's cells (prefix, units, decimals).
-   * Falls back to the server's label when the column's decimals would print both edges the same.
-   */
+  /** Bin labels formatted like the column, falling back to the server's when both edges match. */
   private static binLabels(
     bins: HistogramQueryResult['bins'],
     config: NumericColumnConfig | undefined,
@@ -346,7 +322,7 @@ export class HistogramOption {
     });
   }
 
-  /** The longest formatted count label, in characters, to size a non-overlapping count-axis gap. */
+  /** The longest formatted count label, to size the count axis name gap. */
   private static countLabelLen(
     series: readonly { values: readonly number[] }[],
     normalize: HistogramNormalize,
@@ -358,8 +334,6 @@ export class HistogramOption {
   }
 
   private static formatCount(value: number, normalize: HistogramNormalize): string {
-    // A relative frequency reads best as a percentage; a density stays a plain fraction; a raw
-    // count is a whole number with grouping.
     if (normalize === 'frequency') {
       return `${(value * 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
     }

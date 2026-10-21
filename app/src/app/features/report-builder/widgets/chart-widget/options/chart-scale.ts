@@ -6,11 +6,8 @@ import { DateAxisFragment } from './types/date-axis-fragment';
 import { ValueAxisFragment } from './types/value-axis-fragment';
 
 /**
- * The scale-dependent echarts axis fields: axis `type` plus, for numeric axes, fixed
- * bounds and a number-formatting tick label. Each returns a single-scale fragment (its
- * `type` a concrete literal) so the caller's assembled axis narrows cleanly to one echarts
- * axis member. A category axis carries no `data` here — X and Y source categories
- * differently, so the caller passes it to {@link ChartScale.categoryAxis}.
+ * Scale-dependent axis fragments. Each has a concrete `type` literal so the assembled axis
+ * narrows to one echarts axis member.
  */
 export class ChartScale {
   /** A `time` axis whose ticks format through the column's date pattern. */
@@ -21,11 +18,7 @@ export class ChartScale {
     };
   }
 
-  /**
-   * A category axis carrying the supplied labels. `interval` is the label-skip count echarts
-   * applies to category labels — `0` forces every label to show, `1` every other, and so on;
-   * null/undefined leaves echarts' own auto-thinning in place.
-   */
+  /** A category axis; `interval` is echarts' label-skip count (0 shows every label, null auto-thins). */
   public static categoryAxis(data: string[], interval?: number | null): CategoryAxisFragment {
     return {
       type: 'category',
@@ -34,10 +27,7 @@ export class ChartScale {
     };
   }
 
-  /**
-   * A value (or log) axis with optional fixed bounds, a forced tick interval, a number-formatting
-   * tick label, and `scale` (fit to the data rather than anchoring at zero).
-   */
+  /** A value or log axis with optional bounds, tick interval, formatter and `scale`. */
   public static numericAxis(
     logScale: boolean | undefined,
     min: number | null | undefined,
@@ -47,15 +37,12 @@ export class ChartScale {
     scale?: boolean,
   ): ValueAxisFragment {
     return {
-      // A log axis takes the exact same option fields as a value axis, so the fragment types both
-      // as `'value'` — a single literal keeps the assembled axis narrowable — and only this field
-      // is asserted, leaving every other field fully checked.
+      // A log axis takes the same fields as a value axis, so only `type` is asserted.
       type: (logScale ? 'log' : 'value') as 'value',
       ...(min != null ? { min } : {}),
       ...(max != null ? { max } : {}),
-      // A zero/negative interval would make echarts lay out endless ticks, so only a positive one counts.
+      // A non-positive interval would make echarts lay out endless ticks.
       ...(interval != null && interval > 0 ? { interval } : {}),
-      // Explicit bounds already pin the range, so `scale` only matters when they're absent.
       ...(scale ? { scale: true } : {}),
       axisLabel: {
         formatter: (value: number | string) =>
@@ -64,14 +51,13 @@ export class ChartScale {
     };
   }
 
-  /** Resolves an axis's label orientation to echarts `axisLabel.rotate` degrees; unset falls back to `auto`. */
+  /** Label orientation as echarts `axisLabel.rotate` degrees; unset falls back to auto. */
   public static labelRotate(rotation: AxisLabelRotation | null | undefined, auto = 0): number {
     if (rotation === 'vertical') return 90;
     if (rotation === 'horizontal') return 0;
     return auto;
   }
 
-  /** The longest string among `labels`, in characters. */
   public static longestLen(labels: readonly string[]): number {
     let n = 0;
     for (const s of labels) if (s.length > n) n = s.length;
@@ -79,12 +65,8 @@ export class ChartScale {
   }
 
   /**
-   * A `nameGap` (the px between the axis line and its name) big enough that the name clears the
-   * tick labels, so the two never overlap. echarts can't size this itself, so estimate the
-   * labels' extent *towards the name* from the longest label, its rotation, and the axis
-   * orientation: an X name sits below its labels (their height when flat, their length when
-   * upright), a Y name sits beside them (their length when flat, their height when upright).
-   * Deliberately errs wide — extra whitespace is harmless, an overlap is not.
+   * A `nameGap` that clears the tick labels, estimated from the longest label, its rotation and the
+   * axis orientation. Errs wide, since whitespace is harmless and overlap is not.
    */
   public static nameGap(longestChars: number, rotateDeg: number, axis: 'x' | 'y'): number {
     const CHAR_W = 7; // ~px per char at echarts' 12px default label font (proportional; erring wide)

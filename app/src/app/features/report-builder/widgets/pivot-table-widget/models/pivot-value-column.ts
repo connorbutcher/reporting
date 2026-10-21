@@ -1,13 +1,10 @@
-/**
- * One rendered value column: a measure within a block. A block is one column-field combination, or
- * the row totals; without column fields there is a single block.
- */
+/** A measure within a block: one column-field combination, or the row totals. */
 export interface PivotValueColumn {
   label: string;
-  /** The measure's position in the widget's configured measures (what a sort request names). */
+  /** Position in the configured measures, which sort requests name. */
   measureIndex: number;
-  /** Which block it belongs to: a column-key index, or null for the totals (or only) block. */
+  /** A column-key index, or null for the totals (or only) block. */
   columnKeyIndex: number | null;
-  /** Its position in each row's `values`. */
+  /** Position in each row's `values`. */
   valueIndex: number;
 }

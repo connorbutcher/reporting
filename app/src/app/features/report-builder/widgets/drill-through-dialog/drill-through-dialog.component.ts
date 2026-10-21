@@ -7,10 +7,7 @@ import { DataTableWidgetComponent } from '../data-table-widget/data-table-widget
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { DrillThroughDialogData } from './drill-through-dialog-data';
 
-/**
- * The rows behind one pivot cell, as a searchable, exportable data table of every dataset column. It
- * reuses the data table widget as-is, configured on the fly, so the rows read exactly as a table would.
- */
+/** The rows behind a drilled cell, shown with the data table widget configured on the fly. */
 @Component({
   selector: 'app-drill-through-dialog',
   imports: [DataTableWidgetComponent, WidgetExportActionsComponent],
@@ -23,7 +20,6 @@ export class DrillThroughDialogComponent {
 
   public readonly error = signal(false);
 
-  /** A plain table of every dataset column, with a search box, scrolling through every matched row. */
   public readonly config = computed<DataTableWidgetConfig | null>(() => {
     const columns = this.columns();
     if (!columns) return null;

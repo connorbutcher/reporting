@@ -26,10 +26,8 @@ import { ToleranceOutline } from './tolerance-outline';
 import { ComboSeries } from './types/combo-series';
 
 /**
- * Builds the combination echarts option: a shared category axis with one aggregated value per
- * category per series (the bar chart's data), where each series draws as bars or as a line, and
- * series can sit on separate value axes. Reuses the bar query result verbatim — only the series'
- * echarts `type` and per-line styling differ from {@link BarOption}.
+ * Combination chart: the bar chart's data, with each series drawn as bars or a line and
+ * optionally on its own value axis.
  */
 export class ComboOption {
   /** Null until there's a dataset and a category column bound. */
@@ -48,10 +46,8 @@ export class ComboOption {
     const rawSeries = data?.series ?? [];
     const axes = readChartAxes(config);
 
-    // Each series' render kind, axis, and colour come from the binding it belongs to, resolved live
-    // so editing the binding re-renders without a refetch. A binding contributing a single series
-    // may override its colour; once it splits (several measures or a colour-by column) each series
-    // keeps its palette colour so the split stays legible.
+    // Render kind, axis and colour are read live from each series' binding, so edits re-render
+    // without a refetch.
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
     const seriesPerBinding = new Map<string, number>();
     for (const s of rawSeries) {
@@ -74,8 +70,7 @@ export class ComboOption {
       };
     });
 
-    // A count has no measure, so it never borrows a leftover value column's units; otherwise each
-    // series reads through its own measure's format, and the primary axis through the shared one.
+    // A count has no measure, so it never borrows a value column's format.
     const isCount = config.aggregate === 'count';
     const primaryMeasures = isCount
       ? []
@@ -103,8 +98,7 @@ export class ComboOption {
     const showLegend = series.length > 1 && config.showLegend;
     const showGridLines = config.showGridLines ?? true;
 
-    // Long category lists overlap on a vertical axis, so auto-tilt once there are a few — unless the
-    // user picked an explicit orientation, which wins.
+    // Tilt long category lists unless the user picked an orientation.
     const categoryAutoRotate = categories.length > 6 ? 30 : 0;
     const categoryRotate = ChartScale.labelRotate(config.xAxisRotate, categoryAutoRotate);
     const categoryScale = ChartScale.categoryAxis(categories, config.xAxisInterval);
@@ -136,9 +130,7 @@ export class ComboOption {
     const leftCount = axes.filter((a) => a.side === 'left').length;
     const rightCount = axes.filter((a) => a.side === 'right').length;
 
-    // Reference lines/areas hang on the value axis: a y-band on the first series of its target
-    // axis, so its coordinates read against the right scale. (Combo bands sit on the value axis;
-    // an x-band would need a numeric category axis, which this chart never has.)
+    // Combo bands sit on a value axis; the category axis is never numeric.
     const bands = (data?.toleranceBands ?? []).filter((b) => b.axis === 'y');
     const bandYAxisId = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
     const bandAxis = new Map(
@@ -149,9 +141,7 @@ export class ComboOption {
       guideLines.map((l) => [l, chartAxisIndex(axes, l.yAxisId ?? null)]),
     );
 
-    // Each axis' reference lines ride their own carrier series, so hiding a data series in the
-    // legend never takes them with it. One out-of-tolerance test per axis is shared by every
-    // series on it: bands and outlined guide lines on that axis both contribute zones, worst-wins.
+    // Reference lines ride a carrier series per axis, so hiding a data series keeps them.
     const referenceSeries: LineSeriesOption[] = [];
     const outlineByAxis = new Map<number, (v: number) => string | null>();
     for (const k of axes.keys()) {
@@ -236,7 +226,6 @@ export class ComboOption {
     };
   }
 
-  /** A bar series: stacked per binding when the chart stacks, with each bar outlined if it crosses a band. */
   private static barSeries(
     s: ComboSeries,
     base: object,
@@ -246,8 +235,7 @@ export class ComboOption {
     return {
       ...base,
       type: 'bar',
-      // Stacking piles each binding's own series into one column, so overlaid datasets stand as
-      // side-by-side stacks rather than collapsing together; lines never join a stack.
+      // Stack per binding, so overlaid datasets stand side by side; lines never stack.
       ...(config.stacked ? { stack: s.result.bindingId ?? 'total' } : {}),
       itemStyle: { color: s.color },
       data: s.result.values.map((v) => {
@@ -257,14 +245,12 @@ export class ComboOption {
     };
   }
 
-  /** A line series over the categories, honouring the chart's smooth/points/area and the binding's marker/dash. */
   private static lineSeries(
     s: ComboSeries,
     base: object,
     config: ComboChartWidgetConfig,
   ): LineSeriesOption {
-    // A per-binding marker wins over the chart's "show points" default; 'none' hides markers but
-    // keeps the line. A per-binding dash overrides the solid default.
+    // A binding's marker overrides the chart's "show points"; 'none' hides markers only.
     const symbol = s.symbol;
     return {
       ...base,
@@ -279,16 +265,14 @@ export class ComboOption {
         ...(s.dashStyle && s.dashStyle !== 'solid' ? { type: s.dashStyle } : {}),
       },
       ...(config.areaFill ? { areaStyle: { opacity: 0.15, color: s.color } } : {}),
-      // Bridge categories this series has no rows in, rather than breaking the line there.
       ...(config.connectNulls ? { connectNulls: true } : {}),
       data: s.result.values,
     };
   }
 
   /**
-   * One echarts value axis per configured Y axis. A secondary axis is offset so scales don't
-   * overlap and, when it carries a single series, drawn in that series' colour so a reader can
-   * tell which scale it reads against; gridlines ride the primary only.
+   * One value axis per configured Y axis. Secondary axes are offset and, with a single series,
+   * drawn in its colour; gridlines ride the primary only.
    */
   private static valueAxes(input: {
     config: ComboChartWidgetConfig;
@@ -338,7 +322,7 @@ export class ComboOption {
     });
   }
 
-  /** The longest formatted value label across the given series, to size a non-overlapping name gap. */
+  /** The longest formatted value label, to size the value axis name gap. */
   private static valueLabelLen(
     series: ComboSeries[],
     config: NumericColumnConfig | undefined,
