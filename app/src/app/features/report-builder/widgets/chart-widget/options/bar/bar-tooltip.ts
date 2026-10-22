@@ -18,11 +18,15 @@ export class BarTooltip {
     const params = (Array.isArray(raw) ? raw : [raw]) as BarAxisTooltipParam[];
     const lines: string[] = [];
     const header = params[0]?.axisValueLabel;
-    if (header != null) lines.push(`<strong>${TooltipHtml.escape(header)}</strong>`);
+    if (header != null) {
+      lines.push(`<strong>${TooltipHtml.escape(header)}</strong>`);
+    }
     for (const p of params) {
       const s = p.seriesName != null ? seriesByName.get(p.seriesName) : undefined;
       const value = BarTooltip.valueOf(p);
-      if (!s || typeof value !== 'number') continue;
+      if (!s || typeof value !== 'number') {
+        continue;
+      }
       lines.push(BarTooltip.seriesLine(p, s, value, seriesConfigs.get(s), percent));
       lines.push(...BarTooltip.detailLines(s, p.dataIndex));
     }

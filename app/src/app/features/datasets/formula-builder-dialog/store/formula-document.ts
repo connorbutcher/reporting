@@ -1,11 +1,10 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { Expression } from '../model';
 
-const HISTORY_LIMIT = 100;
-
 /** The formula's root expression and its undo history. */
 @Injectable()
 export class FormulaDocument {
+  private static readonly HISTORY_LIMIT = 100;
   /** The formula's root expression; changed only through {@link commit}, so every change lands in the undo history. */
   public readonly root = signal<Expression>([]);
 
@@ -20,7 +19,7 @@ export class FormulaDocument {
       return;
     }
 
-    this.past.update((past) => [...past.slice(-(HISTORY_LIMIT - 1)), this.root()]);
+    this.past.update((past) => [...past.slice(-(FormulaDocument.HISTORY_LIMIT - 1)), this.root()]);
     this.future.set([]);
     this.root.set(next);
   }

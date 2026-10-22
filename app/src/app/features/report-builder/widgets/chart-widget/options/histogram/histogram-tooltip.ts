@@ -23,7 +23,9 @@ export class HistogramTooltip {
     for (const p of params) {
       const i = names.indexOf(p.seriesName ?? '');
       // The fitted curve has no tooltip of its own.
-      if (i < 0 || typeof p.value !== 'number' || p.seriesId?.startsWith('normal:')) continue;
+      if (i < 0 || typeof p.value !== 'number' || p.seriesId?.startsWith('normal:')) {
+        continue;
+      }
       lines.push(HistogramTooltip.seriesLine(chart, names[i], p.value, p.color));
       for (const line of chart.series[i].result.tooltipLines?.[p.dataIndex] ?? []) {
         lines.push(`&nbsp;&nbsp;&nbsp;${TooltipHtml.escape(line)}`);

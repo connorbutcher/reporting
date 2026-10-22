@@ -1,7 +1,7 @@
 import { DatasetColumn, DatasetSchema } from '../../../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../../../core/models/filter';
 
-export interface ContextOptions {
+export type ContextOptions = {
   columns?: DatasetColumn[];
   /** Null leaves the schema pending. */
   schema?: DatasetSchema | null;
@@ -9,4 +9,4 @@ export interface ContextOptions {
   scope?: DatasetColumn[];
   tolerant?: string[];
   widgetId?: string;
-}
+};

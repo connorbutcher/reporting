@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { describe, expect, it } from 'vitest';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
-import { DEFAULT_PIVOT_CONFIG, PivotTableWidget } from '../../../core/models/report';
+import { WidgetConfigDefaults, PivotTableWidget } from '../../../core/models/report';
 import { PivotTableWidgetModel } from './pivot-table-widget.model';
 
 const col = (id: string, name: string, type: DatasetColumn['type'] = 'string'): DatasetColumn =>
@@ -25,7 +25,7 @@ function pivot(config: Partial<PivotTableWidget['config']> = {}): PivotTableWidg
     w: 6,
     h: 4,
     type: 'pivotTable',
-    config: { ...DEFAULT_PIVOT_CONFIG, type: 'pivotTable', datasetId: 1, ...config },
+    config: { ...WidgetConfigDefaults.PIVOT_TABLE, type: 'pivotTable', datasetId: 1, ...config },
   };
   return new PivotTableWidgetModel(widget, {
     schemas: signal({ 1: data }),

@@ -3,10 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NotificationService } from '../services/notification.service';
-import {
-  httpErrorNotificationInterceptor,
-  skipHttpErrorNotification,
-} from './http-error-notification.interceptor';
+import { HttpErrorNotification } from './http-error-notification.interceptor';
 
 describe('httpErrorNotificationInterceptor', () => {
   let http: HttpClient;
@@ -17,7 +14,7 @@ describe('httpErrorNotificationInterceptor', () => {
     notify = { error: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([httpErrorNotificationInterceptor])),
+        provideHttpClient(withInterceptors([HttpErrorNotification.intercept])),
         provideHttpClientTesting(),
         { provide: NotificationService, useValue: notify },
       ],
@@ -29,11 +26,16 @@ describe('httpErrorNotificationInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   /** Fires <method> <url>, responds with <status>, and swallows the (expected) error. */
-  function request(method: 'GET' | 'POST', url: string, status: number, opts?: { skip?: boolean }): void {
+  function request(
+    method: 'GET' | 'POST',
+    url: string,
+    status: number,
+    opts?: { skip?: boolean },
+  ): void {
     const observable =
       method === 'GET'
-        ? http.get(url, opts?.skip ? { context: skipHttpErrorNotification() } : {})
-        : http.post(url, {}, opts?.skip ? { context: skipHttpErrorNotification() } : {});
+        ? http.get(url, opts?.skip ? { context: HttpErrorNotification.skip() } : {})
+        : http.post(url, {}, opts?.skip ? { context: HttpErrorNotification.skip() } : {});
     observable.subscribe({ next: () => {}, error: () => {} });
     httpMock.expectOne(url).flush('err', { status, statusText: 'x' });
   }

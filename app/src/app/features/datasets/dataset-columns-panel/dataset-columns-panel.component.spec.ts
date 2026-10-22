@@ -4,8 +4,13 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ColumnTypeImpact, ColumnUse, DatasetColumn, DatasetColumnType } from '../../../core/models/dataset';
-import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog.component';
+import {
+  ColumnTypeImpact,
+  ColumnUse,
+  DatasetColumn,
+  DatasetColumnType,
+} from '../../../core/models/dataset';
+import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 import { DatasetsStore } from '../datasets.store';
 import { DatasetColumnsPanelComponent } from './dataset-columns-panel.component';
 
@@ -35,7 +40,10 @@ describe('DatasetColumnsPanelComponent column usage', () => {
       providers: [
         provideRouter([]),
         { provide: Dialog, useValue: { open } },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ reportId: '7' }) } } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ reportId: '7' }) } },
+        },
         {
           provide: DatasetsStore,
           useValue: {
@@ -54,7 +62,10 @@ describe('DatasetColumnsPanelComponent column usage', () => {
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  const chips = (el: HTMLElement) => [...el.querySelectorAll('.usage-toggle')].map((e) => e.textContent!.replace(/\s+/g, ' ').trim());
+  const chips = (el: HTMLElement) =>
+    [...el.querySelectorAll('.usage-toggle')].map((e) =>
+      e.textContent!.replace(/\s+/g, ' ').trim(),
+    );
   const deleteButton = (el: HTMLElement, name: string) =>
     el.querySelector(`button[aria-label="Delete column ${name}"]`) as HTMLButtonElement;
   const confirmation = () => open.mock.calls.at(-1)![1].data as ConfirmDialogData;
@@ -81,7 +92,19 @@ describe('DatasetColumnsPanelComponent column usage', () => {
   });
 
   it('warns what a delete would break, naming each widget, and asks for a stronger confirmation', () => {
-    const { el } = render({ region: [use(), use({ kind: 'reportFilter', widgetId: null, widgetTitle: null, widgetType: null, tabName: null, roles: ['Filter condition'] })] });
+    const { el } = render({
+      region: [
+        use(),
+        use({
+          kind: 'reportFilter',
+          widgetId: null,
+          widgetTitle: null,
+          widgetType: null,
+          tabName: null,
+          roles: ['Filter condition'],
+        }),
+      ],
+    });
 
     deleteButton(el, 'Region').click();
 
@@ -122,7 +145,11 @@ describe('DatasetColumnsPanelComponent changing a column type', () => {
   let writeValue: ReturnType<typeof vi.fn>;
   let closed: boolean;
 
-  const impact = (breaks: ColumnUse[]): ColumnTypeImpact => ({ from: 'double', to: 'string', breaks });
+  const impact = (breaks: ColumnUse[]): ColumnTypeImpact => ({
+    from: 'double',
+    to: 'string',
+    breaks,
+  });
 
   function render(check: Observable<ColumnTypeImpact> | null) {
     closed = true;
@@ -133,7 +160,10 @@ describe('DatasetColumnsPanelComponent changing a column type', () => {
       providers: [
         provideRouter([]),
         { provide: Dialog, useValue: { open } },
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ reportId: '7' }) } } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ reportId: '7' }) } },
+        },
         {
           provide: DatasetsStore,
           useValue: {
@@ -151,11 +181,11 @@ describe('DatasetColumnsPanelComponent changing a column type', () => {
     const fixture = TestBed.createComponent(DatasetColumnsPanelComponent);
     fixture.detectChanges();
     const change = (to: DatasetColumnType) =>
-      (fixture.componentInstance as unknown as { retype: (c: DatasetColumn, t: DatasetColumnType, s: unknown) => void }).retype(
-        { ...col('revenue', 'Revenue'), type: 'double' },
-        to,
-        { writeValue },
-      );
+      (
+        fixture.componentInstance as unknown as {
+          retype: (c: DatasetColumn, t: DatasetColumnType, s: unknown) => void;
+        }
+      ).retype({ ...col('revenue', 'Revenue'), type: 'double' }, to, { writeValue });
     return { change };
   }
 
@@ -191,7 +221,21 @@ describe('DatasetColumnsPanelComponent changing a column type', () => {
   });
 
   it('names what would break and asks for a stronger confirmation before changing it', () => {
-    const { change } = render(of(impact([broken(), broken({ kind: 'reportFilter', widgetId: null, widgetTitle: null, widgetType: null, tabName: null, roles: ['Filter condition "Contains" is not available for decimal columns'] })])));
+    const { change } = render(
+      of(
+        impact([
+          broken(),
+          broken({
+            kind: 'reportFilter',
+            widgetId: null,
+            widgetTitle: null,
+            widgetType: null,
+            tabName: null,
+            roles: ['Filter condition "Contains" is not available for decimal columns'],
+          }),
+        ]),
+      ),
+    );
 
     change('string');
 

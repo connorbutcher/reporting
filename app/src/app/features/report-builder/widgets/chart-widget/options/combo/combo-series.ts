@@ -1,7 +1,7 @@
 import { ChartSymbol, LineDashStyle } from '../../../../../../core/models/report';
 import { BarSeriesResult } from '../../../../../../core/models/widget-query';
 
-export interface ComboSeries {
+export type ComboSeries = {
   result: BarSeriesResult;
   axisIndex: number;
   renderAs: 'bar' | 'line';
@@ -10,4 +10,4 @@ export interface ComboSeries {
   symbol: ChartSymbol | null;
   /** Line dash override from the binding; null draws solid. */
   dashStyle: LineDashStyle | null;
-}
+};

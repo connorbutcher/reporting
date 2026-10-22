@@ -31,7 +31,9 @@ export class PanelWidgetDetailKpiToleranceComponent {
     // Seed when the panel opens on a widget.
     effect(() => {
       const kpi = this.kpi();
-      if (!kpi || this.seeded) return;
+      if (!kpi || this.seeded) {
+        return;
+      }
       this.seeded = true;
 
       const tolerance = untracked(() => kpi.tolerance());
@@ -41,7 +43,9 @@ export class PanelWidgetDetailKpiToleranceComponent {
     // Write back only once complete, so a half-finished edit isn't saved.
     effect(() => {
       const tolerance = this.picker.toColumnTolerance();
-      if (!tolerance) return;
+      if (!tolerance) {
+        return;
+      }
       untracked(() => this.kpi()?.setTolerance(tolerance));
     });
   }

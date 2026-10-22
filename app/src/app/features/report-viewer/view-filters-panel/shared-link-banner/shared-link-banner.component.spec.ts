@@ -29,21 +29,29 @@ describe('SharedLinkBannerComponent', () => {
   it('counts filters left out because their widget is not in this version', async () => {
     const banner = await render({ total: 3, unmatched: 2, missingColumns: 0 });
 
-    expect(banner.unmatchedText()).toBe("2 of 3 filters in it don't apply to this version and were left out.");
+    expect(banner.unmatchedText()).toBe(
+      "2 of 3 filters in it don't apply to this version and were left out.",
+    );
   });
 
   it('uses the singular for one', async () => {
     const banner = await render({ total: 1, unmatched: 1, missingColumns: 0 });
 
-    expect(banner.unmatchedText()).toBe("1 of 1 filter in it doesn't apply to this version and was left out.");
+    expect(banner.unmatchedText()).toBe(
+      "1 of 1 filter in it doesn't apply to this version and was left out.",
+    );
   });
 
   it('counts conditions left out because their column no longer exists', async () => {
     const many = await render({ total: 1, unmatched: 0, missingColumns: 2 });
-    expect(many.missingText()).toBe('2 conditions in it test columns that no longer exist, so they were left out.');
+    expect(many.missingText()).toBe(
+      '2 conditions in it test columns that no longer exist, so they were left out.',
+    );
 
     const one = await render({ total: 1, unmatched: 0, missingColumns: 1 });
-    expect(one.missingText()).toBe('1 condition in it tests a column that no longer exists, so it was left out.');
+    expect(one.missingText()).toBe(
+      '1 condition in it tests a column that no longer exists, so it was left out.',
+    );
   });
 
   it('shows both notes when both apply', async () => {

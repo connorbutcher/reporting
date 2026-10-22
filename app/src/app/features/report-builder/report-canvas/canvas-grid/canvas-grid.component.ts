@@ -33,7 +33,9 @@ export class CanvasGridComponent {
     effect((onCleanup) => {
       const el = this.gridEl()?.nativeElement;
       const columns = this.session.gridColumns();
-      if (!el) return;
+      if (!el) {
+        return;
+      }
 
       this.measureColumnWidth(el, columns);
       const observer = new ResizeObserver(() => this.measureColumnWidth(el, columns));
@@ -48,7 +50,9 @@ export class CanvasGridComponent {
 
   /** Clicking empty canvas clears the selection. */
   public onCanvasPointerDown(event: PointerEvent): void {
-    if (event.target === event.currentTarget) this.selection.clear();
+    if (event.target === event.currentTarget) {
+      this.selection.clear();
+    }
   }
 
   public get loading() {

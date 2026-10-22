@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
 import { FormulaApiService } from '../../../../core/api/formula-api.service';
 import { FormulaPreview } from '../../../../core/models/dataset';
-import { FormulaIssue, analyzeFormula, blockAtPosition, describeSlot, serializeFormula } from '../model';
+import { FormulaIssue, FormulaChecker, FormulaSerializer } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { FormulaCatalogue } from './formula-catalogue';
 import { FormulaColumnForm } from './formula-column-form';
@@ -12,22 +12,23 @@ import { FormulaDocument } from './formula-document';
 import { PreviewOutcome } from './preview-outcome';
 import { PreviewRequest } from './preview-request';
 
-const PREVIEW_ROWS = 5;
-const PREVIEW_DEBOUNCE_MS = 300;
-
-/**
- * The checks that run as the formula changes: locally for structure and types, and on the server (debounced)
- * for the authoritative verdict and a preview of the results.
- */
+/** Local structure and type checks, plus a debounced server check and preview. */
 @Injectable()
 export class FormulaChecking {
+  private static readonly PREVIEW_ROWS = 5;
+
+  private static readonly PREVIEW_DEBOUNCE_MS = 300;
   public readonly serialized = computed(() => {
     const scope = this.catalogue.scope();
-    return serializeFormula(this.document.root(), (call, index) => describeSlot(scope, call, index));
+    return FormulaSerializer.serialize(this.document.root(), (call, index) =>
+      FormulaSerializer.describeSlot(scope, call, index),
+    );
   });
 
   /** What can be told without the server: the kind the formula produces, and the problems in how it fits together. */
-  public readonly analysis = computed(() => analyzeFormula(this.document.root(), this.catalogue.scope()));
+  public readonly analysis = computed(() =>
+    FormulaChecker.analyze(this.document.root(), this.catalogue.scope()),
+  );
 
   public readonly localIssues = computed(() => this.analysis().issues);
 
@@ -67,7 +68,11 @@ export class FormulaChecking {
 
   /** True when the formula is complete and the server has passed it. */
   public readonly isValid = computed(() => {
-    return this.document.root().length > 0 && this.issues().length === 0 && this.preview()?.isValid === true;
+    return (
+      this.document.root().length > 0 &&
+      this.issues().length === 0 &&
+      this.preview()?.isValid === true
+    );
   });
 
   private readonly serverIssues = signal<FormulaIssue[]>([]);
@@ -82,14 +87,17 @@ export class FormulaChecking {
     // Ask the server only about a formula that is complete and locally sound; anything else has nothing for it to add.
     effect(() => {
       const serialized = this.serialized();
-      const runnable = this.document.root().length > 0 && serialized.complete && this.localIssues().length === 0;
+      const runnable =
+        this.document.root().length > 0 && serialized.complete && this.localIssues().length === 0;
       this.previewing.set(runnable);
-      this.previewRequests.next(runnable ? { text: serialized.text, type: this.columnForm.typeToSend() } : null);
+      this.previewRequests.next(
+        runnable ? { text: serialized.text, type: this.columnForm.typeToSend() } : null,
+      );
     });
 
     this.previewRequests
       .pipe(
-        debounceTime(PREVIEW_DEBOUNCE_MS),
+        debounceTime(FormulaChecking.PREVIEW_DEBOUNCE_MS),
         switchMap((request) => this.fetchPreview(request)),
         takeUntilDestroyed(),
       )
@@ -103,10 +111,16 @@ export class FormulaChecking {
       return of({ request, preview: null, failed: false });
     }
 
-    return this.api.preview(this.data.datasetId, { expression: request.text, type: request.type, sampleSize: PREVIEW_ROWS }).pipe(
-      map((preview): PreviewOutcome => ({ request, preview, failed: false })),
-      catchError(() => of<PreviewOutcome>({ request, preview: null, failed: true })),
-    );
+    return this.api
+      .preview(this.data.datasetId, {
+        expression: request.text,
+        type: request.type,
+        sampleSize: FormulaChecking.PREVIEW_ROWS,
+      })
+      .pipe(
+        map((preview): PreviewOutcome => ({ request, preview, failed: false })),
+        catchError(() => of<PreviewOutcome>({ request, preview: null, failed: true })),
+      );
   }
 
   private accept(outcome: PreviewOutcome): void {
@@ -129,7 +143,11 @@ export class FormulaChecking {
     const rootId = this.document.root()[0]?.id ?? 0;
 
     return preview.errors.map((error): FormulaIssue => {
-      return { kind: 'server', blockId: blockAtPosition(spans, error.position) ?? rootId, message: error.message };
+      return {
+        kind: 'server',
+        blockId: FormulaSerializer.blockAtPosition(spans, error.position) ?? rootId,
+        message: error.message,
+      };
     });
   }
 

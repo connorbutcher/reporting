@@ -36,7 +36,9 @@ export class CommentMarkers {
     multiAxis: boolean,
     axisCount: number,
   ): EffectScatterSeriesOption[] {
-    if (!point) return [];
+    if (!point) {
+      return [];
+    }
     return [
       {
         type: 'effectScatter',

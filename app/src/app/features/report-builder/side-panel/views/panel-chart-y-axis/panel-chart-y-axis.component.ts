@@ -60,7 +60,9 @@ export class PanelChartYAxisComponent {
 
   /** The primary axis defaults to the Y column's name, others to a positional label. */
   public yPlaceholder(): string {
-    if (this.index() > 0) return 'Axis ' + (this.index() + 1);
+    if (this.index() > 0) {
+      return 'Axis ' + (this.index() + 1);
+    }
     const chart = this.chart();
     return chart.axisColumns().find((c) => c.id === chart.yColumnId())?.name ?? '';
   }

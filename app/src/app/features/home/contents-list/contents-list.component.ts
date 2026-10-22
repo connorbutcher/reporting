@@ -1,16 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, output } from '@angular/core';
 import { Router } from '@angular/router';
-import { ReportOpenOption, ReportSummary, reportOpenOptions } from '../../../core/models/report';
-import { ContentRow, ReportRow, RowAction } from '../content-row';
+import { ReportOpenOption, ReportSummary, ReportOpening } from '../../../core/models/report';
+import { ContentRow } from '../models/content-row';
+import { ReportRow } from '../models/report-row';
+import { RowAction } from '../models/row-action';
 import { HomeStore } from '../home.store';
 
-/**
- * The current folder's contents as one light list: child folders first, then reports. A report row
- * shows its full state at a glance — a "Published · vN" badge and a "Draft" badge appear together
- * when both exist — and offers its real open methods (Open / Edit) inline rather than hiding them in
- * a menu. Right-click (or the ⋯ button) still raises the shared context menu for rename/move/etc.
- */
+/** The open folder's folders then reports, with status badges and inline open actions. */
 @Component({
   selector: 'app-contents-list',
   imports: [DatePipe],
@@ -33,7 +30,7 @@ export class ContentsListComponent {
   }
 
   public openOptions(report: ReportSummary): ReportOpenOption[] {
-    return reportOpenOptions(report);
+    return ReportOpening.options(report);
   }
 
   /** Quiet version context for the meta line — published-vN is the normal state, so it lives here rather than in a pill. */

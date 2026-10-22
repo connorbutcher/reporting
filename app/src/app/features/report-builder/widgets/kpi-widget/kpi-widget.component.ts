@@ -14,6 +14,7 @@ import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
+import { Plural } from '../../../../shared/text/plural';
 
 /**
  * A headline number from a dataset (an aggregate, or rows failing a tolerance band), with optional
@@ -54,7 +55,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   /** "vs target (100.0)" / "vs previous 7 days (84.2) (+20%)" — null without a comparison. */
   public readonly comparisonLabel = computed(() => {
     const result = this.source.result();
-    if (!result || result.comparisonDisplayValue === null) return null;
+    if (!result || result.comparisonDisplayValue === null) {
+      return null;
+    }
     const caption = KpiWidgetComponent.comparisonCaption(this.config());
     const pct = result.deltaPercent;
     const pctText = pct !== null ? ` (${pct > 0 ? '+' : ''}${pct.toFixed(0)}%)` : '';
@@ -64,7 +67,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   /** The target comparison as a clamped 0–100 fill percent, or null. */
   public readonly meterPercent = computed(() => {
     const result = this.source.result();
-    if (!result || result.value === null || !result.comparisonValue) return null;
+    if (!result || result.value === null || !result.comparisonValue) {
+      return null;
+    }
     return Math.max(0, Math.min(100, (result.value / result.comparisonValue) * 100));
   });
 
@@ -76,7 +81,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   );
 
   public readonly sparklinePath = computed(() => {
-    if (!this.config().showSparkline) return null;
+    if (!this.config().showSparkline) {
+      return null;
+    }
     return KpiWidgetComponent.sparklinePoints(this.source.result()?.history ?? []);
   });
 
@@ -88,7 +95,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
 
   public readonly countLabel = computed(() => {
     const data = this.source.result();
-    if (!data) return '';
+    if (!data) {
+      return '';
+    }
     const matched = data.matchedRowCount;
     const total = data.totalRowCount;
     if (this.isTruncated()) {
@@ -97,7 +106,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
         : `Based on first ${matched.toLocaleString()} rows (more exist)`;
     }
     const filtered = matched !== total;
-    const rowsText = `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
+    const rowsText = `${matched.toLocaleString()} ${Plural.of(matched, 'row')}`;
     return filtered ? `${matched.toLocaleString()} of ${total.toLocaleString()} rows` : rowsText;
   });
 
@@ -113,7 +122,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
     api: this.datasetApi,
     fetch: () => {
       const config = this.config();
-      if (!config.datasetId || !KpiQuery.isConfigured(config)) return null;
+      if (!config.datasetId || !KpiQuery.isConfigured(config)) {
+        return null;
+      }
       return this.datasetApi.queryKpi(
         config.datasetId,
         KpiQuery.request(config, this.effectiveFilter()),
@@ -144,7 +155,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
     });
 
     effect(() => {
-      if (!this.configured()) return;
+      if (!this.configured()) {
+        return;
+      }
       this.effectiveFilter();
       this.config();
 
@@ -161,7 +174,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
       case 'fixedTarget':
         return 'target';
       case 'previousPeriod':
-        return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
+        return `previous ${Plural.count(config.periodDays, 'day')}`;
       default:
         return '';
     }
@@ -170,7 +183,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   /** A polyline points string in a fixed viewBox; null buckets are skipped. */
   private static sparklinePoints(history: readonly KpiHistoryPoint[]): string | null {
     const present = history.map((h) => h.value).filter((v): v is number => v !== null);
-    if (present.length < 2) return null;
+    if (present.length < 2) {
+      return null;
+    }
 
     const min = Math.min(...present);
     const max = Math.max(...present);
@@ -202,7 +217,9 @@ export class KpiWidgetComponent extends DataWidgetBase {
   /** One row, or one per tile when grouped. */
   public exportCsv(): string | null {
     const data = this.source.result();
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
     if (data.groups) {
       return Csv.fromRows([
         ['Group', 'Value'],

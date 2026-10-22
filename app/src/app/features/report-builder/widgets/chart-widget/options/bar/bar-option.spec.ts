@@ -3,7 +3,7 @@ import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   BarChartWidgetConfig,
   ChartSeriesBinding,
-  DEFAULT_BAR_CHART_CONFIG,
+  WidgetConfigDefaults,
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import { BarOption } from './bar-option';
@@ -22,7 +22,7 @@ const columns: DatasetColumn[] = [
 ] as DatasetColumn[];
 
 const config = (over: Partial<BarChartWidgetConfig> = {}): BarChartWidgetConfig => ({
-  ...DEFAULT_BAR_CHART_CONFIG,
+  ...WidgetConfigDefaults.BAR_CHART,
   type: 'barChart',
   bindings: [
     {

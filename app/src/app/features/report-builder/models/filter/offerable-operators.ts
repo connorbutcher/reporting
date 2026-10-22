@@ -1,7 +1,7 @@
 import {
   FilterOperator,
   OperatorDescriptor,
-  TOLERANCE_OPERATORS,
+  FilterOperators,
 } from '../../../../core/models/filter';
 
 export class OfferableOperators {
@@ -14,7 +14,9 @@ export class OfferableOperators {
     hasBanding: boolean,
     current: FilterOperator,
   ): OperatorDescriptor[] {
-    if (hasBanding) return [...all];
-    return all.filter((o) => !TOLERANCE_OPERATORS.has(o.value) || o.value === current);
+    if (hasBanding) {
+      return [...all];
+    }
+    return all.filter((o) => !FilterOperators.TOLERANCE.has(o.value) || o.value === current);
   }
 }

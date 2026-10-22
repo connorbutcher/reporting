@@ -71,7 +71,9 @@ export class PanelWidgetDetailPivotComponent {
   /** Column id to name, for chosen fields. */
   public readonly columnName = computed(() => {
     const map = new Map<string, string>();
-    for (const column of this.pivot().columns()) map.set(column.id, column.name);
+    for (const column of this.pivot().columns()) {
+      map.set(column.id, column.name);
+    }
     return map;
   });
 
@@ -102,11 +104,15 @@ export class PanelWidgetDetailPivotComponent {
   private readonly navigation = inject(PanelNavigation);
 
   public addRowField(columnId: string | null): void {
-    if (columnId) this.pivot().addRowField(columnId);
+    if (columnId) {
+      this.pivot().addRowField(columnId);
+    }
   }
 
   public addColumnField(columnId: string | null): void {
-    if (columnId) this.pivot().addColumnField(columnId);
+    if (columnId) {
+      this.pivot().addColumnField(columnId);
+    }
   }
 
   /** Distinct count reads any column; other aggregates need a number. */
@@ -126,10 +132,16 @@ export class PanelWidgetDetailPivotComponent {
 
   /** Its own label, else "Count" or "Sum of Column". */
   private measureLabel(measure: PivotMeasure, names: Map<string, string>): string {
-    if (measure.label.trim()) return measure.label.trim();
-    if (measure.aggregate === 'count') return 'Count';
+    if (measure.label.trim()) {
+      return measure.label.trim();
+    }
+    if (measure.aggregate === 'count') {
+      return 'Count';
+    }
     const column = measure.columnId ? (names.get(measure.columnId) ?? 'value') : 'value';
-    if (measure.aggregate === 'countDistinct') return `Distinct ${column}`;
+    if (measure.aggregate === 'countDistinct') {
+      return `Distinct ${column}`;
+    }
     const aggregate =
       this.aggregates.find((a) => a.value === measure.aggregate)?.label ?? measure.aggregate;
     return `${aggregate} of ${column}`;

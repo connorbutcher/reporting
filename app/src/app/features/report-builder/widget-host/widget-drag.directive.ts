@@ -86,7 +86,9 @@ export class WidgetDragDirective {
     this.invalid.set(invalid);
 
     const self = this.dragGroup.find((entry) => entry.widget.id === this.widget().id);
-    if (!self) return;
+    if (!self) {
+      return;
+    }
     this.gridPreview.emit({
       x: self.origin.x + deltaCols,
       y: self.origin.y + deltaRows,

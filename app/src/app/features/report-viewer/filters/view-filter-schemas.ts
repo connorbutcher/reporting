@@ -4,8 +4,8 @@ import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { FilterApiService } from '../../../core/api/filter-api.service';
 import { DatasetSchema } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
-import { ReportRevisionContent, readChartBindings } from '../../../core/models/report';
-import { isChartWidget } from '../../../core/models/widget-catalog';
+import { ReportRevisionContent, ChartConfigs } from '../../../core/models/report';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 
 /** The dataset schemas and operator catalogue the filter panel needs to describe columns. */
 @Injectable()
@@ -27,28 +27,34 @@ export class ViewFilterSchemas {
       .subscribe((catalogue) => this.operators.set(catalogue));
   }
 
+  private static filterableDatasetIds(content: ReportRevisionContent): Set<number> {
+    const ids = new Set<number>();
+    for (const widget of content.tabs.flatMap((tab) => tab.widgets)) {
+      if (widget.type === 'dataTable') {
+        if (widget.config.datasetId) {
+          ids.add(widget.config.datasetId);
+        }
+      } else if (WidgetCatalog.isChartWidget(widget)) {
+        for (const binding of ChartConfigs.bindings(widget.config)) {
+          if (binding.datasetId) {
+            ids.add(binding.datasetId);
+          }
+        }
+      }
+    }
+    return ids;
+  }
+
   /** Fetches the schema of each dataset a version's filterable widgets use, once each. */
   public load(content: ReportRevisionContent): void {
-    for (const datasetId of filterableDatasetIds(content)) {
-      if (this.requested.has(datasetId)) continue;
+    for (const datasetId of ViewFilterSchemas.filterableDatasetIds(content)) {
+      if (this.requested.has(datasetId)) {
+        continue;
+      }
       this.requested.add(datasetId);
       this.datasetApi.getSchema(datasetId).subscribe((schema) => {
         this.loaded.update((all) => ({ ...all, [datasetId]: schema }));
       });
     }
   }
-}
-
-function filterableDatasetIds(content: ReportRevisionContent): Set<number> {
-  const ids = new Set<number>();
-  for (const widget of content.tabs.flatMap((tab) => tab.widgets)) {
-    if (widget.type === 'dataTable') {
-      if (widget.config.datasetId) ids.add(widget.config.datasetId);
-    } else if (isChartWidget(widget)) {
-      for (const binding of readChartBindings(widget.config)) {
-        if (binding.datasetId) ids.add(binding.datasetId);
-      }
-    }
-  }
-  return ids;
 }

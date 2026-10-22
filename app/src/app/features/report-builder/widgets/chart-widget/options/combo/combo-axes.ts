@@ -56,7 +56,9 @@ export class ComboAxes {
 
   /** An axis carrying a single series is drawn in its colour, so readers can match them. */
   private static color(chart: ComboChart, index: number): string | null {
-    if (!chart.multiAxis) return null;
+    if (!chart.multiAxis) {
+      return null;
+    }
     const onAxis = chart.series.filter((s) => s.axisIndex === index);
     return onAxis.length === 1 ? onAxis[0].color : null;
   }

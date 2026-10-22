@@ -36,18 +36,24 @@ export class ReportAutosave {
     // an error re-triggers the held-back save.
     effect(() => {
       const current = model();
-      if (!current) return;
+      if (!current) {
+        return;
+      }
 
       const dirty = current.dirty();
       const valid = current.isValid();
-      if (!dirty || !valid) return;
+      if (!dirty || !valid) {
+        return;
+      }
 
       untracked(() => this.saveQueue.next());
     });
 
     effect(() => {
       const current = model();
-      if (!current) return;
+      if (!current) {
+        return;
+      }
 
       current.serialized();
       untracked(() => this.historyQueue.next());
@@ -57,7 +63,9 @@ export class ReportAutosave {
       .pipe(debounceTime(ReportAutosave.HISTORY_DEBOUNCE_MS), takeUntilDestroyed())
       .subscribe(() => {
         const current = model();
-        if (current) this.history.capture(current.serialized());
+        if (current) {
+          this.history.capture(current.serialized());
+        }
       });
 
     // switchMap drops superseded writes rather than racing them.
@@ -69,7 +77,9 @@ export class ReportAutosave {
         tap(() => this.saving.set(true)),
         switchMap(() => {
           const current = model();
-          if (!current) return EMPTY;
+          if (!current) {
+            return EMPTY;
+          }
 
           return this.reportApi.updateDraft(current.reportId, current.toDto()).pipe(
             // Ride out network blips; a fresh edit cancels this inner stream and its retries.

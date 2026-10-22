@@ -5,15 +5,10 @@ import { ReportApiService } from '../../core/api/report-api.service';
 import { ReportSearchResult } from '../../core/models/report';
 import { NotificationService } from '../../core/services/notification.service';
 
-const SEARCH_DEBOUNCE_MS = 300;
-
-/**
- * Whole-tree report search, independent of the folder being browsed — pulled out of
- * {@link HomeStore} so the debounce pipeline and its state are self-contained. A
- * component-provided collaborator the facade holds as a field.
- */
+/** Debounced whole-tree report search. */
 @Injectable()
 export class HomeSearchStore {
+  private static readonly SEARCH_DEBOUNCE_MS = 300;
   public readonly query = signal('');
   public readonly results = signal<ReportSearchResult[] | null>(null);
   public readonly searching = signal(false);
@@ -25,14 +20,15 @@ export class HomeSearchStore {
   constructor() {
     this.input$
       .pipe(
-        debounceTime(SEARCH_DEBOUNCE_MS),
+        debounceTime(HomeSearchStore.SEARCH_DEBOUNCE_MS),
         distinctUntilChanged(),
         switchMap((query) => {
           const trimmed = query.trim();
-          if (!trimmed) return of(null);
+          if (!trimmed) {
+            return of(null);
+          }
           this.searching.set(true);
-          // Caught here, inside the switchMap: an uncaught error would propagate to the outer
-          // subscribe and tear down the whole pipeline, leaving every later keystroke dead.
+          // Caught inside the switchMap so one error doesn't end the pipeline.
           return this.reportApi.search(trimmed).pipe(
             catchError((err) => {
               this.notify.apiError(err, 'Search failed. Please try again.');

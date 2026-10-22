@@ -9,8 +9,8 @@ import {
   ChartValueAxis,
   ChartWidget,
   ChartWidgetConfigBase,
-  EMPTY_CHART_BINDING,
-  readChartAxes,
+  WidgetConfigDefaults,
+  ChartConfigs,
 } from '../../../core/models/report';
 import { ChartBindingModel } from './chart-binding.model';
 import { EditorNode } from './editor-node';
@@ -64,7 +64,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.xAxisLabel.set(config.xAxisLabel);
     this.yAxisLabel.set(config.yAxisLabel);
     // Folds an older single yAxisLabel into one primary axis.
-    this.yAxes.set(readChartAxes(config));
+    this.yAxes.set(ChartConfigs.axes(config));
     this.xAxisMin.set(config.xAxisMin ?? null);
     this.xAxisMax.set(config.xAxisMax ?? null);
     this.xLogScale.set(config.xLogScale ?? false);
@@ -87,7 +87,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     // A fresh chart seeds one empty binding to bind.
     const seeded = config.bindings?.length
       ? config.bindings
-      : [{ id: crypto.randomUUID(), ...EMPTY_CHART_BINDING }];
+      : [{ id: crypto.randomUUID(), ...WidgetConfigDefaults.EMPTY_CHART_BINDING }];
     this.bindings.set(
       seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)),
     );
@@ -100,7 +100,10 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   /** Appends an unbound series and returns its id. */
   public addBinding(): string {
-    const dto: ChartSeriesBinding = { id: crypto.randomUUID(), ...EMPTY_CHART_BINDING };
+    const dto: ChartSeriesBinding = {
+      id: crypto.randomUUID(),
+      ...WidgetConfigDefaults.EMPTY_CHART_BINDING,
+    };
     const model = new ChartBindingModel(dto, this.sources, this.id, this.toleranceBands);
     this.bindings.update((bindings) => [...bindings, model]);
     return model.id;
@@ -129,14 +132,20 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public removeYAxis(id: string): void {
     let removed = false;
     this.yAxes.update((axes) => {
-      if (axes.length <= 1 || axes[0].id === id) return axes;
+      if (axes.length <= 1 || axes[0].id === id) {
+        return axes;
+      }
       removed = true;
       return axes.filter((a) => a.id !== id);
     });
-    if (!removed) return;
+    if (!removed) {
+      return;
+    }
 
     for (const binding of this.bindings()) {
-      if (binding.yAxisId() === id) binding.yAxisId.set(null);
+      if (binding.yAxisId() === id) {
+        binding.yAxisId.set(null);
+      }
     }
     this.toleranceBands.update((bands) =>
       bands.map((b) => (b.yAxisId === id ? { ...b, yAxisId: null } : b)),
@@ -152,7 +161,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   public setDataset(datasetId: number | null): void {
     const primary = this.primaryBinding();
-    if (datasetId === primary.datasetId()) return;
+    if (datasetId === primary.datasetId()) {
+      return;
+    }
     primary.setDataset(datasetId);
     // Tooltip columns are chart-wide but keyed to the old schema.
     this.tooltipColumns.set([]);
@@ -210,7 +221,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public addTooltipColumn(): void {
     const used = new Set(this.tooltipColumns().map((c) => c.columnId));
     const next = (this.schema()?.columns ?? []).find((c) => !used.has(c.id));
-    if (!next) return;
+    if (!next) {
+      return;
+    }
     this.tooltipColumns.update((cols) => [...cols, { columnId: next.id }]);
   }
 
@@ -229,7 +242,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   /** Drops the entry instead when the new column is already shown. */
   public replaceTooltipColumn(oldColumnId: string, newColumnId: string): void {
-    if (oldColumnId === newColumnId) return;
+    if (oldColumnId === newColumnId) {
+      return;
+    }
     this.tooltipColumns.update((cols) =>
       cols
         .filter((c) => c.columnId !== newColumnId)
@@ -336,7 +351,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
       const bandSchema = band.sourceDatasetId
         ? (this.sources.schemas()[band.sourceDatasetId] ?? null)
         : null;
-      if (!bandSchema) continue;
+      if (!bandSchema) {
+        continue;
+      }
 
       const columnIds = new Set(bandSchema.columns.map((c) => c.id));
       const pointers = [

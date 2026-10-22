@@ -1,12 +1,12 @@
 import { signal } from '@angular/core';
 import {
-  DEFAULT_LINE_CHART_CONFIG,
+  WidgetConfigDefaults,
   LineChartWidget,
   LineChartWidgetConfig,
   Aggregate,
   DateGrouping,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
 
@@ -33,7 +33,7 @@ export class LineChartWidgetModel extends ChartWidgetModel {
   public override toDto(): LineChartWidget {
     const config: LineChartWidgetConfig = {
       type: 'lineChart',
-      ...DEFAULT_LINE_CHART_CONFIG,
+      ...WidgetConfigDefaults.LINE_CHART,
       ...this.chartConfigBaseDto(),
       smooth: this.smooth(),
       showPoints: this.showPoints(),
@@ -45,6 +45,6 @@ export class LineChartWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('lineChart').label;
+    return WidgetCatalog.descriptor('lineChart').label;
   }
 }

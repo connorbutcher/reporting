@@ -1,11 +1,14 @@
 import { Signal, computed } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
-import { FilterGroup, OperatorCatalogue, filterKey } from '../../../core/models/filter';
+import { FilterGroup, OperatorCatalogue, FilterTrees } from '../../../core/models/filter';
 import { ReportRevisionContent } from '../../../core/models/report';
-import { collectViewFilterEntries } from './view-filter-entries';
-import { PageFilterEntry, ViewFilterEntry, WidgetFilterEntry } from './view-filter-entry';
+import { ViewFilterEntryCollector } from './view-filter-entry-collector';
+import { PageFilterEntry } from './page-filter-entry';
+import { ViewFilterEntry } from './view-filter-entry';
+import { WidgetFilterEntry } from './widget-filter-entry';
 import { ViewFilterOverrides } from './view-filter-overrides';
-import { ViewWidgetFilters, groupWidgetEntries } from './view-widget-filters';
+import { ViewWidgetFilters } from './view-widget-filters';
+import { ViewWidgetFilterGroups } from './view-widget-filter-groups';
 
 /**
  * The filters a reader applies to a published report, layered over the author's. Each is an editable
@@ -18,16 +21,12 @@ export class ReportViewFilters {
   /** {@link widgetEntries} grouped by widget: one row per widget, not per dataset. */
   public readonly widgetItems: readonly ViewWidgetFilters[];
 
-  /**
-   * Each entry's query filter, one `computed` per entry: a single `Record` rebuilt on every edit
-   * would hand every widget a new reference, and a widget treats that as "reload me".
-   */
+  /** One computed per entry, so an edit only reloads that entry's widget. */
   public readonly pageFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
   public readonly widgetFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
 
   public readonly changed = computed(() => this.allEntries.some((e) => e.changed()));
 
-  /** Every filter's schema and operators are in, so which rows count as finished (and so {@link snapshot}) is settled. */
   public readonly ready = computed(() => this.allEntries.every((e) => e.group.ready()));
 
   /** Switched-on conditions across the report: the badge count. */
@@ -35,7 +34,7 @@ export class ReportViewFilters {
     this.allEntries.reduce((n, e) => n + e.group.enabledCount(), 0),
   );
 
-  /** Conditions the reader thinks apply but test a removed column, so are left out of queries. Zero until schemas load. */
+  /** Conditions on removed columns, left out of queries. Zero until schemas load. */
   public readonly missingColumnCount = computed(() =>
     this.allEntries.reduce((n, e) => n + e.group.missingColumnCount(), 0),
   );
@@ -45,7 +44,9 @@ export class ReportViewFilters {
     const overrides: ViewFilterOverrides = {};
     for (const entry of this.allEntries) {
       const override = entry.override();
-      if (override !== undefined) overrides[entry.key] = override;
+      if (override !== undefined) {
+        overrides[entry.key] = override;
+      }
     }
     return overrides;
   });
@@ -59,20 +60,32 @@ export class ReportViewFilters {
     catalogue: Signal<OperatorCatalogue | null>,
     overrides: ViewFilterOverrides = {},
   ) {
-    const { pageEntries, widgetEntries } = collectViewFilterEntries(content, schemas, catalogue);
+    const { pageEntries, widgetEntries } = ViewFilterEntryCollector.collect(
+      content,
+      schemas,
+      catalogue,
+    );
     this.pageEntries = pageEntries;
     this.widgetEntries = widgetEntries;
-    this.widgetItems = groupWidgetEntries(widgetEntries);
+    this.widgetItems = ViewWidgetFilterGroups.group(widgetEntries);
     this.allEntries = [...pageEntries, ...widgetEntries];
     this.keys = new Set(this.allEntries.map((e) => e.key));
-    this.pageFilters = queryFilters(pageEntries);
-    this.widgetFilters = queryFilters(widgetEntries);
+    this.pageFilters = ReportViewFilters.queryFilters(pageEntries);
+    this.widgetFilters = ReportViewFilters.queryFilters(widgetEntries);
 
     this.apply(overrides);
   }
 
+  private static queryFilters(
+    entries: readonly ViewFilterEntry[],
+  ): Map<string, Signal<FilterGroup | null>> {
+    return new Map(entries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
+  }
+
   public reset(): void {
-    for (const entry of this.allEntries) entry.group.replaceWith(entry.published);
+    for (const entry of this.allEntries) {
+      entry.group.replaceWith(entry.published);
+    }
   }
 
   /** The override keys naming no filter in this version, which {@link apply} ignores. */
@@ -80,15 +93,13 @@ export class ReportViewFilters {
     return Object.keys(overrides).filter((key) => !this.keys.has(key));
   }
 
-  /**
-   * Sets each filter to its override, or back to published when it has none (so `apply({})` is
-   * {@link reset}). An entry already showing its target is left alone, so re-applying doesn't
-   * rebuild its rows or reload its widget.
-   */
+  /** Sets each filter to its override, or published when absent. Unchanged entries are left alone. */
   public apply(overrides: ViewFilterOverrides): void {
     for (const entry of this.allEntries) {
       const target = Object.hasOwn(overrides, entry.key) ? overrides[entry.key] : entry.published;
-      if (filterKey(target) !== filterKey(entry.group.toDto())) entry.group.replaceWith(target);
+      if (FilterTrees.key(target) !== FilterTrees.key(entry.group.toDto())) {
+        entry.group.replaceWith(target);
+      }
     }
   }
 
@@ -96,8 +107,4 @@ export class ReportViewFilters {
   public pageFilterFor(entry: ViewFilterEntry): FilterGroup | null {
     return this.pageFilters.get(String(entry.datasetId))?.() ?? null;
   }
-}
-
-function queryFilters(entries: readonly ViewFilterEntry[]): Map<string, Signal<FilterGroup | null>> {
-  return new Map(entries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
 }

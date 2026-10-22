@@ -4,7 +4,7 @@ import {
   FilterCondition,
   FilterOperator,
   OperatorDescriptor,
-  TOLERANCE_OPERATORS,
+  FilterOperators,
 } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
@@ -31,7 +31,9 @@ export class FilterConditionModel extends EditorNode {
   public readonly availableOperators: Signal<OperatorDescriptor[]> = computed(() => {
     const type = this.schemaColumn()?.type;
     const catalogue = this.context.catalogue();
-    if (!type || !catalogue) return [];
+    if (!type || !catalogue) {
+      return [];
+    }
     return OfferableOperators.of(catalogue[type] ?? [], this.isTolerant(), this.operator());
   });
 
@@ -62,7 +64,7 @@ export class FilterConditionModel extends EditorNode {
     this.enabled()
       ? ConditionProblems.find({
           columnMissing: this.columnMissing(),
-          toleranceMissing: TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant(),
+          toleranceMissing: FilterOperators.TOLERANCE.has(this.operator()) && !this.isTolerant(),
           complete: this.isComplete(),
           columnName: this.schemaColumn()?.name ?? null,
           operatorLabel: this.descriptor()?.label ?? this.operator(),
@@ -84,7 +86,9 @@ export class FilterConditionModel extends EditorNode {
 
   /** Switching column can invalidate the operator, so fall back to the first valid one. */
   public setColumn(columnId: string): void {
-    if (columnId === this.columnId()) return;
+    if (columnId === this.columnId()) {
+      return;
+    }
     this.columnId.set(columnId);
 
     const operators = this.availableOperators();
@@ -108,7 +112,9 @@ export class FilterConditionModel extends EditorNode {
   public setValue(index: number, value: string): void {
     this.values.update((values) => {
       const next = [...values];
-      while (next.length <= index) next.push('');
+      while (next.length <= index) {
+        next.push('');
+      }
       next[index] = value;
       return next;
     });
@@ -140,7 +146,9 @@ export class FilterConditionModel extends EditorNode {
 
   public override ownIssues(): ValidationIssue[] {
     const problem = this.currentProblem();
-    if (!problem) return [];
+    if (!problem) {
+      return [];
+    }
     return [
       ConditionProblems.issue(
         problem,

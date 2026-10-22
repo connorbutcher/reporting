@@ -1,11 +1,8 @@
+import { ReportSummary } from '../../../core/models/report';
 import { DatePipe } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, Signal } from '@angular/core';
 import { ReportViewerStore } from '../report-viewer.store';
 
-/**
- * The compact list of published versions in the aside's History tab. Clicking
- * one navigates the viewer to it; the active version shows its full notes.
- */
 @Component({
   selector: 'app-version-history',
   imports: [DatePipe],
@@ -13,20 +10,30 @@ import { ReportViewerStore } from '../report-viewer.store';
   styleUrl: './version-history.component.scss',
 })
 export class VersionHistoryComponent {
+  public readonly report: Signal<ReportSummary | null>;
+
   private readonly store = inject(ReportViewerStore);
 
-  protected readonly versions = this.store.versions;
-  protected readonly viewingVersion = this.store.viewingVersion;
-  protected readonly report = this.store.report;
+  constructor() {
+    this.report = this.store.report;
+  }
 
-  protected viewVersion(versionNumber: number): void {
+  public viewVersion(versionNumber: number): void {
     this.store.viewVersion(versionNumber);
   }
 
   /** Plain-text summary for the compact list, stripped of the notes' HTML. */
-  protected previewText(html: string): string {
+  public previewText(html: string): string {
     const div = document.createElement('div');
     div.innerHTML = html;
     return (div.textContent ?? '').trim();
+  }
+
+  public get versions() {
+    return this.store.versions;
+  }
+
+  public get viewingVersion() {
+    return this.store.viewingVersion;
   }
 }

@@ -35,10 +35,13 @@ export class PointTooltip {
     numConfig: NumericColumnConfig | undefined,
     dateCfg: DateColumnConfig | undefined,
   ): (value: Coord) => string {
-    if (isText) return (value) => String(value);
-    if (isDate)
+    if (isText) {
+      return (value) => String(value);
+    }
+    if (isDate) {
       return (value) =>
         typeof value === 'number' ? ChartFormat.date(value, dateCfg) : String(value);
+    }
     return (value) =>
       typeof value === 'number' ? ChartFormat.numeric(value, numConfig) : String(value);
   }

@@ -26,7 +26,9 @@ export class PanelChartToleranceListComponent {
   }
 
   public bandSummary(band: ChartToleranceBand): string {
-    if (!band.sourceDatasetId) return 'Not set up yet';
+    if (!band.sourceDatasetId) {
+      return 'Not set up yet';
+    }
     return this.session.datasets().find((d) => d.id === band.sourceDatasetId)?.name ?? 'Dataset';
   }
 

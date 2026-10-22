@@ -4,48 +4,35 @@ import {
   FormulaFunction,
   FormulaFunctionCategory,
 } from '../../../../core/models/dataset';
+import { OperatorDefinition, Operators, ValueKinds } from '../model';
+import { FunctionGroup } from './function-group';
 import { FormulaBuilderStore } from '../formula-builder.store';
-import { PalettePayload } from '../store/palette-payload';
-import { KIND_BADGES, KIND_LABELS, OPERATORS, OperatorDefinition, columnTypeKind } from '../model';
+import { PaletteItem } from './palette-item';
 
-type PaletteItem = PalettePayload;
-
-interface FunctionGroup {
-  category: FormulaFunctionCategory;
-  label: string;
-  functions: FormulaFunction[];
-}
-
-const CATEGORY_ORDER: { category: FormulaFunctionCategory; label: string }[] = [
-  { category: 'math', label: 'Math' },
-  { category: 'text', label: 'Text' },
-  { category: 'date', label: 'Date and time' },
-  { category: 'logic', label: 'Logic' },
-  { category: 'conversion', label: 'Conversion' },
-];
-
-const VALUES: { label: string; value: boolean | null }[] = [
-  { label: 'true', value: true },
-  { label: 'false', value: false },
-  { label: 'blank', value: null },
-];
-
-/**
- * Everything that can go into a formula: the dataset's columns, a few fixed values, the operators and the
- * functions the server offers. Each chip can be dragged to a place in the formula, or clicked to add it to the
- * end of the expression last worked in — so the builder works without a mouse drag, too. Hovering (or
- * focusing) a chip explains it in the panel below.
- */
+/** Columns, values, operators and functions. Chips can be dragged or clicked to add. */
 @Component({
   selector: 'app-formula-palette',
   templateUrl: './formula-palette.component.html',
   styleUrl: './formula-palette.component.scss',
 })
 export class FormulaPaletteComponent {
+  private static readonly CATEGORY_ORDER: { category: FormulaFunctionCategory; label: string }[] = [
+    { category: 'math', label: 'Math' },
+    { category: 'text', label: 'Text' },
+    { category: 'date', label: 'Date and time' },
+    { category: 'logic', label: 'Logic' },
+    { category: 'conversion', label: 'Conversion' },
+  ];
+
+  private static readonly VALUES: { label: string; value: boolean | null }[] = [
+    { label: 'true', value: true },
+    { label: 'false', value: false },
+    { label: 'blank', value: null },
+  ];
   public readonly search = signal('');
-  public readonly badges = KIND_BADGES;
-  public readonly values = VALUES;
-  public readonly operators = OPERATORS;
+  public readonly badges = ValueKinds.BADGES;
+  public readonly values = FormulaPaletteComponent.VALUES;
+  public readonly operators = Operators.ALL;
 
   /** Explains the chip under the pointer or focus. */
   public readonly help = signal<{ title: string; text: string } | null>(null);
@@ -61,8 +48,13 @@ export class FormulaPaletteComponent {
     const query = this.query();
     const matching = this.store
       .functions()
-      .filter((f) => !query || f.name.toLowerCase().includes(query) || f.description.toLowerCase().includes(query));
-    return CATEGORY_ORDER.map(({ category, label }) => ({
+      .filter(
+        (f) =>
+          !query ||
+          f.name.toLowerCase().includes(query) ||
+          f.description.toLowerCase().includes(query),
+      );
+    return FormulaPaletteComponent.CATEGORY_ORDER.map(({ category, label }) => ({
       category,
       label,
       functions: matching.filter((f) => f.category === category),
@@ -73,13 +65,18 @@ export class FormulaPaletteComponent {
 
   public readonly shownOperators = computed(() => {
     const query = this.query();
-    return this.operators.filter((o) => !query || o.symbol.includes(query) || o.description.toLowerCase().includes(query));
+    return this.operators.filter(
+      (o) => !query || o.symbol.includes(query) || o.description.toLowerCase().includes(query),
+    );
   });
 
   public readonly catalogueState = computed(() => this.store.catalogueState());
 
   public readonly nothingFound = computed(
-    () => this.columns().length === 0 && this.groups().length === 0 && this.shownOperators().length === 0,
+    () =>
+      this.columns().length === 0 &&
+      this.groups().length === 0 &&
+      this.shownOperators().length === 0,
   );
 
   private readonly store = inject(FormulaBuilderStore);
@@ -110,30 +107,45 @@ export class FormulaPaletteComponent {
   }
 
   public columnBadge(column: DatasetColumn): string {
-    return this.badges[columnTypeKind(column.type)];
+    return this.badges[ValueKinds.ofColumnType(column.type)];
   }
 
   public explainColumn(column: DatasetColumn): void {
-    this.help.set({ title: `[${column.name}]`, text: `A column that holds ${KIND_LABELS[columnTypeKind(column.type)]}.` });
+    this.help.set({
+      title: `[${column.name}]`,
+      text: `A column that holds ${ValueKinds.LABELS[ValueKinds.ofColumnType(column.type)]}.`,
+    });
   }
 
   public explainFunction(fn: FormulaFunction): void {
     const signature = fn.parameters
       .map((p) => (p.isVariadic ? `${p.name}, …` : p.isOptional ? `[${p.name}]` : p.name))
       .join(', ');
-    this.help.set({ title: `${fn.name}(${signature})`, text: `${fn.description} Example: ${fn.example}` });
+    this.help.set({
+      title: `${fn.name}(${signature})`,
+      text: `${fn.description} Example: ${fn.example}`,
+    });
   }
 
   public explainOperator(operator: OperatorDefinition): void {
-    this.help.set({ title: operator.symbol, text: `${operator.description} Place it between the values it applies to.` });
+    this.help.set({
+      title: operator.symbol,
+      text: `${operator.description} Place it between the values it applies to.`,
+    });
   }
 
   public explainGroup(): void {
-    this.help.set({ title: '( )', text: 'Brackets: what is inside is worked out first, and counts as one value. Add values and operators inside.' });
+    this.help.set({
+      title: '( )',
+      text: 'Brackets: what is inside is worked out first, and counts as one value. Add values and operators inside.',
+    });
   }
 
   public explainValue(label: string): void {
-    this.help.set({ title: label, text: 'A fixed value. To use a number or text, type it into the row where it should go.' });
+    this.help.set({
+      title: label,
+      text: 'A fixed value. To use a number or text, type it into the row where it should go.',
+    });
   }
 
   public clearHelp(): void {

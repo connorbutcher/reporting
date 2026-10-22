@@ -13,7 +13,7 @@ import { SeriesStyle } from './types/series-style';
 import { SizeScale } from './types/size-scale';
 
 /** A scatter or line chart's config and data, resolved once and shared by each part of its option. */
-export interface PointChart {
+export type PointChart = {
   readonly config: PointChartConfig;
   readonly data: ChartQueryResult | null;
   readonly series: ChartSeriesResult[];
@@ -52,4 +52,4 @@ export interface PointChart {
   readonly zoom: boolean;
   readonly commentAnchors: readonly ChartCommentAnchor[];
   readonly highlightedAnchor: ChartCommentAnchor | null;
-}
+};

@@ -1,14 +1,13 @@
 import { signal } from '@angular/core';
 import {
   ChartSort,
-  DEFAULT_CHART_SORT,
-  DEFAULT_XBAR_R_CHART_CONFIG,
+  WidgetConfigDefaults,
   XBarRChartWidget,
   XBarRChartWidgetConfig,
   ControlChartMode,
   DateGrouping,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
@@ -17,7 +16,7 @@ import { ModelSources } from './sources/model-sources';
 export class XBarRChartWidgetModel extends ChartWidgetModel {
   public override readonly type = 'xbarRChart' as const;
 
-  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  public readonly sort = signal<ChartSort>(WidgetConfigDefaults.CHART_SORT);
   /** Colours a subgroup red when it falls outside its control limits. */
   public readonly highlightOutOfControl = signal(true);
   /** Buckets a date subgroup by period; null groups by exact date. */
@@ -30,7 +29,7 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
 
   constructor(widget: XBarRChartWidget, sources: ModelSources) {
     super(widget, sources);
-    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.sort.set(widget.config.sort ?? WidgetConfigDefaults.CHART_SORT);
     this.highlightOutOfControl.set(widget.config.highlightOutOfControl ?? true);
     this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
     this.mode.set(widget.config.mode ?? 'xBarR');
@@ -41,7 +40,7 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
   public override toDto(): XBarRChartWidget {
     const config: XBarRChartWidgetConfig = {
       type: 'xbarRChart',
-      ...DEFAULT_XBAR_R_CHART_CONFIG,
+      ...WidgetConfigDefaults.XBAR_R_CHART,
       ...this.chartConfigBaseDto(),
       sort: this.sort(),
       highlightOutOfControl: this.highlightOutOfControl(),
@@ -54,7 +53,7 @@ export class XBarRChartWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('xbarRChart').label;
+    return WidgetCatalog.descriptor('xbarRChart').label;
   }
 
   public override ownIssues(): ValidationIssue[] {

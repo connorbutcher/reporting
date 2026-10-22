@@ -1,25 +1,16 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { debounceTime, filter } from 'rxjs';
-import { ReportRevisionContent } from '../../../core/models/report';
-import { NotificationService } from '../../../core/services/notification.service';
-import { ReportViewerStore } from '../report-viewer.store';
-import { SavedViewFilters } from './saved-view-filters';
-import { SharedLinkState } from './shared-link-state';
-import { SharedViewLink } from './shared-view-link';
 import { ReportViewFilters } from './report-view-filters';
-import { ViewFilterOverrides, decodeViewFilterOverrides, encodeViewFilterOverrides } from './view-filter-overrides';
+import { SharedLinkState } from './shared-link-state';
+import { ReportViewerStore } from '../report-viewer.store';
 import { ViewFilterSchemas } from './view-filter-schemas';
-
-/** Long enough that typing a value isn't one save per key. */
-const SETTLE_MS = 300;
-
-interface StartingState {
-  readonly overrides: ViewFilterOverrides;
-  readonly fromLink: boolean;
-  /** The URL named a link but fetching it failed (not the same as it not existing). */
-  readonly lookupFailed: boolean;
-}
+import { SavedViewFilters } from './saved-view-filters';
+import { SharedViewLink } from './shared-view-link';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ViewFilterOverrideCodec } from './view-filter-override-codec';
+import { ReportRevisionContent } from '../../../core/models/report';
+import { StartingState } from './starting-state';
 
 /**
  * The reader's filters for the report on screen. They start from a shared link's (`?view=<id>`),
@@ -28,10 +19,9 @@ interface StartingState {
  */
 @Injectable()
 export class ViewFilterSession {
-  /** Null until they can be seeded. */
+  private static readonly SETTLE_MS = 300;
   public readonly viewFilters = signal<ReportViewFilters | null>(null);
 
-  /** Set while the reader is looking at a shared link's filters they haven't edited or saved. */
   public readonly sharedLink = computed<SharedLinkState | null>(() => {
     const origin = this.linkOrigin();
     const filters = this.viewFilters();
@@ -50,17 +40,14 @@ export class ViewFilterSession {
   private readonly notify = inject(NotificationService);
   private readonly linkOrigin = signal<Pick<SharedLinkState, 'total' | 'unmatched'> | null>(null);
 
-  /**
-   * Undefined until filters exist and are ready: not "none", which would clear what was saved, and
-   * not a snapshot taken before schemas load, when which rows are finished can still change.
-   */
+  /** Undefined until ready: not "none", which would clear what was saved. */
   private readonly encodedFilters = computed(() => {
     const filters = this.viewFilters();
-    return filters?.ready() ? encodeViewFilterOverrides(filters.snapshot()) : undefined;
+    return filters?.ready() ? ViewFilterOverrideCodec.encode(filters.snapshot()) : undefined;
   });
 
   private builtFor: ReportRevisionContent | null = null;
-  /** The encoded filters as last seeded, applied or saved; a settled state that differs is the reader's edit. */
+  /** The last seeded, applied or saved state; a settled state that differs is an edit. */
   private editBaseline: string | null = null;
   private missingReportedFor: ReportViewFilters | null = null;
 
@@ -75,9 +62,13 @@ export class ViewFilterSession {
   /** Makes a shared link's filters the reader's own. */
   public saveLinkAsMine(): void {
     const encoded = this.encodedFilters();
-    if (encoded === undefined) return;
+    if (encoded === undefined) {
+      return;
+    }
     if (this.saved.failed()) {
-      this.notify.error("Couldn't save these filters because your saved filters didn't load. Reload and try again.");
+      this.notify.error(
+        "Couldn't save these filters because your saved filters didn't load. Reload and try again.",
+      );
       return;
     }
     this.commit(encoded);
@@ -86,44 +77,26 @@ export class ViewFilterSession {
   /** Leaves a shared link's filters for the reader's own saved (or the published) ones. */
   public discardLink(): void {
     const filters = this.viewFilters();
-    if (!filters) return;
+    if (!filters) {
+      return;
+    }
     this.link.drop();
-    filters.apply(decodeViewFilterOverrides(this.saved.encoded() ?? null) ?? {});
-    this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+    filters.apply(ViewFilterOverrideCodec.decode(this.saved.encoded() ?? null) ?? {});
+    this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
     this.linkOrigin.set(null);
   }
 
   public copyLink(): Promise<void> {
     const filters = this.viewFilters();
-    return this.link.copy(filters ? encodeViewFilterOverrides(filters.snapshot()) : null);
+    return this.link.copy(filters ? ViewFilterOverrideCodec.encode(filters.snapshot()) : null);
   }
 
-  /** A new version means fresh filters. Seeding waits for what they start from, so widgets don't load unfiltered and then reload. */
+  /** Seeds fresh filters per version once their starting point loads, so widgets load once. */
   private seedPerVersion(): void {
     effect(() => {
       const content = this.store.content();
       const ready = this.saved.settled() && this.link.settled();
-      untracked(() => {
-        if (content) this.schemas.load(content);
-        if (!content) {
-          this.builtFor = null;
-          this.viewFilters.set(null);
-          return;
-        }
-        // Already built for this version: a later `view` change is applyLinkChanges'.
-        if (content === this.builtFor) return;
-        if (!ready) {
-          this.viewFilters.set(null);
-          return;
-        }
-
-        this.builtFor = content;
-        const start = this.startingState();
-        const filters = new ReportViewFilters(content, this.schemas.schemas, this.schemas.catalogue, start.overrides);
-        this.viewFilters.set(filters);
-        this.settle(filters, start);
-        this.store.openFilterKey.set(null);
-      });
+      untracked(() => this.seed(content, ready));
     });
   }
 
@@ -134,7 +107,9 @@ export class ViewFilterSession {
       const ready = this.saved.settled() && this.link.settled();
       untracked(() => {
         const filters = this.viewFilters();
-        if (!filters || !ready || this.link.isApplied()) return;
+        if (!filters || !ready || this.link.isApplied()) {
+          return;
+        }
         const start = this.startingState();
         filters.apply(start.overrides);
         this.settle(filters, start);
@@ -142,25 +117,28 @@ export class ViewFilterSession {
     });
   }
 
-  /** Once schemas are in, what counts as a finished row settles, so the baseline taken while seeding may have moved with it. */
   private rebaselineWhenReady(): void {
     effect(() => {
       const filters = this.viewFilters();
-      if (!filters?.ready()) return;
+      if (!filters?.ready()) {
+        return;
+      }
       untracked(() => {
-        this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+        this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
       });
     });
   }
 
-  /** A condition on a removed column is left out of queries, so data is broader than the reader thinks: say so once. A link's banner covers its own. */
+  /** Warns once about conditions on removed columns; a link's banner covers its own. */
   private warnAboutMissingColumns(): void {
     effect(() => {
       const filters = this.viewFilters();
       const missing = filters?.missingColumnCount() ?? 0;
       const fromLink = this.linkOrigin() !== null;
       untracked(() => {
-        if (!filters || missing === 0 || fromLink || this.missingReportedFor === filters) return;
+        if (!filters || missing === 0 || fromLink || this.missingReportedFor === filters) {
+          return;
+        }
         this.missingReportedFor = filters;
         this.notify.warn(
           missing === 1
@@ -175,12 +153,14 @@ export class ViewFilterSession {
     toObservable(this.encodedFilters)
       .pipe(
         filter((encoded) => encoded !== undefined),
-        debounceTime(SETTLE_MS),
+        debounceTime(ViewFilterSession.SETTLE_MS),
         takeUntilDestroyed(),
       )
       .subscribe(() => {
         const encoded = this.encodedFilters();
-        if (encoded !== undefined && encoded !== this.editBaseline) this.commit(encoded);
+        if (encoded !== undefined && encoded !== this.editBaseline) {
+          this.commit(encoded);
+        }
       });
   }
 
@@ -188,8 +168,10 @@ export class ViewFilterSession {
     const lookupFailed = this.link.lookupFailed();
     if (this.link.id()) {
       const encoded = this.link.filters();
-      const overrides = encoded ? decodeViewFilterOverrides(encoded) : null;
-      if (overrides) return { overrides, fromLink: true, lookupFailed: false };
+      const overrides = encoded ? ViewFilterOverrideCodec.decode(encoded) : null;
+      if (overrides) {
+        return { overrides, fromLink: true, lookupFailed: false };
+      }
 
       this.notify.warn(
         lookupFailed
@@ -198,13 +180,13 @@ export class ViewFilterSession {
       );
     }
     // Saved filters that no longer decode are dropped quietly: the reader didn't just hand them over, unlike a link.
-    const overrides = decodeViewFilterOverrides(this.saved.encoded() ?? null) ?? {};
+    const overrides = ViewFilterOverrideCodec.decode(this.saved.encoded() ?? null) ?? {};
     return { overrides, fromLink: false, lookupFailed };
   }
 
   /** Records what was just applied as "not yet edited", and what the banner should say. */
   private settle(filters: ReportViewFilters, start: StartingState): void {
-    this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+    this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
     if (start.fromLink) {
       this.link.markApplied(this.link.id());
       this.linkOrigin.set({
@@ -214,17 +196,51 @@ export class ViewFilterSession {
     } else {
       this.linkOrigin.set(null);
       // A failed fetch keeps `?view=` so a reload retries; a missing snapshot drops it.
-      if (start.lookupFailed) this.link.markApplied(this.link.id());
-      else this.link.drop();
+      if (start.lookupFailed) {
+        this.link.markApplied(this.link.id());
+      } else {
+        this.link.drop();
+      }
     }
     this.saved.reportFailure();
   }
 
-  /** Makes the current filters the reader's own: saved (or cleared, when back on published), and no longer "from a link". */
   private commit(encoded: string | null): void {
     this.editBaseline = encoded;
     this.linkOrigin.set(null);
     this.link.drop();
     this.saved.save(encoded);
+  }
+
+  private seed(content: ReportRevisionContent | null, ready: boolean): void {
+    if (!content) {
+      this.builtFor = null;
+      this.viewFilters.set(null);
+      return;
+    }
+    this.schemas.load(content);
+    // Already built for this version: a later `view` change is applyLinkChanges'.
+    if (content === this.builtFor) {
+      return;
+    }
+    if (!ready) {
+      this.viewFilters.set(null);
+      return;
+    }
+    this.build(content);
+  }
+
+  private build(content: ReportRevisionContent): void {
+    this.builtFor = content;
+    const start = this.startingState();
+    const filters = new ReportViewFilters(
+      content,
+      this.schemas.schemas,
+      this.schemas.catalogue,
+      start.overrides,
+    );
+    this.viewFilters.set(filters);
+    this.settle(filters, start);
+    this.store.openFilterKey.set(null);
   }
 }

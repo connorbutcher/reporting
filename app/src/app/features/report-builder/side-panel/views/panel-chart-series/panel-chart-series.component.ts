@@ -3,11 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
-import {
-  ChartSymbol,
-  LineDashStyle,
-  chartAxisDisplayName,
-} from '../../../../../core/models/report';
+import { ChartSymbol, LineDashStyle, ChartConfigs } from '../../../../../core/models/report';
 import { ChartSeriesRenderAs } from '../../../../../core/models/report';
 import { ChartBindingModel } from '../../../models/chart-binding.model';
 import {
@@ -110,7 +106,7 @@ export class PanelChartSeriesComponent {
 
   public readonly axisOptions = computed(() =>
     (this.chart()?.yAxes() ?? []).map((axis, i) => ({
-      label: chartAxisDisplayName(axis, i),
+      label: ChartConfigs.axisDisplayName(axis, i),
       value: axis.id,
     })),
   );
@@ -135,7 +131,9 @@ export class PanelChartSeriesComponent {
 
   /** Point charts and combo line series only. */
   public showMarker(binding: ChartBindingModel): boolean {
-    if (this.isHistogram()) return false;
+    if (this.isHistogram()) {
+      return false;
+    }
     return !this.isBarLike() || this.isLineSeries(binding);
   }
 
@@ -161,7 +159,9 @@ export class PanelChartSeriesComponent {
   public removeSeries(): void {
     const chart = this.chart();
     const id = this.bindingId();
-    if (chart && id) chart.removeBinding(id);
+    if (chart && id) {
+      chart.removeBinding(id);
+    }
     this.navigation.back();
   }
 }

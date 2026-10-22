@@ -4,7 +4,7 @@ import { HistogramBin, HistogramQueryResult } from '../../../../../../core/model
 import { HistogramSeries } from './histogram-series';
 
 /** A histogram's config and data, resolved once and shared by each part of its option. */
-export interface HistogramChart {
+export type HistogramChart = {
   readonly config: HistogramWidgetConfig;
   readonly data: HistogramQueryResult | null;
   /** The binned column. */
@@ -15,4 +15,4 @@ export interface HistogramChart {
   readonly countAxisConfig: ChartValueAxis;
   readonly horizontal: boolean;
   readonly showLegend: boolean;
-}
+};

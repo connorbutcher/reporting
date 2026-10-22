@@ -44,7 +44,9 @@ export class PointLayout {
   /** Colours marks by their Y value on a continuous scale, shown as a bar up top. */
   public static visualMap(chart: PointChart) {
     const extent = chart.yExtent;
-    if (!chart.colorByValue || !extent) return {};
+    if (!chart.colorByValue || !extent) {
+      return {};
+    }
     return {
       visualMap: {
         type: 'continuous' as const,
@@ -64,7 +66,9 @@ export class PointLayout {
   /** Wheel/drag zoom: a slider and inside zoom along X, and inside zoom along Y when enabled. */
   public static dataZoom(chart: PointChart) {
     const zoomY = chart.config.zoomY;
-    if (!chart.zoom && !zoomY) return {};
+    if (!chart.zoom && !zoomY) {
+      return {};
+    }
     return {
       dataZoom: [
         ...(chart.zoom

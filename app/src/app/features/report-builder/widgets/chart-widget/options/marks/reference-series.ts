@@ -15,7 +15,9 @@ export class ReferenceSeries {
     areas: MarkAreaData,
     axes: { xAxisIndex?: number; yAxisIndex?: number } = {},
   ): LineSeriesOption | null {
-    if (marks.length === 0 && areas.length === 0) return null;
+    if (marks.length === 0 && areas.length === 0) {
+      return null;
+    }
     return {
       type: 'line',
       name: ReferenceSeries.NAME,

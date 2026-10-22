@@ -1,6 +1,6 @@
 import { FilterGroup } from '../../../../core/models/filter';
 
-export interface CountKey {
+export type CountKey = {
   datasetId: number;
   filter: FilterGroup | null;
-}
+};

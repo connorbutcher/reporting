@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import {
-  DEFAULT_TEXT_CONFIG,
+  WidgetConfigDefaults,
   StaticTextWidget,
   StaticTextWidgetConfig,
 } from '../../../core/models/report';
@@ -23,7 +23,7 @@ export class StaticTextWidgetModel extends WidgetModel {
   public override toDto(): StaticTextWidget {
     const config: StaticTextWidgetConfig = {
       type: 'staticText',
-      ...DEFAULT_TEXT_CONFIG,
+      ...WidgetConfigDefaults.STATIC_TEXT,
       ...this.baseConfigDto(),
       ...this.style.toDto(),
       content: this.content(),
@@ -40,7 +40,9 @@ export class StaticTextWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    if (this.content().trim().length > 0) return [];
+    if (this.content().trim().length > 0) {
+      return [];
+    }
 
     return [
       this.issue(

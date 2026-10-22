@@ -11,14 +11,17 @@ export class OutlineSeverity {
   public static forPoints(
     zones: readonly OutlineZone[],
   ): (x: number | string, y: number | string) => string | null {
-    if (zones.length === 0) return () => null;
+    if (zones.length === 0) {
+      return () => null;
+    }
 
     return (x, y) => {
       let color: string | null = null;
       for (const zone of zones) {
         const value = zone.axis === 'x' ? x : y;
-        if (typeof value === 'number')
+        if (typeof value === 'number') {
           color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
+        }
       }
       return color;
     };
@@ -26,12 +29,15 @@ export class OutlineSeverity {
 
   /** Outline colour for a single measure value, such as a bar's height. */
   public static forValue(zones: readonly OutlineZone[]): (value: number) => string | null {
-    if (zones.length === 0) return () => null;
+    if (zones.length === 0) {
+      return () => null;
+    }
 
     return (value) => {
       let color: string | null = null;
-      for (const zone of zones)
+      for (const zone of zones) {
         color = OutlineSeverity.worse(color, OutlineSeverity.colorFor(value, zone));
+      }
       return color;
     };
   }
@@ -52,14 +58,19 @@ export class OutlineSeverity {
 
   /** Red past the fail bound (or a guide line), orange in a tolerance band's concession shoulder. */
   private static colorFor(value: number, zone: OutlineZone): string | null {
-    if (value < zone.failLow || value > zone.failHigh) return OutlineSeverity.OUTLINE_FAIL;
-    if (value < zone.warnLow || value > zone.warnHigh) return OutlineSeverity.OUTLINE_CONCESSION;
+    if (value < zone.failLow || value > zone.failHigh) {
+      return OutlineSeverity.OUTLINE_FAIL;
+    }
+    if (value < zone.warnLow || value > zone.warnHigh) {
+      return OutlineSeverity.OUTLINE_CONCESSION;
+    }
     return null;
   }
 
   private static worse(a: string | null, b: string | null): string | null {
-    if (a === OutlineSeverity.OUTLINE_FAIL || b === OutlineSeverity.OUTLINE_FAIL)
+    if (a === OutlineSeverity.OUTLINE_FAIL || b === OutlineSeverity.OUTLINE_FAIL) {
       return OutlineSeverity.OUTLINE_FAIL;
+    }
     return a ?? b;
   }
 }

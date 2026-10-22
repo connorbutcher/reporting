@@ -192,9 +192,13 @@ export class CanvasTabsComponent {
   }
 
   public commitRename(tabId: string): void {
-    if (this.editingId() !== tabId) return;
+    if (this.editingId() !== tabId) {
+      return;
+    }
     const name = this.draft().trim();
-    if (name) this.tabCommands.renameTab(tabId, name);
+    if (name) {
+      this.tabCommands.renameTab(tabId, name);
+    }
     this.editingId.set(null);
   }
 
@@ -205,24 +209,34 @@ export class CanvasTabsComponent {
   public onDragStart(tabId: string, event: DragEvent): void {
     this.draggingId.set(tabId);
     event.dataTransfer?.setData('text/plain', tabId);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
   }
 
   public onDragOver(event: DragEvent): void {
     // Only a tab drag is a valid drop, not a file.
-    if (!this.draggingId()) return;
+    if (!this.draggingId()) {
+      return;
+    }
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
   }
 
   public onDrop(targetTabId: string, event: DragEvent): void {
     event.preventDefault();
     const dragged = this.draggingId();
     this.draggingId.set(null);
-    if (!dragged || dragged === targetTabId) return;
+    if (!dragged || dragged === targetTabId) {
+      return;
+    }
 
     const toIndex = this.tabs().findIndex((t) => t.id === targetTabId);
-    if (toIndex >= 0) this.tabCommands.moveTab(dragged, toIndex);
+    if (toIndex >= 0) {
+      this.tabCommands.moveTab(dragged, toIndex);
+    }
   }
 
   public onDragEnd(): void {

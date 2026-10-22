@@ -3,7 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { FilterApiService } from '../../../core/api/filter-api.service';
 import { DatasetColumn } from '../../../core/models/dataset';
-import { FilterNode, describeFilter } from '../../../core/models/filter';
+import { FilterNode, FilterDescription } from '../../../core/models/filter';
 import { WidgetExportBase } from './widget-export-base';
 
 /**
@@ -29,6 +29,6 @@ export abstract class DataWidgetBase extends WidgetExportBase {
     columns: readonly DatasetColumn[],
   ): string[] {
     const catalogue = this.operators();
-    return [...new Set(filters.flatMap((f) => describeFilter(f, columns, catalogue)))];
+    return [...new Set(filters.flatMap((f) => FilterDescription.describe(f, columns, catalogue)))];
   }
 }

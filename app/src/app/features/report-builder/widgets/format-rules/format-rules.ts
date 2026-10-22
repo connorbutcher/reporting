@@ -20,7 +20,9 @@ export class FormatRules {
     rules: readonly FormatRule[] | null | undefined,
   ): FormatRuleStyle | null {
     for (const rule of rules ?? []) {
-      if (FormatRules.ruleMatches(value, rule)) return rule.style;
+      if (FormatRules.ruleMatches(value, rule)) {
+        return rule.style;
+      }
     }
     return null;
   }
@@ -28,8 +30,12 @@ export class FormatRules {
   /** Numbers and dates compare by value; anything else as case-insensitive text. */
   public static ruleMatches(value: RawCellValue, rule: FormatRule): boolean {
     const blank = value === null || value === undefined || value === '';
-    if (rule.operator === 'isEmpty') return blank;
-    if (blank) return false;
+    if (rule.operator === 'isEmpty') {
+      return blank;
+    }
+    if (blank) {
+      return false;
+    }
 
     if (rule.operator === 'contains') {
       return String(value).toLowerCase().includes(rule.value.trim().toLowerCase());
@@ -37,7 +43,9 @@ export class FormatRules {
 
     const left = FormatRules.comparable(value);
     const right = FormatRules.operand(rule.value, left.kind);
-    if (right === null) return false;
+    if (right === null) {
+      return false;
+    }
 
     switch (rule.operator) {
       case 'equals':
@@ -46,7 +54,9 @@ export class FormatRules {
         return FormatRules.compare(left.v, right) !== 0;
     }
 
-    if (left.kind === 'text') return false;
+    if (left.kind === 'text') {
+      return false;
+    }
     const order = FormatRules.compare(left.v, right);
     switch (rule.operator) {
       case 'greaterThan':
@@ -59,7 +69,9 @@ export class FormatRules {
         return order <= 0;
       case 'between': {
         const other = FormatRules.operand(rule.value2 ?? '', left.kind);
-        if (other === null) return false;
+        if (other === null) {
+          return false;
+        }
         const [low, high] = right <= other ? [right, other] : [other, right];
         return FormatRules.compare(left.v, low) >= 0 && FormatRules.compare(left.v, high) <= 0;
       }
@@ -80,11 +92,14 @@ export class FormatRules {
       min === undefined ||
       max === null ||
       max === undefined
-    )
+    ) {
       return null;
+    }
     const low = Math.min(0, min);
     const high = Math.max(0, max);
-    if (high === low) return null;
+    if (high === low) {
+      return null;
+    }
     return Math.max(0, Math.min(100, ((value - low) / (high - low)) * 100));
   }
 
@@ -92,25 +107,37 @@ export class FormatRules {
     kind: ValueKind;
     v: number | string;
   } {
-    if (typeof value === 'number') return { kind: 'number', v: value };
-    if (typeof value === 'boolean') return { kind: 'text', v: value ? 'true' : 'false' };
+    if (typeof value === 'number') {
+      return { kind: 'number', v: value };
+    }
+    if (typeof value === 'boolean') {
+      return { kind: 'text', v: value ? 'true' : 'false' };
+    }
     if (FormatRules.ISO_DATE.test(value)) {
       const time = Date.parse(value);
-      if (!Number.isNaN(time)) return { kind: 'date', v: time };
+      if (!Number.isNaN(time)) {
+        return { kind: 'date', v: time };
+      }
     }
     return { kind: 'text', v: value.toLowerCase() };
   }
 
   private static operand(raw: string, kind: ValueKind): number | string | null {
     const text = raw.trim();
-    if (kind === 'text') return text.toLowerCase();
-    if (text === '') return null;
+    if (kind === 'text') {
+      return text.toLowerCase();
+    }
+    if (text === '') {
+      return null;
+    }
     const parsed = kind === 'number' ? Number(text) : Date.parse(text);
     return Number.isNaN(parsed) ? null : parsed;
   }
 
   private static compare(left: number | string, right: number | string): number {
-    if (typeof left === 'number' && typeof right === 'number') return left - right;
+    if (typeof left === 'number' && typeof right === 'number') {
+      return left - right;
+    }
     return String(left).localeCompare(String(right));
   }
 }

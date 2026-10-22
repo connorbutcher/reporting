@@ -2,7 +2,7 @@ import { ExpressionAddress } from '../items/expression-address';
 import { FormulaItem } from '../items/formula-item';
 
 /** A selection of items that all sit in one expression. */
-export interface SelectionRange {
+export type SelectionRange = {
   address: ExpressionAddress;
   /** The selected items, in the order they appear. */
   items: FormulaItem[];
@@ -10,4 +10,4 @@ export interface SelectionRange {
   start: number;
   /** Whether they are next to each other, so they can be wrapped as one. */
   contiguous: boolean;
-}
+};

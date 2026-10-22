@@ -47,7 +47,9 @@ export class PanelColumnToleranceComponent {
     effect(() => {
       const columnId = this.columnId();
       const column = this.column();
-      if (!column || columnId === this.lastColumnId) return;
+      if (!column || columnId === this.lastColumnId) {
+        return;
+      }
       this.lastColumnId = columnId;
 
       const tolerance = untracked(() => column.tolerance());
@@ -57,7 +59,9 @@ export class PanelColumnToleranceComponent {
     // Write back only once complete, so a half-finished edit isn't saved.
     effect(() => {
       const tolerance = this.picker.toColumnTolerance();
-      if (!tolerance) return;
+      if (!tolerance) {
+        return;
+      }
       untracked(() => this.column()?.setTolerance(tolerance));
     });
   }

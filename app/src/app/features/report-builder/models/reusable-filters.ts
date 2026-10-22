@@ -43,7 +43,9 @@ export class ReusableFilters {
         ? [{ label: widget.label(), group: widget.filter }]
         : [];
     }
-    if (!(widget instanceof ChartWidgetModel)) return [];
+    if (!(widget instanceof ChartWidgetModel)) {
+      return [];
+    }
 
     const many = widget.bindings().length > 1;
     return widget

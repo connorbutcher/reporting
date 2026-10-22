@@ -110,7 +110,9 @@ export class PanelColumnSettingsComponent {
 
   public readonly effectiveAlign = computed<ColumnAlign>(() => {
     const explicit = this.column()?.align();
-    if (explicit) return explicit;
+    if (explicit) {
+      return explicit;
+    }
     const schemaColumn = this.schemaColumn();
     return schemaColumn && this.isNumeric(schemaColumn) ? 'right' : 'left';
   });
@@ -131,13 +133,17 @@ export class PanelColumnSettingsComponent {
 
   public toleranceSummary(column: TableColumnModel): string {
     const tolerance = column.tolerance();
-    if (!tolerance) return 'Not set';
+    if (!tolerance) {
+      return 'Not set';
+    }
     return tolerance.match ? 'Highlighting on · matched by value' : 'Highlighting on';
   }
 
   public openTolerance(columnId: string): void {
     const widgetId = this.table()?.id;
-    if (widgetId) this.navigation.navigate({ kind: 'columnTolerance', widgetId, columnId });
+    if (widgetId) {
+      this.navigation.navigate({ kind: 'columnTolerance', widgetId, columnId });
+    }
   }
 
   public patchNumeric(patch: Partial<Omit<NumericColumnConfig, 'kind'>>): void {
@@ -160,7 +166,9 @@ export class PanelColumnSettingsComponent {
   private saveConfig(config: DatasetColumnConfiguration): void {
     const datasetId = this.table()?.datasetId();
     const column = this.schemaColumn();
-    if (!datasetId || !column) return;
+    if (!datasetId || !column) {
+      return;
+    }
 
     this.schema.updateColumnConfiguration(datasetId, column.id, config);
   }

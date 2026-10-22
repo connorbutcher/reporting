@@ -1,7 +1,7 @@
 import { AxisLabelFormatting } from './axis-label-formatting';
 
-export interface CategoryAxisFragment {
+export type CategoryAxisFragment = {
   type: 'category';
   data: string[];
   axisLabel?: AxisLabelFormatting;
-}
+};

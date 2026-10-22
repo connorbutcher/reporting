@@ -1,7 +1,7 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
-  DEFAULT_PIVOT_CONFIG,
+  WidgetConfigDefaults,
   DateGrouping,
   PivotAggregate,
   PivotFieldGrouping,
@@ -83,7 +83,9 @@ export class PivotTableWidgetModel extends WidgetModel {
 
   /** Clears every column choice and the filter. */
   public setDataset(datasetId: number | null): void {
-    if (datasetId === this.datasetId()) return;
+    if (datasetId === this.datasetId()) {
+      return;
+    }
     this.datasetId.set(datasetId);
     this.rowFields.set([]);
     this.columnFields.set([]);
@@ -94,7 +96,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public addRowField(columnId: string): void {
-    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) return;
+    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) {
+      return;
+    }
     this.rowFields.update((fields) => [...fields, columnId]);
   }
 
@@ -104,7 +108,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   public addColumnField(columnId: string): void {
-    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) return;
+    if (this.rowFields().includes(columnId) || this.columnFields().includes(columnId)) {
+      return;
+    }
     this.columnFields.update((fields) => [...fields, columnId]);
   }
 
@@ -116,7 +122,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   public moveColumnField(index: number, offset: number): void {
     const fields = [...this.columnFields()];
     const target = index + offset;
-    if (target < 0 || target >= fields.length) return;
+    if (target < 0 || target >= fields.length) {
+      return;
+    }
     [fields[index], fields[target]] = [fields[target], fields[index]];
     this.columnFields.set(fields);
   }
@@ -128,14 +136,18 @@ export class PivotTableWidgetModel extends WidgetModel {
 
   public setFieldGrouping(columnId: string, grouping: DateGrouping | null): void {
     const others = this.fieldGroupings().filter((g) => g.columnId !== columnId);
-    if (!grouping && others.length === this.fieldGroupings().length) return;
+    if (!grouping && others.length === this.fieldGroupings().length) {
+      return;
+    }
     this.fieldGroupings.set(grouping ? [...others, { columnId, grouping }] : others);
   }
 
   public moveRowField(index: number, offset: number): void {
     const fields = [...this.rowFields()];
     const target = index + offset;
-    if (target < 0 || target >= fields.length) return;
+    if (target < 0 || target >= fields.length) {
+      return;
+    }
     [fields[index], fields[target]] = [fields[target], fields[index]];
     this.rowFields.set(fields);
   }
@@ -174,13 +186,17 @@ export class PivotTableWidgetModel extends WidgetModel {
   public removeMeasure(id: string): void {
     this.measures.update((measures) => measures.filter((m) => m.id !== id));
     // Clear the sort so the panel and query agree there's no measure sort.
-    if (this.sortMeasureId() === id) this.sortMeasureId.set(null);
+    if (this.sortMeasureId() === id) {
+      this.sortMeasureId.set(null);
+    }
   }
 
   public moveMeasure(index: number, offset: number): void {
     const measures = [...this.measures()];
     const target = index + offset;
-    if (target < 0 || target >= measures.length) return;
+    if (target < 0 || target >= measures.length) {
+      return;
+    }
     [measures[index], measures[target]] = [measures[target], measures[index]];
     this.measures.set(measures);
   }
@@ -188,7 +204,7 @@ export class PivotTableWidgetModel extends WidgetModel {
   public override toDto(): PivotTableWidget {
     const config: PivotTableWidgetConfig = {
       type: 'pivotTable',
-      ...DEFAULT_PIVOT_CONFIG,
+      ...WidgetConfigDefaults.PIVOT_TABLE,
       ...this.baseConfigDto(),
       datasetId: this.datasetId(),
       rowFields: [...this.rowFields()],
@@ -232,7 +248,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   private noMeasuresIssue(): ValidationIssue | null {
-    if (this.measures().length > 0) return null;
+    if (this.measures().length > 0) {
+      return null;
+    }
     return this.issue(
       'noMeasures',
       'warning',
@@ -242,7 +260,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   }
 
   private measureColumnIssue(): ValidationIssue | null {
-    if (!this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) return null;
+    if (!this.measures().some((m) => m.aggregate !== 'count' && !m.columnId)) {
+      return null;
+    }
     return this.issue(
       'measureNoColumn',
       'warning',
@@ -254,7 +274,9 @@ export class PivotTableWidgetModel extends WidgetModel {
   private removedFieldIssue(): ValidationIssue | null {
     const columnIds = this.schemaColumnIds();
     const fields = [...this.rowFields(), ...this.columnFields()];
-    if (!columnIds || fields.every((id) => columnIds.has(id))) return null;
+    if (!columnIds || fields.every((id) => columnIds.has(id))) {
+      return null;
+    }
     return this.issue(
       'missingRowField',
       'error',

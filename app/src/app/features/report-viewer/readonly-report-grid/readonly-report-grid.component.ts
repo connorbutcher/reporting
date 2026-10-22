@@ -5,11 +5,11 @@ import {
   ReportRevisionContent,
   Tab,
   Widget,
-  readChartBindings,
-  widgetFragment,
+  ChartConfigs,
+  WidgetFragment,
 } from '../../../core/models/report';
-import { isChartWidget, isExportableWidgetType } from '../../../core/models/widget-catalog';
-import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
 import { WidgetFullscreenDialogComponent } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
@@ -17,12 +17,8 @@ import { WidgetFullscreenDialogData } from '../../report-builder/widgets/widget-
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
 import { WidgetOutputHandler } from '../../report-builder/widgets/widget-output-handler';
 import { ReportComments } from '../comments/report-comments';
-import { chartBindingKey } from '../filters/view-filter-entry';
+import { ViewFilterEntryFactory } from '../filters/view-filter-entry-factory';
 
-/** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
-const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
-
-/** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
   selector: 'app-readonly-report-grid',
   imports: [WidgetExportActionsComponent, WidgetOutletDirective, ScrollToFragmentDirective],
@@ -30,45 +26,66 @@ const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
   styleUrl: './readonly-report-grid.component.scss',
 })
 export class ReadonlyReportGridComponent {
-  readonly content = input.required<ReportRevisionContent>();
+  private static readonly NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
 
-  /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
-  readonly tab = input.required<Tab>();
+  public readonly content = input.required<ReportRevisionContent>();
 
-  protected readonly rowHeight = GridLayout.ROW_HEIGHT;
-  protected readonly gridGap = GridLayout.GRID_GAP;
+  public readonly tab = input.required<Tab>();
+
+  public readonly rowHeight = GridLayout.ROW_HEIGHT;
+
+  public readonly gridGap = GridLayout.GRID_GAP;
 
   /**
-   * Session overrides from the viewer's filter panel. Page filters are keyed by
-   * the stringified dataset id; widget filters by widget id for a table, and by
-   * {@link chartBindingKey} for each chart binding. Left unset, the grid falls
-   * back to what the version published — so it still renders correctly on its own.
-   *
-   * Each value is a signal, not a plain `FilterGroup`, so reading only the one a
-   * widget actually needs tracks only that filter's own changes — a `Record`
-   * rebuilt whole on every edit would hand every widget a new reference and
-   * reload the entire report each time any single filter changed.
+   * Session overrides, keyed by dataset id (page), widget id (table) or
+   * {@link ViewFilterEntryFactory.chartBindingKey}. Unset falls back to what was published. Each value
+   * is a signal so a widget only reloads when its own filter changes.
    */
-  readonly pageFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
-  readonly widgetFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
+  public readonly pageFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
 
-  /** A widget's filter button was clicked; the host decides where to show it. */
-  readonly filterWidget = output<string>();
-  /** A widget's comments button was clicked; the host switches the aside to that widget's thread. */
-  readonly commentsRequest = output<string>();
+  public readonly widgetFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(
+    null,
+  );
+
+  public readonly filterWidget = output<string>();
+
+  public readonly commentsRequest = output<string>();
 
   private readonly comments = inject(ReportComments);
+
   private readonly dialog = inject(Dialog);
 
   private readonly widgetOutputs = new Map<string, Record<string, WidgetOutputHandler>>();
 
   /**
-   * The outputs to handle for a widget: a filterable one's count bar asks for its filters, which
-   * opens them just as its filter button does. Cached per widget so the outlet is handed the same
-   * object on every change-detection pass (a fresh one each time would re-set its input forever).
+   * Per-binding resolved filters by widget then binding id. A computed, so the outlet gets a stable
+   * reference (a fresh object each pass loops change detection, NG0103).
    */
-  protected outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
-    if (!this.canFilter(widget)) return NO_OUTPUTS;
+  private readonly chartBindingFilters = computed(() => {
+    const map = new Map<string, Record<string, FilterGroup | null>>();
+    for (const widget of this.tab().widgets) {
+      if (!WidgetCatalog.isChartWidget(widget)) {
+        continue;
+      }
+      const filters: Record<string, FilterGroup | null> = {};
+      for (const binding of ChartConfigs.bindings(widget.config)) {
+        if (!binding.datasetId) {
+          continue;
+        }
+        const report = this.reportFilterForDataset(binding.datasetId);
+        const own = this.bindingOwnFilter(widget.id, binding.id, binding.filter);
+        filters[binding.id] = FilterTrees.combine(report, own);
+      }
+      map.set(widget.id, filters);
+    }
+    return map;
+  });
+
+  /** Cached per widget so the outlet gets the same object on every change-detection pass. */
+  public outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
+    if (!this.canFilter(widget)) {
+      return ReadonlyReportGridComponent.NO_OUTPUTS;
+    }
     let outputs = this.widgetOutputs.get(widget.id);
     if (!outputs) {
       outputs = { filterRequest: () => this.filterWidget.emit(widget.id) };
@@ -77,17 +94,15 @@ export class ReadonlyReportGridComponent {
     return outputs;
   }
 
-  /** The fragment a link can name to jump straight to this widget. */
-  protected fragmentFor(widget: Widget): string {
-    return widgetFragment(widget.id);
+  public fragmentFor(widget: Widget): string {
+    return WidgetFragment.forWidget(widget.id);
   }
 
-  protected isExportable(widget: Widget): boolean {
-    return isExportableWidgetType(widget.type);
+  public isExportable(widget: Widget): boolean {
+    return WidgetCatalog.isExportableType(widget.type);
   }
 
-  /** Opens this widget at near-fullscreen size, fed the same per-widget filters its outlet already gets. */
-  protected openFullscreen(widget: Widget): void {
+  public openFullscreen(widget: Widget): void {
     this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
       data: {
         widget: () => widget,
@@ -101,91 +116,73 @@ export class ReadonlyReportGridComponent {
     });
   }
 
-  /** Only a table, pivot, KPI, or chart bound to a dataset has anything to filter. */
-  protected canFilter(widget: Widget): boolean {
+  public canFilter(widget: Widget): boolean {
     if (widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi') {
       return !!widget.config.datasetId;
     }
-    return isChartWidget(widget) && readChartBindings(widget.config).some((b) => !!b.datasetId);
+    return (
+      WidgetCatalog.isChartWidget(widget) &&
+      ChartConfigs.bindings(widget.config).some((b) => !!b.datasetId)
+    );
   }
 
-  /** This widget's comment count, for its header button's badge. */
-  protected commentCount(widget: Widget): number {
+  public commentCount(widget: Widget): number {
     return this.comments.countFor(widget.id);
   }
 
-  /** Conditions across this widget's own filters — what the button badge shows. */
-  protected conditionCount(widget: Widget): number {
-    if (isChartWidget(widget)) {
-      return readChartBindings(widget.config).reduce(
-        (n, b) => (b.datasetId ? n + countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter)) : n),
+  public conditionCount(widget: Widget): number {
+    if (WidgetCatalog.isChartWidget(widget)) {
+      return ChartConfigs.bindings(widget.config).reduce(
+        (n, b) =>
+          b.datasetId
+            ? n + FilterTrees.countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter))
+            : n,
         0,
       );
     }
-    return countConditions(this.widgetFilterFor(widget));
+    return FilterTrees.countConditions(this.widgetFilterFor(widget));
   }
 
-  /** So a published report narrows a table's rows exactly as it did in the builder. */
-  protected reportFilterFor(widget: Widget): FilterGroup | null {
+  public reportFilterFor(widget: Widget): FilterGroup | null {
     return this.reportFilterForDataset(this.datasetIdOf(widget));
   }
 
-  protected widgetFilterFor(widget: Widget): FilterGroup | null {
+  public widgetFilterFor(widget: Widget): FilterGroup | null {
     const override = this.widgetFilters()?.get(widget.id);
-    if (override) return override();
+    if (override) {
+      return override();
+    }
     return widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi'
       ? widget.config.filter
       : null;
   }
 
-  /**
-   * Every chart's per-binding resolved filters (page filter for the binding's
-   * dataset layered under its own session-override-or-published filter), keyed by
-   * widget id then binding id. Memoized in a computed so a template binding hands
-   * the outlet a *stable* reference across change-detection passes — building a
-   * fresh object per call fed a new input every pass and spun change detection
-   * into an infinite loop (NG0103). Recomputes only when content or a session
-   * filter actually changes.
-   */
-  private readonly chartBindingFilters = computed(() => {
-    const map = new Map<string, Record<string, FilterGroup | null>>();
-    for (const widget of this.tab().widgets) {
-      if (!isChartWidget(widget)) continue;
-      const filters: Record<string, FilterGroup | null> = {};
-      for (const binding of readChartBindings(widget.config)) {
-        if (!binding.datasetId) continue;
-        const report = this.reportFilterForDataset(binding.datasetId);
-        const own = this.bindingOwnFilter(widget.id, binding.id, binding.filter);
-        filters[binding.id] = combineFilters(report, own);
-      }
-      map.set(widget.id, filters);
-    }
-    return map;
-  });
-
-  /** A chart's per-binding filters; null for a non-chart (which filters through report/widgetFilterFor). */
-  protected bindingFiltersFor(widget: Widget): Record<string, FilterGroup | null> | null {
+  public bindingFiltersFor(widget: Widget): Record<string, FilterGroup | null> | null {
     return this.chartBindingFilters().get(widget.id) ?? null;
   }
 
-  /** A binding's own filter: the reader's session override if any, else what was published. */
   private bindingOwnFilter(
     widgetId: string,
     bindingId: string,
     published: FilterGroup | null,
   ): FilterGroup | null {
-    const override = this.widgetFilters()?.get(chartBindingKey(widgetId, bindingId));
+    const override = this.widgetFilters()?.get(
+      ViewFilterEntryFactory.chartBindingKey(widgetId, bindingId),
+    );
     return override ? override() : published;
   }
 
   private reportFilterForDataset(datasetId: number | null): FilterGroup | null {
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     const override = this.pageFilters()?.get(String(datasetId));
-    if (override) return override();
+    if (override) {
+      return override();
+    }
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
   }
 
-  /** The dataset a table, pivot, or KPI is bound to; charts filter per binding, not through this. */
   private datasetIdOf(widget: Widget): number | null {
     return widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi'
       ? widget.config.datasetId

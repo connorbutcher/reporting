@@ -1,144 +1,116 @@
 import { httpResource } from '@angular/common/http';
-import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import {
+  computed,
+  effect,
+  inject,
+  Injectable,
+  Signal,
+  signal,
+  untracked,
+  WritableSignal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetSource, DatasetSummary } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
 
-/**
- * The datasets screen's session state: which report's draft is being edited, the
- * list of that draft's datasets, and which one is selected — plus the
- * dataset-level lifecycle (create, rename, duplicate, delete) and the fixed set
- * of source systems the pickers draw from.
- *
- * The selection is driven by the `dataset` query param (see {@link selectedId})
- * rather than held in a plain signal, so it survives a reload, a deep link and
- * back/forward. The schema/rows collaborators key their resources off it.
- * Provided at the datasets page; the other collaborators and {@link DatasetsStore}
- * inject it.
- */
 @Injectable()
 export class DatasetCollection {
-  private readonly api = inject(DatasetApiService);
-  private readonly autosave = inject(DatasetAutosave);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
-  private readonly notify = inject(NotificationService);
+  public readonly datasets: WritableSignal<DatasetSummary[]>;
 
-  /** The report whose draft datasets are being edited; set by the page from the route. */
-  private readonly reportId = signal<number | null>(null);
+  public readonly datasetsLoading: Signal<boolean>;
 
-  /** The fixed set of source systems, for the source pickers. Loaded once. */
-  private readonly sourcesResource = httpResource<DatasetSource[]>(() => '/api/dataset-sources', {
-    defaultValue: [],
-  });
-  readonly sources = this.sourcesResource.value;
-
-  // A 404 here is expected control flow (the report may simply have no checked-out draft), and the
-  // sidebar already explains a load failure inline, so this opts out of the global not-found toast.
-  private readonly datasetsResource = httpResource<DatasetSummary[]>(
-    () =>
-      this.reportId() !== null
-        ? { url: `/api/reports/${this.reportId()}/datasets`, context: skipHttpErrorNotification() }
-        : undefined,
-    { defaultValue: [] },
-  );
-  readonly datasets = this.datasetsResource.value;
-
-  /** True while the dataset list is first loading, for the sidebar's skeleton. */
-  readonly datasetsLoading = this.datasetsResource.isLoading;
-
-  /** A failure loading the dataset list, shown in the sidebar. */
-  readonly listError = computed(() =>
+  public readonly listError = computed(() =>
     this.datasetsResource.error()
       ? "These datasets couldn't be loaded — the report may have no checked-out draft, or you may not have access to it."
       : null,
   );
 
-  // Selection is the `dataset` query param, so the URL is the source of truth:
-  // reloading, deep-linking or using back/forward all restore the open dataset.
-  private readonly datasetParam = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('dataset'))),
-    { initialValue: this.route.snapshot.queryParamMap.get('dataset') },
-  );
-  readonly selectedId = computed(() => {
+  public readonly selectedId = computed(() => {
     const raw = this.datasetParam();
     const id = raw === null ? NaN : Number(raw);
     return Number.isInteger(id) ? id : null;
   });
 
-  readonly selected = computed(
+  public readonly selected = computed(
     () => this.datasets().find((d) => d.id === this.selectedId()) ?? null,
   );
 
+  private readonly api = inject(DatasetApiService);
+
+  private readonly autosave = inject(DatasetAutosave);
+
+  private readonly router = inject(Router);
+
+  private readonly route = inject(ActivatedRoute);
+
+  private readonly notify = inject(NotificationService);
+
+  private readonly reportId = signal<number | null>(null);
+
+  private readonly sourcesResource = httpResource<DatasetSource[]>(() => '/api/dataset-sources', {
+    defaultValue: [],
+  });
+
+  // A report with no draft 404s, and the sidebar explains failures itself, so skip the toast.
+  private readonly datasetsResource = httpResource<DatasetSummary[]>(
+    () =>
+      this.reportId() !== null
+        ? { url: `/api/reports/${this.reportId()}/datasets`, context: HttpErrorNotification.skip() }
+        : undefined,
+    { defaultValue: [] },
+  );
+
+  // The `dataset` query param is the selection, so reloads and back/forward restore it.
+  private readonly datasetParam = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('dataset'))),
+    { initialValue: this.route.snapshot.queryParamMap.get('dataset') },
+  );
+
   constructor() {
-    // With nothing selected in the URL, default to the first dataset once the
-    // list arrives (replacing history so the bare URL isn't a back-button trap).
-    // Only fills an empty selection — a param pointing at a real dataset wins.
+    this.datasets = this.datasetsResource.value;
+    this.datasetsLoading = this.datasetsResource.isLoading;
+    // Defaults an empty selection to the first dataset, replacing history so it isn't a back trap.
     effect(() => {
       const list = this.datasets();
       untracked(() => {
-        if (this.selectedId() === null && list.length) this.openDataset(list[0].id, true);
+        if (this.selectedId() === null && list.length) {
+          this.openDataset(list[0].id, true);
+        }
       });
     });
   }
 
-  /** Points the store at a report's draft datasets; the list refetches reactively. */
-  setReport(reportId: number): void {
-    if (reportId === this.reportId()) return;
+  public setReport(reportId: number): void {
+    if (reportId === this.reportId()) {
+      return;
+    }
     this.reportId.set(reportId);
   }
 
-  select(id: number): void {
+  public select(id: number): void {
     this.openDataset(id);
   }
 
-  /**
-   * Writes the selection to the `dataset` query param, which the URL then drives
-   * back into {@link selectedId}. Replacing history is used for automatic moves
-   * (the initial default, closing a deleted dataset) so only a user's explicit
-   * pick leaves a back-button step.
-   */
-  private openDataset(id: number | null, replaceUrl = false): void {
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { dataset: id },
-      queryParamsHandling: 'merge',
-      replaceUrl,
-    });
-  }
-
-  /** Refetches the dataset list; used after a source change to refresh its source chip. */
-  reloadList(): void {
+  public reloadList(): void {
     this.datasetsResource.reload();
   }
 
-  /**
-   * True when another dataset on this report already uses `name` (trimmed,
-   * case-insensitive), ignoring the currently selected one — so a duplicate name
-   * can be caught before it's saved. Exposed for the toolbar's rename field.
-   */
-  datasetNameTaken(name: string): boolean {
+  /** True when another dataset already uses `name` (trimmed, case-insensitive). */
+  public datasetNameTaken(name: string): boolean {
     return this.nameTaken(name, this.selectedId());
   }
 
-  private nameTaken(name: string, exceptId: number | null): boolean {
-    const key = name.trim().toLowerCase();
-    return this.datasets().some(
-      (dataset) => dataset.id !== exceptId && dataset.name.trim().toLowerCase() === key,
-    );
-  }
-
-  createDataset(name: string, sourceId: number): void {
+  public createDataset(name: string, sourceId: number): void {
     const trimmed = name.trim();
     const reportId = this.reportId();
-    if (!trimmed || reportId === null || !sourceId) return;
-    // Don't save a name that already exists — it would land the report with two
-    // indistinguishable datasets (see DatasetValidation's duplicate-name check).
+    if (!trimmed || reportId === null || !sourceId) {
+      return;
+    }
     if (this.nameTaken(trimmed, null)) {
       this.notify.error(`A dataset called "${trimmed}" already exists. Choose a different name.`);
       return;
@@ -153,14 +125,12 @@ export class DatasetCollection {
     });
   }
 
-  renameDataset(name: string): void {
+  public renameDataset(name: string): void {
     const id = this.selectedId();
     const trimmed = name.trim();
-    // Skip the save when the name is blank or unchanged, so blurring the field
-    // without editing it doesn't fire a needless request.
-    if (!id || !trimmed || trimmed === this.selected()?.name) return;
-    // Don't save a name another dataset already uses — it would leave the report
-    // with two datasets that can't be told apart.
+    if (!id || !trimmed || trimmed === this.selected()?.name) {
+      return;
+    }
     if (this.nameTaken(trimmed, id)) {
       this.notify.error(`Another dataset is already called "${trimmed}". Choose a different name.`);
       return;
@@ -170,40 +140,36 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Dataset renamed to "${trimmed}".`);
       },
-      error: (err) => this.notify.apiError(err, `Couldn't rename the dataset to "${trimmed}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, `Couldn't rename the dataset to "${trimmed}". Please try again.`),
     });
   }
 
-  /** The name, suffixed with a counter if needed, so it doesn't collide with an existing dataset. */
-  private uniqueName(base: string): string {
-    if (!this.nameTaken(base, null)) return base;
-    for (let n = 2; ; n++) {
-      const candidate = `${base} ${n}`;
-      if (!this.nameTaken(candidate, null)) return candidate;
-    }
-  }
-
-  /** Deep-copies the selected dataset and opens the copy. */
-  cloneDataset(): void {
+  public cloneDataset(): void {
     const dataset = this.selected();
-    if (!dataset) return;
-    // A plain "(copy)" would clash on a second clone, so land on a free name.
-    this.autosave.track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`))).subscribe({
-      next: (created) => {
-        this.openDataset(created.id);
-        this.datasetsResource.reload();
-        this.notify.success(`Duplicated "${dataset.name}".`);
-      },
-      error: (err) => this.notify.apiError(err, `Couldn't duplicate "${dataset.name}". Please try again.`),
-    });
+    if (!dataset) {
+      return;
+    }
+    this.autosave
+      .track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`)))
+      .subscribe({
+        next: (created) => {
+          this.openDataset(created.id);
+          this.datasetsResource.reload();
+          this.notify.success(`Duplicated "${dataset.name}".`);
+        },
+        error: (err) =>
+          this.notify.apiError(err, `Couldn't duplicate "${dataset.name}". Please try again.`),
+      });
   }
 
-  deleteDataset(): void {
+  public deleteDataset(): void {
     const id = this.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     const name = this.selected()?.name;
-    // Pick the next surviving dataset up front so the delete opens it directly,
-    // rather than briefly clearing the selection and re-defaulting to the first.
+    // Opens the next dataset directly instead of clearing and re-defaulting.
     const next = this.datasets().find((d) => d.id !== id)?.id ?? null;
     this.autosave.track(this.api.remove(id)).subscribe({
       next: () => {
@@ -214,5 +180,38 @@ export class DatasetCollection {
       error: (err) =>
         this.notify.apiError(err, `Couldn't delete "${name ?? 'the dataset'}". Please try again.`),
     });
+  }
+
+  public get sources() {
+    return this.sourcesResource.value;
+  }
+
+  /** Automatic moves replace history so only explicit picks add a back step. */
+  private openDataset(id: number | null, replaceUrl = false): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { dataset: id },
+      queryParamsHandling: 'merge',
+      replaceUrl,
+    });
+  }
+
+  private nameTaken(name: string, exceptId: number | null): boolean {
+    const key = name.trim().toLowerCase();
+    return this.datasets().some(
+      (dataset) => dataset.id !== exceptId && dataset.name.trim().toLowerCase() === key,
+    );
+  }
+
+  private uniqueName(base: string): string {
+    if (!this.nameTaken(base, null)) {
+      return base;
+    }
+    for (let n = 2; ; n++) {
+      const candidate = `${base} ${n}`;
+      if (!this.nameTaken(candidate, null)) {
+        return candidate;
+      }
+    }
   }
 }

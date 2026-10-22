@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   AdminGroup,
   AdminGroupDetail,
@@ -12,18 +12,13 @@ import {
   SaveUser,
 } from '../models/admin';
 
-/**
- * The `/api/admin` endpoints for managing users and groups. The user/group admin endpoints require
- * the manage-users permission (delegated group managers are scoped by the server); {@link directory}
- * is the ungated people list used to pick members and managers.
- */
+/** User and group admin endpoints; {@link directory} is the ungated people list for pickers. */
 @Service()
 export class AdminApiService {
   private readonly http = inject(HttpClient);
 
-  // The admin screens render access/not-found failures inline (a load-error banner, a per-field
-  // message), so they opt out of the global toast to avoid doubling up on their own messaging.
-  private readonly options = { context: skipHttpErrorNotification() };
+  // The admin screens show these failures inline, so skip the toast.
+  private readonly options = { context: HttpErrorNotification.skip() };
 
   /** The full people directory (ungated), for member/manager pickers. */
   public directory(): Observable<DirectoryUser[]> {

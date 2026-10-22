@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { widgetTypesByGroup } from '../../../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../../../core/models/widget-catalog/widget-catalog';
 import { WidgetType } from '../../../../../core/models/report';
 import { WidgetCommands } from '../../../state/widget-commands';
 
@@ -11,7 +11,7 @@ import { WidgetCommands } from '../../../state/widget-commands';
 export class PanelAddWidgetComponent {
   public static readonly title = 'Add widget';
 
-  public readonly groups = widgetTypesByGroup();
+  public readonly groups = WidgetCatalog.typesByGroup();
 
   private readonly commands = inject(WidgetCommands);
 

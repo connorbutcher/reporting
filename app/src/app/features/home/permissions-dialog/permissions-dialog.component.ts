@@ -1,30 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { FormsModule } from '@angular/forms';
-import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
-import { AccessGrant, AccessLevel, SecurableKind } from '../../../core/models/permission';
+import { CheckboxModule } from 'primeng/checkbox';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { PermissionsDialogStore } from './permissions-dialog.store';
-
-export interface PermissionsDialogData {
-  kind: SecurableKind;
-  id: number;
-  name: string;
-}
-
-const LEVELS: { label: string; value: AccessLevel }[] = [
-  { label: 'Viewer', value: 'viewer' },
-  { label: 'Editor', value: 'editor' },
-  { label: 'Manager', value: 'manager' },
-];
+import { AccessGrant, AccessLevel } from '../../../core/models/permission';
+import { PermissionsDialogData } from './permissions-dialog-data';
 
 /**
- * Manage who can see and edit a folder or report: toggle whether it inherits from its
- * parent, add people or groups at a level, and change or remove the grants set here. The
- * list shows the effective picture — grants inherited from a parent are read-only and
- * labelled with their source; grants set here are editable.
- *
- * A thin view over {@link PermissionsDialogStore}, which owns the loading and mutations.
+ * Sharing for a folder or report. Inherited grants are read-only. A view over
+ * {@link PermissionsDialogStore}.
  */
 @Component({
   selector: 'app-permissions-dialog',
@@ -34,10 +19,15 @@ const LEVELS: { label: string; value: AccessLevel }[] = [
   providers: [PermissionsDialogStore],
 })
 export class PermissionsDialogComponent {
+  private static readonly LEVELS: { label: string; value: AccessLevel }[] = [
+    { label: 'Viewer', value: 'viewer' },
+    { label: 'Editor', value: 'editor' },
+    { label: 'Manager', value: 'manager' },
+  ];
   public readonly data = inject<PermissionsDialogData>(DIALOG_DATA);
   public readonly store = inject(PermissionsDialogStore);
 
-  public readonly levels = LEVELS;
+  public readonly levels = PermissionsDialogComponent.LEVELS;
 
   public readonly newSubject = signal<string | null>(null);
   public readonly newLevel = signal<AccessLevel>('viewer');
@@ -50,7 +40,9 @@ export class PermissionsDialogComponent {
 
   public addGrant(): void {
     const option = this.store.subjectOptions().find((o) => o.value === this.newSubject());
-    if (!option) return;
+    if (!option) {
+      return;
+    }
     this.store.addGrant(option, this.newLevel(), () => this.newSubject.set(null));
   }
 

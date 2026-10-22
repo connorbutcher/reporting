@@ -12,7 +12,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { FilterGroup, combineFilters } from '../../../../core/models/filter';
+import { FilterGroup, FilterTrees } from '../../../../core/models/filter';
 import { FormatRule, PivotTableWidgetConfig } from '../../../../core/models/report';
 import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query';
 import { Csv } from '../csv';
@@ -29,6 +29,7 @@ import { PivotValueColumn } from './models/pivot-value-column';
 import { PivotColumnBlock } from './models/pivot-column-block';
 import { PivotSort } from './models/pivot-sort';
 import { PivotDisplayRow } from './models/pivot-display-row';
+import { Plural } from '../../../../shared/text/plural';
 
 @Component({
   selector: 'app-pivot-table-widget',
@@ -64,16 +65,22 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   public readonly columnBlocks = computed<PivotColumnBlock[]>(() => {
     const data = this.source.result();
-    if (!data || !this.crossTab()) return [];
+    if (!data || !this.crossTab()) {
+      return [];
+    }
     const span = data.measures.length;
     const blocks = (data.columnKeys ?? []).map((k) => ({ label: k.labels.join(' · '), span }));
-    if (data.hasRowTotals) blocks.push({ label: 'Total', span });
+    if (data.hasRowTotals) {
+      blocks.push({ label: 'Total', span });
+    }
     return blocks;
   });
 
   public readonly valueColumns = computed<PivotValueColumn[]>(() => {
     const data = this.source.result();
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
     // "m<request position>": the server drops unusable measures but keeps the numbering.
     const measures = data.measures.map((m) => ({
       label: m.label,
@@ -82,7 +89,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const keyBlocks: (number | null)[] = this.crossTab()
       ? (data.columnKeys ?? []).map((_, i) => i)
       : [];
-    if (!this.crossTab() || data.hasRowTotals) keyBlocks.push(null);
+    if (!this.crossTab() || data.hasRowTotals) {
+      keyBlocks.push(null);
+    }
 
     return keyBlocks.flatMap((columnKeyIndex, block) =>
       measures.map((m, i) => ({ ...m, columnKeyIndex, valueIndex: block * measures.length + i })),
@@ -95,7 +104,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
    */
   public readonly effectiveSort = computed<PivotSort | null>(() => {
     const override = this.viewSort();
-    if (override !== undefined) return override;
+    if (override !== undefined) {
+      return override;
+    }
     const config = this.config();
     const index = config.sortMeasureId
       ? config.measures.findIndex((m) => m.id === config.sortMeasureId)
@@ -105,22 +116,30 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   public readonly rows = computed<PivotDisplayRow[]>(() => {
     const collapsed = this.collapsed();
-    if (collapsed.size === 0) return this.allRows();
+    if (collapsed.size === 0) {
+      return this.allRows();
+    }
 
     let hiddenUnder: string | null = null;
     return this.allRows().filter((row) => {
       if (hiddenUnder !== null) {
-        if (row.groupKey.startsWith(hiddenUnder + '\u0001')) return false;
+        if (row.groupKey.startsWith(hiddenUnder + '\u0001')) {
+          return false;
+        }
         hiddenUnder = null;
       }
-      if (row.isSubtotal && collapsed.has(row.groupKey)) hiddenUnder = row.groupKey;
+      if (row.isSubtotal && collapsed.has(row.groupKey)) {
+        hiddenUnder = row.groupKey;
+      }
       return true;
     });
   });
 
   public readonly grandTotal = computed<PivotDisplayRow | null>(() => {
     const total = this.source.result()?.grandTotal;
-    if (!total) return null;
+    if (!total) {
+      return null;
+    }
     return {
       dimensions: total.dimensions,
       path: [],
@@ -141,7 +160,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   /** "N of M rows", saying plainly when only part of the data was summarised. */
   public readonly countLabel = computed(() => {
     const data = this.source.result();
-    if (!data) return '';
+    if (!data) {
+      return '';
+    }
     const matched = data.matchedRowCount;
     if (data.scanTruncated) {
       const scanned = (data.scannedRowCount ?? 0).toLocaleString();
@@ -152,11 +173,11 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const total = data.totalRowCount;
     const groupsText = data.rowsTruncated
       ? `Showing the first ${groups.toLocaleString()} groups`
-      : `${groups.toLocaleString()} group${groups === 1 ? '' : 's'}`;
+      : `${groups.toLocaleString()} ${Plural.of(groups, 'group')}`;
     const rowsText =
       matched !== total
         ? `${matched.toLocaleString()} of ${total.toLocaleString()} rows`
-        : `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
+        : `${matched.toLocaleString()} ${Plural.of(matched, 'row')}`;
     const columnsText = data.columnsTruncated
       ? ` · first ${data.columnKeys?.length ?? 0} columns`
       : '';
@@ -168,7 +189,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   /** Every row, flattened, with repeated outer dimensions blanked into an outline. */
   private readonly allRows = computed<PivotDisplayRow[]>(() => {
     const data = this.source.result();
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
 
     const dimCount = data.rowFields.length;
     let previous: string[] | null = null;
@@ -178,8 +201,11 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       const dimensions = [...row.dimensions];
       if (previous) {
         for (let i = 0; i < Math.min(depth, dimCount); i++) {
-          if (row.dimensions[i] === previous[i]) dimensions[i] = '';
-          else break;
+          if (row.dimensions[i] === previous[i]) {
+            dimensions[i] = '';
+          } else {
+            break;
+          }
         }
       }
       previous = row.dimensions;
@@ -198,13 +224,16 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   private readonly valueRanges = computed(() => {
     const ranges = new Map<number, { min: number; max: number }>();
     for (const column of this.valueColumns()) {
-      if (!this.measureConfig(column.measureIndex)?.dataBars) continue;
+      if (!this.measureConfig(column.measureIndex)?.dataBars) {
+        continue;
+      }
       const values = this.allRows()
         .filter((r) => !r.isSubtotal)
         .map((r) => r.values[column.valueIndex]?.value)
         .filter((v): v is number => typeof v === 'number');
-      if (values.length)
+      if (values.length) {
         ranges.set(column.valueIndex, { min: Math.min(...values), max: Math.max(...values) });
+      }
     }
     return ranges;
   });
@@ -227,7 +256,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       const config = this.config();
       const datasetId = config.datasetId;
       const measures = config.measures;
-      if (!datasetId || measures.length === 0) return null;
+      if (!datasetId || measures.length === 0) {
+        return null;
+      }
 
       const sort = this.effectiveSort();
 
@@ -275,7 +306,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     });
 
     effect(() => {
-      if (!this.configured()) return;
+      if (!this.configured()) {
+        return;
+      }
       this.effectiveFilter();
       const config = this.config();
       config.rowFields;
@@ -326,13 +359,17 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
 
   public sortState(column: PivotValueColumn): 'ascending' | 'descending' | 'none' {
     const sort = this.effectiveSort();
-    if (sort?.kind !== 'measure' || sort.index !== column.measureIndex) return 'none';
+    if (sort?.kind !== 'measure' || sort.index !== column.measureIndex) {
+      return 'none';
+    }
     return sort.descending ? 'descending' : 'ascending';
   }
 
   public fieldSortState(column: PivotDimensionColumn): 'ascending' | 'descending' | 'none' {
     const sort = this.effectiveSort();
-    if (sort?.kind !== 'field' || sort.index !== column.fieldIndex) return 'none';
+    if (sort?.kind !== 'field' || sort.index !== column.fieldIndex) {
+      return 'none';
+    }
     return sort.descending ? 'descending' : 'ascending';
   }
 
@@ -340,7 +377,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     event.stopPropagation();
     this.collapsed.update((collapsed) => {
       const next = new Set(collapsed);
-      if (!next.delete(row.groupKey)) next.add(row.groupKey);
+      if (!next.delete(row.groupKey)) {
+        next.add(row.groupKey);
+      }
       return next;
     });
   }
@@ -356,7 +395,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   }
 
   public barPercent(column: PivotValueColumn, row: PivotDisplayRow): number | null {
-    if (row.isSubtotal) return null;
+    if (row.isSubtotal) {
+      return null;
+    }
     const range = this.valueRanges().get(column.valueIndex);
     return range
       ? FormatRules.dataBarPercent(row.values[column.valueIndex]?.value, range.min, range.max)
@@ -364,14 +405,20 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   }
 
   public canDrill(row: PivotDisplayRow, column: PivotValueColumn | null): boolean {
-    if (!row.drill) return false;
-    if (column?.columnKeyIndex == null) return true;
+    if (!row.drill) {
+      return false;
+    }
+    if (column?.columnKeyIndex == null) {
+      return true;
+    }
     return !!this.source.result()?.columnKeys?.[column.columnKeyIndex]?.drill;
   }
 
   public drill(row: PivotDisplayRow, column: PivotValueColumn | null): void {
     const datasetId = this.datasetId();
-    if (!datasetId || !this.canDrill(row, column)) return;
+    if (!datasetId || !this.canDrill(row, column)) {
+      return;
+    }
 
     const data = this.source.result()!;
     const columnKey =
@@ -383,7 +430,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       data: {
         datasetId,
         title,
-        filter: combineFilters(this.effectiveFilter(), row.drill, columnKey?.drill ?? null),
+        filter: FilterTrees.combine(this.effectiveFilter(), row.drill, columnKey?.drill ?? null),
       },
       ariaLabelledBy: 'drill-through-title',
     });
@@ -398,7 +445,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   /** A header, one line per row (subtotals included), then the grand total. */
   public exportCsv(): string | null {
     const data = this.source.result();
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
 
     const columns = this.valueColumns();
     const header = [
@@ -427,7 +476,9 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
   private csvValueHeader(data: PivotQueryResult, column: PivotValueColumn): string {
     const label =
       data.measures.find((m) => Number(m.key.slice(1)) === column.measureIndex)?.label ?? '';
-    if (!this.crossTab()) return label;
+    if (!this.crossTab()) {
+      return label;
+    }
     const block =
       column.columnKeyIndex === null
         ? 'Total'

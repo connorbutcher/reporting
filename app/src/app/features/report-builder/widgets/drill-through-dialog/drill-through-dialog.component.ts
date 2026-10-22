@@ -2,7 +2,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { DatasetColumn } from '../../../../core/models/dataset';
-import { DEFAULT_TABLE_CONFIG, DataTableWidgetConfig } from '../../../../core/models/report';
+import { WidgetConfigDefaults, DataTableWidgetConfig } from '../../../../core/models/report';
 import { DataTableWidgetComponent } from '../data-table-widget/data-table-widget.component';
 import { WidgetExportActionsComponent } from '../widget-export-actions/widget-export-actions.component';
 import { DrillThroughDialogData } from './drill-through-dialog-data';
@@ -22,9 +22,11 @@ export class DrillThroughDialogComponent {
 
   public readonly config = computed<DataTableWidgetConfig | null>(() => {
     const columns = this.columns();
-    if (!columns) return null;
+    if (!columns) {
+      return null;
+    }
     return {
-      ...DEFAULT_TABLE_CONFIG,
+      ...WidgetConfigDefaults.DATA_TABLE,
       type: 'dataTable',
       title: this.data.title,
       datasetId: this.data.datasetId,

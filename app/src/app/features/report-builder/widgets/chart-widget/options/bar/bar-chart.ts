@@ -3,7 +3,7 @@ import { BarChartWidgetConfig, ChartValueAxis } from '../../../../../../core/mod
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 
 /** A bar chart's config and data, resolved once and shared by each part of its option. */
-export interface BarChart {
+export type BarChart = {
   readonly config: BarChartWidgetConfig;
   readonly data: BarChartQueryResult | null;
   readonly categoryColumn: DatasetColumn;
@@ -22,4 +22,4 @@ export interface BarChart {
   readonly zoom: boolean;
   /** Each stack's per-category total, when stacked. */
   readonly stackTotals: Map<string, number[]>;
-}
+};

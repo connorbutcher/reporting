@@ -8,7 +8,7 @@ import {
   ChartSort,
   ChartSortBy,
   DateGrouping,
-  DEFAULT_CHART_SORT,
+  WidgetConfigDefaults,
   SortAggregate,
 } from '../../../../../core/models/report';
 
@@ -44,7 +44,9 @@ export class PanelChartSortComponent {
   public readonly showTopN = input(false);
 
   public readonly showGrouping = computed(() => {
-    if (this.grouping() === undefined) return false;
+    if (this.grouping() === undefined) {
+      return false;
+    }
     const id = this.categoryColumnId();
     return !!id && this.columns().find((c) => c.id === id)?.type === 'dateTime';
   });
@@ -59,7 +61,7 @@ export class PanelChartSortComponent {
     { label: 'Year', value: 'year' },
   ];
 
-  public readonly resolved = computed(() => this.sort() ?? DEFAULT_CHART_SORT);
+  public readonly resolved = computed(() => this.sort() ?? WidgetConfigDefaults.CHART_SORT);
 
   public readonly byOptions = computed<{ label: string; value: ChartSortBy }[]>(() => [
     { label: this.defaultLabel(), value: 'default' },

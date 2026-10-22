@@ -1,9 +1,5 @@
 import { DatasetColumn } from '../../../../../../core/models/dataset';
-import {
-  HistogramWidgetConfig,
-  readChartAxes,
-  readChartBindings,
-} from '../../../../../../core/models/report';
+import { HistogramWidgetConfig, ChartConfigs } from '../../../../../../core/models/report';
 import { HistogramQueryResult } from '../../../../../../core/models/widget-query';
 import { SeriesColors } from '../colors/series-colors';
 import { ChartColumns } from '../format/chart-columns';
@@ -21,10 +17,12 @@ export class HistogramChartResolver {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): HistogramChart | null {
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const valueColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
-    if (!valueColumn) return null;
+    if (!valueColumn) {
+      return null;
+    }
 
     const bins = data?.bins ?? [];
     const results = data?.series ?? [];
@@ -37,7 +35,7 @@ export class HistogramChartResolver {
       bins,
       binLabels: HistogramBinAxis.labels(bins, ChartFormat.numericConfig(valueColumn)),
       series,
-      countAxisConfig: readChartAxes(config)[0],
+      countAxisConfig: ChartConfigs.axes(config)[0],
       horizontal: config.horizontal,
       showLegend: series.length > 1 && config.showLegend,
     };

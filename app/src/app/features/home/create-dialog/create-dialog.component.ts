@@ -8,34 +8,19 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { form, required, validate, validateHttp } from '@angular/forms/signals';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
-import { Folder } from '../../../core/models/folder.model';
-import { ReportSummary } from '../../../core/models/report';
-import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
-import { ROOT_KEY } from '../folder-tree.store';
-import { groupByParent } from '../group-by-parent.util';
-
-export type CreateKind = 'folder' | 'report';
-
-export interface CreateDialogData {
-  folders: Folder[];
-  reports: ReportSummary[];
-  /** The folder the new item will be created in (null = Home). Drives the uniqueness check. */
-  folderId: number | null;
-}
-
-export interface CreateDialogResult {
-  kind: CreateKind;
-  name: string;
-  /** Set when the user picked an existing report to start from — undefined means start blank. */
-  sourceReportId?: number;
-}
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { TreeNode } from 'primeng/api';
+import { form, required, validate, validateHttp } from '@angular/forms/signals';
+import { CreateDialogData } from './create-dialog-data';
+import { CreateKind } from './create-kind';
+import { HttpContext } from '@angular/common/http';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { FolderTreeStore } from '../folder-tree.store';
+import { CreateDialogResult } from './create-dialog-result';
+import { FolderTrees } from '../folder-trees';
 
 /** Lets the user pick folder-vs-report, name it, and (for reports) optionally copy an existing one — in one step, before creating either. */
 @Component({
@@ -50,52 +35,16 @@ export class CreateDialogComponent implements AfterViewInit {
   public readonly kind = signal<CreateKind>('report');
   public readonly selectedSource = signal<TreeNode | null>(null);
 
-  // The name is required and must be unique within the destination folder for the
-  // selected kind (folders are checked against sibling folders, reports against
-  // sibling reports). The duplicate check runs as a live validator, so a clashing
-  // name disables Create and shows a message as it's typed — before the dialog closes.
+  /** Unique among visible siblings locally; the server makes the final call. */
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A name is required.' });
-    // Fast, offline check against the siblings this dialog was handed — catches the common case
-    // instantly. Those lists are ACL-filtered to what the caller can see though (see the folder/report
-    // repositories' NameAvailableAsync), so a sibling with a stricter ACL of its own can hide from it.
-    validate(path.name, ({ value }) => {
-      const name = value().trim().toLowerCase();
-      if (!name) return null;
-      const taken = this.siblingNames().some((existing) => existing === name);
-      return taken
-        ? {
-            kind: 'duplicate',
-            message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
-          }
-        : null;
-    });
-    // Authoritative check against every sibling on the server (only once the checks above pass), so a
-    // name that collides with one the caller can't see still can't be reused.
+    validate(path.name, ({ value }) => this.localDuplicateError(value()));
     validateHttp<string, { available: boolean }>(path.name, {
       when: ({ value }) => value().trim().length > 0,
-      request: ({ value }) => ({
-        url: this.kind() === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
-        params: {
-          name: value().trim(),
-          ...(this.data.folderId == null
-            ? {}
-            : this.kind() === 'folder'
-              ? { parentFolderId: this.data.folderId }
-              : { folderId: this.data.folderId }),
-        } as Record<string, string | number>,
-        context: skipHttpErrorNotification(),
-      }),
+      request: ({ value }) => this.nameAvailableRequest(value().trim()),
       debounce: 400,
       onSuccess: (result, { value }) =>
-        result.available
-          ? []
-          : [
-              {
-                kind: 'duplicate',
-                message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
-              },
-            ],
+        result.available ? [] : [this.duplicateError(value().trim())],
       onError: () => [],
     });
   });
@@ -111,7 +60,7 @@ export class CreateDialogComponent implements AfterViewInit {
 
   public readonly treeNodes = computed<TreeNode[]>(() => [
     {
-      key: ROOT_KEY,
+      key: FolderTreeStore.ROOT_KEY,
       label: 'Home',
       icon: 'pi pi-home',
       selectable: false,
@@ -135,10 +84,10 @@ export class CreateDialogComponent implements AfterViewInit {
   );
 
   private readonly foldersByParent = computed(() =>
-    groupByParent(this.data.folders, (f) => f.parentFolderId),
+    FolderTrees.groupByParent(this.data.folders, (f) => f.parentFolderId),
   );
   private readonly reportsByParent = computed(() =>
-    groupByParent(this.data.reports, (r) => r.folderId),
+    FolderTrees.groupByParent(this.data.reports, (r) => r.folderId),
   );
 
   public ngAfterViewInit(): void {
@@ -147,12 +96,16 @@ export class CreateDialogComponent implements AfterViewInit {
 
   public selectKind(kind: CreateKind): void {
     this.kind.set(kind);
-    if (kind === 'folder') this.selectedSource.set(null);
+    if (kind === 'folder') {
+      this.selectedSource.set(null);
+    }
   }
 
   public create(): void {
     const name = this.form.name().value().trim();
-    if (!this.form().valid() || !name) return;
+    if (!this.form().valid() || !name) {
+      return;
+    }
     const sourceKey = this.selectedSource()?.key;
     const sourceReportId =
       this.kind() === 'report' && sourceKey !== undefined ? Number(sourceKey) : undefined;
@@ -164,7 +117,7 @@ export class CreateDialogComponent implements AfterViewInit {
   }
 
   private childNodes(parentId: number | null): TreeNode[] {
-    const folderNodes = buildFolderTreeNodes(
+    const folderNodes = FolderTrees.buildNodes(
       parentId,
       this.foldersByParent(),
       (folder, children) => ({
@@ -182,5 +135,34 @@ export class CreateDialogComponent implements AfterViewInit {
       leaf: true,
     }));
     return [...folderNodes, ...reportNodes];
+  }
+
+  private localDuplicateError(value: string): { kind: string; message: string } | null {
+    const name = value.trim().toLowerCase();
+    if (!name || !this.siblingNames().some((existing) => existing === name)) {
+      return null;
+    }
+    return this.duplicateError(value.trim());
+  }
+
+  private duplicateError(name: string): { kind: string; message: string } {
+    return { kind: 'duplicate', message: `A ${this.kind()} called "${name}" already exists here.` };
+  }
+
+  private nameAvailableRequest(name: string): {
+    url: string;
+    params: Record<string, string | number>;
+    context: HttpContext;
+  } {
+    const isFolder = this.kind() === 'folder';
+    const params: Record<string, string | number> = { name };
+    if (this.data.folderId != null) {
+      params[isFolder ? 'parentFolderId' : 'folderId'] = this.data.folderId;
+    }
+    return {
+      url: isFolder ? '/api/folders/name-available' : '/api/reports/name-available',
+      params,
+      context: HttpErrorNotification.skip(),
+    };
   }
 }

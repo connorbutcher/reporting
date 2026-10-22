@@ -1,7 +1,7 @@
 import { RpnIssue } from './rpn-issue';
 import { RpnToken } from './rpn-token';
 
-export interface Rpn {
+export type Rpn = {
   tokens: RpnToken[];
   issues: RpnIssue[];
-}
+};

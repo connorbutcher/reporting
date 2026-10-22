@@ -34,13 +34,17 @@ export class PanelChartSeriesListComponent {
   /** The dataset name, or a prompt when unbound. */
   public seriesLabel(binding: ChartBindingModel): string {
     const id = binding.datasetId();
-    if (!id) return 'New series';
+    if (!id) {
+      return 'New series';
+    }
     return this.session.datasets().find((d) => d.id === id)?.name ?? 'Dataset';
   }
 
   /** A one-line summary of the series' axes, or what's left to set up. */
   public seriesHint(binding: ChartBindingModel): string {
-    if (!binding.datasetId()) return 'Pick a dataset';
+    if (!binding.datasetId()) {
+      return 'Pick a dataset';
+    }
     const columnNames = new Map<string | null, string>(
       (binding.schema()?.columns ?? []).map((c) => [c.id, c.name]),
     );
@@ -51,7 +55,9 @@ export class PanelChartSeriesListComponent {
       this.chart() instanceof BarChartWidgetModel ||
       this.chart() instanceof ComboChartWidgetModel
     ) {
-      if (!x) return 'Choose a category';
+      if (!x) {
+        return 'Choose a category';
+      }
       const values = binding
         .barValueColumnIds()
         .map((id) => columnNames.get(id))
@@ -61,13 +67,17 @@ export class PanelChartSeriesListComponent {
 
     // A histogram bins one column, optionally split.
     if (this.chart() instanceof HistogramWidgetModel) {
-      if (!x) return 'Choose a column';
+      if (!x) {
+        return 'Choose a column';
+      }
       const splitBy = columnNames.get(binding.seriesColumnId());
       return splitBy ? `${x} · split by ${splitBy}` : x;
     }
 
     const y = columnNames.get(binding.yColumnId());
-    if (!x || !y) return 'Choose X and Y columns';
+    if (!x || !y) {
+      return 'Choose X and Y columns';
+    }
     return `${x} → ${y}`;
   }
 

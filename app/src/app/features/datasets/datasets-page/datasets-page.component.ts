@@ -15,19 +15,12 @@ import { DatasetSchemaState } from '../state/dataset-schema-state';
 import { DatasetSourceCommands } from '../state/dataset-source-commands';
 import { DatasetValidation } from '../state/dataset-validation';
 
-/**
- * The datasets screen for one report's draft: the dataset list on the left, the
- * selected one's editor on the right. Reached from the report builder; the
- * `reportId` route param scopes the store to that report's draft. Provides the
- * store so the list and editor (and its panels) share one instance.
- */
 @Component({
   selector: 'app-datasets-page',
   imports: [DatasetListComponent, DatasetEditorComponent, DatasetRevisionCardComponent],
   templateUrl: './datasets-page.component.html',
   styleUrl: './datasets-page.component.scss',
-  // The store is a thin facade over these focused collaborator services; all are
-  // provided here so they share one component-scoped instance per report screen.
+  // Provided here so the store's collaborators share one instance per report screen.
   providers: [
     DatasetAutosave,
     DatasetCollection,
@@ -43,13 +36,15 @@ import { DatasetValidation } from '../state/dataset-validation';
   ],
 })
 export class DatasetsPageComponent {
+  /** The report we came from, passed to the list for its "back to report" link. */
+  public readonly reportId: number;
+
   private readonly store = inject(DatasetsStore);
+
   private readonly route = inject(ActivatedRoute);
 
-  /** The report we came from, passed to the list for its "back to report" link. */
-  protected readonly reportId = Number(this.route.snapshot.paramMap.get('reportId'));
-
   constructor() {
+    this.reportId = Number(this.route.snapshot.paramMap.get('reportId'));
     this.store.setReport(this.reportId);
   }
 }

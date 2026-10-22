@@ -38,7 +38,10 @@ export class FormulaApiService {
     columnId: string,
     column: SaveFormulaColumn,
   ): Observable<DatasetColumn> {
-    return this.http.put<DatasetColumn>(`/api/datasets/${datasetId}/columns/${columnId}/formula`, column);
+    return this.http.put<DatasetColumn>(
+      `/api/datasets/${datasetId}/columns/${columnId}/formula`,
+      column,
+    );
   }
 
   /** Recomputes every formula column — for after the function catalogue changed. */

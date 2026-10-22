@@ -40,7 +40,9 @@ export class WidgetCountBarComponent {
   public readonly tooltip = computed(() => {
     const filters = this.filters();
     const lines = filters.length > 0 ? ['Filtered by:', ...filters.map((f) => `• ${f}`)] : [];
-    if (this.actionable()) lines.push(...(lines.length > 0 ? [''] : []), 'Click to change filters');
+    if (this.actionable()) {
+      lines.push(...(lines.length > 0 ? [''] : []), 'Click to change filters');
+    }
     return lines.join('\n');
   });
 }

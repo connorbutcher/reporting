@@ -12,7 +12,9 @@ export class CategoryAxisMerge {
     const seen = new Set<string>();
     for (const { result } of parts) {
       result.categories.forEach((category, i) => {
-        if (seen.has(category)) return;
+        if (seen.has(category)) {
+          return;
+        }
         seen.add(category);
         union.push(category);
         unionDetails.push(result.categoryDetails?.[i]);
@@ -38,18 +40,26 @@ export class CategoryAxisMerge {
     sort: ChartSort | undefined,
   ): number[] {
     const indices = categories.map((_, i) => i);
-    if (sort?.by === 'column') return indices;
+    if (sort?.by === 'column') {
+      return indices;
+    }
     const sorted = [...indices].sort((a, b) => {
       const da = details[a];
       const db = details[b];
       const byRank = CategoryAxisMerge.rank(da) - CategoryAxisMerge.rank(db);
-      if (byRank !== 0) return byRank;
-      if (da?.sortNumber != null && db?.sortNumber != null) return da.sortNumber - db.sortNumber;
+      if (byRank !== 0) {
+        return byRank;
+      }
+      if (da?.sortNumber != null && db?.sortNumber != null) {
+        return da.sortNumber - db.sortNumber;
+      }
       const ta = da?.sortText ?? categories[a];
       const tb = db?.sortText ?? categories[b];
       return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
     });
-    if (!sort?.descending) return sorted;
+    if (!sort?.descending) {
+      return sorted;
+    }
     // Descending keeps blank and "Other" at the end.
     const real = sorted.filter((i) => CategoryAxisMerge.rank(details[i]) === 0).reverse();
     return [...real, ...sorted.filter((i) => CategoryAxisMerge.rank(details[i]) !== 0)];

@@ -83,15 +83,18 @@ export class ToleranceSourcePicker {
 
   /** The fixed-row pointer, or the limits plus match when matching is on. Null while incomplete. */
   public toColumnTolerance(): ToleranceConfig | null {
-    if (!this.matchEnabled()) return this.toPointer();
+    if (!this.matchEnabled()) {
+      return this.toPointer();
+    }
 
     const sourceDatasetId = this.sourceDatasetId();
     const minColumnId = this.minColumnId();
     const maxColumnId = this.maxColumnId();
     const columnId = this.matchColumnId();
     const sourceColumnId = this.sourceMatchColumnId();
-    if (!sourceDatasetId || !minColumnId || !maxColumnId || !columnId || !sourceColumnId)
+    if (!sourceDatasetId || !minColumnId || !maxColumnId || !columnId || !sourceColumnId) {
       return null;
+    }
 
     const concessionLowerColumnId = this.concessionLowerColumnId();
     const concessionUpperColumnId = this.concessionUpperColumnId();
@@ -111,7 +114,9 @@ export class ToleranceSourcePicker {
     const sourceRowId = this.sourceRowId();
     const minColumnId = this.minColumnId();
     const maxColumnId = this.maxColumnId();
-    if (!sourceDatasetId || !sourceRowId || !minColumnId || !maxColumnId) return null;
+    if (!sourceDatasetId || !sourceRowId || !minColumnId || !maxColumnId) {
+      return null;
+    }
 
     const concessionLowerColumnId = this.concessionLowerColumnId();
     const concessionUpperColumnId = this.concessionUpperColumnId();
@@ -138,7 +143,9 @@ export class ToleranceSourcePicker {
   private loadSource(datasetId: number | null): void {
     this.sourceSchema.set(null);
     this.sourceData.set(null);
-    if (!datasetId) return;
+    if (!datasetId) {
+      return;
+    }
 
     this.loadingSource.set(true);
     this.datasetApi.getSchema(datasetId).subscribe({

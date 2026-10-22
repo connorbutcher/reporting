@@ -1,5 +1,5 @@
 import { DatasetColumn } from '../../../../core/models/dataset';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -33,13 +33,18 @@ export class ChartExport {
       // A combo chart's data is the bar result, whichever series draw as lines.
       return ChartExport.barTable(data as BarChartQueryResult);
     }
-    if (config.type === 'boxPlot') return ChartExport.boxTable(data as BoxPlotQueryResult);
-    if (config.type === 'histogram')
+    if (config.type === 'boxPlot') {
+      return ChartExport.boxTable(data as BoxPlotQueryResult);
+    }
+    if (config.type === 'histogram') {
       return ChartExport.histogramTable(data as HistogramQueryResult);
-    if (config.type === 'xbarRChart') return ChartExport.xBarRTable(data as XBarRChartQueryResult);
+    }
+    if (config.type === 'xbarRChart') {
+      return ChartExport.xBarRTable(data as XBarRChartQueryResult);
+    }
 
     // Date axes carry epoch millis.
-    const primary = readChartBindings(config).find((b) => b.datasetId);
+    const primary = ChartConfigs.bindings(config).find((b) => b.datasetId);
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     return ChartExport.pointTable(data as ChartQueryResult, x, y);
@@ -84,7 +89,9 @@ export class ChartExport {
     ];
     for (const series of data.series) {
       series.boxes.forEach((box, i) => {
-        if (!box) return;
+        if (!box) {
+          return;
+        }
         rows.push([
           ...(multi ? [series.label] : []),
           data.categories[i],

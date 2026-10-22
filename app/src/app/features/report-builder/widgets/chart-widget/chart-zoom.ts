@@ -11,10 +11,14 @@ export class ChartZoomMemory {
   private static readonly PREFIX = 'chart-zoom:';
 
   public static read(key: string | null): ChartZoomRange | null {
-    if (!key) return null;
+    if (!key) {
+      return null;
+    }
     try {
       const raw = sessionStorage.getItem(ChartZoomMemory.PREFIX + key);
-      if (!raw) return null;
+      if (!raw) {
+        return null;
+      }
       const parsed = JSON.parse(raw) as Partial<ChartZoomRange>;
       return typeof parsed.start === 'number' && typeof parsed.end === 'number'
         ? { start: parsed.start, end: parsed.end }
@@ -25,11 +29,16 @@ export class ChartZoomMemory {
   }
 
   public static write(key: string | null, range: ChartZoomRange | null): void {
-    if (!key) return;
+    if (!key) {
+      return;
+    }
     try {
       const full = !range || (range.start <= 0 && range.end >= 100);
-      if (full) sessionStorage.removeItem(ChartZoomMemory.PREFIX + key);
-      else sessionStorage.setItem(ChartZoomMemory.PREFIX + key, JSON.stringify(range));
+      if (full) {
+        sessionStorage.removeItem(ChartZoomMemory.PREFIX + key);
+      } else {
+        sessionStorage.setItem(ChartZoomMemory.PREFIX + key, JSON.stringify(range));
+      }
     } catch {
       // Storage blocked or full: the zoom just isn't remembered.
     }
@@ -52,7 +61,9 @@ export class ChartZoomMemory {
     option: T,
     range: ChartZoomRange | null,
   ): T {
-    if (!range || !Array.isArray(option.dataZoom)) return option;
+    if (!range || !Array.isArray(option.dataZoom)) {
+      return option;
+    }
     const dataZoom = (option.dataZoom as Record<string, unknown>[]).map((zoom) =>
       zoom['id'] === ChartZoomMemory.VALUE_ZOOM_ID
         ? zoom

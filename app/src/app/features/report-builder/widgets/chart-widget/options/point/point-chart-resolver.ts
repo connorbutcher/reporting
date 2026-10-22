@@ -2,8 +2,7 @@ import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   ChartValueAxis,
-  readChartAxes,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../../core/models/report';
 import { ChartQueryResult, ChartSeriesResult } from '../../../../../../core/models/widget-query';
 import { ValueExtent } from '../axes/value-extent';
@@ -29,14 +28,16 @@ export class PointChartResolver {
     commentAnchors: readonly ChartCommentAnchor[],
     highlightedAnchor: ChartCommentAnchor | null,
   ): PointChart | null {
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? null;
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
-    if (!x || !y) return null;
+    if (!x || !y) {
+      return null;
+    }
 
     const series = data?.series ?? [];
-    const axes = readChartAxes(config);
+    const axes = ChartConfigs.axes(config);
     const yFields = PointChartResolver.yFields(axes, y);
     return {
       config,

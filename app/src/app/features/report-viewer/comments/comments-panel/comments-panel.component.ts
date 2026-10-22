@@ -1,42 +1,17 @@
 import { Component, ElementRef, Signal, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { DirectoryUser } from '../../../../core/models/admin';
-import { WidgetComment, WidgetCommentAuthor } from '../../../../core/models/widget-comment.model';
-import { ReportViewerStore } from '../../report-viewer.store';
 import { ReportComments } from '../report-comments';
-
-/** One run of a comment's body: plain text, or an `@name` mention rendered as a chip. */
-interface CommentPart {
-  text: string;
-  isMention: boolean;
-}
-
-/** A thread comment with its body pre-split for rendering and its chart anchor, when it has one, pre-resolved. */
-interface DisplayComment extends WidgetComment {
-  parts: CommentPart[];
-  anchor: { x: number; y: number; yAxisIndex?: number; label: string } | null;
-  /** Whether this comment's own anchor is the one currently drawing attention — on the chart or the comment card alike. */
-  isHighlighted: boolean;
-}
-
-/** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Splits a comment body into plain-text and mention runs, for highlighting `@name` inline. */
-function commentParts(body: string, mentions: readonly WidgetCommentAuthor[]): CommentPart[] {
-  if (mentions.length === 0) return [{ text: body, isMention: false }];
-  const tags = new Set(mentions.map((m) => `@${m.displayName}`));
-  const pattern = new RegExp(`(${[...tags].map(escapeRegExp).join('|')})`, 'g');
-  return body.split(pattern).filter((s) => s.length > 0).map((s) => ({ text: s, isMention: tags.has(s) }));
-}
+import { DisplayComment } from './display-comment';
+import { WidgetCommentAuthor } from '../../../../core/models/widget-comment/widget-comment-author.model';
+import { DirectoryUser } from '../../../../core/models/admin';
+import { ReportViewerStore } from '../../report-viewer.store';
+import { CommentPart } from './comment-part';
+import { CommentAnchorTarget } from '../comment-anchor-target';
+import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
 
 /**
- * The aside's Comments tab: the focused widget's thread, a composer with `@`-mention autocomplete,
- * and (when the thread has anchored comments) a chip per comment that hands the matching chart point
- * its highlight. The chart side of that pairing lives in `ChartWidgetComponent`; both read the shared
- * {@link ReportComments} highlight signal rather than talking to each other directly.
+ * The focused widget's thread, a composer with `@` mentions, and anchor chips that highlight chart
+ * points through {@link ReportComments}.
  */
 @Component({
   selector: 'app-comments-panel',
@@ -61,42 +36,46 @@ export class CommentsPanelComponent {
 
   constructor() {
     this.widgetId = this.store.commentsWidgetId;
-    this.widgetTitle = computed(() => {
-      const id = this.widgetId();
-      if (!id) return null;
-      for (const tab of this.store.content()?.tabs ?? []) {
-        const widget = tab.widgets.find((w) => w.id === id);
-        if (widget) return widget.config.title || widget.type;
-      }
-      return null;
-    });
+    this.widgetTitle = computed(() => this.findWidgetTitle(this.widgetId()));
     this.thread = computed(() => {
       const highlighted = this.comments.highlightedAnchor();
       const widgetId = this.widgetId();
-      return this.comments.comments().map((c) => ({
-        ...c,
-        parts: commentParts(c.body, c.mentions),
-        anchor:
-          c.anchorX != null && c.anchorY != null
-            ? { x: c.anchorX, y: c.anchorY, yAxisIndex: c.anchorYAxisIndex, label: this.anchorLabel(c.anchorX, c.anchorY) }
-            : null,
-        isHighlighted:
-          highlighted != null &&
-          highlighted.widgetId === widgetId &&
-          highlighted.x === c.anchorX &&
-          highlighted.y === c.anchorY,
-      }));
-    });
-    this.canPost = computed(() => this.composerText().trim().length > 0 && !this.comments.posting());
-    this.mentionCandidates = computed(() => {
-      const query = this.mentionQuery();
-      if (query == null) return [];
-      const already = new Set(this.mentionedUsers().map((u) => u.id));
       return this.comments
-        .directory()
-        .filter((u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 6);
+        .comments()
+        .map((comment) => this.toDisplay(comment, highlighted, widgetId));
     });
+    this.canPost = computed(
+      () => this.composerText().trim().length > 0 && !this.comments.posting(),
+    );
+    this.mentionCandidates = computed(() => this.findMentionCandidates(this.mentionQuery()));
+  }
+
+  /** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
+  private static escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /** Splits a comment body into plain-text and mention runs, for highlighting `@name` inline. */
+  private static commentParts(
+    body: string,
+    mentions: readonly WidgetCommentAuthor[],
+  ): CommentPart[] {
+    if (mentions.length === 0) {
+      return [{ text: body, isMention: false }];
+    }
+    const tags = new Set(mentions.map((m) => `@${m.displayName}`));
+    const pattern = new RegExp(
+      `(${[...tags].map(CommentsPanelComponent.escapeRegExp).join('|')})`,
+      'g',
+    );
+    return body
+      .split(pattern)
+      .filter((s) => s.length > 0)
+      .map((s) => ({ text: s, isMention: tags.has(s) }));
+  }
+
+  private static formatNumber(value: number): string {
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
   }
 
   public onComposerInput(value: string): void {
@@ -110,15 +89,16 @@ export class CommentsPanelComponent {
     this.composerText.set(next);
     this.mentionQuery.set(null);
     this.mentionedUsers.update((list) =>
-      list.some((u) => u.id === user.id) ? list : [...list, { id: user.id, displayName: user.displayName }],
+      list.some((u) => u.id === user.id)
+        ? list
+        : [...list, { id: user.id, displayName: user.displayName }],
     );
 
-    // Clicking a dropdown item moves focus to its button, so the textarea needs it back — and its
-    // DOM value set directly, synchronously, rather than waiting for the `[value]` binding's own
-    // change-detection pass: typing right after this click (as a reader finishing their sentence
-    // normally would) must land after the mention it just inserted, not race it.
+    // Restore focus and set the DOM value directly, so typing straight after lands after the mention.
     const el = this.composerInput()?.nativeElement;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.value = next;
     el.focus();
     el.setSelectionRange(next.length, next.length);
@@ -129,7 +109,9 @@ export class CommentsPanelComponent {
   }
 
   public post(): void {
-    if (!this.canPost()) return;
+    if (!this.canPost()) {
+      return;
+    }
     this.comments.post(this.composerText(), this.mentionedUsers());
     this.composerText.set('');
     this.mentionQuery.set(null);
@@ -142,7 +124,9 @@ export class CommentsPanelComponent {
 
   public highlightAnchor(anchor: { x: number; y: number; yAxisIndex?: number }): void {
     const widgetId = this.widgetId();
-    if (!widgetId) return;
+    if (!widgetId) {
+      return;
+    }
     this.comments.highlight({ widgetId, ...anchor });
   }
 
@@ -154,11 +138,58 @@ export class CommentsPanelComponent {
     return (first + second).toUpperCase();
   }
 
-  private anchorLabel(x: number, y: number): string {
-    return `${formatNumber(x)}, ${formatNumber(y)}`;
+  private findWidgetTitle(id: string | null): string | null {
+    if (!id) {
+      return null;
+    }
+    for (const tab of this.store.content()?.tabs ?? []) {
+      const widget = tab.widgets.find((w) => w.id === id);
+      if (widget) {
+        return widget.config.title || widget.type;
+      }
+    }
+    return null;
   }
-}
 
-function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+  private toDisplay(
+    comment: WidgetComment,
+    highlighted: CommentAnchorTarget | null,
+    widgetId: string | null,
+  ): DisplayComment {
+    return {
+      ...comment,
+      parts: CommentsPanelComponent.commentParts(comment.body, comment.mentions),
+      anchor:
+        comment.anchorX != null && comment.anchorY != null
+          ? {
+              x: comment.anchorX,
+              y: comment.anchorY,
+              yAxisIndex: comment.anchorYAxisIndex,
+              label: this.anchorLabel(comment.anchorX, comment.anchorY),
+            }
+          : null,
+      isHighlighted:
+        highlighted != null &&
+        highlighted.widgetId === widgetId &&
+        highlighted.x === comment.anchorX &&
+        highlighted.y === comment.anchorY,
+    };
+  }
+
+  private findMentionCandidates(query: string | null): DirectoryUser[] {
+    if (query == null) {
+      return [];
+    }
+    const already = new Set(this.mentionedUsers().map((u) => u.id));
+    return this.comments
+      .directory()
+      .filter(
+        (u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()),
+      )
+      .slice(0, 6);
+  }
+
+  private anchorLabel(x: number, y: number): string {
+    return `${CommentsPanelComponent.formatNumber(x)}, ${CommentsPanelComponent.formatNumber(y)}`;
+  }
 }

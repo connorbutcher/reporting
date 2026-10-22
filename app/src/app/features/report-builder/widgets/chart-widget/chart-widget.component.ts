@@ -5,13 +5,9 @@ import type { ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
-import {
-  ChartWidgetConfig,
-  barValueColumnIds,
-  readChartBindings,
-} from '../../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { WidgetComment } from '../../../../core/models/widget-comment.model';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
+import { WidgetCatalog } from '../../../../core/models/widget-catalog/widget-catalog';
+import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -69,7 +65,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   public readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
   /** Set by the outlet only in the viewer; keys comment anchors. */
   public readonly widgetId = input<string | null>(null);
-  public readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
+  public readonly placeholderIcon = computed(
+    () => WidgetCatalog.descriptor(this.config().type).icon,
+  );
 
   /** A point chart, in the viewer, with an id. */
   public readonly canAnchorComments = computed(
@@ -81,7 +79,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   public readonly chartOption = computed<ECOption | null>(() => {
     const option = this.buildOption();
-    if (!option) return null;
+    if (!option) {
+      return null;
+    }
     // Screen readers get echarts' generated description, named by an undrawn title.
     const described: ECOption = {
       ...option,
@@ -99,9 +99,13 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** Capped so a large point chart stays responsive. */
   public readonly dataTable = computed(() => {
-    if (!this.showData()) return null;
+    if (!this.showData()) {
+      return null;
+    }
     const data = this.source.result();
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
     const [header = [], ...rows] = ChartExport.table(this.config(), data, this.source.columns());
     const limit = 500;
     return {
@@ -147,11 +151,19 @@ export class ChartWidgetComponent extends DataWidgetBase {
   public readonly view = computed<
     'noDataset' | 'needsConfig' | 'error' | 'loading' | 'empty' | 'ready'
   >(() => {
-    if (!this.datasetId()) return 'noDataset';
-    if (this.error()) return 'error';
-    if (!this.configured()) return 'needsConfig';
+    if (!this.datasetId()) {
+      return 'noDataset';
+    }
+    if (this.error()) {
+      return 'error';
+    }
+    if (!this.configured()) {
+      return 'needsConfig';
+    }
     // A first load gets a spinner; a reload keeps the chart.
-    if (this.loading() && this.source.result() === null) return 'loading';
+    if (this.loading() && this.source.result() === null) {
+      return 'loading';
+    }
     return this.empty() ? 'empty' : 'ready';
   });
 
@@ -187,7 +199,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   private readonly anchorsResource = httpResource<WidgetComment[]>(() => {
     const comments = this.reportComments;
     const widgetId = this.widgetId();
-    if (!comments || !widgetId || !this.isPointChart()) return undefined;
+    if (!comments || !widgetId || !this.isPointChart()) {
+      return undefined;
+    }
     comments.countFor(widgetId);
     const reportId = comments.reportId();
     return reportId ? `/api/reports/${reportId}/widgets/${widgetId}/comments` : undefined;
@@ -206,7 +220,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** The first bound binding's dataset names the axes, so an unconfigured earlier binding doesn't block rendering. */
   private readonly datasetId = computed(
-    () => readChartBindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
+    () => ChartConfigs.bindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
   );
 
   private readonly queryKey = computed(() => ChartQueryKey.of(this.config()));
@@ -237,14 +251,14 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** Read from the config, so a loading schema doesn't look unconfigured. */
   private readonly configured = computed(() => {
     const config = this.config();
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     if (config.type === 'barChart' || config.type === 'comboChart') {
       // One bound binding with a category (and a measure, unless counting) is enough.
       return bindings.some(
         (b) =>
           b.datasetId &&
           b.xColumnId &&
-          (config.aggregate === 'count' || barValueColumnIds(b).length > 0),
+          (config.aggregate === 'count' || ChartConfigs.barValueColumnIds(b).length > 0),
       );
     }
     if (config.type === 'boxPlot' || config.type === 'xbarRChart') {
@@ -260,7 +274,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** A load succeeded but returned nothing to plot. */
   private readonly empty = computed(() => {
     const data = this.source.result();
-    if (!data) return false;
+    if (!data) {
+      return false;
+    }
     const type = this.config().type;
     if (
       type === 'barChart' ||
@@ -326,8 +342,12 @@ export class ChartWidgetComponent extends DataWidgetBase {
   }
 
   private static dataCellText(cell: string | number | boolean): string {
-    if (typeof cell === 'number') return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
-    if (typeof cell === 'boolean') return cell ? 'Yes' : 'No';
+    if (typeof cell === 'number') {
+      return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
+    }
+    if (typeof cell === 'boolean') {
+      return cell ? 'Yes' : 'No';
+    }
     return cell;
   }
 
@@ -344,7 +364,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   public onDataZoom(event: unknown): void {
     const range = ChartZoomMemory.fromEvent(event);
-    if (!range) return;
+    if (!range) {
+      return;
+    }
     this.zoomRange = range;
     ChartZoomMemory.write(this.zoomKey(), range);
   }
@@ -352,12 +374,16 @@ export class ChartWidgetComponent extends DataWidgetBase {
   public toggleData(): void {
     this.showData.update((on) => !on);
     // The canvas is recreated when the chart comes back.
-    if (this.showData()) this.chartInstance = null;
+    if (this.showData()) {
+      this.chartInstance = null;
+    }
   }
 
   public toggleAnchorMode(): void {
     const widgetId = this.widgetId();
-    if (widgetId) this.reportComments?.toggleAnchorMode(widgetId);
+    if (widgetId) {
+      this.reportComments?.toggleAnchorMode(widgetId);
+    }
   }
 
   /**
@@ -374,7 +400,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
     if (event.seriesName === PointChartConstants.COMMENT_ANCHOR_SERIES_NAME) {
       const anchor = (event.data as CommentAnchorPoint | undefined)?.anchor;
-      if (!anchor) return;
+      if (!anchor) {
+        return;
+      }
       comments.open(widgetId);
       comments.highlight({ widgetId, ...anchor });
       return;
@@ -385,8 +413,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
       return;
     }
     const value = event.value;
-    if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number')
+    if (!Array.isArray(value) || typeof value[0] !== 'number' || typeof value[1] !== 'number') {
       return;
+    }
     const [x, y] = value;
     const series = this.chartOption()?.series;
     const clicked = Array.isArray(series) ? series[event.seriesIndex ?? -1] : undefined;
@@ -402,7 +431,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** Exports straight from the echarts canvas, which is cheaper and sharper than rasterizing the DOM. */
   public override async downloadScreenshot(): Promise<void> {
-    if (!this.chartInstance) return;
+    if (!this.chartInstance) {
+      return;
+    }
     const url = this.chartInstance.getDataURL({
       type: 'png',
       pixelRatio: 2,
@@ -413,7 +444,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   public exportCsv(): string | null {
     const data = this.source.result();
-    if (!data) return null;
+    if (!data) {
+      return null;
+    }
     return ChartExport.csv(this.config(), data, this.source.columns());
   }
 
@@ -450,7 +483,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   }
 
   private drill(event: ECElementEvent): void {
-    if (!this.canDrill()) return;
+    if (!this.canDrill()) {
+      return;
+    }
     const data = this.source.result() as Parameters<typeof ChartDrill.target>[1];
     const target = ChartDrill.target(
       this.config(),
@@ -458,7 +493,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
       { seriesName: event.seriesName, seriesType: event.seriesType, dataIndex: event.dataIndex },
       this.bindingFilters(),
     );
-    if (!target) return;
+    if (!target) {
+      return;
+    }
     this.dialog.open<void, DrillThroughDialogData>(DrillThroughDialogComponent, {
       data: {
         datasetId: target.datasetId,

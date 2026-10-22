@@ -22,7 +22,9 @@ export class BoxOption {
     colors: Map<string, string>,
   ): ECOption | null {
     const chart = BoxChartResolver.resolve(config, data, columns, colors);
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const { horizontal, zoom } = chart;
     const categoryAxis = BoxAxes.category(chart);

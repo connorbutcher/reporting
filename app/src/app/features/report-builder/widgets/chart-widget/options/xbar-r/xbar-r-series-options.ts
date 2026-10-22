@@ -65,7 +65,9 @@ export class XBarRSeriesOptions {
     field: keyof Pick<XBarRSubgroup, 'xBarUcl' | 'xBarLcl' | 'rUcl' | 'rLcl'>,
     grid: number,
   ): LineSeriesOption[] {
-    if (chart.categories.length === 0) return [];
+    if (chart.categories.length === 0) {
+      return [];
+    }
     const label = field.endsWith('Ucl') ? 'UCL' : 'LCL';
     return [
       {

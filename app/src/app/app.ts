@@ -7,7 +7,6 @@ import { AppHeaderComponent } from './core/layout/app-header/app-header.componen
   selector: 'app-root',
   imports: [RouterOutlet, AppHeaderComponent, Toast],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
 })
-export class App {
-}
+export class App {}

@@ -42,7 +42,9 @@ export class HistogramSeriesOptions {
   }
 
   private static valueLabel(chart: HistogramChart) {
-    if (!chart.config.showValueLabels) return {};
+    if (!chart.config.showValueLabels) {
+      return {};
+    }
     return {
       label: {
         show: true,

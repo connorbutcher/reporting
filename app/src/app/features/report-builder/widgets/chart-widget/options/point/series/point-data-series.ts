@@ -42,7 +42,9 @@ export class PointDataSeries {
     index: number,
     mainName: string,
   ): LineSeriesOption | null {
-    if (!chart.config.showTrendLine) return null;
+    if (!chart.config.showTrendLine) {
+      return null;
+    }
     return TrendLineSeries.series(
       s,
       mainName,
@@ -62,7 +64,9 @@ export class PointDataSeries {
   }
 
   private static yAxisIndex(chart: PointChart, index: number): number | null {
-    if (!chart.multiAxis) return null;
+    if (!chart.multiAxis) {
+      return null;
+    }
     return Math.min(chart.seriesAxisIndex[index], chart.axes.length - 1);
   }
 }

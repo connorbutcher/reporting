@@ -1,5 +1,5 @@
-import { FilterCondition, FilterGroup, combineFilters } from '../../../../core/models/filter';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
+import { FilterCondition, FilterGroup, FilterTrees } from '../../../../core/models/filter';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -23,11 +23,13 @@ export class ChartDrill {
     bindingFilters: Record<string, FilterGroup | null> | null,
   ): ChartDrillTarget | null {
     const index = click.dataIndex;
-    if (!data || index == null || index < 0) return null;
+    if (!data || index == null || index < 0) {
+      return null;
+    }
     const context: ChartDrillContext = {
       index,
       seriesName: click.seriesName,
-      bindings: readChartBindings(config),
+      bindings: ChartConfigs.bindings(config),
       bindingFilters,
     };
 
@@ -56,11 +58,13 @@ export class ChartDrill {
     const binding =
       bindings.find((b) => b.id === series?.bindingId) ?? bindings.find((b) => b.datasetId);
     const category = series?.categoryDrills?.[index] ?? bar.categoryDetails?.[index]?.drill ?? null;
-    if (!series || !binding?.datasetId || !category) return null;
+    if (!series || !binding?.datasetId || !category) {
+      return null;
+    }
     return {
       datasetId: binding.datasetId,
       path: ChartDrill.path(bar.categories[index], series.label),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, binding.id),
         category,
         series.drill ?? null,
@@ -77,11 +81,13 @@ export class ChartDrill {
       box.series.find((s) => s.label === seriesName) ??
       (box.series.length === 1 ? box.series[0] : null);
     const category = box.categoryDetails?.[index]?.drill ?? null;
-    if (!primary?.datasetId || !category) return null;
+    if (!primary?.datasetId || !category) {
+      return null;
+    }
     return {
       datasetId: primary.datasetId,
       path: ChartDrill.path(box.categories[index], series?.label ?? ''),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, primary.id),
         category,
         series?.drill ?? null,
@@ -98,12 +104,14 @@ export class ChartDrill {
       bindings.find((b) => b.id === series?.bindingId) ?? bindings.find((b) => b.datasetId);
     const bin = histogram.bins[index];
     const columnId = series?.valueColumnId ?? binding?.xColumnId;
-    if (!series || !binding?.datasetId || !bin || !columnId) return null;
+    if (!series || !binding?.datasetId || !bin || !columnId) {
+      return null;
+    }
     const last = index === histogram.bins.length - 1;
     return {
       datasetId: binding.datasetId,
       path: ChartDrill.path(bin.label, series.label),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, binding.id),
         ChartDrill.binRange(columnId, bin.lower, bin.upper, last),
         series.drill ?? null,
@@ -117,11 +125,13 @@ export class ChartDrill {
   ): ChartDrillTarget | null {
     const primary = bindings[0];
     const category = control.categoryDetails?.[index]?.drill ?? null;
-    if (!primary?.datasetId || !category) return null;
+    if (!primary?.datasetId || !category) {
+      return null;
+    }
     return {
       datasetId: primary.datasetId,
       path: [control.categories[index]],
-      filter: combineFilters(ChartDrill.bindingFilter(bindingFilters, primary.id), category),
+      filter: FilterTrees.combine(ChartDrill.bindingFilter(bindingFilters, primary.id), category),
     };
   }
 

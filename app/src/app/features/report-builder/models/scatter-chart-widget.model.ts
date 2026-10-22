@@ -1,9 +1,9 @@
 import {
-  DEFAULT_SCATTER_CHART_CONFIG,
+  WidgetConfigDefaults,
   ScatterChartWidget,
   ScatterChartWidgetConfig,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
 
@@ -18,13 +18,13 @@ export class ScatterChartWidgetModel extends ChartWidgetModel {
   public override toDto(): ScatterChartWidget {
     const config: ScatterChartWidgetConfig = {
       type: 'scatterChart',
-      ...DEFAULT_SCATTER_CHART_CONFIG,
+      ...WidgetConfigDefaults.SCATTER_CHART,
       ...this.chartConfigBaseDto(),
     };
     return { ...this.geometryDto(), type: 'scatterChart', config };
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('scatterChart').label;
+    return WidgetCatalog.descriptor('scatterChart').label;
   }
 }

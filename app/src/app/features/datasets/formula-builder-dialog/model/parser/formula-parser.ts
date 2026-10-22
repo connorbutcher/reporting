@@ -1,25 +1,32 @@
 import { FormulaFunction } from '../../../../../core/models/dataset';
-import { emptyArguments, functionBlock, columnBlock, groupBlock, literalBlock, operatorItem } from '../factory/item-factory';
+import { ItemFactory } from '../factory/item-factory';
 import { Expression } from '../items/expression';
 import { FormulaItem } from '../items/formula-item';
 import { FormulaParseError } from './formula-parse-error';
 import { FormulaToken } from './formula-token';
+import { FormulaTokenizer } from './formula-tokenizer';
 
-const COMPARISONS = new Set(['=', '<>', '<', '<=', '>', '>=']);
-
-/**
- * Reads formula text back into the builder's expression, for opening a saved formula. It follows the
- * server's grammar but keeps only the *order* of what it reads — values and operators in a sequence — since
- * that is all the builder holds; the precedence that gave the text its shape is applied again, by reverse
- * Polish notation, wherever the sequence is used. Brackets the user wrote stay as groups.
- */
 export class FormulaParser {
+  private static readonly COMPARISONS = new Set(['=', '<>', '<', '<=', '>', '>=']);
+
   private index = 0;
 
   constructor(
     private readonly tokens: FormulaToken[],
     private readonly functions: ReadonlyMap<string, FormulaFunction>,
   ) {}
+
+  /** Reads formula text into the builder's expression; throws `FormulaParseError` when it can't. */
+  public static fromText(
+    source: string,
+    functions: ReadonlyMap<string, FormulaFunction>,
+  ): Expression {
+    if (!source.trim()) {
+      return [];
+    }
+
+    return new FormulaParser(new FormulaTokenizer(source).tokenize(), functions).parse();
+  }
 
   public parse(): FormulaItem[] {
     const root = this.or();
@@ -35,7 +42,11 @@ export class FormulaParser {
   }
 
   private isName(word: string): boolean {
-    return this.current.kind === 'name' && this.current.text.toUpperCase() === word && this.tokens[this.index + 1].kind !== 'open';
+    return (
+      this.current.kind === 'name' &&
+      this.current.text.toUpperCase() === word &&
+      this.tokens[this.index + 1].kind !== 'open'
+    );
   }
 
   private isOperator(...ops: string[]): boolean {
@@ -46,7 +57,7 @@ export class FormulaParser {
     let left = this.and();
     while (this.isName('OR')) {
       this.index++;
-      left = [...left, operatorItem('OR'), ...this.and()];
+      left = [...left, ItemFactory.operator('OR'), ...this.and()];
     }
 
     return left;
@@ -56,7 +67,7 @@ export class FormulaParser {
     let left = this.not();
     while (this.isName('AND')) {
       this.index++;
-      left = [...left, operatorItem('AND'), ...this.not()];
+      left = [...left, ItemFactory.operator('AND'), ...this.not()];
     }
 
     return left;
@@ -65,7 +76,7 @@ export class FormulaParser {
   private not(): FormulaItem[] {
     if (this.isName('NOT')) {
       this.index++;
-      return [operatorItem('NOT'), ...this.not()];
+      return [ItemFactory.operator('NOT'), ...this.not()];
     }
 
     return this.comparison();
@@ -73,9 +84,9 @@ export class FormulaParser {
 
   private comparison(): FormulaItem[] {
     const left = this.concat();
-    if (this.current.kind === 'operator' && COMPARISONS.has(this.current.text)) {
+    if (this.current.kind === 'operator' && FormulaParser.COMPARISONS.has(this.current.text)) {
       const op = this.tokens[this.index++].text;
-      return [...left, operatorItem(op), ...this.concat()];
+      return [...left, ItemFactory.operator(op), ...this.concat()];
     }
 
     return left;
@@ -85,7 +96,7 @@ export class FormulaParser {
     let left = this.additive();
     while (this.isOperator('&')) {
       this.index++;
-      left = [...left, operatorItem('&'), ...this.additive()];
+      left = [...left, ItemFactory.operator('&'), ...this.additive()];
     }
 
     return left;
@@ -95,7 +106,7 @@ export class FormulaParser {
     let left = this.multiplicative();
     while (this.isOperator('+', '-')) {
       const op = this.tokens[this.index++].text;
-      left = [...left, operatorItem(op), ...this.multiplicative()];
+      left = [...left, ItemFactory.operator(op), ...this.multiplicative()];
     }
 
     return left;
@@ -105,7 +116,7 @@ export class FormulaParser {
     let left = this.unary();
     while (this.isOperator('*', '/', '%')) {
       const op = this.tokens[this.index++].text;
-      left = [...left, operatorItem(op), ...this.unary()];
+      left = [...left, ItemFactory.operator(op), ...this.unary()];
     }
 
     return left;
@@ -115,7 +126,7 @@ export class FormulaParser {
     if (this.isOperator('-', '+')) {
       const sign = this.tokens[this.index++].text;
       const operand = this.unary();
-      return sign === '+' ? operand : [operatorItem('-'), ...operand];
+      return sign === '+' ? operand : [ItemFactory.operator('-'), ...operand];
     }
 
     return this.power();
@@ -125,7 +136,7 @@ export class FormulaParser {
     const left = this.primary();
     if (this.isOperator('^')) {
       this.index++;
-      return [...left, operatorItem('^'), ...this.unary()];
+      return [...left, ItemFactory.operator('^'), ...this.unary()];
     }
 
     return left;
@@ -136,11 +147,11 @@ export class FormulaParser {
 
     switch (token.kind) {
       case 'number':
-        return [literalBlock(token.number!)];
+        return [ItemFactory.literal(token.number!)];
       case 'text':
-        return [literalBlock(token.text)];
+        return [ItemFactory.literal(token.text)];
       case 'column':
-        return [columnBlock(token.text)];
+        return [ItemFactory.column(token.text)];
       case 'open':
         return [this.group()];
       case 'name':
@@ -159,7 +170,7 @@ export class FormulaParser {
     }
 
     this.index++;
-    return groupBlock(inner);
+    return ItemFactory.group(inner);
   }
 
   private name(token: FormulaToken): FormulaItem {
@@ -179,30 +190,32 @@ export class FormulaParser {
     const fn = this.functions.get(name);
 
     // Pad to the arguments the function needs, so a formula saved with fewer shows the rest as gaps to fill.
-    const wanted = emptyArguments(fn).length;
+    const wanted = ItemFactory.emptyArguments(fn).length;
     while (args.length < wanted) {
       args.push([]);
     }
 
-    return functionBlock(fn, name, args);
+    return ItemFactory.function(fn, name, args);
   }
 
   private keyword(token: FormulaToken): FormulaItem {
     const word = token.text.toUpperCase();
 
     if (word === 'TRUE') {
-      return literalBlock(true);
+      return ItemFactory.literal(true);
     }
 
     if (word === 'FALSE') {
-      return literalBlock(false);
+      return ItemFactory.literal(false);
     }
 
     if (word === 'NULL') {
-      return literalBlock(null);
+      return ItemFactory.literal(null);
     }
 
-    throw new FormulaParseError(`'${token.text}' isn't a value or function call. Column names go in [square brackets].`);
+    throw new FormulaParseError(
+      `'${token.text}' isn't a value or function call. Column names go in [square brackets].`,
+    );
   }
 
   private callArguments(): Expression[] {

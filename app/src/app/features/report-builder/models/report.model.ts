@@ -2,8 +2,8 @@ import { Signal, computed, signal } from '@angular/core';
 import {
   ReportRevisionContent,
   Tab,
-  bandedChartColumns,
-  hasFixedLimits,
+  ChartConfigs,
+  ToleranceConfigs,
 } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
@@ -74,10 +74,15 @@ export class ReportModel extends EditorNode {
     this.issuesByWidget = computed(() => {
       const map = new Map<string, ValidationIssue[]>();
       for (const issue of this.issues()) {
-        if (!issue.widgetId) continue;
+        if (!issue.widgetId) {
+          continue;
+        }
         const list = map.get(issue.widgetId);
-        if (list) list.push(issue);
-        else map.set(issue.widgetId, [issue]);
+        if (list) {
+          list.push(issue);
+        } else {
+          map.set(issue.widgetId, [issue]);
+        }
       }
       return map;
     });
@@ -91,7 +96,9 @@ export class ReportModel extends EditorNode {
 
   /** A chart filters every binding's dataset; a table, pivot or KPI its one dataset. */
   private static datasetIdsOf(widget: WidgetModel): (number | null)[] {
-    if (widget instanceof ChartWidgetModel) return widget.bindings().map((b) => b.datasetId());
+    if (widget instanceof ChartWidgetModel) {
+      return widget.bindings().map((b) => b.datasetId());
+    }
     if (
       widget instanceof DataTableWidgetModel ||
       widget instanceof PivotTableWidgetModel ||
@@ -107,7 +114,9 @@ export class ReportModel extends EditorNode {
   }
 
   public removeWidgets(widgetIds: readonly string[]): void {
-    for (const id of widgetIds) this.tabOf(id)?.removeWidget(id);
+    for (const id of widgetIds) {
+      this.tabOf(id)?.removeWidget(id);
+    }
   }
 
   public duplicateWidget(widgetId: string): WidgetModel | null {
@@ -118,7 +127,9 @@ export class ReportModel extends EditorNode {
   public widget(widgetId: string): WidgetModel | null {
     for (const tab of this.tabs()) {
       const found = tab.widget(widgetId);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
     return null;
   }
@@ -133,7 +144,9 @@ export class ReportModel extends EditorNode {
   }
 
   public setActiveTab(tabId: string): void {
-    if (this.tabs().some((t) => t.id === tabId)) this.activeTabId.set(tabId);
+    if (this.tabs().some((t) => t.id === tabId)) {
+      this.activeTabId.set(tabId);
+    }
   }
 
   /** Adds an empty tab at the end; the caller makes it active by navigating the `tab` query param. */
@@ -155,8 +168,12 @@ export class ReportModel extends EditorNode {
   /** Removes a tab unless it's the last; the caller reselects a survivor if the active tab went. */
   public removeTab(tabId: string): void {
     const tabs = this.tabs();
-    if (tabs.length <= 1) return;
-    if (!tabs.some((t) => t.id === tabId)) return;
+    if (tabs.length <= 1) {
+      return;
+    }
+    if (!tabs.some((t) => t.id === tabId)) {
+      return;
+    }
 
     const next = tabs.filter((t) => t.id !== tabId);
     this.renumber(next);
@@ -172,7 +189,9 @@ export class ReportModel extends EditorNode {
   public moveTab(tabId: string, toIndex: number): void {
     const tabs = [...this.tabs()];
     const from = tabs.findIndex((t) => t.id === tabId);
-    if (from < 0) return;
+    if (from < 0) {
+      return;
+    }
 
     const clamped = Math.max(0, Math.min(toIndex, tabs.length - 1));
     const [moved] = tabs.splice(from, 1);
@@ -188,7 +207,9 @@ export class ReportModel extends EditorNode {
   /** Created on first use so the panel always has a filter to edit. */
   public ensureReportFilter(datasetId: number): ReportFilterModel {
     const existing = this.reportFilter(datasetId);
-    if (existing) return existing;
+    if (existing) {
+      return existing;
+    }
 
     const model = this.buildReportFilter(datasetId, null);
     this.filters.update((filters) => [...filters, model]);
@@ -247,15 +268,21 @@ export class ReportModel extends EditorNode {
     for (const tab of this.tabs()) {
       for (const widget of tab.widgets()) {
         if (widget instanceof DataTableWidgetModel) {
-          if (widget.datasetId() !== datasetId) continue;
+          if (widget.datasetId() !== datasetId) {
+            continue;
+          }
           for (const column of widget.columns()) {
-            if (hasFixedLimits(column.tolerance())) columns.add(column.columnId);
+            if (ToleranceConfigs.hasFixedLimits(column.tolerance())) {
+              columns.add(column.columnId);
+            }
           }
         } else if (widget instanceof ChartWidgetModel) {
           const bands = widget.toleranceBands();
           for (const binding of widget.bindings()) {
-            if (binding.datasetId() !== datasetId) continue;
-            for (const id of bandedChartColumns(bands, {
+            if (binding.datasetId() !== datasetId) {
+              continue;
+            }
+            for (const id of ChartConfigs.bandedColumns(bands, {
               xColumnId: binding.xColumnId(),
               yColumnId: binding.yColumnId(),
             })) {

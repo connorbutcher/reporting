@@ -11,9 +11,13 @@ import { FormulaBuilderStore } from '../formula-builder.store';
 export class FormulaPreviewComponent {
   public readonly preview = computed(() => this.store.preview());
   public readonly checking = computed(() => this.store.previewing());
-  public readonly columnName = computed(() => this.store.nameForm.name().value().trim() || 'Result');
+  public readonly columnName = computed(
+    () => this.store.nameForm.name().value().trim() || 'Result',
+  );
   public readonly hasFormula = computed(() => this.store.root().length > 0);
-  public readonly blocked = computed(() => this.store.issues().length > 0 || !this.store.serialized().complete);
+  public readonly blocked = computed(
+    () => this.store.issues().length > 0 || !this.store.serialized().complete,
+  );
 
   private readonly store = inject(FormulaBuilderStore);
 

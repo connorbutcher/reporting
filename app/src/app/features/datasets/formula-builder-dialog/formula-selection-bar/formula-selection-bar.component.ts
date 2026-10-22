@@ -5,11 +5,7 @@ import { Select, SelectModule } from 'primeng/select';
 import { FormulaFunction } from '../../../../core/models/dataset';
 import { FormulaBuilderStore } from '../formula-builder.store';
 
-/**
- * What can be done with the items selected on the canvas: put them in brackets or make them an argument of
- * a function (each one step, so no retyping what is already there), take brackets off, copy, or delete. It
- * appears only while something is selected. Wrapping needs items that sit next to each other.
- */
+/** Actions for the canvas selection, shown only while something is selected. */
 @Component({
   selector: 'app-formula-selection-bar',
   imports: [FormsModule, ButtonModule, SelectModule],

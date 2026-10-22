@@ -1,22 +1,18 @@
-import { AfterViewInit, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
-import { form, required, validateHttp } from '@angular/forms/signals';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { form, required, validateHttp } from '@angular/forms/signals';
+import { RenameDialogData } from './rename-dialog-data';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 
-export interface RenameDialogData {
-  kind: 'folder' | 'report';
-  id: number;
-  currentName: string;
-  /** The folder this item currently sits in (null = Home) — the name must stay unique among its siblings there. */
-  folderId: number | null;
-}
-
-/**
- * Prompts for a new name, pre-filled and pre-selected with the current one. Unlike the create
- * dialog, there's no prefetched sibling list to check against instantly, so uniqueness relies
- * entirely on the authoritative server check — same one the create dialog falls back on for
- * siblings it can't see.
- */
+/** Uniqueness is checked by the server only, as there's no sibling list here. */
 @Component({
   selector: 'app-rename-dialog',
   templateUrl: './rename-dialog.component.html',
@@ -30,7 +26,10 @@ export class RenameDialogComponent implements AfterViewInit {
     validateHttp<string, { available: boolean }>(path.name, {
       when: ({ value }) => value().trim().length > 0,
       request: ({ value }) => ({
-        url: this.data.kind === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
+        url:
+          this.data.kind === 'folder'
+            ? '/api/folders/name-available'
+            : '/api/reports/name-available',
         params: {
           name: value().trim(),
           excludeId: this.data.id,
@@ -40,7 +39,7 @@ export class RenameDialogComponent implements AfterViewInit {
               ? { parentFolderId: this.data.folderId }
               : { folderId: this.data.folderId }),
         } as Record<string, string | number>,
-        context: skipHttpErrorNotification(),
+        context: HttpErrorNotification.skip(),
       }),
       debounce: 400,
       onSuccess: (result, { value }) =>
@@ -76,7 +75,9 @@ export class RenameDialogComponent implements AfterViewInit {
 
   public save(): void {
     const name = this.form.name().value().trim();
-    if (!this.form().valid() || !name) return;
+    if (!this.form().valid() || !name) {
+      return;
+    }
     this.dialogRef.close(name);
   }
 

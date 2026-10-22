@@ -28,7 +28,10 @@ function render(): GroupDetailComponent {
       { provide: Dialog, useValue: {} },
       { provide: NotificationService, useValue: {} },
       { provide: Router, useValue: { navigate: () => Promise.resolve(true) } },
-      { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'g1' }) } } },
+      {
+        provide: ActivatedRoute,
+        useValue: { snapshot: { paramMap: convertToParamMap({ id: 'g1' }) } },
+      },
       {
         provide: AdminApiService,
         useValue: {

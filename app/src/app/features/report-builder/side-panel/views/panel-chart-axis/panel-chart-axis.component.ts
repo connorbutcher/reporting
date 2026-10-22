@@ -21,7 +21,9 @@ export class PanelChartAxisComponent {
   public readonly yAxis = computed(() => {
     const view = this.view();
     const chart = this.chart();
-    if (!chart || !view || view.axis !== 'y') return null;
+    if (!chart || !view || view.axis !== 'y') {
+      return null;
+    }
     const index = chart.yAxes().findIndex((a) => a.id === view.axisId);
     return index < 0 ? null : { axis: chart.yAxes()[index], index };
   });

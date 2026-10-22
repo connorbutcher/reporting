@@ -3,42 +3,39 @@ import { Expression } from '../items/expression';
 import { FunctionBlock } from '../items/function-block';
 import { OperandItem } from '../items/operand-item';
 import { OperatorItem } from '../items/operator-item';
-import { KIND_LABELS } from '../kinds/kind-labels';
-import { columnTypeKind } from '../kinds/kind-mapping';
-import { parameterFor, slotIsOptional } from '../parameters/parameter-lookup';
-import { foldRpn } from '../rpn/fold-rpn';
+import { ValueKinds } from '../kinds/value-kinds';
+import { FormulaParameters } from '../parameters/formula-parameters';
 import { RpnFolder } from '../rpn/rpn-folder';
-import { toRpn } from '../rpn/to-rpn';
-import { applyOperator } from './apply-operator';
-import { capitalise } from './capitalise';
-import { commonKind } from './common-kind';
+import { RpnConversion } from '../rpn/rpn-conversion';
+import { OperatorTyping } from './operator-typing';
 import { FormulaIssue } from './formula-issue';
 import { FormulaScope } from './formula-scope';
-import { literalKind } from './literal-kind';
 import { TypedValue } from './typed-value';
 
 /**
- * Checks expressions without the server. Each expression is put into reverse Polish notation, so a gap or
- * a doubled-up operator is found by the conversion itself, and then evaluated on a stack of *kinds* rather
- * than values: an operator pops the kinds of what it applies to and checks them, pushing the kind it
- * yields. Problems found are collected in {@link issues}.
+ * Checks expressions client-side by evaluating their RPN on a stack of kinds; problems go to
+ * {@link issues}.
  */
 export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   public readonly issues: FormulaIssue[] = [];
 
   constructor(private readonly scope: FormulaScope) {}
 
+  private static capitalise(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
   public analyze(expression: Expression): TypedValue | null {
     if (expression.length === 0) {
       return null;
     }
 
-    const rpn = toRpn(expression);
+    const rpn = RpnConversion.of(expression);
     for (const issue of rpn.issues) {
       this.issues.push({ kind: 'structure', blockId: issue.blockId, message: issue.message });
     }
 
-    return foldRpn<TypedValue>(rpn.tokens, this)[0] ?? null;
+    return RpnConversion.fold<TypedValue>(rpn.tokens, this)[0] ?? null;
   }
 
   public operand(item: OperandItem): TypedValue {
@@ -46,7 +43,7 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
       case 'column':
         return this.analyzeColumn(item.id, item.name);
       case 'literal':
-        return { kind: literalKind(item), first: item.id };
+        return { kind: ValueKinds.ofLiteral(item), first: item.id };
       case 'group':
         return this.analyzeGroup(item.id, item.body);
       case 'function':
@@ -59,20 +56,24 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   }
 
   public unary(operator: OperatorItem, argument: TypedValue): TypedValue {
-    return applyOperator(operator, [argument], this.issues, argument.first);
+    return OperatorTyping.apply(operator, [argument], this.issues, argument.first);
   }
 
   public binary(operator: OperatorItem, left: TypedValue, right: TypedValue): TypedValue {
-    return applyOperator(operator, [left, right], this.issues, left.first);
+    return OperatorTyping.apply(operator, [left, right], this.issues, left.first);
   }
 
   private analyzeColumn(id: number, name: string): TypedValue {
     const column = this.scope.columns.get(name.toLowerCase());
     if (!column) {
-      this.issues.push({ kind: 'unknown', blockId: id, message: `There's no column named [${name}].` });
+      this.issues.push({
+        kind: 'unknown',
+        blockId: id,
+        message: `There's no column named [${name}].`,
+      });
     }
 
-    return { kind: column ? columnTypeKind(column.type) : 'any', first: id };
+    return { kind: column ? ValueKinds.ofColumnType(column.type) : 'any', first: id };
   }
 
   private analyzeGroup(id: number, body: Expression): TypedValue {
@@ -86,7 +87,11 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   private analyzeCall(call: FunctionBlock): FormulaValueKind {
     const fn = this.scope.functions.get(call.name.toUpperCase());
     if (!fn) {
-      this.issues.push({ kind: 'unknown', blockId: call.id, message: `There's no function named ${call.name}.` });
+      this.issues.push({
+        kind: 'unknown',
+        blockId: call.id,
+        message: `There's no function named ${call.name}.`,
+      });
     }
 
     const argumentKinds: (TypedValue | null)[] = [];
@@ -98,15 +103,18 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
       return 'any';
     }
 
-    return fn.returnKind === 'any' ? commonKind(call, fn, argumentKinds) : fn.returnKind;
+    return fn.returnKind === 'any' ? ValueKinds.common(call, fn, argumentKinds) : fn.returnKind;
   }
 
-  private analyzeArgument(call: FunctionBlock, index: number, params: readonly FormulaParameter[]): TypedValue | null {
+  private analyzeArgument(
+    call: FunctionBlock,
+    index: number,
+    params: readonly FormulaParameter[],
+  ): TypedValue | null {
     const expression = call.args[index];
-    const param = params.length > 0 ? parameterFor(params, index) : null;
-
+    const param = params.length > 0 ? FormulaParameters.forArgument(params, index) : null;
     if (expression.length === 0) {
-      if (param && !slotIsOptional(params, index)) {
+      if (param && !FormulaParameters.slotIsOptional(params, index)) {
         this.issues.push({
           kind: 'missing',
           blockId: call.id,
@@ -115,21 +123,31 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
           message: `Add a value for ${param.name} in ${call.name}().`,
         });
       }
-
       return null;
     }
 
     const typed = this.analyze(expression);
-    if (param && typed && param.kind !== 'any' && typed.kind !== 'any' && typed.kind !== param.kind) {
-      this.issues.push({
-        kind: 'type',
-        blockId: typed.first,
-        ownerId: call.id,
-        arg: index,
-        message: `${capitalise(param.name)} needs ${KIND_LABELS[param.kind]}, but this is ${KIND_LABELS[typed.kind]}.`,
-      });
+    if (param && typed) {
+      this.checkArgumentKind(call, index, param, typed);
     }
-
     return typed;
+  }
+
+  private checkArgumentKind(
+    call: FunctionBlock,
+    index: number,
+    param: FormulaParameter,
+    typed: TypedValue,
+  ): void {
+    if (param.kind === 'any' || typed.kind === 'any' || typed.kind === param.kind) {
+      return;
+    }
+    this.issues.push({
+      kind: 'type',
+      blockId: typed.first,
+      ownerId: call.id,
+      arg: index,
+      message: `${ExpressionAnalyzer.capitalise(param.name)} needs ${ValueKinds.LABELS[param.kind]}, but this is ${ValueKinds.LABELS[typed.kind]}.`,
+    });
   }
 }

@@ -1,12 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { ReportViewerStore } from '../report-viewer.store';
 
-/**
- * The viewer's title bar: report name and number, which version is on screen,
- * and the button that leads into editing — continue a draft, check out a fresh
- * one, or restore the historical version being viewed.
- */
 @Component({
   selector: 'app-report-viewer-header',
   imports: [ButtonModule],
@@ -14,23 +9,30 @@ import { ReportViewerStore } from '../report-viewer.store';
   styleUrl: './report-viewer-header.component.scss',
 })
 export class ReportViewerHeaderComponent {
-  private readonly store = inject(ReportViewerStore);
-
-  protected readonly report = this.store.report;
-  protected readonly viewingVersion = this.store.viewingVersion;
+  public readonly viewingVersion: Signal<number | null>;
 
   /** True while showing an older version than the latest published one. */
-  protected readonly isViewingHistorical = computed(() => {
+  public readonly isViewingHistorical = computed(() => {
     const report = this.store.report();
     const version = this.store.viewingVersion();
     return !!report && version !== null && version !== report.latestVersionNumber;
   });
 
-  protected viewLatest(): void {
+  private readonly store = inject(ReportViewerStore);
+
+  constructor() {
+    this.viewingVersion = this.store.viewingVersion;
+  }
+
+  public viewLatest(): void {
     this.store.viewLatest();
   }
 
-  protected edit(version?: number): void {
+  public edit(version?: number): void {
     this.store.edit(version);
+  }
+
+  public get report() {
+    return this.store.report;
   }
 }

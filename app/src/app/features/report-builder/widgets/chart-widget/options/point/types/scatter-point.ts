@@ -1,7 +1,7 @@
 import { OutlineItemStyle } from '../../marks/types/outline-item-style';
 import { Coord } from './coord';
 
-export interface ScatterPoint {
+export type ScatterPoint = {
   value: [Coord, Coord];
   tooltipLines: string[];
   /** The bubble size column's raw value for this point; undefined when not bound or not set on this row. */
@@ -10,4 +10,4 @@ export interface ScatterPoint {
   itemStyle?: OutlineItemStyle;
   /** An outlined point's marker shape, so its status doesn't rest on colour alone. */
   symbol?: 'triangle';
-}
+};

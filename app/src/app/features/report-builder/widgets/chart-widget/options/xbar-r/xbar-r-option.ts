@@ -21,7 +21,9 @@ export class XBarROption {
     columns: DatasetColumn[],
   ): ECOption | null {
     const chart = XBarRChartResolver.resolve(config, data, columns);
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
     return chart.attribute ? XBarROption.single(chart) : XBarROption.paired(chart);
   }
 

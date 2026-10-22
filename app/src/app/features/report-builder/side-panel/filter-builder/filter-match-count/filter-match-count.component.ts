@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
-import { DatasetCountResult, FilterGroup, combineFilters } from '../../../../../core/models/filter';
+import { DatasetCountResult, FilterGroup, FilterTrees } from '../../../../../core/models/filter';
 import { FilterGroupModel } from '../../../models/filter';
 import { LiveMatchCount } from '../live-match-count';
 import { MatchState } from '../match-state';
@@ -23,8 +23,13 @@ export class FilterMatchCountComponent {
     computed(() => {
       const group = this.group();
       const datasetId = group.datasetId();
-      if (!group.ready() || datasetId === null) return null;
-      return { datasetId, filter: combineFilters(this.additionalFilter(), group.toQueryDto()) };
+      if (!group.ready() || datasetId === null) {
+        return null;
+      }
+      return {
+        datasetId,
+        filter: FilterTrees.combine(this.additionalFilter(), group.toQueryDto()),
+      };
     }),
     inject(DatasetApiService),
   );
@@ -33,7 +38,9 @@ export class FilterMatchCountComponent {
   public readonly numbers = linkedSignal<MatchState, DatasetCountResult | null>({
     source: this.match,
     computation: (match, previous) => {
-      if (match.state === 'ready') return match.result;
+      if (match.state === 'ready') {
+        return match.result;
+      }
       return match.state === 'idle' ? null : (previous?.value ?? null);
     },
   });

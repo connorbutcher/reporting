@@ -8,57 +8,36 @@ import { DatasetCollection } from './dataset-collection';
 import { DatasetRowWindow } from './dataset-row-window';
 import { DatasetSchemaState } from './dataset-schema-state';
 
-/**
- * The selected dataset's column mutations — add, rename, retype, delete and
- * reorder — each persisting immediately and updating the editor's local
- * {@link DatasetSchemaState.columns} optimistically, rolling back on failure.
- */
 @Injectable()
 export class DatasetColumnCommands {
   private readonly api = inject(DatasetApiService);
+
   private readonly autosave = inject(DatasetAutosave);
+
   private readonly collection = inject(DatasetCollection);
+
   private readonly schema = inject(DatasetSchemaState);
+
   private readonly rows = inject(DatasetRowWindow);
+
   private readonly notify = inject(NotificationService);
 
-  /** True when another column already uses this name (trimmed, case-insensitive). */
-  private columnNameTaken(name: string, exceptId?: string): boolean {
-    const key = name.trim().toLowerCase();
-    return this.schema
-      .columns()
-      .some((c) => c.id !== exceptId && c.name.trim().toLowerCase() === key);
-  }
-
-  /**
-   * Takes on a formula column the builder dialog has just saved (it saved through its own request). A
-   * formula changes values server-side — its own column's, and any formula reading it — so the schema and
-   * rows are refetched rather than patched.
-   */
-  applyFormulaColumnSaved(column: DatasetColumn): void {
+  /** Refetches schema and rows, since a formula changes values server-side. */
+  public applyFormulaColumnSaved(column: DatasetColumn): void {
     this.schema.columns.update((columns) =>
-      columns.some((c) => c.id === column.id) ? columns.map((c) => (c.id === column.id ? column : c)) : [...columns, column],
+      columns.some((c) => c.id === column.id)
+        ? columns.map((c) => (c.id === column.id ? column : c))
+        : [...columns, column],
     );
     this.refreshComputed();
   }
 
-  /** The explanation the server gave for a refused request (a conflict or validation failure), if it gave one. */
-  private serverMessage(err: unknown): string | null {
-    const refused = err instanceof HttpErrorResponse && (err.status === 400 || err.status === 409);
-    return refused && typeof err.error === 'string' && err.error ? err.error : null;
-  }
-
-  /** Refetches schema and rows when the dataset has formula columns, whose values follow other columns' changes. */
-  private refreshComputed(): void {
-    if (!this.schema.columns().some((c) => c.formula != null)) return;
-    this.schema.reload();
-    this.rows.reload();
-  }
-
-  addColumn(name: string, type: DatasetColumnType): void {
+  public addColumn(name: string, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
-    if (!id || !trimmed) return;
+    if (!id || !trimmed) {
+      return;
+    }
     // Column names are the key the whole app references, so they must stay unique.
     if (this.columnNameTaken(trimmed)) {
       this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
@@ -70,14 +49,17 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) => [...columns, column]);
         this.refreshComputed();
       },
-      error: (err) => this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
     });
   }
 
-  renameColumn(column: DatasetColumn, name: string): void {
+  public renameColumn(column: DatasetColumn, name: string): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
-    if (!id || !trimmed || trimmed === column.name) return;
+    if (!id || !trimmed || trimmed === column.name) {
+      return;
+    }
     if (this.columnNameTaken(trimmed, column.id)) {
       this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
       return;
@@ -94,9 +76,11 @@ export class DatasetColumnCommands {
     });
   }
 
-  retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
+  public retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
-    if (!id || type === column.type) return;
+    if (!id || type === column.type) {
+      return;
+    }
     this.autosave.track(this.api.updateColumn(id, column.id, column.name, type)).subscribe({
       next: (updated) => {
         this.schema.columns.update((columns) =>
@@ -105,15 +89,19 @@ export class DatasetColumnCommands {
         this.refreshComputed();
       },
       error: (err) =>
-        this.notify.apiError(err, this.serverMessage(err) ?? "Couldn't change the column type. Please try again."),
+        this.notify.apiError(
+          err,
+          this.serverMessage(err) ?? "Couldn't change the column type. Please try again.",
+        ),
     });
   }
 
-  deleteColumn(column: DatasetColumn): void {
+  public deleteColumn(column: DatasetColumn): void {
     const id = this.collection.selectedId();
-    if (!id) return;
-    // A dataset must keep at least one column, so refuse to delete the last one
-    // rather than save it into a "no columns" error state.
+    if (!id) {
+      return;
+    }
+    // A dataset must keep at least one column.
     if (this.schema.columns().length <= 1) {
       this.notify.error("A dataset needs at least one column, so this one can't be deleted.");
       return;
@@ -126,16 +114,21 @@ export class DatasetColumnCommands {
         this.rows.stripColumn(column.id);
       },
       error: (err) =>
-        this.notify.apiError(err, this.serverMessage(err) ?? `Couldn't delete "${column.name}". Please try again.`),
+        this.notify.apiError(
+          err,
+          this.serverMessage(err) ?? `Couldn't delete "${column.name}". Please try again.`,
+        ),
     });
   }
 
-  moveColumn(index: number, offset: number): void {
+  public moveColumn(index: number, offset: number): void {
     const id = this.collection.selectedId();
     const previous = this.schema.columns();
     const columns = [...previous];
     const target = index + offset;
-    if (!id || target < 0 || target >= columns.length) return;
+    if (!id || target < 0 || target >= columns.length) {
+      return;
+    }
 
     [columns[index], columns[target]] = [columns[target], columns[index]];
     this.schema.columns.set(columns);
@@ -153,5 +146,28 @@ export class DatasetColumnCommands {
           this.notify.apiError(err, "Couldn't reorder the columns — the change was reverted.");
         },
       });
+  }
+
+  /** True when another column already uses this name (trimmed, case-insensitive). */
+  private columnNameTaken(name: string, exceptId?: string): boolean {
+    const key = name.trim().toLowerCase();
+    return this.schema
+      .columns()
+      .some((c) => c.id !== exceptId && c.name.trim().toLowerCase() === key);
+  }
+
+  /** The explanation the server gave for a refused request (a conflict or validation failure), if it gave one. */
+  private serverMessage(err: unknown): string | null {
+    const refused = err instanceof HttpErrorResponse && (err.status === 400 || err.status === 409);
+    return refused && typeof err.error === 'string' && err.error ? err.error : null;
+  }
+
+  /** Refetches schema and rows when the dataset has formula columns, whose values follow other columns' changes. */
+  private refreshComputed(): void {
+    if (!this.schema.columns().some((c) => c.formula != null)) {
+      return;
+    }
+    this.schema.reload();
+    this.rows.reload();
   }
 }

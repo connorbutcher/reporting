@@ -18,7 +18,9 @@ export class BarSeriesOptions {
 
   /** Stack totals ride an invisible zero-height bar on top of each stack. */
   public static totals(chart: BarChart): BarSeriesOption[] {
-    if (!chart.config.showStackTotals || !chart.stacked || chart.percent) return [];
+    if (!chart.config.showStackTotals || !chart.stacked || chart.percent) {
+      return [];
+    }
     return [...chart.stackTotals].map(([stack, totals]) => ({
       name: `${BarStacks.TOTAL_PREFIX}${stack}`,
       type: 'bar',

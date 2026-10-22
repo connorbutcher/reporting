@@ -9,23 +9,17 @@ import { ReportSharedView } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportViewerStore } from '../report-viewer.store';
 
-const VIEW_PARAM = 'view';
-
-function viewParam(): Signal<string | null> {
-  const route = inject(ActivatedRoute);
-  return toSignal(route.queryParamMap.pipe(map((params) => params.get(VIEW_PARAM))), {
-    initialValue: route.snapshot.queryParamMap.get(VIEW_PARAM),
-  });
-}
-
 /** A shared filter snapshot named by the URL's `?view=<short id>`, and turning the reader's filters into one. */
 @Injectable()
 export class SharedViewLink {
-  public readonly id = viewParam();
+  private static readonly VIEW_PARAM = 'view';
+  public readonly id = SharedViewLink.viewParam();
 
   /** Undefined until the snapshot for the current id arrives; null when it doesn't exist. */
   public readonly filters = computed(() =>
-    this.resource.hasValue() && this.resource.value().id === this.id() ? this.resource.value().filters : undefined,
+    this.resource.hasValue() && this.resource.value().id === this.id()
+      ? this.resource.value().filters
+      : undefined,
   );
   public readonly loading = computed(() => this.resource.isLoading());
   /** Nothing to wait for when the URL names nothing. */
@@ -47,11 +41,22 @@ export class SharedViewLink {
   private readonly resource = httpResource<ReportSharedView>(() => {
     const reportId = this.store.reportId();
     const id = this.id();
-    return reportId && id ? `/api/reports/${reportId}/shared-views/${encodeURIComponent(id)}` : undefined;
+    return reportId && id
+      ? `/api/reports/${reportId}/shared-views/${encodeURIComponent(id)}`
+      : undefined;
   });
 
   /** The id the filters on screen reflect. A different one in the URL came from outside (back/forward). */
   private applied: string | null = null;
+  private static viewParam(): Signal<string | null> {
+    const route = inject(ActivatedRoute);
+    return toSignal(
+      route.queryParamMap.pipe(map((params) => params.get(SharedViewLink.VIEW_PARAM))),
+      {
+        initialValue: route.snapshot.queryParamMap.get(SharedViewLink.VIEW_PARAM),
+      },
+    );
+  }
 
   public markApplied(id: string | null): void {
     this.applied = id;
@@ -64,10 +69,12 @@ export class SharedViewLink {
   /** Removes `?view=` once it no longer describes the filters. */
   public drop(): void {
     this.applied = null;
-    if (!this.id()) return;
+    if (!this.id()) {
+      return;
+    }
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { [VIEW_PARAM]: null },
+      queryParams: { [SharedViewLink.VIEW_PARAM]: null },
       queryParamsHandling: 'merge',
       preserveFragment: true,
       replaceUrl: true,
@@ -77,7 +84,9 @@ export class SharedViewLink {
   /** Copies a link to this report and tab. The filters go to the server for a short id, so the link carries no filter data. */
   public async copy(encoded: string | null): Promise<void> {
     const reportId = this.store.reportId();
-    if (reportId === null) return;
+    if (reportId === null) {
+      return;
+    }
 
     let viewId: string | null = null;
     if (encoded) {
@@ -100,7 +109,7 @@ export class SharedViewLink {
   private linkTo(viewId: string | null): string {
     const tree = this.router.createUrlTree([], {
       relativeTo: this.route,
-      queryParams: { [VIEW_PARAM]: viewId },
+      queryParams: { [SharedViewLink.VIEW_PARAM]: viewId },
       queryParamsHandling: 'merge',
     });
     return new URL(

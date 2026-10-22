@@ -4,11 +4,10 @@ import {
   ChartSort,
   ComboChartWidget,
   ComboChartWidgetConfig,
-  DEFAULT_CHART_SORT,
-  DEFAULT_COMBO_CHART_CONFIG,
+  WidgetConfigDefaults,
   DateGrouping,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ValidationIssue } from './validation-issue';
 import { ModelSources } from './sources/model-sources';
@@ -26,7 +25,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   public readonly smooth = signal(false);
   public readonly showPoints = signal(true);
   public readonly areaFill = signal(false);
-  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  public readonly sort = signal<ChartSort>(WidgetConfigDefaults.CHART_SORT);
   /** Buckets a date category by period; null groups by exact date. */
   public readonly categoryGrouping = signal<DateGrouping | null>(null);
   /** Draws lines straight across categories with no value. */
@@ -35,7 +34,9 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   /** Whether there can be several bar series to stack, as on the bar chart. */
   public readonly multiSeries = computed(() => {
     const bindings = this.bindings();
-    if (bindings.length > 1) return true;
+    if (bindings.length > 1) {
+      return true;
+    }
     return bindings.some((b) => !!b.seriesColumnId() || b.barValueColumnIds().length > 1);
   });
 
@@ -52,7 +53,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
     this.showPoints.set(widget.config.showPoints);
     this.areaFill.set(widget.config.areaFill);
     // Older charts default to natural order.
-    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.sort.set(widget.config.sort ?? WidgetConfigDefaults.CHART_SORT);
     this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
     this.connectNulls.set(widget.config.connectNulls ?? false);
   }
@@ -64,7 +65,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   public override toDto(): ComboChartWidget {
     const config: ComboChartWidgetConfig = {
       type: 'comboChart',
-      ...DEFAULT_COMBO_CHART_CONFIG,
+      ...WidgetConfigDefaults.COMBO_CHART,
       ...this.chartConfigBaseDto(),
       aggregate: this.aggregate(),
       stacked: this.stacked(),
@@ -79,7 +80,7 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('comboChart').label;
+    return WidgetCatalog.descriptor('comboChart').label;
   }
 
   // The bar chart's rules, checked per binding so a half-configured overlay still warns.

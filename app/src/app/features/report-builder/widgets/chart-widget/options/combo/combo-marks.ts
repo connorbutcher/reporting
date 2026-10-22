@@ -1,5 +1,5 @@
 import type { LineSeriesOption } from 'echarts/charts';
-import { chartAxisIndex } from '../../../../../../core/models/report';
+import { ChartConfigs } from '../../../../../../core/models/report';
 import { GuideLineMarks } from '../marks/guide-line-marks';
 import { GuideLineOutline } from '../marks/guide-line-outline';
 import { OutlineSeverity } from '../marks/outline-severity';
@@ -30,7 +30,9 @@ export class ComboMarks {
         ],
         chart.multiAxis ? { yAxisIndex: k } : {},
       );
-      if (reference) references.push(reference);
+      if (reference) {
+        references.push(reference);
+      }
     }
     return references;
   }
@@ -40,7 +42,9 @@ export class ComboMarks {
     chart: ComboChart,
     axisIndex: number,
   ): (value: number) => string | null {
-    if (!chart.axes[axisIndex]) return OutlineSeverity.forValue([]);
+    if (!chart.axes[axisIndex]) {
+      return OutlineSeverity.forValue([]);
+    }
     return OutlineSeverity.forValue([
       ...ToleranceOutline.zonesFor(ComboMarks.bandsOn(chart, axisIndex)),
       ...GuideLineOutline.zonesFor(ComboMarks.guideLinesOn(chart, axisIndex)),
@@ -51,13 +55,14 @@ export class ComboMarks {
     const { config, axes } = chart;
     const yAxisIds = new Map(config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
     return (chart.data?.toleranceBands ?? []).filter(
-      (b) => b.axis === 'y' && chartAxisIndex(axes, yAxisIds.get(b.id) ?? null) === axisIndex,
+      (b) =>
+        b.axis === 'y' && ChartConfigs.axisIndex(axes, yAxisIds.get(b.id) ?? null) === axisIndex,
     );
   }
 
   private static guideLinesOn(chart: ComboChart, axisIndex: number) {
     return (chart.config.guideLines ?? []).filter(
-      (l) => l.axis === 'y' && chartAxisIndex(chart.axes, l.yAxisId ?? null) === axisIndex,
+      (l) => l.axis === 'y' && ChartConfigs.axisIndex(chart.axes, l.yAxisId ?? null) === axisIndex,
     );
   }
 }

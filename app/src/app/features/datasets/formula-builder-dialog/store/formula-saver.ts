@@ -4,7 +4,7 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { FormulaApiService } from '../../../../core/api/formula-api.service';
 import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { naturalColumnType } from '../model';
+import { ValueKinds } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { FormulaChecking } from './formula-checking';
 import { FormulaColumnForm } from './formula-column-form';
@@ -19,7 +19,7 @@ export class FormulaSaver {
   /** The column type the result will be stored as, or null when it must still be chosen. */
   public readonly resultType = computed<DatasetColumnType | null>(() => {
     const chosen = this.columnForm.chosenType();
-    return chosen === 'auto' ? naturalColumnType(this.checking.resultKind()) : chosen;
+    return chosen === 'auto' ? ValueKinds.naturalColumnType(this.checking.resultKind()) : chosen;
   });
 
   private readonly data = inject<FormulaBuilderData>(DIALOG_DATA);
@@ -98,12 +98,19 @@ export class FormulaSaver {
       return 'Fill in the empty slots before saving.';
     }
 
-    return this.checking.previewing() ? 'Still checking the formula — try again in a moment.' : null;
+    return this.checking.previewing()
+      ? 'Still checking the formula — try again in a moment.'
+      : null;
   }
 
   /** The server explains a rejected formula in its response text; show that here, beside the formula. */
   private reportFailure(err: unknown): void {
-    if (err instanceof HttpErrorResponse && err.status === 400 && typeof err.error === 'string' && err.error) {
+    if (
+      err instanceof HttpErrorResponse &&
+      err.status === 400 &&
+      typeof err.error === 'string' &&
+      err.error
+    ) {
       this.saveError.set(err.error);
     } else {
       this.notify.apiError(err, "Couldn't save the formula column. Please try again.");

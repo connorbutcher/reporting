@@ -1,20 +1,5 @@
 import { signal } from '@angular/core';
-import {
-  DEFAULT_BAR_CHART_CONFIG,
-  DEFAULT_COMBO_CHART_CONFIG,
-  DEFAULT_BOX_PLOT_CONFIG,
-  DEFAULT_HISTOGRAM_CONFIG,
-  DEFAULT_KPI_CONFIG,
-  DEFAULT_PIVOT_CONFIG,
-  DEFAULT_LINE_CHART_CONFIG,
-  DEFAULT_SCATTER_CHART_CONFIG,
-  DEFAULT_TABLE_CONFIG,
-  DEFAULT_TEXT_CONFIG,
-  DEFAULT_XBAR_R_CHART_CONFIG,
-  Tab,
-  Widget,
-  WidgetType,
-} from '../../../core/models/report';
+import { WidgetConfigDefaults, Tab, Widget, WidgetType } from '../../../core/models/report';
 import { GridLayout } from '../grid/grid-layout';
 import { EditorNode } from './editor-node';
 import { WidgetModel } from './widget.model';
@@ -65,14 +50,18 @@ export class TabModel extends EditorNode {
   }
 
   public setGridColumns(value: number): void {
-    if (!Number.isFinite(value)) return;
+    if (!Number.isFinite(value)) {
+      return;
+    }
     this.gridColumns.set(
       GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
     );
   }
 
   public setGridRows(value: number): void {
-    if (!Number.isFinite(value)) return;
+    if (!Number.isFinite(value)) {
+      return;
+    }
     this.gridRows.set(
       GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
     );
@@ -108,7 +97,9 @@ export class TabModel extends EditorNode {
   /** Copies a widget and its configuration into the nearest free space. */
   public duplicateWidget(widgetId: string): WidgetModel | null {
     const source = this.widget(widgetId);
-    if (!source) return null;
+    if (!source) {
+      return null;
+    }
 
     const dto = source.toDto();
     // Avoid every widget, the original included, or the copy lands on top of it.
@@ -139,7 +130,9 @@ export class TabModel extends EditorNode {
     for (let y = 0; y + h <= this.gridRows(); y++) {
       for (let x = 0; x + w <= this.gridColumns(); x++) {
         const candidate = { x, y, w, h };
-        if (!taken.some((rect) => GridLayout.rectsOverlap(candidate, rect))) return { x, y };
+        if (!taken.some((rect) => GridLayout.rectsOverlap(candidate, rect))) {
+          return { x, y };
+        }
       }
     }
 
@@ -177,7 +170,9 @@ export class TabModel extends EditorNode {
 
     for (const widget of widgets) {
       const rect = widget.rect();
-      if (rect.x + rect.w <= columns && rect.y + rect.h <= rows) continue;
+      if (rect.x + rect.w <= columns && rect.y + rect.h <= rows) {
+        continue;
+      }
 
       issues.push({
         id: `${widget.id}:bounds`,
@@ -194,7 +189,9 @@ export class TabModel extends EditorNode {
       const overlapping = widgets
         .slice(0, index)
         .find((other) => GridLayout.rectsOverlap(widget.rect(), other.rect()));
-      if (!overlapping) return;
+      if (!overlapping) {
+        return;
+      }
 
       issues.push({
         id: `${widget.id}:overlap`,
@@ -215,69 +212,71 @@ export class TabModel extends EditorNode {
         return {
           ...base,
           type: 'dataTable',
-          config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG },
+          config: { type: 'dataTable', ...WidgetConfigDefaults.DATA_TABLE },
         };
       case 'pivotTable':
         return {
           ...base,
           type: 'pivotTable',
-          config: { type: 'pivotTable', ...DEFAULT_PIVOT_CONFIG },
+          config: { type: 'pivotTable', ...WidgetConfigDefaults.PIVOT_TABLE },
         };
       case 'scatterChart':
         return {
           ...base,
           type: 'scatterChart',
-          config: { type: 'scatterChart', ...DEFAULT_SCATTER_CHART_CONFIG },
+          config: { type: 'scatterChart', ...WidgetConfigDefaults.SCATTER_CHART },
         };
       case 'lineChart':
         return {
           ...base,
           type: 'lineChart',
-          config: { type: 'lineChart', ...DEFAULT_LINE_CHART_CONFIG },
+          config: { type: 'lineChart', ...WidgetConfigDefaults.LINE_CHART },
         };
       case 'barChart':
         return {
           ...base,
           type: 'barChart',
-          config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
+          config: { type: 'barChart', ...WidgetConfigDefaults.BAR_CHART },
         };
       case 'comboChart':
         return {
           ...base,
           type: 'comboChart',
-          config: { type: 'comboChart', ...DEFAULT_COMBO_CHART_CONFIG },
+          config: { type: 'comboChart', ...WidgetConfigDefaults.COMBO_CHART },
         };
       case 'boxPlot':
         return {
           ...base,
           type: 'boxPlot',
-          config: { type: 'boxPlot', ...DEFAULT_BOX_PLOT_CONFIG },
+          config: { type: 'boxPlot', ...WidgetConfigDefaults.BOX_PLOT },
         };
       case 'histogram':
         return {
           ...base,
           type: 'histogram',
-          config: { type: 'histogram', ...DEFAULT_HISTOGRAM_CONFIG },
+          config: { type: 'histogram', ...WidgetConfigDefaults.HISTOGRAM },
         };
       case 'xbarRChart':
         return {
           ...base,
           type: 'xbarRChart',
-          config: { type: 'xbarRChart', ...DEFAULT_XBAR_R_CHART_CONFIG },
+          config: { type: 'xbarRChart', ...WidgetConfigDefaults.XBAR_R_CHART },
         };
       case 'staticText':
         return {
           ...base,
           type: 'staticText',
-          config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG },
+          config: { type: 'staticText', ...WidgetConfigDefaults.STATIC_TEXT },
         };
       case 'kpi':
-        return { ...base, type: 'kpi', config: { type: 'kpi', ...DEFAULT_KPI_CONFIG } };
+        return { ...base, type: 'kpi', config: { type: 'kpi', ...WidgetConfigDefaults.KPI } };
     }
   }
 
   /** Grows the grid so a widget at the fallback slot fits, rather than failing validation. */
   private growRowsFor(y: number, h: number): void {
-    if (y + h > this.gridRows()) this.setGridRows(y + h);
+    if (y + h > this.gridRows()) {
+      this.setGridRows(y + h);
+    }
   }
 }

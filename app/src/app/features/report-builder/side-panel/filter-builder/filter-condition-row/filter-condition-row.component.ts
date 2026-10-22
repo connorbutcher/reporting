@@ -61,8 +61,9 @@ export class FilterConditionRowComponent {
     // Fetch values only once the row needs a value picker.
     effect(() => {
       const datasetId = this.datasetId();
-      if (datasetId !== null && this.pickFromValues())
+      if (datasetId !== null && this.pickFromValues()) {
         this.lists.load(datasetId, this.condition().columnId());
+      }
     });
   }
 }

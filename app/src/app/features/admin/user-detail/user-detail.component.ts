@@ -13,12 +13,7 @@ import { AdminGroup, SaveUser } from '../../../core/models/admin';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
-/**
- * The detail card for one user, reached from the users list — create when the route id is "new",
- * otherwise edit. Shown in place of the list (no dialog) so there's room for the full record:
- * name, email (fixed after creation), the manage-users permission, and group memberships. Saving
- * returns to the list.
- */
+/** Creates a user when the route id is "new", otherwise edits them. */
 @Component({
   selector: 'app-user-detail',
   imports: [FormsModule, DatePipe, InputTextModule, CheckboxModule, ButtonModule, TagModule],
@@ -56,15 +51,22 @@ export class UserDetailComponent {
     required(path.email, { message: 'An email is required.' });
     emailRule(path.email, { message: 'Enter a valid email address.' });
     validate(path.email, ({ value }) => {
-      if (!this.isNew()) return null;
+      if (!this.isNew()) {
+        return null;
+      }
       const taken = this.existingEmails().includes(value().trim().toLowerCase());
-      return taken ? { kind: 'duplicate', message: 'A user with that email already exists.' } : null;
+      return taken
+        ? { kind: 'duplicate', message: 'A user with that email already exists.' }
+        : null;
     });
   });
 
   public readonly emailError = computed(
     () =>
-      this.form.email().errors().find((e) => e.kind === 'duplicate')?.message ??
+      this.form
+        .email()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ??
       (this.form.email().dirty() && this.form.email().invalid()
         ? (this.form.email().errors()[0]?.message ?? null)
         : null),
@@ -93,7 +95,9 @@ export class UserDetailComponent {
   }
 
   public save(): void {
-    if (!this.form().valid() || this.saving()) return;
+    if (!this.form().valid() || this.saving()) {
+      return;
+    }
     this.saving.set(true);
     this.saveError.set(null);
 
@@ -104,9 +108,7 @@ export class UserDetailComponent {
       canCreateGroups: this.isGlobalAdmin() ? true : this.canCreateGroups(),
       groupIds: this.groupIds(),
     };
-    const request = this.isNew()
-      ? this.api.createUser(dto)
-      : this.api.updateUser(this.refId!, dto);
+    const request = this.isNew() ? this.api.createUser(dto) : this.api.updateUser(this.refId!, dto);
 
     request.subscribe({
       next: () => {
@@ -154,8 +156,7 @@ export class UserDetailComponent {
         this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsers);
         this.canManageUsers.set(detail.canManageUsers);
         this.canCreateGroups.set(detail.canCreateGroups);
-        // A global admin belongs to no groups (they already have full access to all of them), so
-        // saving sends an empty set — which also clears any membership from before that rule.
+        // Global admins belong to no groups, so send an empty set.
         this.groupIds.set(detail.isGlobalAdmin ? [] : detail.groups.map((g) => g.id));
         this.createdAt.set(detail.createdAt);
         this.form.displayName().value.set(detail.displayName);
@@ -163,7 +164,9 @@ export class UserDetailComponent {
         this.loading.set(false);
       },
       error: (err: { status?: number }) => {
-        this.loadError.set(err?.status === 404 ? 'That user no longer exists.' : 'Could not load the user.');
+        this.loadError.set(
+          err?.status === 404 ? 'That user no longer exists.' : 'Could not load the user.',
+        );
         this.loading.set(false);
       },
     });
@@ -171,8 +174,12 @@ export class UserDetailComponent {
 
   private messageFor(err: unknown, fallback: string): string {
     const e = err as { status?: number; error?: unknown };
-    if (e?.status === 403) return 'You no longer have permission to do that.';
-    if (e?.status === 400 && typeof e.error === 'string') return e.error;
+    if (e?.status === 403) {
+      return 'You no longer have permission to do that.';
+    }
+    if (e?.status === 400 && typeof e.error === 'string') {
+      return e.error;
+    }
     return fallback;
   }
 }

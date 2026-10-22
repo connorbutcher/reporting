@@ -20,10 +20,16 @@ export class SeriesPalette {
   public resolve(labels: readonly string[]): Map<string, string> {
     // Drop colours for series no longer plotted, freeing them for reuse.
     const wanted = new Set(labels);
-    for (const key of [...this.assigned.keys()]) if (!wanted.has(key)) this.assigned.delete(key);
+    for (const key of [...this.assigned.keys()]) {
+      if (!wanted.has(key)) {
+        this.assigned.delete(key);
+      }
+    }
 
     for (const label of labels) {
-      if (this.assigned.has(label)) continue;
+      if (this.assigned.has(label)) {
+        continue;
+      }
       // Hashed colour, else the next free one; once all are taken, keep the hashed one.
       const used = new Set(this.assigned.values());
       const palette = SeriesColors.PALETTE;

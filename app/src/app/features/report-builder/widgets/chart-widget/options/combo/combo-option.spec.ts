@@ -3,7 +3,7 @@ import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   ChartSeriesBinding,
   ComboChartWidgetConfig,
-  DEFAULT_COMBO_CHART_CONFIG,
+  WidgetConfigDefaults,
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult } from '../../../../../../core/models/widget-query';
 import { ComboOption } from './combo-option';
@@ -27,7 +27,7 @@ const binding = (id: string, renderAs: 'bar' | 'line'): ChartSeriesBinding =>
   }) as ChartSeriesBinding;
 
 const config = (over: Partial<ComboChartWidgetConfig> = {}): ComboChartWidgetConfig => ({
-  ...DEFAULT_COMBO_CHART_CONFIG,
+  ...WidgetConfigDefaults.COMBO_CHART,
   type: 'comboChart',
   bindings: [binding('Actual', 'bar'), binding('Target', 'line')],
   ...over,

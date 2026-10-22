@@ -3,45 +3,29 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Observable, defer, filter, finalize, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
-import { Folder } from '../../core/models/folder.model';
+import { ContentRow } from './models/content-row';
+import { RenameDialogComponent } from './rename-dialog/rename-dialog.component';
+import { RenameDialogData } from './rename-dialog/rename-dialog-data';
+import { Folder } from '../../core/models/folder/folder.model';
 import { ReportSummary } from '../../core/models/report';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from './confirm-dialog/confirm-dialog.component';
-import {
-  CreateDialogComponent,
-  CreateDialogData,
-  CreateDialogResult,
-} from './create-dialog/create-dialog.component';
-import { MoveDialogComponent, MoveDialogData } from './move-dialog/move-dialog.component';
-import {
-  PermissionsDialogComponent,
-  PermissionsDialogData,
-} from './permissions-dialog/permissions-dialog.component';
-import { RenameDialogComponent, RenameDialogData } from './rename-dialog/rename-dialog.component';
-import { ContentRow } from './content-row';
-
-/** What a completed create resolved to, so the page can reload or open the new report. */
-export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: number };
+import { MoveDialogComponent } from './move-dialog/move-dialog.component';
+import { MoveDialogData } from './move-dialog/move-dialog-data';
+import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from './confirm-dialog/confirm-dialog-data';
+import { PermissionsDialogComponent } from './permissions-dialog/permissions-dialog.component';
+import { PermissionsDialogData } from './permissions-dialog/permissions-dialog-data';
+import { CreateOutcome } from './create-outcome';
+import { CreateDialogResult } from './create-dialog/create-dialog-result';
+import { CreateDialogComponent } from './create-dialog/create-dialog.component';
+import { CreateDialogData } from './create-dialog/create-dialog-data';
 
 /**
- * The row/create dialog flows for the home page, pulled out of the component so
- * it keeps only browsing state. Each method opens its dialog and performs the
- * chosen mutation, emitting once on success; cancelling completes without
- * emitting. The page stays the single owner of what happens next (reload the
- * contents, refresh a tree node, navigate, or surface an error).
+ * Home row and create dialog flows. Each emits once on success and completes without emitting on
+ * cancel; the page decides what happens next.
  */
 @Injectable()
 export class HomeItemActionsService {
-  /**
-   * True while a row action is talking to the server: {@link move} and {@link create} prefetching
-   * the folder tree their dialog needs before it can open, and the rename/move/remove/create
-   * mutation itself once its dialog has closed with a choice. None of those triggers (a
-   * context-menu item, or a dialog that's already gone) has anywhere of its own to show a
-   * pending state, so the toolbar shows this instead. Permissions opens its own dialog immediately
-   * and owns its saving state there, so it never sets this.
-   */
+  /** True while a row action prefetches for its dialog or runs its mutation, for the toolbar. */
   public readonly busy = signal(false);
 
   private readonly dialog = inject(Dialog);
@@ -53,7 +37,12 @@ export class HomeItemActionsService {
     return defer(
       () =>
         this.dialog.open<string | undefined>(RenameDialogComponent, {
-          data: { kind: row.kind, id: row.id, currentName: row.name, folderId } satisfies RenameDialogData,
+          data: {
+            kind: row.kind,
+            id: row.id,
+            currentName: row.name,
+            folderId,
+          } satisfies RenameDialogData,
         }).closed,
     ).pipe(
       filter((newName): newName is string => !!newName),
@@ -69,7 +58,7 @@ export class HomeItemActionsService {
     );
   }
 
-  /** Emits the chosen destination folder (null = root) on a successful move. */
+  /** Emits the destination folder (null is the root). */
   public move(row: ContentRow): Observable<number | null> {
     const currentFolderId = row.kind === 'folder' ? row.folder.parentFolderId : row.report.folderId;
     this.busy.set(true);
@@ -102,7 +91,7 @@ export class HomeItemActionsService {
     );
   }
 
-  /** Emits on a confirmed, successful delete; errors propagate so the page can explain a 409. */
+  /** Errors propagate so the page can explain a 409. */
   public remove(row: ContentRow): Observable<void> {
     return defer(
       () =>
@@ -121,14 +110,15 @@ export class HomeItemActionsService {
       filter((confirmed): confirmed is boolean => !!confirmed),
       switchMap(() => {
         this.busy.set(true);
-        const removed = row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id);
+        const removed =
+          row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id);
         return removed.pipe(finalize(() => this.busy.set(false)));
       }),
       map(() => undefined),
     );
   }
 
-  /** Opens the sharing dialog for a folder or report; emits true if any grant or inheritance change was saved. */
+  /** Emits true if anything was saved. */
   public permissions(row: ContentRow): Observable<boolean> {
     return defer(
       () =>
@@ -138,7 +128,6 @@ export class HomeItemActionsService {
     ).pipe(map((changed) => !!changed));
   }
 
-  /** Opens the create dialog under the given folder; emits what was created. */
   public create(folderId: number | null): Observable<CreateOutcome> {
     this.busy.set(true);
     return forkJoin({ folders: this.folderApi.list(), reports: this.reportApi.listAll() }).pipe(

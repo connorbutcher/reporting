@@ -3,7 +3,7 @@ import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterApiService } from '../../../../core/api/filter-api.service';
-import { DEFAULT_TABLE_CONFIG, DataTableWidgetConfig } from '../../../../core/models/report';
+import { WidgetConfigDefaults, DataTableWidgetConfig } from '../../../../core/models/report';
 import {
   TableQueryRequest,
   TableQueryResult,
@@ -35,7 +35,7 @@ const page = (request: TableQueryRequest, matched: number): TableQueryResult => 
 });
 
 const config = (over: Partial<DataTableWidgetConfig> = {}): DataTableWidgetConfig => ({
-  ...DEFAULT_TABLE_CONFIG,
+  ...WidgetConfigDefaults.DATA_TABLE,
   type: 'dataTable',
   datasetId: 1,
   columns: [{ columnId: 'name' }, { columnId: 'cost', total: 'sum' }],

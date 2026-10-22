@@ -1,7 +1,7 @@
 import { FormulaValueKind } from '../../../../../core/models/dataset';
 import { OperatorAssociativity } from './operator-associativity';
 
-export interface OperatorDefinition {
+export type OperatorDefinition = {
   /** As the formula language writes it. */
   op: string;
   /** As the builder shows it. */
@@ -15,4 +15,4 @@ export interface OperatorDefinition {
   associativity: OperatorAssociativity;
   /** Takes one value, on its right (NOT). */
   prefixOnly?: boolean;
-}
+};

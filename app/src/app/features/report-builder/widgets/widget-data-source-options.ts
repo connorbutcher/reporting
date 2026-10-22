@@ -2,7 +2,7 @@ import { Signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 
-export interface WidgetDataSourceOptions<T> {
+export type WidgetDataSourceOptions<T> = {
   datasetId: Signal<number | null>;
   /** Bumped by the page when column configuration changes, to refetch the schema. */
   version: Signal<number>;
@@ -12,4 +12,4 @@ export interface WidgetDataSourceOptions<T> {
   /** Runs untracked before each schema load, e.g. to seed sort and page. */
   onSchemaLoad?: () => void;
   debounceMs?: number;
-}
+};

@@ -1,8 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, inject, input, output } from '@angular/core';
-import { FilterGroup, combineFilters } from '../../../core/models/filter';
-import { SortDirection, widgetFragment } from '../../../core/models/report';
-import { isExportableWidgetType } from '../../../core/models/widget-catalog';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
+import { SortDirection, WidgetFragment } from '../../../core/models/report';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { GridPreview } from '../grid/grid-preview';
 import {
@@ -23,6 +23,7 @@ import { WidgetOutletDirective } from '../widgets/widget-outlet.directive';
 import { WidgetOutputHandler } from '../widgets/widget-output-handler';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
+import { Plural } from '../../../shared/text/plural';
 
 @Component({
   selector: 'app-widget-host',
@@ -60,7 +61,7 @@ export class WidgetHostComponent {
 
   public readonly issueLabel = computed(() => {
     const count = this.issues().length;
-    return `${count} issue${count === 1 ? '' : 's'} on this widget — click to review`;
+    return `${Plural.count(count, 'issue')} on this widget — click to review`;
   });
 
   public readonly gridColumn = computed(
@@ -68,10 +69,10 @@ export class WidgetHostComponent {
   );
 
   public readonly gridRow = computed(() => `${this.widget().y() + 1} / span ${this.widget().h()}`);
-  public readonly fragment = computed(() => widgetFragment(this.widget().id));
+  public readonly fragment = computed(() => WidgetFragment.forWidget(this.widget().id));
   public readonly title = computed(() => this.widget().label());
   public readonly showTitle = computed(() => this.widget().showTitle());
-  public readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
+  public readonly exportable = computed(() => WidgetCatalog.isExportableType(this.widget().type));
 
   /** Reflects live edits. */
   public readonly widgetDto = computed(() => this.widget().toDto());
@@ -93,20 +94,24 @@ export class WidgetHostComponent {
   /** The report-level filter for a table's or pivot's dataset. */
   public readonly reportFilter = computed(() => {
     const datasetId = this.filterableModel()?.datasetId();
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     return this.reportFilterFor(datasetId);
   });
 
   /** Each chart binding's report filter layered under its own finished conditions, keyed by binding id. */
   public readonly bindingFilters = computed(() => {
     const chart = this.chartModel();
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const filters: Record<string, FilterGroup | null> = {};
     for (const binding of chart.bindings()) {
       const own = binding.filter.toQueryDto();
       const report = this.reportFilterFor(binding.datasetId());
-      filters[binding.id] = combineFilters(report, own);
+      filters[binding.id] = FilterTrees.combine(report, own);
     }
     return filters;
   });
@@ -145,7 +150,9 @@ export class WidgetHostComponent {
       return;
     }
     // Keep a multi-selection intact so the group can be dragged.
-    if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) return;
+    if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) {
+      return;
+    }
     this.navigation.selectWidget(this.widget().id);
   }
 
@@ -180,12 +187,16 @@ export class WidgetHostComponent {
   /** Persists resized widths. Only updates existing columns, since layout reflows trigger this too. */
   public onColumnResize(widths: { columnId: string; width: number }[]): void {
     const table = this.tableModel();
-    if (!table?.appearance.resizableColumns()) return;
+    if (!table?.appearance.resizableColumns()) {
+      return;
+    }
     table.applyColumnWidths(widths);
   }
 
   private reportFilterFor(datasetId: number | null): FilterGroup | null {
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   }
 }

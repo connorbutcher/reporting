@@ -2,7 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportApiService } from '../../../core/api/report-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { ReportRevisionContent } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportModel } from '../models/report.model';
@@ -35,7 +35,7 @@ export class ReportLifecycle {
   private readonly draftResource = httpResource<ReportRevisionContent>(() => {
     const id = this.session.reportId();
     return id !== null
-      ? { url: `/api/reports/${id}/draft`, context: skipHttpErrorNotification() }
+      ? { url: `/api/reports/${id}/draft`, context: HttpErrorNotification.skip() }
       : undefined;
   });
 
@@ -53,7 +53,9 @@ export class ReportLifecycle {
     effect(() => {
       const id = this.session.reportId();
       const failed = this.draftResource.error() !== undefined;
-      if (id === null || !failed) return;
+      if (id === null || !failed) {
+        return;
+      }
 
       untracked(() => {
         if (this.checkoutAttemptedFor === id) {
@@ -79,7 +81,9 @@ export class ReportLifecycle {
     effect(() => {
       const content = this.draftResource.hasValue() ? this.draftResource.value() : null;
       untracked(() => {
-        if (content) this.setLoadedReport(content);
+        if (content) {
+          this.setLoadedReport(content);
+        }
       });
     });
   }
@@ -87,7 +91,9 @@ export class ReportLifecycle {
   /** Publishes the draft as a new version, then returns to the viewer. */
   public publish(notes: string | null): void {
     const model = this.session.model();
-    if (!model) return;
+    if (!model) {
+      return;
+    }
 
     this.reportApi.publish(model.reportId, notes).subscribe({
       next: () => {

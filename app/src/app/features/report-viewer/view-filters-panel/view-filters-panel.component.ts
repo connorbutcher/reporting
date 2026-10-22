@@ -1,22 +1,23 @@
 import { Component, computed, input, model, output, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { PageFilterEntry } from '../filters/view-filter-entry';
+import { PageFilterRowComponent } from './page-filter-row/page-filter-row.component';
+import { WidgetFilterRowComponent } from './widget-filter-row/widget-filter-row.component';
+import { SharedLinkBannerComponent } from './shared-link-banner/shared-link-banner.component';
 import { ReportViewFilters } from '../filters/report-view-filters';
 import { SharedLinkState } from '../filters/shared-link-state';
+import { TabWidgets } from './tab-widgets';
 import { ViewWidgetFilters } from '../filters/view-widget-filters';
-import { PageFilterRowComponent } from './page-filter-row/page-filter-row.component';
-import { SharedLinkBannerComponent } from './shared-link-banner/shared-link-banner.component';
-import { WidgetFilterRowComponent } from './widget-filter-row/widget-filter-row.component';
-
-interface TabWidgets {
-  readonly tabName: string;
-  readonly items: readonly ViewWidgetFilters[];
-}
+import { PageFilterEntry } from '../filters/page-filter-entry';
 
 /** The viewer's filter panel: the page filters, then each widget's, grouped by tab. */
 @Component({
   selector: 'app-view-filters-panel',
-  imports: [ButtonModule, PageFilterRowComponent, WidgetFilterRowComponent, SharedLinkBannerComponent],
+  imports: [
+    ButtonModule,
+    PageFilterRowComponent,
+    WidgetFilterRowComponent,
+    SharedLinkBannerComponent,
+  ],
   templateUrl: './view-filters-panel.component.html',
   styleUrl: './view-filters-panel.component.scss',
 })
@@ -24,11 +25,7 @@ export class ViewFiltersPanelComponent {
   public readonly filters = input.required<ReportViewFilters>();
   public readonly sharedLink = input<SharedLinkState | null>(null);
 
-  /**
-   * The expanded widget: its id, or a single-filter widget's entry key. Two-way so a widget's filter
-   * button on the grid can open it. Independent of the page rows' open state, so jumping to a widget
-   * doesn't collapse a page filter.
-   */
+  /** The expanded widget's id or entry key. Two-way so the grid can open it. */
   public readonly openKey = model<string | null>(null);
 
   public readonly copyLink = output<void>();
@@ -42,8 +39,11 @@ export class ViewFiltersPanelComponent {
     const byTab = new Map<string, ViewWidgetFilters[]>();
     for (const item of this.filters().widgetItems) {
       const items = byTab.get(item.widget.tabName);
-      if (items) items.push(item);
-      else byTab.set(item.widget.tabName, [item]);
+      if (items) {
+        items.push(item);
+      } else {
+        byTab.set(item.widget.tabName, [item]);
+      }
     }
     return [...byTab].map(([tabName, items]) => ({ tabName, items }));
   });

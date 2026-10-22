@@ -24,7 +24,9 @@ export class ComboOption {
     colors: Map<string, string>,
   ): ECOption | null {
     const chart = ComboChartResolver.resolve(config, data, columns, colors);
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const yAxes = ComboAxes.values(chart);
     return {

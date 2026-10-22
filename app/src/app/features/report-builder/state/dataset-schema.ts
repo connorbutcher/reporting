@@ -32,28 +32,42 @@ export class DatasetSchema {
       for (const widget of this.session.widgets()) {
         if (widget instanceof DataTableWidgetModel) {
           const datasetId = widget.datasetId();
-          if (datasetId) this.schemaCache.ensure(datasetId);
+          if (datasetId) {
+            this.schemaCache.ensure(datasetId);
+          }
           for (const column of widget.columns()) {
             const toleranceSourceId = column.tolerance()?.sourceDatasetId;
-            if (toleranceSourceId) this.schemaCache.ensure(toleranceSourceId);
+            if (toleranceSourceId) {
+              this.schemaCache.ensure(toleranceSourceId);
+            }
           }
         } else if (widget instanceof ChartWidgetModel) {
           // A chart overlays one dataset per binding.
           for (const binding of widget.bindings()) {
             const datasetId = binding.datasetId();
-            if (datasetId) this.schemaCache.ensure(datasetId);
+            if (datasetId) {
+              this.schemaCache.ensure(datasetId);
+            }
           }
           for (const band of widget.toleranceBands()) {
-            if (band.sourceDatasetId) this.schemaCache.ensure(band.sourceDatasetId);
+            if (band.sourceDatasetId) {
+              this.schemaCache.ensure(band.sourceDatasetId);
+            }
           }
         } else if (widget instanceof PivotTableWidgetModel) {
           const datasetId = widget.datasetId();
-          if (datasetId) this.schemaCache.ensure(datasetId);
+          if (datasetId) {
+            this.schemaCache.ensure(datasetId);
+          }
         } else if (widget instanceof KpiWidgetModel) {
           const datasetId = widget.datasetId();
-          if (datasetId) this.schemaCache.ensure(datasetId);
+          if (datasetId) {
+            this.schemaCache.ensure(datasetId);
+          }
           const toleranceSourceId = widget.tolerance()?.sourceDatasetId;
-          if (toleranceSourceId) this.schemaCache.ensure(toleranceSourceId);
+          if (toleranceSourceId) {
+            this.schemaCache.ensure(toleranceSourceId);
+          }
         }
       }
     });

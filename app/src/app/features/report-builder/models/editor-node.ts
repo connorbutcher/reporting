@@ -49,6 +49,8 @@ export abstract class EditorNode {
   /** Accepts the current state as saved, for this node and everything below. */
   public markPristine(): void {
     this.pristine.set(this.serialize());
-    for (const child of this.childNodes()) child.markPristine();
+    for (const child of this.childNodes()) {
+      child.markPristine();
+    }
   }
 }

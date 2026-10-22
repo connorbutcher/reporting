@@ -30,9 +30,13 @@ export class XBarRTooltip {
     const param = Array.isArray(params) ? params[0] : params;
     const i = param.dataIndex;
     const s = ctx.subgroups[i];
-    if (!s) return '';
+    if (!s) {
+      return '';
+    }
     const isMean = ctx.kind === 'mean';
-    if (!isMean && s.hasRange === false) return '';
+    if (!isMean && s.hasRange === false) {
+      return '';
+    }
 
     const num = ctx.format;
     const lines = [
@@ -46,7 +50,9 @@ export class XBarRTooltip {
     if (isMean ? s.meanOutOfControl : s.rangeOutOfControl) {
       lines.push('<strong style="color:#dc2626">Out of control</strong>');
       const rules = (isMean ? s.meanRules : s.rangeRules) ?? [];
-      for (const rule of rules) lines.push(`Rule ${rule}: ${XBarRTooltip.RULES[rule] ?? ''}`);
+      for (const rule of rules) {
+        lines.push(`Rule ${rule}: ${XBarRTooltip.RULES[rule] ?? ''}`);
+      }
     }
     return lines.join('<br/>');
   }

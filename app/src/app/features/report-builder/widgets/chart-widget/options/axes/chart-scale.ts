@@ -53,14 +53,22 @@ export class ChartScale {
 
   /** Label orientation as echarts `axisLabel.rotate` degrees; unset falls back to auto. */
   public static labelRotate(rotation: AxisLabelRotation | null | undefined, auto = 0): number {
-    if (rotation === 'vertical') return 90;
-    if (rotation === 'horizontal') return 0;
+    if (rotation === 'vertical') {
+      return 90;
+    }
+    if (rotation === 'horizontal') {
+      return 0;
+    }
     return auto;
   }
 
   public static longestLen(labels: readonly string[]): number {
     let n = 0;
-    for (const s of labels) if (s.length > n) n = s.length;
+    for (const s of labels) {
+      if (s.length > n) {
+        n = s.length;
+      }
+    }
     return n;
   }
 

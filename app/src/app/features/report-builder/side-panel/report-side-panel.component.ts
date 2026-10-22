@@ -41,7 +41,9 @@ export class ReportSidePanelComponent {
   /** The full trail when short or expanded, else root, "…" and the two nearest steps. */
   public readonly crumbs = computed<Crumb[]>(() => {
     const all = this.ancestors();
-    if (all.length <= ReportSidePanelComponent.COLLAPSE_THRESHOLD || this.expanded()) return all;
+    if (all.length <= ReportSidePanelComponent.COLLAPSE_THRESHOLD || this.expanded()) {
+      return all;
+    }
     return [all[0], ReportSidePanelComponent.ELLIPSIS, ...all.slice(-2)];
   });
 
@@ -64,9 +66,15 @@ export class ReportSidePanelComponent {
   /** A collision-free `@for` key, built field by field since `Object.values` order isn't guaranteed. */
   private static viewKey(view: PanelView): string {
     const parts: string[] = [view.kind];
-    if ('widgetId' in view) parts.push(view.widgetId);
-    if ('columnId' in view) parts.push(view.columnId);
-    if ('bandId' in view) parts.push(view.bandId);
+    if ('widgetId' in view) {
+      parts.push(view.widgetId);
+    }
+    if ('columnId' in view) {
+      parts.push(view.columnId);
+    }
+    if ('bandId' in view) {
+      parts.push(view.bandId);
+    }
     return parts.join('/');
   }
 

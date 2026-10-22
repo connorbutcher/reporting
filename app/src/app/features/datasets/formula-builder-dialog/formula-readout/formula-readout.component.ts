@@ -2,11 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { FormulaBuilderStore } from '../formula-builder.store';
 import { FormulaSegment } from '../model';
 
-/**
- * The formula as the text that will be saved: indented so nested calls read as a tree, coloured by kind of
- * thing, with problem spots underlined. Hovering a piece of it lights up the matching block on the canvas
- * (and the other way round), so the tree and the text stay tied together.
- */
+/** The saved text, indented and coloured. Hovering links text and blocks both ways. */
 @Component({
   selector: 'app-formula-readout',
   templateUrl: './formula-readout.component.html',
@@ -26,7 +22,11 @@ export class FormulaReadoutComponent {
     if (segment.style === 'missing') {
       return true;
     }
-    return segment.blockId !== null && segment.style !== 'punctuation' && this.badBlocks().has(segment.blockId);
+    return (
+      segment.blockId !== null &&
+      segment.style !== 'punctuation' &&
+      this.badBlocks().has(segment.blockId)
+    );
   }
 
   public isLinked(segment: FormulaSegment): boolean {

@@ -45,8 +45,12 @@ export class BarAxes {
 
   private static valueName(chart: BarChart): string {
     const label = chart.valueAxisConfig.label.trim();
-    if (label) return label;
-    if (chart.percent) return '% of total';
+    if (label) {
+      return label;
+    }
+    if (chart.percent) {
+      return '% of total';
+    }
     return BarMeasureLabel.of(chart.config.aggregate, chart.valueColumn?.name ?? null);
   }
 }

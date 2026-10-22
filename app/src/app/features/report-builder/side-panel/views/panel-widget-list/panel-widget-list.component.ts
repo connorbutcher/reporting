@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { ListboxModule } from 'primeng/listbox';
-import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../../../core/models/widget-catalog/widget-catalog';
 import { ReportSession } from '../../../state/report-session';
 import { WidgetSelection } from '../../../state/widget-selection';
 import { PanelNavigation } from '../../../state/panel-navigation';
@@ -23,8 +23,8 @@ export class PanelWidgetListComponent {
     this.session.widgets().map((widget) => ({
       id: widget.id,
       type: widget.type,
-      icon: widgetTypeDescriptor(widget.type).icon,
-      typeLabel: widgetTypeDescriptor(widget.type).label,
+      icon: WidgetCatalog.descriptor(widget.type).icon,
+      typeLabel: WidgetCatalog.descriptor(widget.type).label,
       label: widget.label(),
       filterCount: WidgetFilterSummary.count(widget),
     })),
@@ -39,7 +39,9 @@ export class PanelWidgetListComponent {
    * clicked option, and onChange covers keyboard selection.
    */
   public open(widgetId: string | null | undefined): void {
-    if (widgetId) this.navigation.selectWidget(widgetId);
+    if (widgetId) {
+      this.navigation.selectWidget(widgetId);
+    }
   }
 
   public navigate(view: PanelView): void {

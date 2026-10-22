@@ -11,7 +11,7 @@ import { FormulaPaletteComponent } from './formula-palette/formula-palette.compo
 import { FormulaPreviewComponent } from './formula-preview/formula-preview.component';
 import { FormulaProblemsComponent } from './formula-problems/formula-problems.component';
 import { FormulaReadoutComponent } from './formula-readout/formula-readout.component';
-import { KIND_LABELS } from './model';
+import { ValueKinds } from './model';
 import { FormulaCatalogue } from './store/formula-catalogue';
 import { FormulaChecking } from './store/formula-checking';
 import { FormulaColumnForm } from './store/formula-column-form';
@@ -21,29 +21,11 @@ import { FormulaInteraction } from './store/formula-interaction';
 import { FormulaLoader } from './store/formula-loader';
 import { FormulaSaver } from './store/formula-saver';
 import { FormulaSelection } from './store/formula-selection';
-
-const TYPE_OPTIONS: { label: string; value: DatasetColumnType | 'auto' }[] = [
-  { label: 'Automatic', value: 'auto' },
-  { label: 'Text', value: 'string' },
-  { label: 'Whole number', value: 'int' },
-  { label: 'Decimal', value: 'double' },
-  { label: 'Yes / No', value: 'bool' },
-  { label: 'Date', value: 'dateTime' },
-];
-
-const TYPE_NAMES: Record<DatasetColumnType, string> = {
-  string: 'text',
-  int: 'a whole number',
-  double: 'a number',
-  bool: 'yes / no',
-  dateTime: 'a date',
-};
+import { Plural } from '../../../shared/text/plural';
 
 /**
- * Builds a formula column: lay out columns, values, functions and bare operator symbols in a row — and inside
- * the arguments of functions and in brackets — while the formula reads back as text, problems are
- * flagged on the block that caused them, and the server previews the results. All the state is in
- * {@link FormulaBuilderStore}, which this dialog provides for the panels inside it to share.
+ * Builds a formula column from blocks, with live text, problems and a server preview. State lives in
+ * the {@link FormulaBuilderStore} this dialog provides.
  */
 @Component({
   selector: 'app-formula-builder-dialog',
@@ -76,13 +58,29 @@ const TYPE_NAMES: Record<DatasetColumnType, string> = {
   host: {
     role: 'dialog',
     'aria-label': 'Formula builder',
-    // Focusable, so a click on an item leaves focus in the dialog and its shortcuts (copy, paste, delete) keep working.
+    // Focusable so keyboard shortcuts keep working after a click.
     tabindex: '-1',
     '(keydown)': 'onKeydown($event)',
   },
 })
 export class FormulaBuilderDialogComponent {
-  public readonly typeOptions = TYPE_OPTIONS;
+  private static readonly TYPE_OPTIONS: { label: string; value: DatasetColumnType | 'auto' }[] = [
+    { label: 'Automatic', value: 'auto' },
+    { label: 'Text', value: 'string' },
+    { label: 'Whole number', value: 'int' },
+    { label: 'Decimal', value: 'double' },
+    { label: 'Yes / No', value: 'bool' },
+    { label: 'Date', value: 'dateTime' },
+  ];
+
+  private static readonly TYPE_NAMES: Record<DatasetColumnType, string> = {
+    string: 'text',
+    int: 'a whole number',
+    double: 'a number',
+    bool: 'yes / no',
+    dateTime: 'a date',
+  };
+  public readonly typeOptions = FormulaBuilderDialogComponent.TYPE_OPTIONS;
 
   public readonly canUndo = computed(() => this.store.canUndo());
   public readonly canRedo = computed(() => this.store.canRedo());
@@ -97,19 +95,17 @@ export class FormulaBuilderDialogComponent {
     return name.touched() ? (name.errors()[0]?.message ?? null) : null;
   });
 
-  /** The chosen type, for the select. */
   public readonly chosenType = computed(() => this.store.chosenType());
 
-  /** "Result: a number" — what the formula will produce, or why that isn't known yet. */
   public readonly resultText = computed(() => {
     if (this.store.root().length === 0) {
       return 'Result: not set yet';
     }
     const type = this.store.resultType();
     if (type) {
-      return `Result: ${TYPE_NAMES[type]}`;
+      return `Result: ${FormulaBuilderDialogComponent.TYPE_NAMES[type]}`;
     }
-    return `Result: ${KIND_LABELS[this.store.resultKind()]} — choose a type`;
+    return `Result: ${ValueKinds.LABELS[this.store.resultKind()]} — choose a type`;
   });
 
   public readonly status = computed<{ tone: 'idle' | 'ok' | 'bad' | 'busy'; text: string }>(() => {
@@ -118,7 +114,7 @@ export class FormulaBuilderDialogComponent {
       return { tone: 'idle', text: 'Empty' };
     }
     if (issues > 0) {
-      return { tone: 'bad', text: `${issues} problem${issues === 1 ? '' : 's'}` };
+      return { tone: 'bad', text: Plural.count(issues, 'problem') };
     }
     if (!this.store.serialized().complete) {
       return { tone: 'idle', text: 'Unfinished' };
@@ -126,7 +122,9 @@ export class FormulaBuilderDialogComponent {
     if (this.store.previewing()) {
       return { tone: 'busy', text: 'Checking…' };
     }
-    return this.store.isValid() ? { tone: 'ok', text: 'Valid' } : { tone: 'idle', text: 'Not checked' };
+    return this.store.isValid()
+      ? { tone: 'ok', text: 'Valid' }
+      : { tone: 'idle', text: 'Not checked' };
   });
 
   private readonly store = inject(FormulaBuilderStore);
@@ -159,28 +157,26 @@ export class FormulaBuilderDialogComponent {
     this.store.cancel();
   }
 
-  /**
-   * Shortcuts, when the keyboard isn't in a text box: Ctrl+Z / Ctrl+Y undo and redo; Ctrl+C / Ctrl+V copy
-   * and paste the selected items; Delete removes them; "(" puts them in brackets; Escape lets go of the selection.
-   */
+  /** Shortcuts outside text boxes: undo/redo, copy/paste, Delete, "(" to bracket, Escape to deselect. */
   public onKeydown(event: KeyboardEvent): void {
     if ((event.target as HTMLElement).matches('input, textarea, [contenteditable]')) {
       return;
     }
 
     const key = event.key.toLowerCase();
-    const handled = event.ctrlKey || event.metaKey ? this.onModifiedKey(key, event.shiftKey) : this.onSelectionKey(key, event);
+    const handled =
+      event.ctrlKey || event.metaKey
+        ? this.onModifiedKey(key, event.shiftKey)
+        : this.onSelectionKey(key, event);
     if (handled) {
       event.preventDefault();
     }
   }
 
-  /** The name field, for the signal form binding. */
   public get nameForm(): FormulaBuilderStore['nameForm'] {
     return this.store.nameForm;
   }
 
-  /** Undo, redo, copy and paste. Returns whether the key was used. */
   private onModifiedKey(key: string, shift: boolean): boolean {
     if (key === 'z') {
       if (shift) {
@@ -210,7 +206,6 @@ export class FormulaBuilderDialogComponent {
     return false;
   }
 
-  /** Delete, brackets and letting go, all of which need something selected. Returns whether the key was used. */
   private onSelectionKey(key: string, event: KeyboardEvent): boolean {
     if (!this.store.selectionRange()) {
       return false;

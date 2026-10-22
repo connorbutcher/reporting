@@ -1,11 +1,11 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
 import {
-  DEFAULT_TABLE_CONFIG,
+  WidgetConfigDefaults,
   DataTableWidget,
   DataTableWidgetConfig,
   SortDirection,
-  hasFixedLimits,
+  ToleranceConfigs,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
@@ -64,7 +64,7 @@ export class DataTableWidgetModel extends WidgetModel {
         () =>
           new Set(
             this.columns()
-              .filter((c) => hasFixedLimits(c.tolerance()))
+              .filter((c) => ToleranceConfigs.hasFixedLimits(c.tolerance()))
               .map((c) => c.columnId),
           ),
       ),
@@ -81,7 +81,9 @@ export class DataTableWidgetModel extends WidgetModel {
 
   /** Clears every column choice, the sort and the filter. */
   public setDataset(datasetId: number | null): void {
-    if (datasetId === this.datasetId()) return;
+    if (datasetId === this.datasetId()) {
+      return;
+    }
     this.datasetId.set(datasetId);
     this.columns.set([]);
     this.sortColumnId.set(null);
@@ -99,19 +101,25 @@ export class DataTableWidgetModel extends WidgetModel {
       .filter((id) => !existing.has(id))
       .map((id) => new TableColumnModel(this.id, { columnId: id }, this.schema, this.schemas));
 
-    if (added.length === 0) return;
+    if (added.length === 0) {
+      return;
+    }
     this.columns.update((columns) => [...columns, ...added]);
   }
 
   public removeColumn(columnId: string): void {
     this.columns.update((columns) => columns.filter((c) => c.columnId !== columnId));
-    if (this.sortColumnId() === columnId) this.sortColumnId.set(null);
+    if (this.sortColumnId() === columnId) {
+      this.sortColumnId.set(null);
+    }
   }
 
   public moveColumn(index: number, offset: number): void {
     const columns = [...this.columns()];
     const target = index + offset;
-    if (target < 0 || target >= columns.length) return;
+    if (target < 0 || target >= columns.length) {
+      return;
+    }
 
     [columns[index], columns[target]] = [columns[target], columns[index]];
     this.columns.set(columns);
@@ -122,7 +130,9 @@ export class DataTableWidgetModel extends WidgetModel {
     const columns = [...this.columns()];
     const from = columns.findIndex((c) => c.columnId === draggedColumnId);
     const to = columns.findIndex((c) => c.columnId === targetColumnId);
-    if (from < 0 || to < 0 || from === to) return;
+    if (from < 0 || to < 0 || from === to) {
+      return;
+    }
 
     const [moved] = columns.splice(from, 1);
     columns.splice(to, 0, moved);
@@ -140,13 +150,15 @@ export class DataTableWidgetModel extends WidgetModel {
 
   /** Ignores unknown columns. */
   public applyColumnWidths(widths: readonly { columnId: string; width: number }[]): void {
-    for (const { columnId, width } of widths) this.column(columnId)?.setWidth(width);
+    for (const { columnId, width } of widths) {
+      this.column(columnId)?.setWidth(width);
+    }
   }
 
   public override toDto(): DataTableWidget {
     const config: DataTableWidgetConfig = {
       type: 'dataTable',
-      ...DEFAULT_TABLE_CONFIG,
+      ...WidgetConfigDefaults.DATA_TABLE,
       ...this.baseConfigDto(),
       ...this.appearance.toDto(),
       datasetId: this.datasetId(),
@@ -184,7 +196,9 @@ export class DataTableWidgetModel extends WidgetModel {
 
   private duplicateColumnIssue(): ValidationIssue | null {
     const seen = new Set<string>();
-    if (!this.columns().some((c) => !seen.add(c.columnId))) return null;
+    if (!this.columns().some((c) => !seen.add(c.columnId))) {
+      return null;
+    }
     return this.issue(
       'duplicateColumn',
       'error',
@@ -195,7 +209,9 @@ export class DataTableWidgetModel extends WidgetModel {
   }
 
   private noColumnsIssue(): ValidationIssue | null {
-    if (this.columns().length > 0) return null;
+    if (this.columns().length > 0) {
+      return null;
+    }
     return this.issue(
       'noColumns',
       'warning',
@@ -208,7 +224,9 @@ export class DataTableWidgetModel extends WidgetModel {
   /** Sorting by a hidden column is a warning; sorting by a column the dataset no longer has is broken. */
   private sortColumnIssue(): ValidationIssue | null {
     const sortColumnId = this.sortColumnId();
-    if (!sortColumnId || this.column(sortColumnId)) return null;
+    if (!sortColumnId || this.column(sortColumnId)) {
+      return null;
+    }
 
     const schema = this.schema();
     if (schema && !schema.columns.some((c) => c.id === sortColumnId)) {

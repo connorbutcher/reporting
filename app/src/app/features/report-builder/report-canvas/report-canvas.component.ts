@@ -52,7 +52,9 @@ export class ReportCanvasComponent {
 
   /** Guards closing the tab or reloading. */
   public onBeforeUnload(event: BeforeUnloadEvent): void {
-    if (!this.lifecycle.hasUnsavedRisk()) return;
+    if (!this.lifecycle.hasUnsavedRisk()) {
+      return;
+    }
     event.preventDefault();
     // Chrome shows its own message; older browsers read this.
     event.returnValue = true;
@@ -60,7 +62,9 @@ export class ReportCanvasComponent {
 
   /** Guards in-app navigation; called by the route guard. */
   public canLeave(): boolean {
-    if (!this.lifecycle.hasUnsavedRisk()) return true;
+    if (!this.lifecycle.hasUnsavedRisk()) {
+      return true;
+    }
     return window.confirm(
       this.autosave.saveFailed()
         ? 'The last save failed, so recent changes may not be stored. Leave anyway?'
