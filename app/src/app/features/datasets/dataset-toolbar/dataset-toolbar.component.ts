@@ -32,12 +32,7 @@ export class DatasetToolbarComponent {
     this.saveFailed = this.store.saveFailed;
   }
 
-  /**
-   * Commits a rename, but restores the field when the name can't be saved — it was
-   * cleared (a dataset must keep a name) or it duplicates another dataset. The
-   * store's {@link DatasetsStore.renameDataset} enforces the same rules and raises
-   * the duplicate-name notification; reverting here just keeps the field truthful.
-   */
+  /** Restores the field when the name is blank or a duplicate. */
   public onNameBlur(event: Event): void {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();

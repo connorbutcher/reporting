@@ -1,7 +1,4 @@
-/**
- * A series' linear trend: the two endpoints to draw a line through (its fitted Y at the series'
- * min and max X), plus the fit's slope/intercept/R² should the client want to show them.
- */
+/** A linear fit: endpoints at the series' min and max X, plus slope, intercept and R². */
 export type TrendLine = {
   x1: number;
   y1: number;

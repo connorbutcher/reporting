@@ -40,10 +40,7 @@ export class DatasetColumnUsage {
       ),
   );
 
-  /**
-   * What changing a column's type would newly break in the report; null when no dataset is selected.
-   * Asked at the moment of the change rather than held, since it depends on the type chosen.
-   */
+  /** What a type change would break; asked on demand since it depends on the type. */
   public typeChangeImpact(
     columnId: string,
     type: DatasetColumnType,

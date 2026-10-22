@@ -26,12 +26,10 @@ import { ViewFilterEntryFactory } from '../filters/view-filter-entry-factory';
   styleUrl: './readonly-report-grid.component.scss',
 })
 export class ReadonlyReportGridComponent {
-  /** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
   private static readonly NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
 
   public readonly content = input.required<ReportRevisionContent>();
 
-  /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
   public readonly tab = input.required<Tab>();
 
   public readonly rowHeight = GridLayout.ROW_HEIGHT;
@@ -39,15 +37,9 @@ export class ReadonlyReportGridComponent {
   public readonly gridGap = GridLayout.GRID_GAP;
 
   /**
-   * Session overrides from the viewer's filter panel. Page filters are keyed by
-   * the stringified dataset id; widget filters by widget id for a table, and by
-   * {@link ViewFilterEntryFactory.chartBindingKey} for each chart binding. Left unset, the grid falls
-   * back to what the version published — so it still renders correctly on its own.
-   *
-   * Each value is a signal, not a plain `FilterGroup`, so reading only the one a
-   * widget actually needs tracks only that filter's own changes — a `Record`
-   * rebuilt whole on every edit would hand every widget a new reference and
-   * reload the entire report each time any single filter changed.
+   * Session overrides, keyed by dataset id (page), widget id (table) or
+   * {@link ViewFilterEntryFactory.chartBindingKey}. Unset falls back to what was published. Each value
+   * is a signal so a widget only reloads when its own filter changes.
    */
   public readonly pageFilters = input<ReadonlyMap<string, Signal<FilterGroup | null>> | null>(null);
 
@@ -55,10 +47,8 @@ export class ReadonlyReportGridComponent {
     null,
   );
 
-  /** A widget's filter button was clicked; the host decides where to show it. */
   public readonly filterWidget = output<string>();
 
-  /** A widget's comments button was clicked; the host switches the aside to that widget's thread. */
   public readonly commentsRequest = output<string>();
 
   private readonly comments = inject(ReportComments);
@@ -68,13 +58,8 @@ export class ReadonlyReportGridComponent {
   private readonly widgetOutputs = new Map<string, Record<string, WidgetOutputHandler>>();
 
   /**
-   * Every chart's per-binding resolved filters (page filter for the binding's
-   * dataset layered under its own session-override-or-published filter), keyed by
-   * widget id then binding id. Memoized in a computed so a template binding hands
-   * the outlet a *stable* reference across change-detection passes — building a
-   * fresh object per call fed a new input every pass and spun change detection
-   * into an infinite loop (NG0103). Recomputes only when content or a session
-   * filter actually changes.
+   * Per-binding resolved filters by widget then binding id. A computed, so the outlet gets a stable
+   * reference (a fresh object each pass loops change detection, NG0103).
    */
   private readonly chartBindingFilters = computed(() => {
     const map = new Map<string, Record<string, FilterGroup | null>>();
@@ -96,11 +81,7 @@ export class ReadonlyReportGridComponent {
     return map;
   });
 
-  /**
-   * The outputs to handle for a widget: a filterable one's count bar asks for its filters, which
-   * opens them just as its filter button does. Cached per widget so the outlet is handed the same
-   * object on every change-detection pass (a fresh one each time would re-set its input forever).
-   */
+  /** Cached per widget so the outlet gets the same object on every change-detection pass. */
   public outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
     if (!this.canFilter(widget)) {
       return ReadonlyReportGridComponent.NO_OUTPUTS;
@@ -113,7 +94,6 @@ export class ReadonlyReportGridComponent {
     return outputs;
   }
 
-  /** The fragment a link can name to jump straight to this widget. */
   public fragmentFor(widget: Widget): string {
     return WidgetFragment.forWidget(widget.id);
   }
@@ -122,7 +102,6 @@ export class ReadonlyReportGridComponent {
     return WidgetCatalog.isExportableType(widget.type);
   }
 
-  /** Opens this widget at near-fullscreen size, fed the same per-widget filters its outlet already gets. */
   public openFullscreen(widget: Widget): void {
     this.dialog.open<void, WidgetFullscreenDialogData>(WidgetFullscreenDialogComponent, {
       data: {
@@ -137,7 +116,6 @@ export class ReadonlyReportGridComponent {
     });
   }
 
-  /** Only a table, pivot, KPI, or chart bound to a dataset has anything to filter. */
   public canFilter(widget: Widget): boolean {
     if (widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi') {
       return !!widget.config.datasetId;
@@ -148,12 +126,10 @@ export class ReadonlyReportGridComponent {
     );
   }
 
-  /** This widget's comment count, for its header button's badge. */
   public commentCount(widget: Widget): number {
     return this.comments.countFor(widget.id);
   }
 
-  /** Conditions across this widget's own filters — what the button badge shows. */
   public conditionCount(widget: Widget): number {
     if (WidgetCatalog.isChartWidget(widget)) {
       return ChartConfigs.bindings(widget.config).reduce(
@@ -167,7 +143,6 @@ export class ReadonlyReportGridComponent {
     return FilterTrees.countConditions(this.widgetFilterFor(widget));
   }
 
-  /** So a published report narrows a table's rows exactly as it did in the builder. */
   public reportFilterFor(widget: Widget): FilterGroup | null {
     return this.reportFilterForDataset(this.datasetIdOf(widget));
   }
@@ -182,12 +157,10 @@ export class ReadonlyReportGridComponent {
       : null;
   }
 
-  /** A chart's per-binding filters; null for a non-chart (which filters through report/widgetFilterFor). */
   public bindingFiltersFor(widget: Widget): Record<string, FilterGroup | null> | null {
     return this.chartBindingFilters().get(widget.id) ?? null;
   }
 
-  /** A binding's own filter: the reader's session override if any, else what was published. */
   private bindingOwnFilter(
     widgetId: string,
     bindingId: string,
@@ -210,7 +183,6 @@ export class ReadonlyReportGridComponent {
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
   }
 
-  /** The dataset a table, pivot, or KPI is bound to; charts filter per binding, not through this. */
   private datasetIdOf(widget: Widget): number | null {
     return widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi'
       ? widget.config.datasetId

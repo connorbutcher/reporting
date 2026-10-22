@@ -1,8 +1,4 @@
-/**
- * A dataset's source-specific configuration. Each source system has its own shape and its own
- * editor component (see `dataset-source-configs`), keyed by the `source` discriminator the API
- * round-trips.
- */
+/** Source-specific configuration, discriminated on `source`. */
 export type AssemblySourceConfig = {
   source: 'assembly';
   /** The source-system type id this dataset draws from. Null until chosen. */

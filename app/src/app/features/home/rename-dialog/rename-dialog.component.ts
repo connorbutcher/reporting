@@ -12,12 +12,7 @@ import { form, required, validateHttp } from '@angular/forms/signals';
 import { RenameDialogData } from './rename-dialog-data';
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 
-/**
- * Prompts for a new name, pre-filled and pre-selected with the current one. Unlike the create
- * dialog, there's no prefetched sibling list to check against instantly, so uniqueness relies
- * entirely on the authoritative server check — same one the create dialog falls back on for
- * siblings it can't see.
- */
+/** Uniqueness is checked by the server only, as there's no sibling list here. */
 @Component({
   selector: 'app-rename-dialog',
   templateUrl: './rename-dialog.component.html',

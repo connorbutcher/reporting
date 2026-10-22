@@ -10,12 +10,7 @@ import {
   SetInheritance,
 } from '../models/permission';
 
-/**
- * The `/permissions` API for folders and reports — the mutations only. The reads
- * ({@link PermissionsDialogStore}'s permissions/users/groups) go through `httpResource`
- * straight to the URLs {@link base} builds, so they refetch declaratively; PUT/DELETE stay
- * here since a resource can only GET.
- */
+/** Permission mutations. Reads go through `httpResource` on the URLs {@link base} builds. */
 @Service()
 export class PermissionsApiService {
   private readonly http = inject(HttpClient);

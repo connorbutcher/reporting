@@ -1,13 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { SaveTone } from './save-tone';
 
-/**
- * Ambient indicator for a draft's autosave state — passive feedback the user never
- * acts on, so it stays quiet. Presentational: the owning screen feeds it the three
- * booleans from its own store, so the same pill serves the report builder and the
- * datasets editor. Rendered inline (icon + full label) or, in its `dot` variant, as
- * a coloured dot and short label for a status strip.
- */
+/** Autosave indicator, inline or as a `dot` for a status strip. */
 @Component({
   selector: 'app-save-status',
   templateUrl: './save-status.component.html',
@@ -18,10 +12,6 @@ export class SaveStatusComponent {
   public readonly saving = input.required<boolean>();
   /** True when the last save failed. */
   public readonly saveFailed = input.required<boolean>();
-  /**
-   * True when there are edits not yet saved. Screens that persist every edit
-   * immediately (no deferred write) can leave this at its default.
-   */
   public readonly dirty = input(false);
 
   /** `inline` shows an icon and full label; `dot` shows a coloured dot and a short label. */

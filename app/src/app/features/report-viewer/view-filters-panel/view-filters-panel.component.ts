@@ -25,11 +25,7 @@ export class ViewFiltersPanelComponent {
   public readonly filters = input.required<ReportViewFilters>();
   public readonly sharedLink = input<SharedLinkState | null>(null);
 
-  /**
-   * The expanded widget: its id, or a single-filter widget's entry key. Two-way so a widget's filter
-   * button on the grid can open it. Independent of the page rows' open state, so jumping to a widget
-   * doesn't collapse a page filter.
-   */
+  /** The expanded widget's id or entry key. Two-way so the grid can open it. */
   public readonly openKey = model<string | null>(null);
 
   public readonly copyLink = output<void>();

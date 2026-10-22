@@ -30,10 +30,7 @@ export class DatasetSchemaCacheService {
     });
   }
 
-  /**
-   * Patches a cached column's configuration immediately so open panels reflect
-   * the change, then reconciles with whatever the server actually stored.
-   */
+  /** Patches the cache at once, then reconciles with what the server stored. */
   public updateColumnConfiguration(
     datasetId: number,
     columnId: string,

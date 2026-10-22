@@ -1,10 +1,7 @@
 import { FilterGroup } from '../../filter';
 
 export type HistogramSeriesResult = {
-  /**
-   * The series' display label. From the server it's the split (colour-by) key ("" when no split);
-   * {@link ChartQuery} rewrites it to the composed legend label (binding · measure · split).
-   */
+  /** The split key from the server, rewritten by {@link ChartQuery} to the legend label. */
   label: string;
   /** Which column this series distributes, when several value columns are plotted. */
   valueColumnId?: string | null;

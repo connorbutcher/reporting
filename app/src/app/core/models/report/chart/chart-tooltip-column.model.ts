@@ -3,9 +3,6 @@ export type ChartTooltipColumn = {
   columnId: string;
   prefix?: string;
   suffix?: string;
-  /**
-   * The column's name, sent at query time only so a dataset other than the one the column was
-   * picked from can fall back to its own column of that name.
-   */
+  /** Sent so another dataset can fall back to its own column of this name. */
   columnName?: string;
 };

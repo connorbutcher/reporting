@@ -1,12 +1,7 @@
 import { OperatorDefinition } from './operator-definition';
 
 export class Operators {
-  /**
-   * The operators, loosest binding to tightest — the same table the server's parser uses, so the text
-   * written from a sequence means on the server exactly what the sequence means here. They are grammar, not
-   * catalogue functions, so — unlike functions — they are defined here rather than served by the API.
-   * A `-` with nothing on its left is a negation (see {@link Operators.NEGATION_PRECEDENCE}).
-   */
+  /** Loosest to tightest, matching the server's parser. A leading `-` is negation. */
   public static readonly ALL: readonly OperatorDefinition[] = [
     {
       op: 'OR',

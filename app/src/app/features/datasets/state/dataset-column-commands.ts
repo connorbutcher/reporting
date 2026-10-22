@@ -22,11 +22,7 @@ export class DatasetColumnCommands {
 
   private readonly notify = inject(NotificationService);
 
-  /**
-   * Takes on a formula column the builder dialog has just saved (it saved through its own request). A
-   * formula changes values server-side — its own column's, and any formula reading it — so the schema and
-   * rows are refetched rather than patched.
-   */
+  /** Refetches schema and rows, since a formula changes values server-side. */
   public applyFormulaColumnSaved(column: DatasetColumn): void {
     this.schema.columns.update((columns) =>
       columns.some((c) => c.id === column.id)
@@ -105,8 +101,7 @@ export class DatasetColumnCommands {
     if (!id) {
       return;
     }
-    // A dataset must keep at least one column, so refuse to delete the last one
-    // rather than save it into a "no columns" error state.
+    // A dataset must keep at least one column.
     if (this.schema.columns().length <= 1) {
       this.notify.error("A dataset needs at least one column, so this one can't be deleted.");
       return;

@@ -13,34 +13,25 @@ import { ContentRows } from './content-rows';
 import { FolderTreeStore } from './folder-tree.store';
 
 /**
- * The selected folder's contents and breadcrumb path, plus the account-wide Favourites and
- * Recently-viewed lists — pulled out of {@link HomeStore} so it only owns navigation and row
- * actions. Also keeps the folder tree ({@link FolderTreeStore}) in sync: every contents fetch
- * folds its folders into the tree, and every path fetch reveals the tree down to it, since both
- * are side effects of the same navigation this store already reacts to.
- *
- * A component-provided collaborator — constructed by Angular DI, not `new`'d — so its
- * {@link ActivatedRoute} resolves to the home route and its lifetime is tied to the page.
+ * The open folder's contents and breadcrumb, plus Favourites and Recent. Keeps the folder tree in
+ * step with each fetch. Provided at the page so it uses the home route.
  */
 @Injectable()
 export class HomeContentsStore {
-  /** null means the root folder — represented by the absence of the `folderId` query param. */
+  /** Null is the root, which has no `folderId` param. */
   public readonly selectedFolderId = computed<number | null>(() => {
     const raw = this.queryParams().get('folderId');
     return raw ? Number(raw) : null;
   });
 
-  // Guarded with hasValue(): httpResource's .value() throws once a resource is in its error
-  // state, defaultValue notwithstanding — reading it unguarded (as this used to) took the whole
-  // page down on a 404/403 from any of these three endpoints, e.g. a stale or permission-denied
-  // folder link.
+  // Guarded with hasValue(): httpResource's value() throws in its error state, which took the page
+  // down on a stale or denied folder link.
   public readonly folderPath = computed(() =>
     this.pathResource.hasValue() ? this.pathResource.value() : [],
   );
   public readonly loading = computed(
     () => this.foldersResource.isLoading() || this.reportsResource.isLoading(),
   );
-  /** True once the selected folder's contents or path failed to load — doesn't exist, or no access. */
   public readonly error = computed(
     () =>
       this.foldersResource.error() != null ||
@@ -48,7 +39,7 @@ export class HomeContentsStore {
       this.pathResource.error() != null,
   );
 
-  // Sorted here rather than left in server order, which is by id/creation and not meaningful to browse by.
+  // Server order is by id, which isn't meaningful to browse by.
   public readonly folderRows = computed<FolderRow[]>(() =>
     (this.foldersResource.hasValue() ? this.foldersResource.value() : [])
       .map(ContentRows.fromFolder)
@@ -76,12 +67,10 @@ export class HomeContentsStore {
   private readonly route = inject(ActivatedRoute);
   private readonly tree = inject(FolderTreeStore);
 
-  /** The URL is the source of truth for which folder is open, so a link deep into the tree is shareable. */
   private readonly queryParams = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
 
-  // Contents and breadcrumb refetch automatically whenever the selected folder changes.
   private readonly foldersResource = httpResource<Folder[]>(
     () => {
       const id = this.selectedFolderId();
@@ -109,9 +98,7 @@ export class HomeContentsStore {
     { defaultValue: [] },
   );
 
-  // Personal, whole-account state — independent of the folder being browsed, so it's fetched once
-  // and surfaced in the nav rail's Favourites/Recent regardless of which folder is open. Reloaded
-  // after any action that could change it: starring, and the row actions that can add/remove/hide a report.
+  // Account-wide, so fetched once and reloaded after actions that can change it.
   private readonly favoritesResource = httpResource<ReportSummary[]>(() => '/api/me/favorites', {
     defaultValue: [],
   });
@@ -121,11 +108,8 @@ export class HomeContentsStore {
   );
 
   constructor() {
-    // Fold each contents fetch into the tree so an expanded node stays in step with the table —
-    // and, at the root, so this single fetch populates the tree's root level too (no separate
-    // request). Gated on hasValue(): skips the in-flight default (merging its empty list would
-    // blank the tree and drop its loading skeleton before the real folders land) and skips an
-    // error state (reading .value() there would throw).
+    // Folds each fetch into the tree (at the root this also fills its top level). Skips the in-flight
+    // default, which would blank the tree, and the error state, which would throw.
     effect(() => {
       if (!this.foldersResource.hasValue()) {
         return;
@@ -136,8 +120,7 @@ export class HomeContentsStore {
       );
     });
 
-    // Expand the tree down to the selected folder, so a shared deep link lands with the folder
-    // revealed in the rail — not just its contents shown on the right.
+    // Reveals the selected folder in the rail for deep links.
     effect(() => {
       if (!this.pathResource.hasValue()) {
         return;
@@ -148,11 +131,8 @@ export class HomeContentsStore {
   }
 
   /**
-   * Kicks off the initial tree load; called from the page's ngOnInit. At the root, the contents
-   * fetch already loads the top-level folders and the effect above folds them into the tree, so a
-   * second identical request would be wasteful. Only a deep link — where the contents fetch is
-   * aimed at a nested folder — needs the root level fetched on its own, since revealing the path
-   * only walks the ancestors between the root and the target.
+   * Called from ngOnInit. At the root the contents fetch already loads the top level, so only a deep
+   * link fetches it separately.
    */
   public init(): void {
     if (this.selectedFolderId() !== null) {
@@ -166,13 +146,11 @@ export class HomeContentsStore {
     this.reloadPersonal();
   }
 
-  /** Refetches the Favourites and Recently-viewed strips — after starring, or an action that reshapes a report. */
   public reloadPersonal(): void {
     this.favoritesResource.reload();
     this.recentResource.reload();
   }
 
-  /** Stars or un-stars a report, then refreshes the strips and the contents table so its star updates. */
   public toggleFavorite(report: ReportSummary): void {
     this.reportApi.setFavorite(report.id, !report.isFavorite).subscribe({
       next: () => {

@@ -2,13 +2,7 @@ import { OpenableReport } from './openable-report.model';
 import { ReportOpenOption } from './report-open-option.model';
 
 export class ReportOpening {
-  /**
-   * The ways this user can open the report, most-expected first. When both are present — an editor
-   * looking at a report that also has a published version — the two are offered side by side, and the
-   * report-vs-draft ambiguity is resolved by naming each explicitly ("Open published" vs "Edit draft").
-   * A viewer only ever gets the published view; a report with no published version is never shown to a
-   * non-editor at all (the server hides it), so a lone "Edit" only ever reaches someone who can edit.
-   */
+  /** The ways this user can open the report, most expected first. Viewers only get the published view. */
   public static options(report: OpenableReport): ReportOpenOption[] {
     const options: ReportOpenOption[] = [];
     if (ReportOpening.hasPublishedVersion(report)) {

@@ -41,12 +41,10 @@ export class DatasetsStore {
 
   private readonly columnUsage = inject(DatasetColumnUsage);
 
-  /** Every widget/filter use of a column in the report's draft, in tab and widget order. */
   public columnUses(columnId: string): readonly ColumnUse[] {
     return this.columnUsage.usesOf(columnId);
   }
 
-  /** What giving a column another type would newly break, or null with no dataset selected. */
   public columnTypeImpact(
     columnId: string,
     type: DatasetColumnType,
@@ -54,7 +52,6 @@ export class DatasetsStore {
     return this.columnUsage.typeChangeImpact(columnId, type);
   }
 
-  // --- dataset lifecycle (DatasetCollection) --------------------------------
   public setReport(reportId: number): void {
     this.collection.setReport(reportId);
   }
@@ -71,7 +68,6 @@ export class DatasetsStore {
     this.collection.renameDataset(name);
   }
 
-  /** True when another dataset already uses this name — for the toolbar to reject a rename. */
   public datasetNameTaken(name: string): boolean {
     return this.collection.datasetNameTaken(name);
   }
@@ -84,7 +80,6 @@ export class DatasetsStore {
     this.collection.deleteDataset();
   }
 
-  // --- source (DatasetSourceCommands) ---------------------------------------
   public setSource(sourceId: number): void {
     this.sourceCommands.setSource(sourceId);
   }
@@ -93,7 +88,6 @@ export class DatasetsStore {
     this.sourceCommands.updateSourceConfig(config);
   }
 
-  // --- columns (DatasetColumnCommands) --------------------------------------
   public addColumn(name: string, type: DatasetColumnType): void {
     this.columnCommands.addColumn(name, type);
   }
@@ -106,7 +100,6 @@ export class DatasetsStore {
     this.columnCommands.retypeColumn(column, type);
   }
 
-  /** Takes on a formula column the builder dialog saved. */
   public applyFormulaColumnSaved(column: DatasetColumn): void {
     this.columnCommands.applyFormulaColumnSaved(column);
   }
@@ -119,13 +112,10 @@ export class DatasetsStore {
     this.columnCommands.moveColumn(index, offset);
   }
 
-  // --- rows (DatasetRowWindow + DatasetRowCommands) -------------------------
-  /** Loads the row window the grid is scrolled to; driven by the table's lazy-load event. */
   public loadRows(first: number, count: number): void {
     this.rowWindow.load(first, count);
   }
 
-  /** Clears the pending scroll-to request once the grid has honoured it. */
   public clearRowScroll(): void {
     this.rowWindow.scrollTo.set(null);
   }
@@ -142,12 +132,10 @@ export class DatasetsStore {
     this.rowCommands.deleteRow(row);
   }
 
-  /** Downloads the selected dataset as a CSV of its raw stored values. */
   public exportCsv(): void {
     this.export.exportCsv();
   }
 
-  // --- list & selection (DatasetCollection) ---------------------------------
   public get sources() {
     return this.collection.sources;
   }
@@ -172,18 +160,14 @@ export class DatasetsStore {
     return this.collection.selected;
   }
 
-  // --- validation (DatasetValidation) ---------------------------------------
-  /** Dataset ids that share a name with another, for the list's invalid markers. */
   public get nameConflictIds() {
     return this.validation.nameConflictIds;
   }
 
-  /** The selected dataset's validation problems, for the editor's issues banner. */
   public get datasetIssues() {
     return this.validation.selectedIssues;
   }
 
-  // --- selected dataset's schema (DatasetSchemaState) ------------------------
   public get columns() {
     return this.schema.columns;
   }
@@ -200,7 +184,7 @@ export class DatasetsStore {
     return this.schema.sourceConfig;
   }
 
-  /** True when the selected dataset is a filtered view over another — its columns/rows are read-only. */
+  /** True for a filtered view over another dataset, whose columns and rows are read-only. */
   public get isFiltered() {
     return this.schema.isFiltered;
   }
@@ -213,44 +197,34 @@ export class DatasetsStore {
     return this.schema.error;
   }
 
-  // --- where the columns are used in the report (DatasetColumnUsage) ---------
-  /** True once the selected dataset's column usage has loaded. */
   public get columnUsageKnown() {
     return this.columnUsage.known;
   }
 
-  /** True when the column usage couldn't be loaded, so a delete can't say what it would break. */
   public get columnUsageFailed() {
     return this.columnUsage.failed;
   }
 
-  // --- selected dataset's rows, lazily windowed (DatasetRowWindow) -----------
-  /** The sparse row array bound to the grid's lazy virtual scroll; loaded windows are filled in. */
   public get rows() {
     return this.rowWindow.rows;
   }
 
-  /** The dataset's full row count, for the grid's scrollbar. */
   public get rowsTotal() {
     return this.rowWindow.total;
   }
 
-  /** True while a row window is loading, for the grid's loading overlay. */
   public get rowsLoading() {
     return this.rowWindow.loading;
   }
 
-  /** True once the first window has loaded, so the grid can mount with a known total. */
   public get rowsReady() {
     return this.rowWindow.ready;
   }
 
-  /** A row index the grid should scroll into view (e.g. a newly added row); null when none. */
   public get rowScrollTo() {
     return this.rowWindow.scrollTo;
   }
 
-  // --- save status (DatasetAutosave) ----------------------------------------
   public get saving() {
     return this.autosave.saving;
   }
@@ -259,8 +233,6 @@ export class DatasetsStore {
     return this.autosave.saveFailed;
   }
 
-  // --- export (DatasetExport) -----------------------------------------------
-  /** True while the whole dataset is being fetched and packaged for download. */
   public get exporting() {
     return this.export.exporting;
   }

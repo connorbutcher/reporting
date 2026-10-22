@@ -1,11 +1,6 @@
 import { Service } from '@angular/core';
 
-/**
- * A thin logging seam for diagnostics that aren't user-facing (unlike
- * {@link NotificationService}, which shows toasts). Console-backed today; the one
- * place to wire a real telemetry sink (Application Insights, Sentry, …) later
- * without touching every call site.
- */
+/** Non-user-facing diagnostics; the place to wire a telemetry sink later. */
 @Service()
 export class LoggerService {
   public error(message: string, error?: unknown): void {

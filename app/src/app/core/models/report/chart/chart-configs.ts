@@ -8,10 +8,7 @@ export class ChartConfigs {
   /** Shared by legacy-folded configs and null axis bindings so both resolve to the same axis. */
   public static readonly PRIMARY_AXIS_ID = 'primary';
 
-  /**
-   * Axis columns a tolerance filter can key off: only those targeted by exactly one complete band,
-   * mirroring how the server maps bands to axis columns.
-   */
+  /** Axis columns targeted by exactly one complete band, matching the server. */
   public static bandedColumns(
     bands: readonly ChartToleranceBand[],
     binding: { xColumnId: string | null; yColumnId: string | null },
@@ -44,10 +41,7 @@ export class ChartConfigs {
     return ChartConfigs.valueColumnIds(binding, binding.xColumnId);
   }
 
-  /**
-   * The chart's value axes. Charts saved before multiple axes existed get a single primary axis
-   * built from the deprecated `yAxisLabel`, so there is always at least one.
-   */
+  /** At least one axis; older charts get a primary built from `yAxisLabel`. */
   public static axes(config: ChartWidgetConfigBase): ChartValueAxis[] {
     if (config.yAxes?.length) {
       return config.yAxes;

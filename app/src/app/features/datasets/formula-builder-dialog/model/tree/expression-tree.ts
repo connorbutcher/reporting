@@ -9,11 +9,7 @@ import { SelectionRange } from './selection-range';
 export class ExpressionTree {
   private static readonly NO_CHILDREN: readonly Expression[] = [];
 
-  /**
-   * Rebuilds `root` with the expression at `address` replaced by `change(expression)`. Every change returns
-   * a new root that shares whatever it didn't touch, so the root can be held in a signal and every earlier
-   * state kept for undo.
-   */
+  /** Returns a new root sharing untouched parts, so earlier states can be kept for undo. */
   public static change(
     root: Expression,
     address: ExpressionAddress,
@@ -68,10 +64,7 @@ export class ExpressionTree {
     return a.ownerId === b.ownerId && a.arg === b.arg;
   }
 
-  /**
-   * Finds a selection in the formula. Ids that no longer exist are ignored, and a selection that has spread
-   * across more than one expression is no selection at all (null).
-   */
+  /** Missing ids are ignored; a selection spanning expressions is null. */
   public static locateSelection(root: Expression, ids: readonly number[]): SelectionRange | null {
     const found: ItemLocation[] = [];
     for (const id of ids) {

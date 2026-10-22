@@ -12,10 +12,7 @@ import { FormulaDocument } from './formula-document';
 import { PreviewOutcome } from './preview-outcome';
 import { PreviewRequest } from './preview-request';
 
-/**
- * The checks that run as the formula changes: locally for structure and types, and on the server (debounced)
- * for the authoritative verdict and a preview of the results.
- */
+/** Local structure and type checks, plus a debounced server check and preview. */
 @Injectable()
 export class FormulaChecking {
   private static readonly PREVIEW_ROWS = 5;

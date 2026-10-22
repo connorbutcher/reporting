@@ -7,11 +7,7 @@ import { Rpn } from './rpn';
 import { RpnIssue } from './rpn-issue';
 import { RpnToken } from './rpn-token';
 
-/**
- * The shunting-yard algorithm, one item at a time. It never stops at a mistake: a missing value becomes a
- * `missing` token and the problem is recorded, so the result is always well formed and the user is told
- * about every gap at once.
- */
+/** Shunting-yard that records gaps as `missing` tokens instead of stopping, so every gap is reported. */
 export class RpnBuilder {
   private readonly output: RpnToken[] = [];
   private readonly issues: RpnIssue[] = [];

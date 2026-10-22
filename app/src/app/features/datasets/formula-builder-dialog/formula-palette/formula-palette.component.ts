@@ -9,12 +9,7 @@ import { FunctionGroup } from './function-group';
 import { FormulaBuilderStore } from '../formula-builder.store';
 import { PaletteItem } from './palette-item';
 
-/**
- * Everything that can go into a formula: the dataset's columns, a few fixed values, the operators and the
- * functions the server offers. Each chip can be dragged to a place in the formula, or clicked to add it to the
- * end of the expression last worked in — so the builder works without a mouse drag, too. Hovering (or
- * focusing) a chip explains it in the panel below.
- */
+/** Columns, values, operators and functions. Chips can be dragged or clicked to add. */
 @Component({
   selector: 'app-formula-palette',
   templateUrl: './formula-palette.component.html',

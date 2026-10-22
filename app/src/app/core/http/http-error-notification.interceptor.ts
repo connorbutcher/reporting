@@ -10,11 +10,7 @@ import { inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { NotificationService } from '../services/notification.service';
 
-/**
- * Toasts a 403 on any request, and a 404 on a GET (the API masks "no access" as 404), so the user
- * always learns why a request failed. A 404 on a write is usually control flow and left alone. The
- * error still propagates to the caller.
- */
+/** Toasts a 403, and a 404 on a GET (the API masks "no access" as 404). The error still propagates. */
 export class HttpErrorNotification {
   private static readonly SKIP = new HttpContextToken<boolean>(() => false);
 
@@ -28,10 +24,7 @@ export class HttpErrorNotification {
     );
   }
 
-  /**
-   * Opts a request out of the toast: for an expected 404, or a screen that shows its own message
-   * for these statuses.
-   */
+  /** Opts a request out, for an expected 404 or a screen with its own message. */
   public static skip(context: HttpContext = new HttpContext()): HttpContext {
     return context.set(HttpErrorNotification.SKIP, true);
   }

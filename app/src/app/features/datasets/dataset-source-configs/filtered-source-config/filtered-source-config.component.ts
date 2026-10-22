@@ -35,8 +35,6 @@ export class FilteredSourceConfigComponent {
 
   private readonly baseDatasetId = computed(() => this.config()?.baseDatasetId ?? null);
 
-  // The base dataset's own schema — what the filter is built against — refetched whenever the
-  // chosen base changes.
   private readonly baseSchemaResource = httpResource<DatasetSchema>(() =>
     this.baseDatasetId() ? `/api/datasets/${this.baseDatasetId()}/schema` : undefined,
   );
@@ -53,10 +51,8 @@ export class FilteredSourceConfigComponent {
     ownerId: `filtered-dataset:${this.store.selectedId() ?? 0}`,
   };
 
-  // One model per chosen base dataset: rebuilt only when the base id changes (not on every edit, and
-  // not on the server echo after a save), so in-progress edits stay in the same model instance while
-  // the debounced save below persists them. Built in an effect, not a computed: the model's
-  // constructor writes to its own signals, which a computed forbids (NG0600).
+  // Rebuilt only when the base id changes, so edits keep their model. An effect because the
+  // constructor writes signals (NG0600 in a computed).
   private readonly filterGroupSignal = signal<FilterGroupModel | null>(null);
 
   constructor() {
@@ -77,8 +73,7 @@ export class FilteredSourceConfigComponent {
       this.filterGroupSignal.set(config ? new FilterGroupModel(config.filter, this.context) : null);
     });
 
-    // Saves the filter a short debounce after each edit — a burst of edits (typing an operand)
-    // makes one request, not one per keystroke, the same way the live match count settles.
+    // Debounced so a burst of edits makes one request.
     toObservable(computed(() => this.filterGroup()?.toQueryDto() ?? null))
       .pipe(
         skip(1),

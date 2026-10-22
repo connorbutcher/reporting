@@ -16,12 +16,10 @@ import { Plural } from '../../../../shared/text/plural';
 /** Which items are selected, and what can be done with them: wrap, unwrap, delete, copy and paste. */
 @Injectable()
 export class FormulaSelection {
-  /** The ids of the selected items — all in one expression. Ids that have since gone are ignored (see {@link range}). */
+  /** All in one expression; ids that have gone are ignored. */
   public readonly selection = signal<readonly number[]>([]);
-  /** Copied items, held as they were; each paste makes fresh copies of them. */
   public readonly clipboard = signal<readonly FormulaItem[]>([]);
 
-  /** The selection as it stands in the formula, or null when nothing (still) is selected. */
   public readonly range = computed(() => {
     const ids = this.selection();
     return ids.length > 0 ? ExpressionTree.locateSelection(this.document.root(), ids) : null;
@@ -36,13 +34,12 @@ export class FormulaSelection {
     return ids;
   });
 
-  /** The kind of value the selection makes, which decides which argument of a wrapping function it fills. */
+  /** Decides which argument of a wrapping function the selection fills. */
   public readonly kind = computed(() => {
     const range = this.range();
     return range ? FormulaChecker.kindOf(range.items, this.catalogue.scope()) : 'any';
   });
 
-  /** A single group is selected, so its brackets can be dissolved. */
   public readonly canUnwrap = computed(() => {
     const range = this.range();
     return range?.items.length === 1 && range.items[0].kind === 'group';
@@ -53,11 +50,7 @@ export class FormulaSelection {
   private readonly interaction = inject(FormulaInteraction);
   private anchor: number | null = null;
 
-  /**
-   * Selects an item: on its own, extended from the last one clicked to this one (a range, within one
-   * expression), or added to / taken out of the selection. A selection never spans expressions — selecting
-   * in another one starts again.
-   */
+  /** Selects alone, as a range, or toggled. Selecting in another expression starts again. */
   public select(id: number, mode: SelectMode): void {
     if (!ExpressionTree.find(this.document.root(), id)) {
       return;
@@ -79,7 +72,6 @@ export class FormulaSelection {
     this.anchor = null;
   }
 
-  /** Puts the selected items in brackets, so they are worked out first and count as one value. */
   public wrapInBrackets(): void {
     const range = this.range();
     if (!range?.contiguous) {
@@ -96,7 +88,7 @@ export class FormulaSelection {
     this.interaction.active.set(range.address);
   }
 
-  /** Makes the selected items an argument of a function — the first that takes what they produce — and leaves the others to fill. */
+  /** Wraps the selection in the first argument of a function that accepts it. */
   public wrapInFunction(name: string): void {
     const range = this.range();
     const fn = this.catalogue.scope().functions.get(name.toUpperCase());
@@ -114,14 +106,12 @@ export class FormulaSelection {
     );
     this.selectOnly(wrapper);
 
-    // Carry on in the first argument that still needs something.
     const next = args.findIndex(
       (arg, index) => arg.length === 0 && !FormulaParameters.slotIsOptional(fn.parameters, index),
     );
     this.interaction.active.set(next >= 0 ? { ownerId: wrapper.id, arg: next } : range.address);
   }
 
-  /** Dissolves the selected group, leaving what was inside it. */
   public unwrap(): void {
     const group = this.range()?.items[0];
     if (group?.kind !== 'group') {
@@ -161,7 +151,7 @@ export class FormulaSelection {
     );
   }
 
-  /** Puts a copy of the clipboard after the selection, or at the end of the expression last worked in, and selects it. */
+  /** Pastes after the selection, or at the end of the last expression, and selects the copy. */
   public paste(): void {
     const items = this.clipboard().map(ItemFactory.clone);
     if (items.length === 0) {
@@ -181,7 +171,6 @@ export class FormulaSelection {
     this.interaction.active.set(address);
   }
 
-  /** Extends the selection from the anchor to `id`, when both are in one expression. */
   private selectRange(id: number): boolean {
     const root = this.document.root();
     const found = ExpressionTree.find(root, id);
@@ -202,7 +191,6 @@ export class FormulaSelection {
     return true;
   }
 
-  /** Adds `id` to the selection, or takes it out, when the selection is in the same expression. */
   private toggle(id: number): boolean {
     const found = ExpressionTree.find(this.document.root(), id);
     const current = this.range();

@@ -73,10 +73,7 @@ export class ItemFactory {
     }
   }
 
-  /**
-   * The item that typed text stands for. An operator symbol becomes that operator, a number a number, text in
-   * quotes the text inside them; anything else is text, kept as typed — a separator like " - " is often the point.
-   */
+  /** Typed text as an operator, number or quoted text; anything else stays text as typed. */
   public static fromText(text: string): FormulaItem {
     const trimmed = text.trim();
     const operator = Operators.ALL.find(

@@ -6,11 +6,7 @@ import { DatasetAutosave } from './dataset-autosave';
 import { DatasetCollection } from './dataset-collection';
 import { DatasetRowWindow } from './dataset-row-window';
 
-/**
- * The selected dataset's row mutations — add, edit a cell, delete — each
- * persisting immediately and updating the lazily-loaded {@link DatasetRowWindow}
- * optimistically, rolling back on failure.
- */
+/** Row mutations, applied optimistically to {@link DatasetRowWindow} and rolled back on failure. */
 @Injectable()
 export class DatasetRowCommands {
   private readonly api = inject(DatasetApiService);
@@ -25,8 +21,6 @@ export class DatasetRowCommands {
       return;
     }
     this.autosave.track(this.api.addRow(id, {})).subscribe({
-      // The new row lands at the end; re-seat the grid onto the final window and
-      // scroll it into view for editing.
       next: () => this.window.afterAdd(),
       error: (err) => this.notify.apiError(err, "Couldn't add the row. Please try again."),
     });
@@ -39,8 +33,6 @@ export class DatasetRowCommands {
     }
 
     const values = { ...row.values, [columnId]: value };
-    // Show the edit straight away; the server response then confirms it, or a
-    // failure rolls this one row back to what it held before.
     this.window.replaceRow({ ...row, values });
     this.autosave.track(this.api.updateRow(id, row.id, values)).subscribe({
       next: (updated) => this.window.replaceRow(updated),

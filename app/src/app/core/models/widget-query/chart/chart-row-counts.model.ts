@@ -1,8 +1,4 @@
-/**
- * The row counts every chart response carries, so a chart can show the same "N of M rows" footer as
- * the table. Counted against the dataset before any per-chart narrowing (rows with no axis value,
- * rows with no measure).
- */
+/** Counts for the "N of M rows" footer, before per-chart narrowing. */
 export type ChartRowCounts = {
   /** Every row in the dataset, ignoring the filter. */
   totalRowCount: number;

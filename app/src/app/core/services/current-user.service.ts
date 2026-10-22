@@ -2,11 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { Service, computed } from '@angular/core';
 import { CurrentUser } from '../models/admin';
 
-/**
- * The signed-in user's own identity and app permissions, loaded once from `/api/me`. Used to show
- * admin navigation and guard the admin route. App-wide (root, the `@Service` default), so the
- * fetch is shared and cached across the header and the guard rather than repeated.
- */
+/** The signed-in user and their app permissions, loaded once from `/api/me`. */
 @Service()
 export class CurrentUserService {
   /** The loaded user, or null until it arrives (or if it failed to load). */

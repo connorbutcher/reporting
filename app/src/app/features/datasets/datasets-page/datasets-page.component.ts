@@ -20,8 +20,7 @@ import { DatasetValidation } from '../state/dataset-validation';
   imports: [DatasetListComponent, DatasetEditorComponent, DatasetRevisionCardComponent],
   templateUrl: './datasets-page.component.html',
   styleUrl: './datasets-page.component.scss',
-  // The store is a thin facade over these focused collaborator services; all are
-  // provided here so they share one component-scoped instance per report screen.
+  // Provided here so the store's collaborators share one instance per report screen.
   providers: [
     DatasetAutosave,
     DatasetCollection,

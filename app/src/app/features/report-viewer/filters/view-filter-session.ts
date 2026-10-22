@@ -19,12 +19,9 @@ import { StartingState } from './starting-state';
  */
 @Injectable()
 export class ViewFilterSession {
-  /** Long enough that typing a value isn't one save per key. */
   private static readonly SETTLE_MS = 300;
-  /** Null until they can be seeded. */
   public readonly viewFilters = signal<ReportViewFilters | null>(null);
 
-  /** Set while the reader is looking at a shared link's filters they haven't edited or saved. */
   public readonly sharedLink = computed<SharedLinkState | null>(() => {
     const origin = this.linkOrigin();
     const filters = this.viewFilters();
@@ -43,17 +40,14 @@ export class ViewFilterSession {
   private readonly notify = inject(NotificationService);
   private readonly linkOrigin = signal<Pick<SharedLinkState, 'total' | 'unmatched'> | null>(null);
 
-  /**
-   * Undefined until filters exist and are ready: not "none", which would clear what was saved, and
-   * not a snapshot taken before schemas load, when which rows are finished can still change.
-   */
+  /** Undefined until ready: not "none", which would clear what was saved. */
   private readonly encodedFilters = computed(() => {
     const filters = this.viewFilters();
     return filters?.ready() ? ViewFilterOverrideCodec.encode(filters.snapshot()) : undefined;
   });
 
   private builtFor: ReportRevisionContent | null = null;
-  /** The encoded filters as last seeded, applied or saved; a settled state that differs is the reader's edit. */
+  /** The last seeded, applied or saved state; a settled state that differs is an edit. */
   private editBaseline: string | null = null;
   private missingReportedFor: ReportViewFilters | null = null;
 
@@ -97,7 +91,7 @@ export class ViewFilterSession {
     return this.link.copy(filters ? ViewFilterOverrideCodec.encode(filters.snapshot()) : null);
   }
 
-  /** A new version means fresh filters. Seeding waits for what they start from, so widgets don't load unfiltered and then reload. */
+  /** Seeds fresh filters per version once their starting point loads, so widgets load once. */
   private seedPerVersion(): void {
     effect(() => {
       const content = this.store.content();
@@ -123,7 +117,6 @@ export class ViewFilterSession {
     });
   }
 
-  /** Once schemas are in, what counts as a finished row settles, so the baseline taken while seeding may have moved with it. */
   private rebaselineWhenReady(): void {
     effect(() => {
       const filters = this.viewFilters();
@@ -136,7 +129,7 @@ export class ViewFilterSession {
     });
   }
 
-  /** A condition on a removed column is left out of queries, so data is broader than the reader thinks: say so once. A link's banner covers its own. */
+  /** Warns once about conditions on removed columns; a link's banner covers its own. */
   private warnAboutMissingColumns(): void {
     effect(() => {
       const filters = this.viewFilters();
@@ -212,7 +205,6 @@ export class ViewFilterSession {
     this.saved.reportFailure();
   }
 
-  /** Makes the current filters the reader's own: saved (or cleared, when back on published), and no longer "from a link". */
   private commit(encoded: string | null): void {
     this.editBaseline = encoded;
     this.linkOrigin.set(null);

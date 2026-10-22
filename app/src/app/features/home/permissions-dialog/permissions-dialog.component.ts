@@ -8,12 +8,8 @@ import { AccessGrant, AccessLevel } from '../../../core/models/permission';
 import { PermissionsDialogData } from './permissions-dialog-data';
 
 /**
- * Manage who can see and edit a folder or report: toggle whether it inherits from its
- * parent, add people or groups at a level, and change or remove the grants set here. The
- * list shows the effective picture — grants inherited from a parent are read-only and
- * labelled with their source; grants set here are editable.
- *
- * A thin view over {@link PermissionsDialogStore}, which owns the loading and mutations.
+ * Sharing for a folder or report. Inherited grants are read-only. A view over
+ * {@link PermissionsDialogStore}.
  */
 @Component({
   selector: 'app-permissions-dialog',

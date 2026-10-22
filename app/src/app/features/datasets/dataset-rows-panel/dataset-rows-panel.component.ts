@@ -56,9 +56,7 @@ export class DatasetRowsPanelComponent {
         return;
       }
       this.store.clearRowScroll();
-      // The grid has just remounted; let its virtual scroller settle, then scroll
-      // to the row via PrimeNG's API and nudge a scroll event so it recomputes the
-      // rendered range (and lazy-loads that window) at the new position.
+      // Let the remounted scroller settle, scroll to the row, then nudge a scroll event so it lazy-loads.
       setTimeout(() => {
         this.table()?.scrollToVirtualIndex(index);
         this.scroller()?.dispatchEvent(new Event('scroll'));

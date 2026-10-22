@@ -19,12 +19,8 @@ import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.compone
 import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog-data';
 
 /**
- * Loads and mutates a folder or report's sharing grants for {@link PermissionsDialogComponent},
- * which stays a thin view over this. A component-provided collaborator — constructed by Angular
- * DI, not `new`'d — so it reads the same {@link DIALOG_DATA} the component does.
- *
- * Permissions, users and groups are each an `httpResource`, refetched declaratively — a mutation
- * reloads {@link permissionsResource} rather than the store re-fetching by hand.
+ * A folder or report's sharing grants for {@link PermissionsDialogComponent}. A mutation reloads
+ * {@link permissionsResource}.
  */
 @Injectable()
 export class PermissionsDialogStore {
@@ -35,7 +31,6 @@ export class PermissionsDialogStore {
     manager: 'Manager',
   };
 
-  /** Display order for the effective list: Everyone (unlabelled, at most one row), then Groups, then People. */
   private static readonly GROUP_ORDER: { subjectType: GrantSubjectType; label: string | null }[] = [
     { subjectType: 'everyone', label: null },
     { subjectType: 'group', label: 'Groups' },
@@ -45,7 +40,6 @@ export class PermissionsDialogStore {
     this.permissionsResource.hasValue() ? this.permissionsResource.value() : null,
   );
 
-  /** True until the initial load (permissions + subject pickers) finishes; a later reload doesn't retrigger it. */
   public readonly loading = computed(
     () =>
       (this.permissionsResource.isLoading() && !this.permissionsResource.hasValue()) ||
@@ -53,12 +47,11 @@ export class PermissionsDialogStore {
       this.groupsResource.isLoading(),
   );
 
-  /** A mutation is in flight, or the grants are refetching after one — either way, edits are disabled. */
   public readonly saving = computed(() => this.mutating() || this.permissionsResource.isLoading());
 
   public readonly error = computed(() => this.mutateError() ?? this.loadError());
 
-  /** Users, groups and Everyone offered by the add picker, minus subjects already granted here. */
+  /** Subjects the add picker offers, minus those already granted. Global admins have implied access. */
   public readonly subjectOptions = computed<SubjectOption[]>(() => {
     const used = new Set(
       (this.permissions()?.explicit ?? []).map((g) => `${g.subjectType}:${g.subjectId ?? ''}`),
@@ -74,10 +67,7 @@ export class PermissionsDialogStore {
     ].filter((option) => !used.has(option.value));
   });
 
-  /**
-   * The effective grants for display: Everyone first, then groups, then people — each of the
-   * latter two alphabetical by name, with a header row when that section isn't empty.
-   */
+  /** Everyone, then groups, then people, each alphabetical under a header. */
   public readonly effectiveRows = computed<EffectiveRow[]>(() => {
     const list = this.permissions()?.effective ?? [];
     const rows: EffectiveRow[] = [];
@@ -98,7 +88,6 @@ export class PermissionsDialogStore {
     return rows;
   });
 
-  /** Whether any change was saved, so the dialog can tell the page to refresh its contents when it closes. */
   public readonly changed = signal(false);
 
   private readonly data = inject<PermissionsDialogData>(DIALOG_DATA);
@@ -110,7 +99,6 @@ export class PermissionsDialogStore {
     context: HttpErrorNotification.skip(),
   }));
 
-  // Loaded once alongside the permissions; not reloaded on mutation.
   private readonly usersResource = httpResource<UserSummary[]>(
     () => ({ url: '/api/users', context: HttpErrorNotification.skip() }),
     { defaultValue: [] },
@@ -123,11 +111,9 @@ export class PermissionsDialogStore {
   private readonly users = this.usersResource.value;
   private readonly groups = this.groupsResource.value;
 
-  /** True while a PUT/DELETE mutation itself is in flight (before the post-mutation reload starts). */
   private readonly mutating = signal(false);
   private readonly mutateError = signal<string | null>(null);
 
-  /** A failure loading the permissions themselves, e.g. viewing sharing without Manager access. */
   private readonly loadError = computed(() => {
     const err = this.permissionsResource.error() as { status?: number } | undefined;
     if (!err) {
@@ -147,7 +133,7 @@ export class PermissionsDialogStore {
   }
 
   public toggleInherit(inherits: boolean): void {
-    // Copy the current effective grants down when breaking, so nobody (including the editor) is locked out.
+    // Copies effective grants down when breaking so nobody is locked out.
     this.mutate(
       this.api.setInheritance(this.data.kind, this.data.id, { inherits, copyDown: true }),
     );
@@ -201,7 +187,6 @@ export class PermissionsDialogStore {
     });
   }
 
-  /** Runs a mutation, then reloads the grants so the effective view reflects it. */
   private mutate(operation: Observable<unknown>, onSuccess?: () => void): void {
     this.mutating.set(true);
     this.mutateError.set(null);
@@ -225,10 +210,7 @@ export class PermissionsDialogStore {
     });
   }
 
-  /**
-   * Setting Everyone to Editor or Manager hands broad rights to anyone who can open this folder or
-   * report, so it's confirmed first; every other grant proceeds straight away.
-   */
+  /** Broad grants to Everyone are confirmed first. */
   private confirmBroadAccess(
     subjectType: GrantSubjectType,
     level: AccessLevel,

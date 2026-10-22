@@ -1,8 +1,4 @@
-/**
- * One subgroup's mean and range, plus the control limits it's judged against — carried per
- * subgroup rather than once for the whole chart, since they vary with that subgroup's own sample
- * size when subgroup sizes aren't all equal.
- */
+/** A subgroup's mean and range with its own limits, which vary with sample size. */
 export type XBarRSubgroup = {
   mean: number;
   range: number;

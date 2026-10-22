@@ -3,12 +3,7 @@ import { Aggregate } from './aggregate.model';
 import { ChartSort } from './chart-sort.model';
 import { DateGrouping } from '../pivot/date-grouping.model';
 
-/**
- * A bar chart. Unlike scatter/line it doesn't plot raw rows: rows are grouped by
- * its binding's category column (`xColumnId`) and each group's values in the
- * measure column (`yColumnId`) are reduced to one bar by `aggregate`. The measure
- * is unused — and may be left unbound — when `aggregate` is `'count'`, which counts rows.
- */
+/** Groups rows by category and reduces each group's measure by `aggregate`. `count` needs no measure. */
 export type BarChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'barChart';
 

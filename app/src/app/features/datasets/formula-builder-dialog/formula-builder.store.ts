@@ -32,12 +32,7 @@ import { FormulaSelection } from './store/formula-selection';
 import { PalettePayload } from './store/palette-payload';
 import { SelectMode } from './store/select-mode';
 
-/**
- * The formula builder dialog's state, as one face for the panels inside it. The work is done by focused
- * collaborators, all provided on the dialog: the document and its undo history, the catalogue, the checks,
- * the selection, the editing commands, the transient interaction state, the name and type form, saving and
- * loading. Provided on the dialog, so the palette, canvas, readout and preview all share it.
- */
+/** Facade over the builder's collaborators, provided on the dialog so its panels share it. */
 @Injectable()
 export class FormulaBuilderStore {
   public readonly data = inject<FormulaBuilderData>(DIALOG_DATA);

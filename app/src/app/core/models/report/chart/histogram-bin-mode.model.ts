@@ -1,6 +1,2 @@
-/**
- * How a histogram chooses its bin edges. `count` divides the range into a fixed number of equal
- * bins; `width` tiles bins of a fixed width across it; `auto` picks the count from the data
- * (Freedman–Diaconis, falling back to Sturges).
- */
+/** `count` fixes the bin count, `width` the bin width; `auto` picks from the data. */
 export type HistogramBinMode = 'count' | 'width' | 'auto';

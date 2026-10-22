@@ -28,9 +28,8 @@ export class FilterTrees {
   }
 
   /**
-   * A canonical string for comparing filters by meaning. Not `JSON.stringify`: the server omits the
-   * `kind` of a root group and orders keys differently, which would read as a difference. Empty
-   * groups collapse to nothing, so "no filter" equals "an empty group".
+   * A canonical key for comparing filters by meaning; the server's JSON differs in key order and root
+   * `kind`. Empty groups collapse, so "no filter" equals "an empty group".
    */
   public static key(node: FilterNode | null): string {
     const pruned = FilterTrees.prune(node);

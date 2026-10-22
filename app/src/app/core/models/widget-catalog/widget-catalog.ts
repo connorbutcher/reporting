@@ -2,10 +2,7 @@ import { WidgetGroupInfo } from './widget-group-info.model';
 import { WidgetTypeDescriptor } from './widget-type-descriptor.model';
 import { ChartWidget, Widget, WidgetType } from '../report';
 
-/**
- * The single source of each widget type's label, icon, hint and group. A new widget type needs one
- * row here plus its config and model.
- */
+/** Each widget type's label, icon, hint and group. */
 export class WidgetCatalog {
   private static readonly GROUPS: readonly WidgetGroupInfo[] = [
     { id: 'data', label: 'Data', order: 0 },

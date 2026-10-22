@@ -15,12 +15,7 @@ import { HomeStore } from './home.store';
 import { SearchBoxComponent } from './search-box/search-box.component';
 import { SearchResultsComponent } from './search-results/search-results.component';
 
-/**
- * The home screen shell: lays out the tree rail, toolbar, and contents sections, and owns the
- * one shared context-menu overlay. All state and behaviour live in {@link HomeStore}, which the
- * shell provides and holds privately — the template binds only to this component's own
- * pass-throughs, never to the store directly.
- */
+/** Home screen shell; state lives in {@link HomeStore}. */
 @Component({
   selector: 'app-home-page',
   imports: [
@@ -59,10 +54,7 @@ export class HomePageComponent implements OnInit {
     this.store.openCreateDialog();
   }
 
-  /**
-   * The shared context-menu overlay lives here in the shell — it needs a view ref to open — so the
-   * row sections bubble their right-click up to it. Everything else they drive on the store directly.
-   */
+  /** The context menu needs a view ref, so rows bubble right-clicks up to it. */
   public onRowAction({ event, row }: RowAction): void {
     this.store.prepareContextMenu(row);
     this.contextMenu().show(event);

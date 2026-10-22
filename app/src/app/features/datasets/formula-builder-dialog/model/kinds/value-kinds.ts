@@ -72,10 +72,7 @@ export class ValueKinds {
     }
   }
 
-  /**
-   * For a function that returns whatever its `any` arguments are (IF, COALESCE): their shared kind, or `any`
-   * if they differ. Arguments that are a bare NULL say nothing about the kind.
-   */
+  /** The shared kind of `any` arguments (IF, COALESCE), or `any` when they differ. NULL is ignored. */
   public static common(
     call: FunctionBlock,
     fn: FormulaFunction,

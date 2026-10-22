@@ -20,7 +20,7 @@ import { WidgetOutputHandler } from './widget-output-handler';
 /**
  * Renders a widget by creating the component the registry maps its type to. Inputs and outputs
  * are wired only where the component declares them, so a new widget kind needs only a
- * {@link WIDGET_COMPONENTS} entry. A data widget is `filterable` when the host handles its
+ * {@link WidgetComponentRegistry.COMPONENTS} entry. A data widget is `filterable` when the host handles its
  * `filterRequest`.
  */
 @Directive({

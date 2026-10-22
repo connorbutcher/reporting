@@ -7,12 +7,7 @@ import { ReportRow } from '../models/report-row';
 import { RowAction } from '../models/row-action';
 import { HomeStore } from '../home.store';
 
-/**
- * The current folder's contents as one light list: child folders first, then reports. A report row
- * shows its full state at a glance — a "Published · vN" badge and a "Draft" badge appear together
- * when both exist — and offers its real open methods (Open / Edit) inline rather than hiding them in
- * a menu. Right-click (or the ⋯ button) still raises the shared context menu for rename/move/etc.
- */
+/** The open folder's folders then reports, with status badges and inline open actions. */
 @Component({
   selector: 'app-contents-list',
   imports: [DatePipe],

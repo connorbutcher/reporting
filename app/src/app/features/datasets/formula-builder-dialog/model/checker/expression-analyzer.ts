@@ -13,10 +13,8 @@ import { FormulaScope } from './formula-scope';
 import { TypedValue } from './typed-value';
 
 /**
- * Checks expressions without the server. Each expression is put into reverse Polish notation, so a gap or
- * a doubled-up operator is found by the conversion itself, and then evaluated on a stack of *kinds* rather
- * than values: an operator pops the kinds of what it applies to and checks them, pushing the kind it
- * yields. Problems found are collected in {@link issues}.
+ * Checks expressions client-side by evaluating their RPN on a stack of kinds; problems go to
+ * {@link issues}.
  */
 export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   public readonly issues: FormulaIssue[] = [];

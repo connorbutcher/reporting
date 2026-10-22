@@ -13,12 +13,7 @@ import { AdminGroup, SaveUser } from '../../../core/models/admin';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
-/**
- * The detail card for one user, reached from the users list — create when the route id is "new",
- * otherwise edit. Shown in place of the list (no dialog) so there's room for the full record:
- * name, email (fixed after creation), the manage-users permission, and group memberships. Saving
- * returns to the list.
- */
+/** Creates a user when the route id is "new", otherwise edits them. */
 @Component({
   selector: 'app-user-detail',
   imports: [FormsModule, DatePipe, InputTextModule, CheckboxModule, ButtonModule, TagModule],
@@ -161,8 +156,7 @@ export class UserDetailComponent {
         this.lockManageUsers.set(self && !detail.isGlobalAdmin && detail.canManageUsers);
         this.canManageUsers.set(detail.canManageUsers);
         this.canCreateGroups.set(detail.canCreateGroups);
-        // A global admin belongs to no groups (they already have full access to all of them), so
-        // saving sends an empty set — which also clears any membership from before that rule.
+        // Global admins belong to no groups, so send an empty set.
         this.groupIds.set(detail.isGlobalAdmin ? [] : detail.groups.map((g) => g.id));
         this.createdAt.set(detail.createdAt);
         this.form.displayName().value.set(detail.displayName);

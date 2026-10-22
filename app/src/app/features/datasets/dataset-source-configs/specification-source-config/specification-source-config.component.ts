@@ -1,9 +1,6 @@
 import { Component } from '@angular/core';
 
-/**
- * Configuration editor for a specification-sourced dataset. Specifications carry no extra
- * source configuration yet, so this is a placeholder the source panel swaps in for that source.
- */
+/** Placeholder: specifications have no source configuration yet. */
 @Component({
   selector: 'app-specification-source-config',
   imports: [],

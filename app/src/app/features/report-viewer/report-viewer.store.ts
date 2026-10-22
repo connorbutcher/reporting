@@ -18,10 +18,8 @@ import {
 export class ReportViewerStore {
   public readonly asideTab = signal<AsideTab>('filters');
 
-  /** The filter entry the panel has expanded, driven from the grid as well as the panel. */
   public readonly openFilterKey = signal<string | null>(null);
 
-  /** The widget the comments panel is focused on — set from a widget's own comment button. */
   public readonly commentsWidgetId = signal<string | null>(null);
 
   public readonly reportId = computed(() => {
@@ -46,7 +44,6 @@ export class ReportViewerStore {
     [...(this.content()?.tabs ?? [])].sort((a, b) => a.order - b.order),
   );
 
-  /** The param when it names a tab this version has; null falls back to the first by order. */
   public readonly activeTabId = computed(() => {
     const raw = this.tabParam();
     return raw && this.tabs().some((t) => t.id === raw) ? raw : null;
@@ -79,7 +76,6 @@ export class ReportViewerStore {
 
   private readonly fragments = inject(UrlFragmentService);
 
-  /** The last report id whose view we recorded, so switching version doesn't re-record the same report. */
   private lastRecordedView: number | null = null;
 
   private readonly params = toSignal(this.route.paramMap);
@@ -93,10 +89,9 @@ export class ReportViewerStore {
     { defaultValue: [] },
   );
 
-  // The viewer only ever shows published versions — the draft is edited in the builder.
   private readonly contentResource = httpResource<ReportRevisionContent>(() => {
     const id = this.reportId();
-    // hasValue() guards the read: value() throws while the resource is loading or errored.
+    // value() throws while loading or errored.
     const report = this.reportResource.hasValue() ? this.reportResource.value() : null;
     if (!id || !report) {
       return undefined;
@@ -105,9 +100,7 @@ export class ReportViewerStore {
     return target != null ? `/api/reports/${id}/versions/${target}` : undefined;
   });
 
-  // Which tab the grid shows is the `tab` query param, so the URL is the source of
-  // truth: reloading, deep-linking and back/forward all restore the open tab. The
-  // value is a tab's stable id (its RefId), which is preserved across versions.
+  // The `tab` query param holds the tab's stable id, so links and back/forward restore it.
   private readonly tabParam = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('tab'))),
     { initialValue: this.route.snapshot.queryParamMap.get('tab') },
@@ -123,12 +116,8 @@ export class ReportViewerStore {
       });
     });
 
-    // Keep the URL pointing at a real tab: when the `tab` param is missing or names
-    // a tab this version doesn't have, default to the tab owning the widget a URL
-    // fragment names — so a shared link to a widget lands on the right tab — or
-    // the first one (replacing history so the bare URL isn't a back-button trap).
-    // A param that resolves is left be — tab ids are stable across versions, so it
-    // survives switching version too.
+    // A missing or unknown tab defaults to the tab holding the fragment's widget, else the first,
+    // replacing history so the bare URL isn't a back trap.
     effect(() => {
       const tabs = this.tabs();
       untracked(() => {
@@ -148,7 +137,6 @@ export class ReportViewerStore {
     this.asideTab.set(tab);
   }
 
-  /** Switches which report tab the grid shows by navigating the `tab` query param. */
   public selectTab(tabId: string): void {
     if (this.activeTabId() === tabId) {
       return;
@@ -156,19 +144,17 @@ export class ReportViewerStore {
     this.goToTab(tabId);
   }
 
-  /** Clicking a table's filter button takes the reader straight to its conditions. */
   public filterWidget(widgetId: string): void {
     this.asideTab.set('filters');
     this.openFilterKey.set(widgetId);
   }
 
-  /** Clicking a widget's comment button (or a chart's own anchor affordance) focuses its thread. */
   public openComments(widgetId: string): void {
     this.asideTab.set('comments');
     this.commentsWidgetId.set(widgetId);
   }
 
-  /** Checks out a draft — from a specific version when restoring, otherwise from latest — then edits it. */
+  /** Checks out a draft from `version` (or latest) and opens the editor. */
   public edit(fromVersion?: number): void {
     const id = this.reportId();
     if (!id) {
@@ -176,14 +162,14 @@ export class ReportViewerStore {
     }
     this.reportApi.checkout(id, fromVersion).subscribe({
       next: () => this.router.navigate(['/reports', id, 'edit']),
-      // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.
+      // The interceptor toasts a 403.
       error: (err) =>
         this.notify.apiError(err, "Couldn't open this report for editing. Please try again."),
     });
   }
 
   public viewVersion(versionNumber: number): void {
-    // Query params ride along: a link's filters and the tab apply to any version, by stable id.
+    // Filters and tab apply to any version, so keep the query params.
     this.router.navigate(['/reports', this.reportId(), 'versions', versionNumber], {
       queryParamsHandling: 'preserve',
     });
@@ -197,11 +183,7 @@ export class ReportViewerStore {
     return this.versionsResource.value;
   }
 
-  /**
-   * Writes the active tab to the `tab` query param, which the URL drives back
-   * into {@link activeTabId}. Preserves any fragment already on the URL — a
-   * switch to the tab a fragment's widget lives on must not then erase it.
-   */
+  /** Keeps any fragment, so jumping to a widget's tab doesn't erase it. */
   private goToTab(tabId: string, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -212,11 +194,7 @@ export class ReportViewerStore {
     });
   }
 
-  /**
-   * Records that the reader opened this report, for their "recently viewed" list. Guarded so
-   * switching between versions of the same report doesn't re-record it. Fire-and-forget: a failure
-   * to record a view should never disrupt viewing.
-   */
+  /** Records the view for "recently viewed", once per report. Failures are ignored. */
   private recordView(reportId: number): void {
     if (reportId === this.lastRecordedView) {
       return;

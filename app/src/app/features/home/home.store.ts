@@ -16,15 +16,8 @@ import { HomeItemActionsService } from './home-item-actions.service';
 import { HomeSearchStore } from './home-search.store';
 
 /**
- * Facade for the home screen: composes {@link HomeContentsStore} (folder contents, breadcrumb,
- * Favourites/Recent), {@link HomeSearchStore} (whole-tree search), {@link FolderTreeStore} (the
- * nav rail tree) and {@link HomeItemActionsService} (the row/create dialogs) into the one store
- * the page shell and its section components inject. Owns only what ties those collaborators
- * together: navigation, the shared context menu, and the row actions that need to coordinate a
- * dialog outcome with a reload and a tree refresh.
- *
- * Provided at the page component (not root), so it and its collaborators share the page's
- * lifetime and the home route's {@link ActivatedRoute}.
+ * Facade over the home screen's contents, search, tree and dialog stores. Provided at the page
+ * component so it shares the home route's lifetime.
  */
 @Injectable()
 export class HomeStore {
@@ -32,7 +25,6 @@ export class HomeStore {
   public readonly contents = inject(HomeContentsStore);
   public readonly search = inject(HomeSearchStore);
 
-  /** Collapses the folder tree to a slim strip, freeing width for the contents table. */
   public readonly railCollapsed = signal(false);
 
   public readonly homeItem: MenuItem = {
@@ -40,17 +32,15 @@ export class HomeStore {
     command: () => this.selectFolder(null),
   };
 
-  /** True while Move or Create is prefetching data for its dialog — see {@link HomeItemActionsService.busy}. */
+  /** True while Move or Create prefetches data for its dialog. */
   public readonly actionsBusy = computed(() => this.actions.busy());
-  /** The rail shows its skeleton until the tree's root level is loaded — by whichever fetch got there first. */
   public readonly treeLoading = computed(
     () => !this.tree.hasChildrenLoaded(FolderTreeStore.ROOT_KEY),
   );
 
   public readonly treeSelectionKeys = computed<Record<string, boolean>>(() => {
-    // Depend on the tree structure too: on a deep link the selected node doesn't exist yet when
-    // the map is first bound, so emit a fresh reference once the reveal adds it — PrimeNG only
-    // re-applies selection when this input's reference changes.
+    // PrimeNG only re-applies selection when this reference changes, so emit a fresh one once a deep
+    // link's reveal adds the selected node.
     this.tree.nodes();
     return { [String(this.contents.selectedFolderId() ?? FolderTreeStore.ROOT_KEY)]: true };
   });
@@ -67,8 +57,6 @@ export class HomeStore {
     if (!row) {
       return [];
     }
-    // A report offers its real open methods (view published / edit draft) rather than one generic
-    // "Open" — this is where a reader gets only "Open published" while an editor sees both.
     const openItems: MenuItem[] =
       row.kind === 'folder'
         ? [{ label: 'Open', icon: 'pi pi-folder-open', command: () => this.selectFolder(row.id) }]
@@ -87,8 +75,6 @@ export class HomeStore {
     ];
   });
 
-  // Pass-throughs so components can keep reading one store for every home-screen concern —
-  // consumers don't need to know contents/search are separate collaborators.
   public readonly contentsLoading = this.contents.loading;
   public readonly contentsError = this.contents.error;
   public readonly hasContent = this.contents.hasContent;
@@ -111,20 +97,14 @@ export class HomeStore {
     this.contents.init();
   }
 
-  // --- selection ----------------------------------------------------------
-
   public onNodeSelect(event: TreeNodeSelectEvent): void {
     const key = event.node.key;
     this.selectFolder(key === FolderTreeStore.ROOT_KEY || !key ? null : Number(key));
   }
 
   /**
-   * Navigating is enough — writing `folderId` to the URL drives `selectedFolderId`, and the
-   * contents, breadcrumb, and tree merge all react to it. Root clears the param for a clean link.
-   *
-   * Also leaves search mode: the tree rail stays visible while search results are showing, so
-   * without this a rail click would silently move `selectedFolderId` underneath a screen that's
-   * still displaying the old query's results.
+   * The URL drives the selection. Also leaves search mode, so a rail click doesn't move the
+   * selection under stale results.
    */
   public selectFolder(id: number | null): void {
     this.clearSearch();
@@ -134,8 +114,6 @@ export class HomeStore {
       queryParamsHandling: 'merge',
     });
   }
-
-  // --- search -------------------------------------------------------------
 
   public onSearchInput(value: string): void {
     this.search.onInput(value);
@@ -149,13 +127,9 @@ export class HomeStore {
     this.openReport(result);
   }
 
-  // --- tree rail ----------------------------------------------------------
-
   public toggleRail(): void {
     this.railCollapsed.update((collapsed) => !collapsed);
   }
-
-  // --- row actions --------------------------------------------------------
 
   public openRow(row: ContentRow): void {
     if (row.kind === 'folder') {
@@ -165,11 +139,7 @@ export class HomeStore {
     }
   }
 
-  /**
-   * Opens a report by its default method: the latest published version when there is one, otherwise
-   * the draft editor (only ever reached by an editor). The explicit view-vs-edit choice, when both
-   * exist, lives in the context menu and the strip cards.
-   */
+  /** Opens the latest published version, else the draft editor. */
   public openReport(report: OpenableReport): void {
     const option = ReportOpening.defaultOption(report);
     if (option) {
@@ -181,12 +151,9 @@ export class HomeStore {
     this.contents.toggleFavorite(report);
   }
 
-  /** Arms the shared context menu for a row; the shell component then shows the overlay. */
   public prepareContextMenu(row: ContentRow): void {
     this.contextRow.set(row);
   }
-
-  // --- create -------------------------------------------------------------
 
   public openCreateDialog(): void {
     this.actions.create(this.contents.selectedFolderId()).subscribe((outcome) => {
@@ -217,7 +184,6 @@ export class HomeStore {
   }
 
   private permissions(row: ContentRow): void {
-    // Changing sharing can change what's visible, so refresh the contents if anything was saved.
     this.actions.permissions(row).subscribe((changed) => {
       if (changed) {
         this.contents.reload();
@@ -232,7 +198,7 @@ export class HomeStore {
         this.notify.success(`${this.label(row)} deleted.`);
       },
       error: (err: { status?: number }) => {
-        // A 403 is surfaced by the global interceptor; keep the conflict and generic messages here.
+        // The interceptor toasts a 403; conflict and generic messages are handled here.
         this.notify.apiError(
           err,
           err?.status === 409
@@ -243,7 +209,6 @@ export class HomeStore {
     });
   }
 
-  /** "Folder" or "Report", capitalised, for a toast about a row action. */
   private label(row: ContentRow): string {
     return row.kind === 'folder' ? 'Folder' : 'Report';
   }

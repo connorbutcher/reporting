@@ -2,10 +2,7 @@ import { PivotAggregate } from './pivot-aggregate.model';
 import { PivotShowAs } from './pivot-show-as.model';
 import { FormatRule } from '../format-rule/format-rule.model';
 
-/**
- * One measure a pivot computes and shows as a value column: an aggregate over a column, reduced
- * within each group. `columnId` is null (and unused) for the `count` aggregate, which counts rows.
- */
+/** An aggregate over a column; `columnId` is null for `count`. */
 export type PivotMeasure = {
   /** Client-generated, addresses this measure in the editor — not meaningful server-side. */
   id: string;

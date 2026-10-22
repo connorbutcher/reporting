@@ -15,11 +15,7 @@ import { FunctionBlock } from '../items/function-block';
 export class FormulaChecker {
   private static readonly NO_PARAMETERS: readonly FormulaParameter[] = [];
 
-  /**
-   * Checks a formula without the server. What it finds — empty required arguments, wrong kinds, unknown
-   * columns and functions, items that don't fit together — is what the user sees on the blocks; the server
-   * is still asked afterwards, for its own verdict.
-   */
+  /** Client-side check shown on the blocks; the server still gives its own verdict. */
   public static analyze(root: Expression, scope: FormulaScope): FormulaAnalysis {
     const analyzer = new ExpressionAnalyzer(scope);
     const typed = analyzer.analyze(root);

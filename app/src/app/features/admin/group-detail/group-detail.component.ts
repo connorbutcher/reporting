@@ -15,11 +15,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ConfirmDialogComponent } from '../../home/confirm-dialog/confirm-dialog.component';
 import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 
-/**
- * The detail card for one group — create when the route id is "new", otherwise edit. Shown in
- * place of the list (no dialog) with room for the full record: name, members, and the managers
- * delegated to run the group.
- */
+/** Creates a group when the route id is "new", otherwise edits it. */
 @Component({
   selector: 'app-group-detail',
   imports: [FormsModule, InputTextModule, CheckboxModule, ButtonModule],
@@ -38,11 +34,7 @@ export class GroupDetailComponent {
   public readonly memberFilter = signal('');
   public readonly userOptions = signal<DirectoryUser[]>([]);
 
-  /**
-   * The people a group can hold. Global admins are left out throughout: they have full access to
-   * every group by that status, so they're neither members nor managers (they're managed in the
-   * Users section).
-   */
+  /** Global admins are left out: their access is implied. */
   public readonly assignableUsers = computed(() =>
     this.userOptions().filter((u) => !u.isGlobalAdmin),
   );
@@ -60,7 +52,6 @@ export class GroupDetailComponent {
       : options;
   });
 
-  /** Managers are chosen from the group's current members. */
   public readonly managerCandidates = computed(() => {
     const members = new Set(this.memberIds());
     return [...this.assignableUsers()]
@@ -70,16 +61,14 @@ export class GroupDetailComponent {
 
   public readonly title = computed(() => (this.isNew() ? 'New group' : 'Edit group'));
 
-  /** A non-admin creator is auto-added as the new group's manager — see the server-side rule in
-   * `UserGroupAdminService.CreateAsync`. A global admin's access is already implied, so it's skipped. */
+  /** A non-admin creator becomes the new group's manager, matching the server. */
   public readonly willAutoManage = computed(
     () => this.isNew() && !this.currentUser.isGlobalAdmin(),
   );
 
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A group name is required.' });
-    // Fast, offline check against the groups this admin can already see — catches the common case
-    // instantly. A delegated manager doesn't see every group though, so it can't be the whole story.
+    // Quick check against visible groups; delegated managers can't see them all.
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
       if (!name) {
@@ -89,8 +78,7 @@ export class GroupDetailComponent {
         ? { kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }
         : null;
     });
-    // Authoritative check against every group on the server (only once the checks above pass), so a
-    // manager who can't see the whole groups list still can't collide with a name they don't know about.
+    // Server check against every group, once the local checks pass.
     validateHttp<string, GroupNameAvailable>(path.name, {
       when: ({ value }) => value().trim().length > 0,
       request: ({ value }) => ({
@@ -139,7 +127,6 @@ export class GroupDetailComponent {
     this.memberIds.update((ids) =>
       checked ? [...new Set([...ids, id])] : ids.filter((existing) => existing !== id),
     );
-    // A manager must stay a member; dropping the membership drops the manager role too.
     if (!checked) {
       this.managerIds.update((ids) => ids.filter((existing) => existing !== id));
     }
@@ -240,8 +227,7 @@ export class GroupDetailComponent {
         this.existingNames.set(
           groups.filter((g) => g.id !== detail.id).map((g) => g.name.trim().toLowerCase()),
         );
-        // A membership or manager row for someone who is (or has since become) a global admin is
-        // redundant, and the server refuses to save one — drop it here so the group stays editable.
+        // The server refuses rows for global admins, so drop them.
         const admins = new Set(users.filter((u) => u.isGlobalAdmin).map((u) => u.id));
         this.memberIds.set(detail.members.map((m) => m.id).filter((id) => !admins.has(id)));
         this.managerIds.set(detail.managers.map((m) => m.id).filter((id) => !admins.has(id)));

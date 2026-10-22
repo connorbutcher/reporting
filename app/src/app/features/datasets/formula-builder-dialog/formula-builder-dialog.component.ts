@@ -24,10 +24,8 @@ import { FormulaSelection } from './store/formula-selection';
 import { Plural } from '../../../shared/text/plural';
 
 /**
- * Builds a formula column: lay out columns, values, functions and bare operator symbols in a row — and inside
- * the arguments of functions and in brackets — while the formula reads back as text, problems are
- * flagged on the block that caused them, and the server previews the results. All the state is in
- * {@link FormulaBuilderStore}, which this dialog provides for the panels inside it to share.
+ * Builds a formula column from blocks, with live text, problems and a server preview. State lives in
+ * the {@link FormulaBuilderStore} this dialog provides.
  */
 @Component({
   selector: 'app-formula-builder-dialog',
@@ -60,7 +58,7 @@ import { Plural } from '../../../shared/text/plural';
   host: {
     role: 'dialog',
     'aria-label': 'Formula builder',
-    // Focusable, so a click on an item leaves focus in the dialog and its shortcuts (copy, paste, delete) keep working.
+    // Focusable so keyboard shortcuts keep working after a click.
     tabindex: '-1',
     '(keydown)': 'onKeydown($event)',
   },
@@ -97,10 +95,8 @@ export class FormulaBuilderDialogComponent {
     return name.touched() ? (name.errors()[0]?.message ?? null) : null;
   });
 
-  /** The chosen type, for the select. */
   public readonly chosenType = computed(() => this.store.chosenType());
 
-  /** "Result: a number" — what the formula will produce, or why that isn't known yet. */
   public readonly resultText = computed(() => {
     if (this.store.root().length === 0) {
       return 'Result: not set yet';
@@ -161,10 +157,7 @@ export class FormulaBuilderDialogComponent {
     this.store.cancel();
   }
 
-  /**
-   * Shortcuts, when the keyboard isn't in a text box: Ctrl+Z / Ctrl+Y undo and redo; Ctrl+C / Ctrl+V copy
-   * and paste the selected items; Delete removes them; "(" puts them in brackets; Escape lets go of the selection.
-   */
+  /** Shortcuts outside text boxes: undo/redo, copy/paste, Delete, "(" to bracket, Escape to deselect. */
   public onKeydown(event: KeyboardEvent): void {
     if ((event.target as HTMLElement).matches('input, textarea, [contenteditable]')) {
       return;
@@ -180,12 +173,10 @@ export class FormulaBuilderDialogComponent {
     }
   }
 
-  /** The name field, for the signal form binding. */
   public get nameForm(): FormulaBuilderStore['nameForm'] {
     return this.store.nameForm;
   }
 
-  /** Undo, redo, copy and paste. Returns whether the key was used. */
   private onModifiedKey(key: string, shift: boolean): boolean {
     if (key === 'z') {
       if (shift) {
@@ -215,7 +206,6 @@ export class FormulaBuilderDialogComponent {
     return false;
   }
 
-  /** Delete, brackets and letting go, all of which need something selected. Returns whether the key was used. */
   private onSelectionKey(key: string, event: KeyboardEvent): boolean {
     if (!this.store.selectionRange()) {
       return false;

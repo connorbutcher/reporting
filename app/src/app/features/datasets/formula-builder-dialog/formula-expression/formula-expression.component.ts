@@ -17,14 +17,9 @@ import { ArgumentViews } from './argument-views';
 import { ResultBadge } from './result-badge';
 
 /**
- * An expression: the items of a formula, or of one function argument or bracket group, in the order the
- * user laid them out. Values and operator symbols are just items in a row — nothing belongs to an operator's
- * "left" or "right"; what is beside it is what it applies to. Functions and groups hold expressions of
- * their own, so this component nests inside itself.
- *
- * Items are dropped *between* others: the pointer picks a place in the row and a marker shows it. A drag
- * is claimed by the innermost expression under the pointer (native drag events bubble outward, so each
- * expression stops them), and reverse Polish notation later works out what applies to what.
+ * A row of formula items (the whole formula, an argument or a group), nested for functions and
+ * groups. Items have no fixed operands; RPN works out what applies to what. Drops land between
+ * items, claimed by the innermost expression under the pointer.
  */
 @Component({
   selector: 'app-formula-expression',
@@ -34,29 +29,24 @@ import { ResultBadge } from './result-badge';
 export class FormulaExpressionComponent {
   public readonly items = input.required<Expression>();
   public readonly address = input.required<ExpressionAddress>();
-  /** Placeholder for the typing box when the expression is empty. */
   public readonly hint = input('Drop here or type a value');
-  /** The big empty-canvas treatment, for the formula's root. */
   public readonly large = input(false);
 
   public readonly badges = ValueKinds.BADGES;
 
-  /** Whether a drag is over this expression. */
   public readonly over = signal(false);
 
-  /** Whether the drag in progress could land here, so every valid target can be lit while dragging. */
   public readonly armed = computed(
     () => this.store.dragging() !== null && this.store.canDropAt(this.address()),
   );
 
-  /** Whether click-to-add is currently putting things here. */
   public readonly isActive = computed(() => {
     const active = this.store.active();
     const mine = this.address();
     return active.ownerId === mine.ownerId && active.arg === mine.arg;
   });
 
-  /** Where the insertion marker goes, or -1 when the drag isn't over this expression. */
+  /** -1 when the drag isn't over this expression. */
   public readonly caret = computed(() => {
     const point = this.store.dropPoint();
     const mine = this.address();
@@ -65,7 +55,7 @@ export class FormulaExpressionComponent {
       : -1;
   });
 
-  /** Problems with these items themselves — not with a function argument as a whole, which its row shows. */
+  /** Item problems only; a whole argument's problems show on its row. */
   public readonly ownIssues = computed(() => {
     const ids = new Set(this.items().map((item) => item.id));
     return this.store
@@ -80,7 +70,7 @@ export class FormulaExpressionComponent {
   private readonly argumentViews = new WeakMap<FunctionBlock, ArgumentViews>();
   private readonly badgesByItem = new WeakMap<FormulaItem, ResultBadge>();
 
-  /** A stable address object per function argument or group, so nested inputs don't see a "new" value on every check. */
+  /** Stable per argument so nested inputs don't change on every check. */
   public addressOf(ownerId: number, arg: number): ExpressionAddress {
     const key = `${ownerId}:${arg}`;
     let address = this.addresses.get(key);
@@ -91,7 +81,7 @@ export class FormulaExpressionComponent {
     return address;
   }
 
-  /** The call's arguments prepared for the template; remembered per call, so a check that changes nothing about it allocates nothing. */
+  /** Cached per call so an unchanged call allocates nothing. */
   public argumentsOf(call: FunctionBlock): ArgumentView[] {
     const scope = this.store.scope();
     const argumentIssues = this.store.argumentIssues();
@@ -119,13 +109,11 @@ export class FormulaExpressionComponent {
     return views;
   }
 
-  /** The repeating parameter a call ends in, so it offers an "add another" button. */
   public repeating(call: FunctionBlock): FormulaParameter | null {
     const last = FormulaChecker.parametersOf(call, this.store.scope()).at(-1);
     return last?.isVariadic ? last : null;
   }
 
-  /** The kind of value an item produces, for a function's return badge. */
   public resultBadge(item: FormulaItem): string {
     const scope = this.store.scope();
     const cached = this.badgesByItem.get(item);
@@ -147,7 +135,6 @@ export class FormulaExpressionComponent {
     return Operators.symbol(op);
   }
 
-  /** Words (AND, OR, NOT) read smaller than symbols. */
   public isWord(op: string): boolean {
     return /^[A-Z]+$/.test(op);
   }
@@ -201,22 +188,17 @@ export class FormulaExpressionComponent {
     return item.kind === 'literal' && item.value === true ? 'true' : 'false';
   }
 
-  // --- pointer and drag -----------------------------------------------------------
-
-  /** Makes this the expression click-to-add works in, when the click landed on it rather than on something nested. */
   public activate(event: Event): void {
     if ((event.target as HTMLElement).closest('.expr') === event.currentTarget) {
       this.store.active.set(this.address());
-      // Clicking the empty part of the row lets go of the selection.
       if (event.target === event.currentTarget) {
         this.store.clearSelection();
       }
     }
   }
 
-  /** Selects an item: on its own, with Shift extended from the last one to this, with Ctrl or Cmd added or taken out. */
+  /** Shift extends the selection, Ctrl or Cmd toggles. */
   public select(event: MouseEvent, item: FormulaItem): void {
-    // Buttons and text boxes inside an item do their own thing.
     if ((event.target as HTMLElement).closest('button, input')) {
       return;
     }
@@ -226,7 +208,6 @@ export class FormulaExpressionComponent {
     );
   }
 
-  /** A group is selected by clicking its brackets or its edge — a click inside it belongs to what is in there. */
   public selectGroup(event: MouseEvent, item: FormulaItem): void {
     const target = event.target as HTMLElement;
     if (target === event.currentTarget || target.classList.contains('paren')) {
@@ -240,7 +221,7 @@ export class FormulaExpressionComponent {
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move';
     }
-    // Set after the browser has taken its drag image, so the highlights don't end up in it.
+    // Deferred so the highlights aren't in the drag image.
     setTimeout(() => {
       this.store.dragging.set({ kind: 'block', id: item.id });
     });
@@ -298,8 +279,6 @@ export class FormulaExpressionComponent {
     this.store.drop(this.address(), this.caret() >= 0 ? this.caret() : this.insertionIndex(event));
   }
 
-  // --- typing and editing ---------------------------------------------------------
-
   public type(event: Event): void {
     const input = event.target as HTMLInputElement;
     const text = input.value;
@@ -356,10 +335,6 @@ export class FormulaExpressionComponent {
       : parameter.name;
   }
 
-  /**
-   * Where in this row the pointer would drop: before the first item that is on a later row, or on this row
-   * and past the pointer's midpoint; the end if there is none.
-   */
   private insertionIndex(event: DragEvent): number {
     const row = event.currentTarget as HTMLElement;
     const items = Array.from(row.children).filter((child) => child.hasAttribute('data-item'));

@@ -41,9 +41,7 @@ export class DatasetCreateDialogComponent implements AfterViewInit {
 
   public readonly data = inject<DatasetCreateDialogData>(DIALOG_DATA);
 
-  // The name is a required, unique field. The duplicate check runs as a live
-  // validator (against the report's existing names), so a clashing name disables
-  // Create and shows a message as it's typed — before the dialog can close.
+  // The duplicate check is a live validator, so a clashing name disables Create as it's typed.
   public readonly form: FieldTree<DatasetCreateDialogResult, string | number, 'writable'>;
 
   /** The duplicate-name message, shown as it's typed (never the plain "required"). */

@@ -21,16 +21,12 @@ export class ReportViewFilters {
   /** {@link widgetEntries} grouped by widget: one row per widget, not per dataset. */
   public readonly widgetItems: readonly ViewWidgetFilters[];
 
-  /**
-   * Each entry's query filter, one `computed` per entry: a single `Record` rebuilt on every edit
-   * would hand every widget a new reference, and a widget treats that as "reload me".
-   */
+  /** One computed per entry, so an edit only reloads that entry's widget. */
   public readonly pageFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
   public readonly widgetFilters: ReadonlyMap<string, Signal<FilterGroup | null>>;
 
   public readonly changed = computed(() => this.allEntries.some((e) => e.changed()));
 
-  /** Every filter's schema and operators are in, so which rows count as finished (and so {@link snapshot}) is settled. */
   public readonly ready = computed(() => this.allEntries.every((e) => e.group.ready()));
 
   /** Switched-on conditions across the report: the badge count. */
@@ -38,7 +34,7 @@ export class ReportViewFilters {
     this.allEntries.reduce((n, e) => n + e.group.enabledCount(), 0),
   );
 
-  /** Conditions the reader thinks apply but test a removed column, so are left out of queries. Zero until schemas load. */
+  /** Conditions on removed columns, left out of queries. Zero until schemas load. */
   public readonly missingColumnCount = computed(() =>
     this.allEntries.reduce((n, e) => n + e.group.missingColumnCount(), 0),
   );
@@ -97,11 +93,7 @@ export class ReportViewFilters {
     return Object.keys(overrides).filter((key) => !this.keys.has(key));
   }
 
-  /**
-   * Sets each filter to its override, or back to published when it has none (so `apply({})` is
-   * {@link reset}). An entry already showing its target is left alone, so re-applying doesn't
-   * rebuild its rows or reload its widget.
-   */
+  /** Sets each filter to its override, or published when absent. Unchanged entries are left alone. */
   public apply(overrides: ViewFilterOverrides): void {
     for (const entry of this.allEntries) {
       const target = Object.hasOwn(overrides, entry.key) ? overrides[entry.key] : entry.published;

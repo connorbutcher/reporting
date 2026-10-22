@@ -3,10 +3,7 @@ import { PivotFieldGrouping } from './pivot-field-grouping.model';
 import { PivotMeasure } from './pivot-measure.model';
 import { FilterGroup } from '../../filter';
 
-/**
- * A pivot / aggregation table: rows are grouped by one or more dimension columns (`rowFields`) and
- * each group reduced to one or more measures (`measures`) — the tabular counterpart of the bar chart.
- */
+/** Rows grouped by `rowFields`, each reduced to `measures`. */
 export type PivotTableWidgetConfig = WidgetConfigBase & {
   type: 'pivotTable';
 

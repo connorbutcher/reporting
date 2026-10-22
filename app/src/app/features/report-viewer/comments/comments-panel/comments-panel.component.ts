@@ -10,10 +10,8 @@ import { CommentAnchorTarget } from '../comment-anchor-target';
 import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
 
 /**
- * The aside's Comments tab: the focused widget's thread, a composer with `@`-mention autocomplete,
- * and (when the thread has anchored comments) a chip per comment that hands the matching chart point
- * its highlight. The chart side of that pairing lives in `ChartWidgetComponent`; both read the shared
- * {@link ReportComments} highlight signal rather than talking to each other directly.
+ * The focused widget's thread, a composer with `@` mentions, and anchor chips that highlight chart
+ * points through {@link ReportComments}.
  */
 @Component({
   selector: 'app-comments-panel',
@@ -96,10 +94,7 @@ export class CommentsPanelComponent {
         : [...list, { id: user.id, displayName: user.displayName }],
     );
 
-    // Clicking a dropdown item moves focus to its button, so the textarea needs it back — and its
-    // DOM value set directly, synchronously, rather than waiting for the `[value]` binding's own
-    // change-detection pass: typing right after this click (as a reader finishing their sentence
-    // normally would) must land after the mention it just inserted, not race it.
+    // Restore focus and set the DOM value directly, so typing straight after lands after the mention.
     const el = this.composerInput()?.nativeElement;
     if (!el) {
       return;

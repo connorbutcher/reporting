@@ -2,11 +2,7 @@ import { ChartWidgetConfigBase } from './chart-widget-config-base.model';
 import { HistogramBinMode } from './histogram-bin-mode.model';
 import { HistogramNormalize } from './histogram-normalize.model';
 
-/**
- * A histogram. Unlike the other charts it plots the distribution of a single numeric column
- * (`xColumnId`): its values are binned into equal ranges and each bin's frequency drawn as a bar.
- * A series column, if set, overlays a separate distribution per distinct value.
- */
+/** The distribution of one numeric column; a series column overlays one per value. */
 export type HistogramWidgetConfig = ChartWidgetConfigBase & {
   type: 'histogram';
 

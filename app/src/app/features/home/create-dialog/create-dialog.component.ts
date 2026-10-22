@@ -35,10 +35,7 @@ export class CreateDialogComponent implements AfterViewInit {
   public readonly kind = signal<CreateKind>('report');
   public readonly selectedSource = signal<TreeNode | null>(null);
 
-  /**
-   * The name must be unique among the destination's siblings of the selected kind. The local check
-   * is instant but only sees siblings the caller can see, so the server makes the final call.
-   */
+  /** Unique among visible siblings locally; the server makes the final call. */
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A name is required.' });
     validate(path.name, ({ value }) => this.localDuplicateError(value()));

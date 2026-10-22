@@ -26,8 +26,7 @@ export class AppConfig {
       { provide: OVERLAY_DEFAULT_CONFIG, useValue: { usePopover: false } },
       // Single app-wide toast host: the root <p-toast> and NotificationService share this instance.
       MessageService,
-      // Loaded on demand rather than bundled up front, since not every report has a
-      // chart — and tree-shaken to just the modules the widget renders (see echarts.ts).
+      // Loaded on demand and tree-shaken to what the widget renders (see echarts.ts).
       provideEchartsCore({
         echarts: () =>
           import('./features/report-builder/widgets/chart-widget/echarts').then((m) => m.default),

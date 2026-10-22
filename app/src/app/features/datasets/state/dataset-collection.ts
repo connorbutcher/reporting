@@ -22,10 +22,8 @@ import { DatasetAutosave } from './dataset-autosave';
 export class DatasetCollection {
   public readonly datasets: WritableSignal<DatasetSummary[]>;
 
-  /** True while the dataset list is first loading, for the sidebar's skeleton. */
   public readonly datasetsLoading: Signal<boolean>;
 
-  /** A failure loading the dataset list, shown in the sidebar. */
   public readonly listError = computed(() =>
     this.datasetsResource.error()
       ? "These datasets couldn't be loaded — the report may have no checked-out draft, or you may not have access to it."
@@ -52,16 +50,13 @@ export class DatasetCollection {
 
   private readonly notify = inject(NotificationService);
 
-  /** The report whose draft datasets are being edited; set by the page from the route. */
   private readonly reportId = signal<number | null>(null);
 
-  /** The fixed set of source systems, for the source pickers. Loaded once. */
   private readonly sourcesResource = httpResource<DatasetSource[]>(() => '/api/dataset-sources', {
     defaultValue: [],
   });
 
-  // A 404 here is expected control flow (the report may simply have no checked-out draft), and the
-  // sidebar already explains a load failure inline, so this opts out of the global not-found toast.
+  // A report with no draft 404s, and the sidebar explains failures itself, so skip the toast.
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
     () =>
       this.reportId() !== null
@@ -70,8 +65,7 @@ export class DatasetCollection {
     { defaultValue: [] },
   );
 
-  // Selection is the `dataset` query param, so the URL is the source of truth:
-  // reloading, deep-linking or using back/forward all restore the open dataset.
+  // The `dataset` query param is the selection, so reloads and back/forward restore it.
   private readonly datasetParam = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('dataset'))),
     { initialValue: this.route.snapshot.queryParamMap.get('dataset') },
@@ -80,9 +74,7 @@ export class DatasetCollection {
   constructor() {
     this.datasets = this.datasetsResource.value;
     this.datasetsLoading = this.datasetsResource.isLoading;
-    // With nothing selected in the URL, default to the first dataset once the
-    // list arrives (replacing history so the bare URL isn't a back-button trap).
-    // Only fills an empty selection — a param pointing at a real dataset wins.
+    // Defaults an empty selection to the first dataset, replacing history so it isn't a back trap.
     effect(() => {
       const list = this.datasets();
       untracked(() => {
@@ -93,7 +85,6 @@ export class DatasetCollection {
     });
   }
 
-  /** Points the store at a report's draft datasets; the list refetches reactively. */
   public setReport(reportId: number): void {
     if (reportId === this.reportId()) {
       return;
@@ -105,16 +96,11 @@ export class DatasetCollection {
     this.openDataset(id);
   }
 
-  /** Refetches the dataset list; used after a source change to refresh its source chip. */
   public reloadList(): void {
     this.datasetsResource.reload();
   }
 
-  /**
-   * True when another dataset on this report already uses `name` (trimmed,
-   * case-insensitive), ignoring the currently selected one — so a duplicate name
-   * can be caught before it's saved. Exposed for the toolbar's rename field.
-   */
+  /** True when another dataset already uses `name` (trimmed, case-insensitive). */
   public datasetNameTaken(name: string): boolean {
     return this.nameTaken(name, this.selectedId());
   }
@@ -125,8 +111,6 @@ export class DatasetCollection {
     if (!trimmed || reportId === null || !sourceId) {
       return;
     }
-    // Don't save a name that already exists — it would land the report with two
-    // indistinguishable datasets (see DatasetValidation's duplicate-name check).
     if (this.nameTaken(trimmed, null)) {
       this.notify.error(`A dataset called "${trimmed}" already exists. Choose a different name.`);
       return;
@@ -144,13 +128,9 @@ export class DatasetCollection {
   public renameDataset(name: string): void {
     const id = this.selectedId();
     const trimmed = name.trim();
-    // Skip the save when the name is blank or unchanged, so blurring the field
-    // without editing it doesn't fire a needless request.
     if (!id || !trimmed || trimmed === this.selected()?.name) {
       return;
     }
-    // Don't save a name another dataset already uses — it would leave the report
-    // with two datasets that can't be told apart.
     if (this.nameTaken(trimmed, id)) {
       this.notify.error(`Another dataset is already called "${trimmed}". Choose a different name.`);
       return;
@@ -165,13 +145,11 @@ export class DatasetCollection {
     });
   }
 
-  /** Deep-copies the selected dataset and opens the copy. */
   public cloneDataset(): void {
     const dataset = this.selected();
     if (!dataset) {
       return;
     }
-    // A plain "(copy)" would clash on a second clone, so land on a free name.
     this.autosave
       .track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`)))
       .subscribe({
@@ -191,8 +169,7 @@ export class DatasetCollection {
       return;
     }
     const name = this.selected()?.name;
-    // Pick the next surviving dataset up front so the delete opens it directly,
-    // rather than briefly clearing the selection and re-defaulting to the first.
+    // Opens the next dataset directly instead of clearing and re-defaulting.
     const next = this.datasets().find((d) => d.id !== id)?.id ?? null;
     this.autosave.track(this.api.remove(id)).subscribe({
       next: () => {
@@ -209,12 +186,7 @@ export class DatasetCollection {
     return this.sourcesResource.value;
   }
 
-  /**
-   * Writes the selection to the `dataset` query param, which the URL then drives
-   * back into {@link selectedId}. Replacing history is used for automatic moves
-   * (the initial default, closing a deleted dataset) so only a user's explicit
-   * pick leaves a back-button step.
-   */
+  /** Automatic moves replace history so only explicit picks add a back step. */
   private openDataset(id: number | null, replaceUrl = false): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -231,7 +203,6 @@ export class DatasetCollection {
     );
   }
 
-  /** The name, suffixed with a counter if needed, so it doesn't collide with an existing dataset. */
   private uniqueName(base: string): string {
     if (!this.nameTaken(base, null)) {
       return base;

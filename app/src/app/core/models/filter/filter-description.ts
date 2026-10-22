@@ -4,10 +4,8 @@ import { OperatorCatalogue } from './operator-catalogue.model';
 import { NamedColumn } from './named-column.model';
 
 /**
- * A filter as short readable lines ("Region equals North") for a tooltip. An AND group reads as
- * separate lines and an OR group as one. Disabled conditions and conditions on columns the dataset
- * no longer has are left out, since they narrow nothing. Operator wording comes from the API's
- * catalogue when available, so it matches the filter panel.
+ * A filter as readable lines for a tooltip. AND groups read as separate lines, OR groups as one.
+ * Disabled conditions and removed columns are left out.
  */
 export class FilterDescription {
   private readonly byId: Map<string, NamedColumn>;

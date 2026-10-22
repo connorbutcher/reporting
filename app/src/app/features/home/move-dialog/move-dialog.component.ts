@@ -6,11 +6,7 @@ import { MoveDialogData } from './move-dialog-data';
 import { FolderTreeStore } from '../folder-tree.store';
 import { FolderTrees } from '../folder-trees';
 
-/**
- * Lets the user pick a destination folder from the same tree shown on the
- * home page. Closes with the chosen folder id (`null` for the root), or
- * `undefined` if cancelled.
- */
+/** Closes with the chosen folder id (`null` for the root), or `undefined` if cancelled. */
 @Component({
   selector: 'app-move-dialog',
   imports: [TreeModule],
