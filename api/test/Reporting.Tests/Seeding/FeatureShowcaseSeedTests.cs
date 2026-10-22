@@ -25,6 +25,8 @@ public class FeatureShowcaseSeedTests : IDisposable
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
+    private const string TourName = "Feature Tour — Engine Builds";
+
     private readonly SqliteConnection _connection;
     private readonly ReportingDbContext _db;
 
@@ -58,7 +60,8 @@ public class FeatureShowcaseSeedTests : IDisposable
 
         var revision = LoadRevision();
         var tabs = revision.Tabs.OrderBy(t => t.Order).ToList();
-        Assert.Equal(6, tabs.Count);
+        Assert.Equal(10, tabs.Count);
+        Assert.Equal(Enumerable.Range(0, 10), tabs.Select(t => t.Order));
 
         var widgets = tabs.SelectMany(t => t.Widgets).ToList();
 
@@ -109,7 +112,7 @@ public class FeatureShowcaseSeedTests : IDisposable
     {
         DbSeeder.SeedFeatureShowcase(_db);
 
-        var combo = LoadRevision().Tabs.SelectMany(t => t.Widgets).Single(w => w.Type == WidgetType.ComboChart);
+        var combo = WidgetTitled(LoadRevision(), "Cost vs build hours by engine");
         using var doc = JsonDocument.Parse(combo.ConfigJson);
         var root = doc.RootElement;
 
@@ -167,7 +170,7 @@ public class FeatureShowcaseSeedTests : IDisposable
         DbSeeder.SeedFeatureShowcase(_db);
 
         var revision = LoadRevision();
-        var xbarR = revision.Tabs.SelectMany(t => t.Widgets).Single(w => w.Type == WidgetType.XBarRChart);
+        var xbarR = WidgetTitled(revision, "Clearance by inspector (Xbar-R)");
         using (var doc = JsonDocument.Parse(xbarR.ConfigJson))
         {
             Assert.Single(doc.RootElement.GetProperty("toleranceBands").EnumerateArray());
@@ -229,8 +232,14 @@ public class FeatureShowcaseSeedTests : IDisposable
         return _db.Reports
             .Include(r => r.Revisions).ThenInclude(rev => rev.Tabs).ThenInclude(t => t.Widgets)
             .Include(r => r.Revisions).ThenInclude(rev => rev.Datasets).ThenInclude(d => d.Columns)
-            .Single(r => r.Name == "Engine Build — Feature Tour")
+            .Single(r => r.Name == TourName)
             .Revisions.Single();
+    }
+
+    private static Widget WidgetTitled(ReportRevision revision, string title)
+    {
+        return revision.Tabs.SelectMany(t => t.Widgets)
+            .Single(w => JsonDocument.Parse(w.ConfigJson).RootElement.TryGetProperty("title", out var value) && value.GetString() == title);
     }
 
     private static Guid ColumnRef(Dataset dataset, string name)

@@ -7,7 +7,7 @@ internal static class FeatureTourKpiTab
 {
     public static void Add(ReportRevision revision, SeedBatch batch, FeatureTourContext context)
     {
-        var tab = new Tab { RefId = Guid.NewGuid(), Name = "KPIs", Order = 4 };
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "KPIs", Order = 6 };
         revision.Tabs.Add(tab);
         tab.Widgets.Add(SeedWidgets.Title("KPI tiles", 0, 0, 48, 2));
         tab.Widgets.Add(SeedWidgets.Paragraph(
@@ -33,17 +33,20 @@ internal static class FeatureTourKpiTab
             KpiWidgetJson.Config("Builds logged", log, "aggregate", "count", null, "null", "fail", true,
                 "none", null, null, 7, "higherIsBetter", "", "", 0));
 
-        // Thresholds straddle the seeded average (~£7,380) so the tile shows the warning state.
+        // Thresholds straddle the seeded average (~£7,300) so the tile shows the warning state.
         var avgCost = SeedWidgets.Placeholder(tab, WidgetType.Kpi, 12, 5, 12, 9);
         batch.AddChart(avgCost, () =>
             KpiWidgetJson.Config("Average build cost", log, "aggregate", "average", costRef, "null", "fail", true,
                 "fixedTarget", 7000, null, 7, "lowerIsBetter", "£", "", 0,
                 thresholdsEnabled: true, warningThreshold: 7200, criticalThreshold: 7800));
+        batch.AddComment(context.Comment(avgCost, "bob@local",
+            "@Alice Whitfield the average is sitting in the warning band. The V12 builds are the main driver; see the Cost & effort tab.",
+            6, "alice@local"));
 
         var outOfSpec = SeedWidgets.Placeholder(tab, WidgetType.Kpi, 24, 5, 12, 9);
         batch.AddChart(outOfSpec, () =>
             KpiWidgetJson.Config("Bearing clearance out of spec", log, "toleranceOutOfLimits", "sum", clearanceRef,
-                SpecDatasets.KpiToleranceJson(context.Spec), "fail", true,
+                SpecDatasets.ToleranceJson(context.Spec), "fail", true,
                 "fixedTarget", 5, null, 7, "lowerIsBetter", "", "%", 1,
                 thresholdsEnabled: true, warningThreshold: 3, criticalThreshold: 6));
 
@@ -77,7 +80,7 @@ internal static class FeatureTourKpiTab
         var outOfSpecByLine = SeedWidgets.Placeholder(tab, WidgetType.Kpi, 24, 14, 12, 9);
         batch.AddChart(outOfSpecByLine, () =>
             KpiWidgetJson.Config("Clearance out of spec by line", log, "toleranceOutOfLimits", "sum", clearanceRef,
-                SpecDatasets.KpiToleranceJson(context.Spec), "fail", true,
+                SpecDatasets.ToleranceJson(context.Spec), "fail", true,
                 "none", null, null, 7, "lowerIsBetter", "", "%", 1,
                 thresholdsEnabled: true, warningThreshold: 3, criticalThreshold: 6, groupByColumnRef: lineRef));
 

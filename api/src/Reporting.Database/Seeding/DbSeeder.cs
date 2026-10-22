@@ -55,6 +55,38 @@ public static class DbSeeder
         SeedShowcase(db, CrossReferenceShowcase.Name, CrossReferenceShowcase.Build);
     }
 
+    public static bool NeedsPerformanceShowcase(ReportingDbContext db)
+    {
+        return !db.Reports.Any(r => r.Name == PerformanceShowcase.Name);
+    }
+
+    /// <summary>
+    /// The large datasets are written after the report, by bulk copy on SQL Server, all in one transaction so an
+    /// interrupted seed leaves nothing behind and is retried on the next start.
+    /// </summary>
+    public static void SeedPerformanceShowcase(ReportingDbContext db, PerformanceShowcaseSizes sizes)
+    {
+        if (!NeedsPerformanceShowcase(db))
+        {
+            return;
+        }
+
+        using var transaction = db.Database.BeginTransaction();
+        var batch = new SeedBatch();
+        var nextNumber = (db.Reports.Max(r => (int?)r.Number) ?? 0) + 1;
+        var seed = PerformanceShowcase.Build(batch, nextNumber, sizes);
+        db.Reports.Add(seed.Report);
+        SaveBatch(db, batch);
+
+        var writer = SeedRowWriters.For(db);
+        foreach (var source in seed.Sources)
+        {
+            writer.Write(db, source);
+        }
+
+        transaction.Commit();
+    }
+
     private static void SeedShowcase(ReportingDbContext db, string name, Func<SeedBatch, int, Report> build)
     {
         if (db.Reports.Any(r => r.Name == name))
@@ -72,7 +104,7 @@ public static class DbSeeder
     private static void SaveBatch(ReportingDbContext db, SeedBatch batch)
     {
         db.SaveChanges();
-        batch.Apply();
+        batch.Apply(db);
         db.SaveChanges();
     }
 }

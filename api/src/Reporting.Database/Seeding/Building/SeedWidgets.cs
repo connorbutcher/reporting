@@ -1,3 +1,4 @@
+using System.Globalization;
 using Reporting.Abstractions;
 
 namespace Reporting.Database;
@@ -19,25 +20,32 @@ internal static class SeedWidgets
 
     public static Widget Title(string text, int x, int y, int w, int h)
     {
-        return new Widget
-        {
-            RefId = Guid.NewGuid(),
-            Type = WidgetType.StaticText,
-            X = x,
-            Y = y,
-            W = w,
-            H = h,
-            ConfigJson = $$"""
-                {"type":"staticText","title":"Text","showTitle":false,
-                 "content":"{{text}}","fontSize":22,"fontWeight":"bold",
-                 "italic":false,"underline":false,"strikethrough":false,"lineHeight":1.2,
-                 "color":"#152a55","backgroundColor":null,"textAlign":"left","verticalAlign":"middle",
-                 "wrap":true,"padding":8}
-                """,
-        };
+        return Text(text, x, y, w, h, new TextStyle(22, "bold", "#152a55", 1.2, "middle"));
+    }
+
+    public static Widget Heading(string text, int x, int y, int w, int h)
+    {
+        return Text(text, x, y, w, h, new TextStyle(17, "bold", "#152a55", 1.2, "middle"));
     }
 
     public static Widget Paragraph(string text, int x, int y, int w, int h)
+    {
+        return Text(text, x, y, w, h, new TextStyle(14, "normal", "#475569", 1.4, "top"));
+    }
+
+    /// <summary>Headed paragraphs in two columns, starting at row <paramref name="top"/>.</summary>
+    public static void AddSections(Tab tab, (string Heading, string Body)[] sections, int top)
+    {
+        for (var i = 0; i < sections.Length; i++)
+        {
+            var x = i % 2 * 24;
+            var y = top + i / 2 * 10;
+            tab.Widgets.Add(Heading(sections[i].Heading, x, y, 24, 2));
+            tab.Widgets.Add(Paragraph(sections[i].Body, x, y + 2, 24, 8));
+        }
+    }
+
+    private static Widget Text(string text, int x, int y, int w, int h, TextStyle style)
     {
         return new Widget
         {
@@ -49,9 +57,9 @@ internal static class SeedWidgets
             H = h,
             ConfigJson = $$"""
                 {"type":"staticText","title":"Text","showTitle":false,
-                 "content":"{{text}}","fontSize":14,"fontWeight":"normal",
-                 "italic":false,"underline":false,"strikethrough":false,"lineHeight":1.4,
-                 "color":"#475569","backgroundColor":null,"textAlign":"left","verticalAlign":"top",
+                 "content":"{{SeedJson.Escape(text)}}","fontSize":{{style.FontSize}},"fontWeight":"{{style.FontWeight}}",
+                 "italic":false,"underline":false,"strikethrough":false,"lineHeight":{{style.LineHeight.ToString(CultureInfo.InvariantCulture)}},
+                 "color":"{{style.Color}}","backgroundColor":null,"textAlign":"left","verticalAlign":"{{style.VerticalAlign}}",
                  "wrap":true,"padding":8}
                 """,
         };

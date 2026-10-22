@@ -8,6 +8,11 @@ internal static class SeedFormats
 
     public const string ShortDate = "{\"dateFormat\":\"d MMM yyyy\"}";
 
+    public static string Pounds(int decimals)
+    {
+        return $"{{\"decimals\":{decimals},\"prefix\":\"£\"}}";
+    }
+
     public static string Mm(int decimals)
     {
         return $"{{\"decimals\":{decimals},\"suffix\":\" mm\"}}";
@@ -41,5 +46,11 @@ internal static class SeedFormats
     public static string Iso(DateTime value)
     {
         return value.ToString("O", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>A whole date as a formula column stores it.</summary>
+    public static string Day(DateTime value)
+    {
+        return value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
     }
 }
