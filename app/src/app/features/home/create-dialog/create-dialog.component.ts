@@ -8,34 +8,18 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { form, required, validate, validateHttp } from '@angular/forms/signals';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { TreeNode } from 'primeng/api';
+import { form, required, validate, validateHttp } from '@angular/forms/signals';
+import { CreateDialogData } from './create-dialog-data';
+import { CreateKind } from './create-kind';
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
-import { Folder } from '../../../core/models/folder/folder.model';
-import { ReportSummary } from '../../../core/models/report';
-import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
-import { ROOT_KEY } from '../folder-tree.store';
-import { groupByParent } from '../group-by-parent.util';
-
-export type CreateKind = 'folder' | 'report';
-
-export type CreateDialogData = {
-  folders: Folder[];
-  reports: ReportSummary[];
-  /** The folder the new item will be created in (null = Home). Drives the uniqueness check. */
-  folderId: number | null;
-};
-
-export type CreateDialogResult = {
-  kind: CreateKind;
-  name: string;
-  /** Set when the user picked an existing report to start from — undefined means start blank. */
-  sourceReportId?: number;
-};
+import { FolderTreeStore } from '../folder-tree.store';
+import { CreateDialogResult } from './create-dialog-result';
+import { FolderTrees } from '../folder-trees';
 
 /** Lets the user pick folder-vs-report, name it, and (for reports) optionally copy an existing one — in one step, before creating either. */
 @Component({
@@ -114,7 +98,7 @@ export class CreateDialogComponent implements AfterViewInit {
 
   public readonly treeNodes = computed<TreeNode[]>(() => [
     {
-      key: ROOT_KEY,
+      key: FolderTreeStore.ROOT_KEY,
       label: 'Home',
       icon: 'pi pi-home',
       selectable: false,
@@ -138,10 +122,10 @@ export class CreateDialogComponent implements AfterViewInit {
   );
 
   private readonly foldersByParent = computed(() =>
-    groupByParent(this.data.folders, (f) => f.parentFolderId),
+    FolderTrees.groupByParent(this.data.folders, (f) => f.parentFolderId),
   );
   private readonly reportsByParent = computed(() =>
-    groupByParent(this.data.reports, (r) => r.folderId),
+    FolderTrees.groupByParent(this.data.reports, (r) => r.folderId),
   );
 
   public ngAfterViewInit(): void {
@@ -171,7 +155,7 @@ export class CreateDialogComponent implements AfterViewInit {
   }
 
   private childNodes(parentId: number | null): TreeNode[] {
-    const folderNodes = buildFolderTreeNodes(
+    const folderNodes = FolderTrees.buildNodes(
       parentId,
       this.foldersByParent(),
       (folder, children) => ({

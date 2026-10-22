@@ -2,7 +2,9 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, output } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportOpenOption, ReportSummary, ReportOpening } from '../../../core/models/report';
-import { ContentRow, ReportRow, RowAction } from '../content-row';
+import { ContentRow } from '../models/content-row';
+import { ReportRow } from '../models/report-row';
+import { RowAction } from '../models/row-action';
 import { HomeStore } from '../home.store';
 
 /**

@@ -1,9 +1,7 @@
-import { httpResource } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, Dialog } from '@angular/cdk/dialog';
+import { httpResource } from '@angular/common/http';
 import { Observable, map, of } from 'rxjs';
-import { PermissionsApiService } from '../../../core/api/permissions-api.service';
-import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import {
   AccessGrant,
   AccessLevel,
@@ -12,36 +10,13 @@ import {
   UserGroupSummary,
   UserSummary,
 } from '../../../core/models/permission';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from '../confirm-dialog/confirm-dialog.component';
-import type { PermissionsDialogData } from './permissions-dialog.component';
-
-export type SubjectOption = {
-  label: string;
-  value: string;
-  subjectType: GrantSubjectType;
-  subjectId: string | null;
-};
-
-/** One row of the effective-access list: either a group label or a grant, in display order. */
-export type EffectiveRow =
-  { kind: 'header'; label: string } | { kind: 'grant'; grant: AccessGrant };
-
-const LEVEL_LABEL: Record<AccessLevel, string> = {
-  none: 'No access',
-  viewer: 'Viewer',
-  editor: 'Editor',
-  manager: 'Manager',
-};
-
-/** Display order for the effective list: Everyone (unlabelled, at most one row), then Groups, then People. */
-const GROUP_ORDER: { subjectType: GrantSubjectType; label: string | null }[] = [
-  { subjectType: 'everyone', label: null },
-  { subjectType: 'group', label: 'Groups' },
-  { subjectType: 'user', label: 'People' },
-];
+import { SubjectOption } from './subject-option';
+import { EffectiveRow } from './effective-row';
+import type { PermissionsDialogData } from './permissions-dialog-data';
+import { PermissionsApiService } from '../../../core/api/permissions-api.service';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from '../confirm-dialog/confirm-dialog-data';
 
 /**
  * Loads and mutates a folder or report's sharing grants for {@link PermissionsDialogComponent},
@@ -53,6 +28,19 @@ const GROUP_ORDER: { subjectType: GrantSubjectType; label: string | null }[] = [
  */
 @Injectable()
 export class PermissionsDialogStore {
+  private static readonly LEVEL_LABEL: Record<AccessLevel, string> = {
+    none: 'No access',
+    viewer: 'Viewer',
+    editor: 'Editor',
+    manager: 'Manager',
+  };
+
+  /** Display order for the effective list: Everyone (unlabelled, at most one row), then Groups, then People. */
+  private static readonly GROUP_ORDER: { subjectType: GrantSubjectType; label: string | null }[] = [
+    { subjectType: 'everyone', label: null },
+    { subjectType: 'group', label: 'Groups' },
+    { subjectType: 'user', label: 'People' },
+  ];
   public readonly permissions = computed(() =>
     this.permissionsResource.hasValue() ? this.permissionsResource.value() : null,
   );
@@ -115,7 +103,7 @@ export class PermissionsDialogStore {
   public readonly effectiveRows = computed<EffectiveRow[]>(() => {
     const list = this.permissions()?.effective ?? [];
     const rows: EffectiveRow[] = [];
-    for (const { subjectType, label } of GROUP_ORDER) {
+    for (const { subjectType, label } of PermissionsDialogStore.GROUP_ORDER) {
       const matches = list
         .filter((g) => g.subjectType === subjectType)
         .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
@@ -268,7 +256,7 @@ export class PermissionsDialogStore {
       .open<boolean>(ConfirmDialogComponent, {
         data: {
           title: 'Give everyone broad access?',
-          message: `Setting Everyone to ${LEVEL_LABEL[level]} means anyone who can open this ${this.data.kind} will be able to ${capability}.`,
+          message: `Setting Everyone to ${PermissionsDialogStore.LEVEL_LABEL[level]} means anyone who can open this ${this.data.kind} will be able to ${capability}.`,
           confirmLabel: 'Grant access',
         } satisfies ConfirmDialogData,
       })

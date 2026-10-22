@@ -9,8 +9,8 @@ import {
   ReportSummary,
   ReportOpening,
 } from '../../core/models/report';
-import { ContentRow } from './content-row';
-import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';
+import { ContentRow } from './models/content-row';
+import { FolderTreeStore } from './folder-tree.store';
 import { HomeContentsStore } from './home-contents.store';
 import { HomeItemActionsService } from './home-item-actions.service';
 import { HomeSearchStore } from './home-search.store';
@@ -43,14 +43,16 @@ export class HomeStore {
   /** True while Move or Create is prefetching data for its dialog — see {@link HomeItemActionsService.busy}. */
   public readonly actionsBusy = computed(() => this.actions.busy());
   /** The rail shows its skeleton until the tree's root level is loaded — by whichever fetch got there first. */
-  public readonly treeLoading = computed(() => !this.tree.hasChildrenLoaded(ROOT_KEY));
+  public readonly treeLoading = computed(
+    () => !this.tree.hasChildrenLoaded(FolderTreeStore.ROOT_KEY),
+  );
 
   public readonly treeSelectionKeys = computed<Record<string, boolean>>(() => {
     // Depend on the tree structure too: on a deep link the selected node doesn't exist yet when
     // the map is first bound, so emit a fresh reference once the reveal adds it — PrimeNG only
     // re-applies selection when this input's reference changes.
     this.tree.nodes();
-    return { [String(this.contents.selectedFolderId() ?? ROOT_KEY)]: true };
+    return { [String(this.contents.selectedFolderId() ?? FolderTreeStore.ROOT_KEY)]: true };
   });
 
   public readonly breadcrumbItems = computed<MenuItem[]>(() =>
@@ -113,7 +115,7 @@ export class HomeStore {
 
   public onNodeSelect(event: TreeNodeSelectEvent): void {
     const key = event.node.key;
-    this.selectFolder(key === ROOT_KEY || !key ? null : Number(key));
+    this.selectFolder(key === FolderTreeStore.ROOT_KEY || !key ? null : Number(key));
   }
 
   /**

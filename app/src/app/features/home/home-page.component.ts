@@ -4,7 +4,7 @@ import { BreadcrumbModule } from 'primeng/breadcrumb';
 import { ButtonModule } from 'primeng/button';
 import { ContextMenu, ContextMenuModule } from 'primeng/contextmenu';
 import { SkeletonModule } from 'primeng/skeleton';
-import { RowAction } from './content-row';
+import { RowAction } from './models/row-action';
 import { ContentsListComponent } from './contents-list/contents-list.component';
 import { FolderTreeRailComponent } from './folder-tree-rail/folder-tree-rail.component';
 import { FolderTreeStore } from './folder-tree.store';

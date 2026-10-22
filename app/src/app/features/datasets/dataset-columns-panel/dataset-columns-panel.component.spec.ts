@@ -10,7 +10,7 @@ import {
   DatasetColumn,
   DatasetColumnType,
 } from '../../../core/models/dataset';
-import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 import { DatasetsStore } from '../datasets.store';
 import { DatasetColumnsPanelComponent } from './dataset-columns-panel.component';
 

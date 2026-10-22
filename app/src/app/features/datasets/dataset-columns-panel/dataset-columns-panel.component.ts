@@ -10,10 +10,8 @@ import { Select, SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ColumnTypeImpact, DatasetColumn, DatasetColumnType } from '../../../core/models/dataset';
 import { WidgetFragment } from '../../../core/models/report';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 import { DatasetsStore } from '../datasets.store';
 import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula-builder-dialog.component';
 import { FormulaBuilderData } from '../formula-builder-dialog/store/formula-builder-data';

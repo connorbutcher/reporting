@@ -5,9 +5,6 @@ import { FolderApiService } from '../../core/api/folder-api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder/folder.model';
 
-/** Key used for the synthetic root node, since folder ids are never this string. */
-export const ROOT_KEY = '__root__';
-
 /**
  * Lazy folder-tree state for the home page, pulled out of the component so it only owns
  * selection and content loading. A component-provided collaborator — constructed by Angular
@@ -24,15 +21,17 @@ export const ROOT_KEY = '__root__';
  */
 @Injectable()
 export class FolderTreeStore {
+  /** Key used for the synthetic root node, since folder ids are never this string. */
+  public static readonly ROOT_KEY = '__root__';
   public readonly nodes = computed<TreeNode[]>(() => [
-    this.buildTreeNode(ROOT_KEY, 'Home', 'pi pi-home', true),
+    this.buildTreeNode(FolderTreeStore.ROOT_KEY, 'Home', 'pi pi-home', true),
   ]);
 
   /** Every folder we've learned about so far, from any children fetch — keyed by its stringified id. */
   private readonly knownFolders = signal<Map<string, Folder>>(new Map());
   /** Child folder keys already fetched for each parent key (ROOT_KEY or a stringified folder id). */
   private readonly childrenOf = signal<Map<string, string[]>>(new Map());
-  private readonly expandedKeys = signal<Set<string>>(new Set([ROOT_KEY]));
+  private readonly expandedKeys = signal<Set<string>>(new Set([FolderTreeStore.ROOT_KEY]));
   private readonly loadingKeys = signal<Set<string>>(new Set());
 
   private readonly folderApi = inject(FolderApiService);
@@ -91,7 +90,7 @@ export class FolderTreeStore {
     if (this.childrenOf().has(key)) {
       return;
     }
-    this.fetchChildren(key === ROOT_KEY ? null : Number(key), key);
+    this.fetchChildren(key === FolderTreeStore.ROOT_KEY ? null : Number(key), key);
   }
 
   /**
@@ -112,7 +111,7 @@ export class FolderTreeStore {
 
   /** Refreshes a folder's tree entry from the server — for a folder other than the one just loaded via `merge`. */
   public refreshNodeIfPresent(folderId: number | null): void {
-    const key = folderId !== null ? String(folderId) : ROOT_KEY;
+    const key = folderId !== null ? String(folderId) : FolderTreeStore.ROOT_KEY;
     if (!this.childrenOf().has(key)) {
       return;
     }

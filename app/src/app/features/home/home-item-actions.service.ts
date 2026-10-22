@@ -3,27 +3,21 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Observable, defer, filter, finalize, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
+import { ContentRow } from './models/content-row';
+import { RenameDialogComponent } from './rename-dialog/rename-dialog.component';
+import { RenameDialogData } from './rename-dialog/rename-dialog-data';
 import { Folder } from '../../core/models/folder/folder.model';
 import { ReportSummary } from '../../core/models/report';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from './confirm-dialog/confirm-dialog.component';
-import {
-  CreateDialogComponent,
-  CreateDialogData,
-  CreateDialogResult,
-} from './create-dialog/create-dialog.component';
-import { MoveDialogComponent, MoveDialogData } from './move-dialog/move-dialog.component';
-import {
-  PermissionsDialogComponent,
-  PermissionsDialogData,
-} from './permissions-dialog/permissions-dialog.component';
-import { RenameDialogComponent, RenameDialogData } from './rename-dialog/rename-dialog.component';
-import { ContentRow } from './content-row';
-
-/** What a completed create resolved to, so the page can reload or open the new report. */
-export type CreateOutcome = { kind: 'folder' } | { kind: 'report'; reportId: number };
+import { MoveDialogComponent } from './move-dialog/move-dialog.component';
+import { MoveDialogData } from './move-dialog/move-dialog-data';
+import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from './confirm-dialog/confirm-dialog-data';
+import { PermissionsDialogComponent } from './permissions-dialog/permissions-dialog.component';
+import { PermissionsDialogData } from './permissions-dialog/permissions-dialog-data';
+import { CreateOutcome } from './create-outcome';
+import { CreateDialogResult } from './create-dialog/create-dialog-result';
+import { CreateDialogComponent } from './create-dialog/create-dialog.component';
+import { CreateDialogData } from './create-dialog/create-dialog-data';
 
 /**
  * The row/create dialog flows for the home page, pulled out of the component so

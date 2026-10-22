@@ -5,10 +5,8 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SaveStatusComponent } from '../../../shared/save-status/save-status.component';
 import { DatasetIssuesComponent } from '../dataset-issues/dataset-issues.component';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 import { DatasetsStore } from '../datasets.store';
 
 /**

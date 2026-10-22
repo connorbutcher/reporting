@@ -7,17 +7,10 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { form, required, validateHttp } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { form, required, validateHttp } from '@angular/forms/signals';
+import { RenameDialogData } from './rename-dialog-data';
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
-
-export type RenameDialogData = {
-  kind: 'folder' | 'report';
-  id: number;
-  currentName: string;
-  /** The folder this item currently sits in (null = Home) — the name must stay unique among its siblings there. */
-  folderId: number | null;
-};
 
 /**
  * Prompts for a new name, pre-filled and pre-selected with the current one. Unlike the create

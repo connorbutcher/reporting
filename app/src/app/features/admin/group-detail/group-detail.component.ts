@@ -12,10 +12,8 @@ import { DirectoryUser, GroupNameAvailable, SaveGroup } from '../../../core/mode
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import {
-  ConfirmDialogComponent,
-  ConfirmDialogData,
-} from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent } from '../../home/confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 
 /**
  * The detail card for one group — create when the route id is "new", otherwise edit. Shown in

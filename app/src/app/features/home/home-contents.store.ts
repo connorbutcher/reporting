@@ -7,8 +7,10 @@ import { ReportApiService } from '../../core/api/report-api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Folder } from '../../core/models/folder/folder.model';
 import { ReportSummary } from '../../core/models/report';
-import { FolderRow, ReportRow, folderToRow, reportToRow } from './content-row';
-import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';
+import { FolderRow } from './models/folder-row';
+import { ReportRow } from './models/report-row';
+import { ContentRows } from './content-rows';
+import { FolderTreeStore } from './folder-tree.store';
 
 /**
  * The selected folder's contents and breadcrumb path, plus the account-wide Favourites and
@@ -49,12 +51,12 @@ export class HomeContentsStore {
   // Sorted here rather than left in server order, which is by id/creation and not meaningful to browse by.
   public readonly folderRows = computed<FolderRow[]>(() =>
     (this.foldersResource.hasValue() ? this.foldersResource.value() : [])
-      .map(folderToRow)
+      .map(ContentRows.fromFolder)
       .sort((a, b) => a.name.localeCompare(b.name)),
   );
   public readonly reportRows = computed<ReportRow[]>(() =>
     (this.reportsResource.hasValue() ? this.reportsResource.value() : [])
-      .map(reportToRow)
+      .map(ContentRows.fromReport)
       .sort((a, b) => a.name.localeCompare(b.name)),
   );
   public readonly hasContent = computed(
@@ -129,7 +131,9 @@ export class HomeContentsStore {
         return;
       }
       const folders = this.foldersResource.value();
-      untracked(() => this.tree.merge(String(this.selectedFolderId() ?? ROOT_KEY), folders));
+      untracked(() =>
+        this.tree.merge(String(this.selectedFolderId() ?? FolderTreeStore.ROOT_KEY), folders),
+      );
     });
 
     // Expand the tree down to the selected folder, so a shared deep link lands with the folder
@@ -152,7 +156,7 @@ export class HomeContentsStore {
    */
   public init(): void {
     if (this.selectedFolderId() !== null) {
-      this.tree.fetchChildren(null, ROOT_KEY);
+      this.tree.fetchChildren(null, FolderTreeStore.ROOT_KEY);
     }
   }
 
