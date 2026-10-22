@@ -1,13 +1,18 @@
-import { columnBlock, functionBlock, literalBlock, operatorItem } from '../factory/item-factory';
+import { ItemFactory } from '../factory/item-factory';
 import { Expression } from '../items/expression';
 import { FormulaItem } from '../items/formula-item';
-import { SCOPE } from './test-catalogue';
+import { TestCatalogue } from './test-catalogue';
 
-export const col = columnBlock;
-export const lit = literalBlock;
-export const op = operatorItem;
+/** Shorthand for building formula items in tests. */
+export class TestItems {
+  public static readonly col = ItemFactory.column;
 
-/** A call to one of the catalogue's test functions, with an expression per argument. */
-export function call(name: string, ...args: Expression[]): FormulaItem {
-  return functionBlock(SCOPE.functions.get(name), name, args);
+  public static readonly lit = ItemFactory.literal;
+
+  public static readonly op = ItemFactory.operator;
+
+  /** A call to one of the catalogue's test functions, with an expression per argument. */
+  public static call(name: string, ...args: Expression[]): FormulaItem {
+    return ItemFactory.function(TestCatalogue.SCOPE.functions.get(name), name, args);
+  }
 }

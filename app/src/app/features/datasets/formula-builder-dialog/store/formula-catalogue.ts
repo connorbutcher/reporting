@@ -2,7 +2,7 @@ import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { FormulaApiService } from '../../../../core/api/formula-api.service';
 import { FormulaFunction } from '../../../../core/models/dataset';
-import { scopeOf } from '../model';
+import { FormulaChecker } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { readableColumns } from './readable-columns';
 
@@ -14,7 +14,7 @@ export class FormulaCatalogue {
 
   public readonly columns = readableColumns(inject<FormulaBuilderData>(DIALOG_DATA));
 
-  public readonly scope = computed(() => scopeOf(this.functions(), this.columns));
+  public readonly scope = computed(() => FormulaChecker.scope(this.functions(), this.columns));
 
   private readonly api = inject(FormulaApiService);
 

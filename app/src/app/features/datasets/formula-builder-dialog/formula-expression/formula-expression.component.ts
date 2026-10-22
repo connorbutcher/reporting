@@ -7,13 +7,10 @@ import {
   FormulaIssue,
   FormulaItem,
   FunctionBlock,
-  KIND_BADGES,
-  columnTypeKind,
-  kindOfExpression,
-  operatorDefinition,
-  operatorSymbol,
-  parameterFor,
-  parametersOf,
+  ValueKinds,
+  FormulaChecker,
+  Operators,
+  FormulaParameters,
 } from '../model';
 import { ArgumentView } from './argument-view';
 import { ArgumentViews } from './argument-views';
@@ -42,7 +39,7 @@ export class FormulaExpressionComponent {
   /** The big empty-canvas treatment, for the formula's root. */
   public readonly large = input(false);
 
-  public readonly badges = KIND_BADGES;
+  public readonly badges = ValueKinds.BADGES;
 
   /** Whether a drag is over this expression. */
   public readonly over = signal(false);
@@ -104,10 +101,10 @@ export class FormulaExpressionComponent {
       return cached.views;
     }
 
-    const params = parametersOf(call, scope);
+    const params = FormulaChecker.parametersOf(call, scope);
     const views: ArgumentView[] = [];
     for (let index = 0; index < call.args.length; index++) {
-      const parameter = params.length ? parameterFor(params, index) : null;
+      const parameter = params.length ? FormulaParameters.forArgument(params, index) : null;
       views.push({
         index,
         expression: call.args[index],
@@ -124,7 +121,7 @@ export class FormulaExpressionComponent {
 
   /** The repeating parameter a call ends in, so it offers an "add another" button. */
   public repeating(call: FunctionBlock): FormulaParameter | null {
-    const last = parametersOf(call, this.store.scope()).at(-1);
+    const last = FormulaChecker.parametersOf(call, this.store.scope()).at(-1);
     return last?.isVariadic ? last : null;
   }
 
@@ -136,18 +133,18 @@ export class FormulaExpressionComponent {
       return cached.badge;
     }
 
-    const badge = this.badges[kindOfExpression([item], scope)];
+    const badge = this.badges[FormulaChecker.kindOf([item], scope)];
     this.badgesByItem.set(item, { scope, badge });
     return badge;
   }
 
   public columnBadge(name: string): string {
     const column = this.store.scope().columns.get(name.toLowerCase());
-    return this.badges[column ? columnTypeKind(column.type) : 'any'];
+    return this.badges[column ? ValueKinds.ofColumnType(column.type) : 'any'];
   }
 
   public symbol(op: string): string {
-    return operatorSymbol(op);
+    return Operators.symbol(op);
   }
 
   /** Words (AND, OR, NOT) read smaller than symbols. */
@@ -156,7 +153,7 @@ export class FormulaExpressionComponent {
   }
 
   public operatorName(op: string): string {
-    const definition = operatorDefinition(op);
+    const definition = Operators.definition(op);
     return definition ? `${definition.symbol}: ${definition.description}` : op;
   }
 

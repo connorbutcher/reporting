@@ -1,8 +1,7 @@
 import { FormulaItem } from '../items/formula-item';
 import { OperandItem } from '../items/operand-item';
 import { OperatorItem } from '../items/operator-item';
-import { NEGATION_PRECEDENCE } from '../operators/negation-precedence';
-import { canBePrefix, operatorDefinition, operatorSymbol } from '../operators/operator-lookup';
+import { Operators } from '../operators/operators';
 import { PendingOperator } from './pending-operator';
 import { Rpn } from './rpn';
 import { RpnIssue } from './rpn-issue';
@@ -45,12 +44,13 @@ export class RpnBuilder {
   }
 
   private addOperator(item: OperatorItem): void {
-    const definition = operatorDefinition(item.op);
-    const symbol = operatorSymbol(item.op);
+    const definition = Operators.definition(item.op);
+    const symbol = Operators.symbol(item.op);
 
     if (this.expectOperand) {
-      if (canBePrefix(item.op)) {
-        const precedence = item.op === 'NOT' ? (definition?.precedence ?? 3) : NEGATION_PRECEDENCE;
+      if (Operators.canBePrefix(item.op)) {
+        const precedence =
+          item.op === 'NOT' ? (definition?.precedence ?? 3) : Operators.NEGATION_PRECEDENCE;
         this.stack.push({ item, unary: true, precedence });
         return;
       }
@@ -71,7 +71,7 @@ export class RpnBuilder {
   }
 
   private pushBinary(item: OperatorItem, symbol: string): void {
-    const definition = operatorDefinition(item.op);
+    const definition = Operators.definition(item.op);
     const precedence = definition?.precedence ?? 0;
     const associativity = definition?.associativity ?? 'left';
 
@@ -101,7 +101,7 @@ export class RpnBuilder {
   private finish(expression: readonly FormulaItem[]): void {
     if (this.expectOperand && expression.length > 0) {
       const last = expression[expression.length - 1];
-      const symbol = last.kind === 'operator' ? operatorSymbol(last.op) : '';
+      const symbol = last.kind === 'operator' ? Operators.symbol(last.op) : '';
       this.issues.push({ blockId: last.id, message: `${symbol} needs a value after it.` });
       this.output.push({ type: 'missing', operatorId: last.id });
     }

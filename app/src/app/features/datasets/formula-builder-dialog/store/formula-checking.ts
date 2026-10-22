@@ -4,13 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
 import { FormulaApiService } from '../../../../core/api/formula-api.service';
 import { FormulaPreview } from '../../../../core/models/dataset';
-import {
-  FormulaIssue,
-  analyzeFormula,
-  blockAtPosition,
-  describeSlot,
-  serializeFormula,
-} from '../model';
+import { FormulaIssue, FormulaChecker, FormulaSerializer } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { FormulaCatalogue } from './formula-catalogue';
 import { FormulaColumnForm } from './formula-column-form';
@@ -29,14 +23,14 @@ const PREVIEW_DEBOUNCE_MS = 300;
 export class FormulaChecking {
   public readonly serialized = computed(() => {
     const scope = this.catalogue.scope();
-    return serializeFormula(this.document.root(), (call, index) =>
-      describeSlot(scope, call, index),
+    return FormulaSerializer.serialize(this.document.root(), (call, index) =>
+      FormulaSerializer.describeSlot(scope, call, index),
     );
   });
 
   /** What can be told without the server: the kind the formula produces, and the problems in how it fits together. */
   public readonly analysis = computed(() =>
-    analyzeFormula(this.document.root(), this.catalogue.scope()),
+    FormulaChecker.analyze(this.document.root(), this.catalogue.scope()),
   );
 
   public readonly localIssues = computed(() => this.analysis().issues);
@@ -154,7 +148,7 @@ export class FormulaChecking {
     return preview.errors.map((error): FormulaIssue => {
       return {
         kind: 'server',
-        blockId: blockAtPosition(spans, error.position) ?? rootId,
+        blockId: FormulaSerializer.blockAtPosition(spans, error.position) ?? rootId,
         message: error.message,
       };
     });

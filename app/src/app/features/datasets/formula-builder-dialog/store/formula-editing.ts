@@ -2,22 +2,10 @@ import { Injectable, inject } from '@angular/core';
 import {
   ExpressionAddress,
   FormulaItem,
-  ROOT,
-  addArgument,
-  columnBlock,
-  containsItem,
-  editedLiteralValue,
-  expressionAt,
-  findItem,
-  functionBlock,
-  groupBlock,
-  insertItem,
-  itemFromText,
-  literalBlock,
-  operatorItem,
-  removeArgument,
-  removeItem,
-  updateItem,
+  FormulaItems,
+  ItemFactory,
+  ExpressionTree,
+  TreeEdits,
 } from '../model';
 import { DragPayload } from './drag-payload';
 import { FormulaCatalogue } from './formula-catalogue';
@@ -38,18 +26,18 @@ export class FormulaEditing {
   public itemFor(payload: PalettePayload): FormulaItem {
     switch (payload.kind) {
       case 'column':
-        return columnBlock(payload.name);
+        return ItemFactory.column(payload.name);
       case 'function':
-        return functionBlock(
+        return ItemFactory.function(
           this.catalogue.scope().functions.get(payload.name.toUpperCase()),
           payload.name,
         );
       case 'operator':
-        return operatorItem(payload.op);
+        return ItemFactory.operator(payload.op);
       case 'literal':
-        return literalBlock(payload.value);
+        return ItemFactory.literal(payload.value);
       case 'group':
-        return groupBlock();
+        return ItemFactory.group();
     }
   }
 
@@ -64,8 +52,10 @@ export class FormulaEditing {
       return true;
     }
 
-    const moved = findItem(this.document.root(), payload.id)?.item;
-    return !!moved && (address.ownerId === null || !containsItem(moved, address.ownerId));
+    const moved = ExpressionTree.find(this.document.root(), payload.id)?.item;
+    return (
+      !!moved && (address.ownerId === null || !ExpressionTree.contains(moved, address.ownerId))
+    );
   }
 
   /** Drops the drag in progress into an expression, before the item at `index`. */
@@ -83,7 +73,7 @@ export class FormulaEditing {
     }
 
     const item = this.itemFor(payload);
-    this.document.commit(insertItem(this.document.root(), address, index, item));
+    this.document.commit(TreeEdits.insertItem(this.document.root(), address, index, item));
     this.focusAfterAdding(item, address);
   }
 
@@ -92,52 +82,60 @@ export class FormulaEditing {
     this.interaction.hint.set(null);
 
     const address = this.interaction.activeAddress();
-    const expression = expressionAt(this.document.root(), address) ?? [];
+    const expression = ExpressionTree.expressionAt(this.document.root(), address) ?? [];
     const item = this.itemFor(payload);
-    this.document.commit(insertItem(this.document.root(), address, expression.length, item));
+    this.document.commit(
+      TreeEdits.insertItem(this.document.root(), address, expression.length, item),
+    );
     this.focusAfterAdding(item, address);
   }
 
-  /** Adds typed text to the end of an expression (see {@link itemFromText} for how it is read). */
+  /** Adds typed text to the end of an expression (see {@link ItemFactory.fromText} for how it is read). */
   public typeInto(address: ExpressionAddress, text: string): void {
-    const expression = text === '' ? null : expressionAt(this.document.root(), address);
+    const expression =
+      text === '' ? null : ExpressionTree.expressionAt(this.document.root(), address);
     if (!expression) {
       return;
     }
 
     this.document.commit(
-      insertItem(this.document.root(), address, expression.length, itemFromText(text)),
+      TreeEdits.insertItem(
+        this.document.root(),
+        address,
+        expression.length,
+        ItemFactory.fromText(text),
+      ),
     );
     this.interaction.active.set(address);
   }
 
   /** Edits a literal in place; text that reads as a number becomes a number. */
   public setLiteral(id: number, text: string): void {
-    const current = findItem(this.document.root(), id)?.item;
+    const current = ExpressionTree.find(this.document.root(), id)?.item;
     if (current?.kind !== 'literal') {
       return;
     }
 
-    const value = editedLiteralValue(text);
+    const value = ItemFactory.editedLiteralValue(text);
     if (value === current.value) {
       return;
     }
 
     this.document.commit(
-      updateItem(this.document.root(), id, (item) => ({ ...item, value }) as FormulaItem),
+      TreeEdits.updateItem(this.document.root(), id, (item) => ({ ...item, value }) as FormulaItem),
     );
   }
 
   public remove(id: number): void {
-    this.document.commit(removeItem(this.document.root(), id));
+    this.document.commit(TreeEdits.removeItem(this.document.root(), id));
   }
 
   public addArgument(functionId: number): void {
-    this.document.commit(addArgument(this.document.root(), functionId));
+    this.document.commit(TreeEdits.addArgument(this.document.root(), functionId));
   }
 
   public removeArgument(functionId: number, index: number): void {
-    this.document.commit(removeArgument(this.document.root(), functionId, index));
+    this.document.commit(TreeEdits.removeArgument(this.document.root(), functionId, index));
   }
 
   public clear(): void {
@@ -145,14 +143,17 @@ export class FormulaEditing {
       this.document.commit([]);
     }
 
-    this.interaction.active.set(ROOT);
+    this.interaction.active.set(FormulaItems.ROOT);
     this.selection.clearSelection();
   }
 
   /** Moves an item already on the canvas into another place — never into itself. */
   private moveInto(id: number, address: ExpressionAddress, index: number): void {
-    const found = findItem(this.document.root(), id);
-    if (!found || (address.ownerId !== null && containsItem(found.item, address.ownerId))) {
+    const found = ExpressionTree.find(this.document.root(), id);
+    if (
+      !found ||
+      (address.ownerId !== null && ExpressionTree.contains(found.item, address.ownerId))
+    ) {
       return;
     }
 
@@ -160,7 +161,9 @@ export class FormulaEditing {
     const sameExpression =
       found.address.ownerId === address.ownerId && found.address.arg === address.arg;
     const at = sameExpression && found.index < index ? index - 1 : index;
-    this.document.commit(insertItem(removeItem(this.document.root(), id), address, at, found.item));
+    this.document.commit(
+      TreeEdits.insertItem(TreeEdits.removeItem(this.document.root(), id), address, at, found.item),
+    );
     this.interaction.active.set(address);
   }
 

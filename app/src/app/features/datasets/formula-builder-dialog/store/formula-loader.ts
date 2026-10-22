@@ -1,6 +1,6 @@
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { Injectable, inject, signal } from '@angular/core';
-import { FormulaParseError, ROOT, naturalColumnType, parseFormula } from '../model';
+import { FormulaParseError, FormulaItems, ValueKinds, FormulaParser } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { FormulaCatalogue } from './formula-catalogue';
 import { FormulaChecking } from './formula-checking';
@@ -35,8 +35,10 @@ export class FormulaLoader {
     }
 
     try {
-      this.document.load(parseFormula(existing.formula, this.catalogue.scope().functions));
-      this.interaction.active.set(ROOT);
+      this.document.load(
+        FormulaParser.fromText(existing.formula, this.catalogue.scope().functions),
+      );
+      this.interaction.active.set(FormulaItems.ROOT);
     } catch (error) {
       this.loadError.set(
         error instanceof FormulaParseError ? error.message : 'The formula could not be read.',
@@ -44,7 +46,7 @@ export class FormulaLoader {
       return;
     }
 
-    const natural = naturalColumnType(this.checking.resultKind());
+    const natural = ValueKinds.naturalColumnType(this.checking.resultKind());
     this.columnForm.chosenType.set(natural === existing.type ? 'auto' : existing.type);
   }
 }

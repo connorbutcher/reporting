@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { FormulaExpressionComponent } from '../formula-expression/formula-expression.component';
 import { FormulaBuilderStore } from '../formula-builder.store';
 import { FormulaSelectionBarComponent } from '../formula-selection-bar/formula-selection-bar.component';
-import { ROOT } from '../model';
+import { FormulaItems } from '../model';
 
 /**
  * The formula: one expression, laid out left to right. With nothing on it the whole area is a drop target;
@@ -16,7 +16,7 @@ import { ROOT } from '../model';
 })
 export class FormulaCanvasComponent {
   public readonly root = computed(() => this.store.root());
-  public readonly address = ROOT;
+  public readonly address = FormulaItems.ROOT;
 
   private readonly store = inject(FormulaBuilderStore);
 }

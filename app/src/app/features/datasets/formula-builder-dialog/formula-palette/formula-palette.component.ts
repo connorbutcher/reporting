@@ -6,7 +6,7 @@ import {
 } from '../../../../core/models/dataset';
 import { FormulaBuilderStore } from '../formula-builder.store';
 import { PalettePayload } from '../store/palette-payload';
-import { KIND_BADGES, KIND_LABELS, OPERATORS, OperatorDefinition, columnTypeKind } from '../model';
+import { ValueKinds, Operators, OperatorDefinition } from '../model';
 
 type PaletteItem = PalettePayload;
 
@@ -43,9 +43,9 @@ const VALUES: { label: string; value: boolean | null }[] = [
 })
 export class FormulaPaletteComponent {
   public readonly search = signal('');
-  public readonly badges = KIND_BADGES;
+  public readonly badges = ValueKinds.BADGES;
   public readonly values = VALUES;
-  public readonly operators = OPERATORS;
+  public readonly operators = Operators.ALL;
 
   /** Explains the chip under the pointer or focus. */
   public readonly help = signal<{ title: string; text: string } | null>(null);
@@ -120,13 +120,13 @@ export class FormulaPaletteComponent {
   }
 
   public columnBadge(column: DatasetColumn): string {
-    return this.badges[columnTypeKind(column.type)];
+    return this.badges[ValueKinds.ofColumnType(column.type)];
   }
 
   public explainColumn(column: DatasetColumn): void {
     this.help.set({
       title: `[${column.name}]`,
-      text: `A column that holds ${KIND_LABELS[columnTypeKind(column.type)]}.`,
+      text: `A column that holds ${ValueKinds.LABELS[ValueKinds.ofColumnType(column.type)]}.`,
     });
   }
 

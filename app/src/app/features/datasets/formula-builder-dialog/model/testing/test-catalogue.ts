@@ -4,43 +4,70 @@ import {
   FormulaParameter,
   FormulaValueKind,
 } from '../../../../../core/models/dataset';
-import { scopeOf } from '../checker/scope-of';
+import { FormulaChecker } from '../checker/formula-checker';
 
-function param(
-  name: string,
-  kind: FormulaValueKind,
-  extra: Partial<FormulaParameter> = {},
-): FormulaParameter {
-  return { name, kind, isOptional: false, isVariadic: false, ...extra };
+/** A small function catalogue and column set for formula tests. */
+export class TestCatalogue {
+  public static readonly FUNCTIONS: FormulaFunction[] = [
+    TestCatalogue.fn(
+      'ROUND',
+      'number',
+      TestCatalogue.param('number', 'number'),
+      TestCatalogue.param('digits', 'number', { isOptional: true }),
+    ),
+    TestCatalogue.fn('UPPER', 'text', TestCatalogue.param('text', 'text')),
+    TestCatalogue.fn(
+      'IF',
+      'any',
+      TestCatalogue.param('condition', 'bool'),
+      TestCatalogue.param('then', 'any'),
+      TestCatalogue.param('else', 'any'),
+    ),
+    TestCatalogue.fn('ISBLANK', 'bool', TestCatalogue.param('value', 'any')),
+    TestCatalogue.fn(
+      'SUM',
+      'number',
+      TestCatalogue.param('number', 'number', { isVariadic: true }),
+    ),
+    TestCatalogue.fn(
+      'DATEADD',
+      'date',
+      TestCatalogue.param('unit', 'text'),
+      TestCatalogue.param('amount', 'number'),
+      TestCatalogue.param('date', 'date'),
+    ),
+  ];
+
+  public static readonly COLUMNS: DatasetColumn[] = [
+    TestCatalogue.column('Qty', 'int'),
+    TestCatalogue.column('Price', 'double'),
+    TestCatalogue.column('Region', 'string'),
+    TestCatalogue.column('Ordered', 'dateTime'),
+    TestCatalogue.column('Shipped', 'bool'),
+  ];
+
+  public static readonly SCOPE = FormulaChecker.scope(
+    TestCatalogue.FUNCTIONS,
+    TestCatalogue.COLUMNS,
+  );
+
+  private static param(
+    name: string,
+    kind: FormulaValueKind,
+    extra: Partial<FormulaParameter> = {},
+  ): FormulaParameter {
+    return { name, kind, isOptional: false, isVariadic: false, ...extra };
+  }
+
+  private static fn(
+    name: string,
+    returnKind: FormulaValueKind,
+    ...parameters: FormulaParameter[]
+  ): FormulaFunction {
+    return { name, category: 'math', description: '', example: '', returnKind, parameters };
+  }
+
+  private static column(name: string, type: DatasetColumn['type']): DatasetColumn {
+    return { id: name, name, type, order: 0, configuration: { kind: 'text' } };
+  }
 }
-
-function fn(
-  name: string,
-  returnKind: FormulaValueKind,
-  ...parameters: FormulaParameter[]
-): FormulaFunction {
-  return { name, category: 'math', description: '', example: '', returnKind, parameters };
-}
-
-function column(name: string, type: DatasetColumn['type']): DatasetColumn {
-  return { id: name, name, type, order: 0, configuration: { kind: 'text' } };
-}
-
-export const TEST_FUNCTIONS: FormulaFunction[] = [
-  fn('ROUND', 'number', param('number', 'number'), param('digits', 'number', { isOptional: true })),
-  fn('UPPER', 'text', param('text', 'text')),
-  fn('IF', 'any', param('condition', 'bool'), param('then', 'any'), param('else', 'any')),
-  fn('ISBLANK', 'bool', param('value', 'any')),
-  fn('SUM', 'number', param('number', 'number', { isVariadic: true })),
-  fn('DATEADD', 'date', param('unit', 'text'), param('amount', 'number'), param('date', 'date')),
-];
-
-export const TEST_COLUMNS: DatasetColumn[] = [
-  column('Qty', 'int'),
-  column('Price', 'double'),
-  column('Region', 'string'),
-  column('Ordered', 'dateTime'),
-  column('Shipped', 'bool'),
-];
-
-export const SCOPE = scopeOf(TEST_FUNCTIONS, TEST_COLUMNS);

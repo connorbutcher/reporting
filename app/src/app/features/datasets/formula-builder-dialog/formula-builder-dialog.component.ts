@@ -11,7 +11,7 @@ import { FormulaPaletteComponent } from './formula-palette/formula-palette.compo
 import { FormulaPreviewComponent } from './formula-preview/formula-preview.component';
 import { FormulaProblemsComponent } from './formula-problems/formula-problems.component';
 import { FormulaReadoutComponent } from './formula-readout/formula-readout.component';
-import { KIND_LABELS } from './model';
+import { ValueKinds } from './model';
 import { FormulaCatalogue } from './store/formula-catalogue';
 import { FormulaChecking } from './store/formula-checking';
 import { FormulaColumnForm } from './store/formula-column-form';
@@ -109,7 +109,7 @@ export class FormulaBuilderDialogComponent {
     if (type) {
       return `Result: ${TYPE_NAMES[type]}`;
     }
-    return `Result: ${KIND_LABELS[this.store.resultKind()]} — choose a type`;
+    return `Result: ${ValueKinds.LABELS[this.store.resultKind()]} — choose a type`;
   });
 
   public readonly status = computed<{ tone: 'idle' | 'ok' | 'bad' | 'busy'; text: string }>(() => {

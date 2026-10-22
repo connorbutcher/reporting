@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FormulaItem } from '../items/formula-item';
-import { SCOPE } from '../testing/test-catalogue';
-import { col, lit, op } from '../testing/test-items';
-import { write } from '../testing/test-text';
-import { functionBlock, groupBlock } from './item-factory';
-import { cloneItem } from './item-clone';
+import { TestCatalogue } from '../testing/test-catalogue';
+import { TestItems } from '../testing/test-items';
+import { TestText } from '../testing/test-text';
+import { ItemFactory } from './item-factory';
 
 function idsOf(item: FormulaItem): number[] {
   const found: number[] = [item.id];
@@ -26,17 +25,17 @@ function idsOf(item: FormulaItem): number[] {
 
 describe('cloneItem', () => {
   it('copies deeply with fresh ids, so a paste is independent of what it was copied from', () => {
-    const qty = col('Qty');
-    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [
-      [qty, op('*'), lit(2)],
+    const qty = TestItems.col('Qty');
+    const round = ItemFactory.function(TestCatalogue.SCOPE.functions.get('ROUND'), 'ROUND', [
+      [qty, TestItems.op('*'), TestItems.lit(2)],
       [],
     ]);
-    const group = groupBlock([round]);
+    const group = ItemFactory.group([round]);
 
-    const copy = cloneItem(group);
+    const copy = ItemFactory.clone(group);
 
     expect(copy.id).not.toBe(group.id);
-    expect(write([copy])).toBe(write([group]));
+    expect(TestText.write([copy])).toBe(TestText.write([group]));
 
     const original = new Set(idsOf(group));
     expect(idsOf(copy).some((id) => original.has(id))).toBe(false);

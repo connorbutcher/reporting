@@ -4,7 +4,7 @@ import { Injectable, computed, effect, inject, signal, untracked } from '@angula
 import { FormulaApiService } from '../../../../core/api/formula-api.service';
 import { DatasetColumn, DatasetColumnType } from '../../../../core/models/dataset';
 import { NotificationService } from '../../../../core/services/notification.service';
-import { naturalColumnType } from '../model';
+import { ValueKinds } from '../model';
 import { FormulaBuilderData } from './formula-builder-data';
 import { FormulaChecking } from './formula-checking';
 import { FormulaColumnForm } from './formula-column-form';
@@ -19,7 +19,7 @@ export class FormulaSaver {
   /** The column type the result will be stored as, or null when it must still be chosen. */
   public readonly resultType = computed<DatasetColumnType | null>(() => {
     const chosen = this.columnForm.chosenType();
-    return chosen === 'auto' ? naturalColumnType(this.checking.resultKind()) : chosen;
+    return chosen === 'auto' ? ValueKinds.naturalColumnType(this.checking.resultKind()) : chosen;
   });
 
   private readonly data = inject<FormulaBuilderData>(DIALOG_DATA);

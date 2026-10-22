@@ -3,18 +3,13 @@ import { Expression } from '../items/expression';
 import { FunctionBlock } from '../items/function-block';
 import { OperandItem } from '../items/operand-item';
 import { OperatorItem } from '../items/operator-item';
-import { KIND_LABELS } from '../kinds/kind-labels';
-import { columnTypeKind } from '../kinds/kind-mapping';
-import { parameterFor, slotIsOptional } from '../parameters/parameter-lookup';
-import { foldRpn } from '../rpn/fold-rpn';
+import { ValueKinds } from '../kinds/value-kinds';
+import { FormulaParameters } from '../parameters/formula-parameters';
 import { RpnFolder } from '../rpn/rpn-folder';
-import { toRpn } from '../rpn/to-rpn';
-import { applyOperator } from './apply-operator';
-import { capitalise } from './capitalise';
-import { commonKind } from './common-kind';
+import { RpnConversion } from '../rpn/rpn-conversion';
+import { OperatorTyping } from './operator-typing';
 import { FormulaIssue } from './formula-issue';
 import { FormulaScope } from './formula-scope';
-import { literalKind } from './literal-kind';
 import { TypedValue } from './typed-value';
 
 /**
@@ -28,17 +23,21 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
 
   constructor(private readonly scope: FormulaScope) {}
 
+  private static capitalise(text: string): string {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
   public analyze(expression: Expression): TypedValue | null {
     if (expression.length === 0) {
       return null;
     }
 
-    const rpn = toRpn(expression);
+    const rpn = RpnConversion.of(expression);
     for (const issue of rpn.issues) {
       this.issues.push({ kind: 'structure', blockId: issue.blockId, message: issue.message });
     }
 
-    return foldRpn<TypedValue>(rpn.tokens, this)[0] ?? null;
+    return RpnConversion.fold<TypedValue>(rpn.tokens, this)[0] ?? null;
   }
 
   public operand(item: OperandItem): TypedValue {
@@ -46,7 +45,7 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
       case 'column':
         return this.analyzeColumn(item.id, item.name);
       case 'literal':
-        return { kind: literalKind(item), first: item.id };
+        return { kind: ValueKinds.ofLiteral(item), first: item.id };
       case 'group':
         return this.analyzeGroup(item.id, item.body);
       case 'function':
@@ -59,11 +58,11 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   }
 
   public unary(operator: OperatorItem, argument: TypedValue): TypedValue {
-    return applyOperator(operator, [argument], this.issues, argument.first);
+    return OperatorTyping.apply(operator, [argument], this.issues, argument.first);
   }
 
   public binary(operator: OperatorItem, left: TypedValue, right: TypedValue): TypedValue {
-    return applyOperator(operator, [left, right], this.issues, left.first);
+    return OperatorTyping.apply(operator, [left, right], this.issues, left.first);
   }
 
   private analyzeColumn(id: number, name: string): TypedValue {
@@ -76,7 +75,7 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
       });
     }
 
-    return { kind: column ? columnTypeKind(column.type) : 'any', first: id };
+    return { kind: column ? ValueKinds.ofColumnType(column.type) : 'any', first: id };
   }
 
   private analyzeGroup(id: number, body: Expression): TypedValue {
@@ -106,7 +105,7 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
       return 'any';
     }
 
-    return fn.returnKind === 'any' ? commonKind(call, fn, argumentKinds) : fn.returnKind;
+    return fn.returnKind === 'any' ? ValueKinds.common(call, fn, argumentKinds) : fn.returnKind;
   }
 
   private analyzeArgument(
@@ -115,10 +114,10 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
     params: readonly FormulaParameter[],
   ): TypedValue | null {
     const expression = call.args[index];
-    const param = params.length > 0 ? parameterFor(params, index) : null;
+    const param = params.length > 0 ? FormulaParameters.forArgument(params, index) : null;
 
     if (expression.length === 0) {
-      if (param && !slotIsOptional(params, index)) {
+      if (param && !FormulaParameters.slotIsOptional(params, index)) {
         this.issues.push({
           kind: 'missing',
           blockId: call.id,
@@ -144,7 +143,7 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
         blockId: typed.first,
         ownerId: call.id,
         arg: index,
-        message: `${capitalise(param.name)} needs ${KIND_LABELS[param.kind]}, but this is ${KIND_LABELS[typed.kind]}.`,
+        message: `${ExpressionAnalyzer.capitalise(param.name)} needs ${ValueKinds.LABELS[param.kind]}, but this is ${ValueKinds.LABELS[typed.kind]}.`,
       });
     }
 

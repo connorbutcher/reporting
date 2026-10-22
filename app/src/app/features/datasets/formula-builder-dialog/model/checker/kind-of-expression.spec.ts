@@ -1,25 +1,64 @@
 import { describe, expect, it } from 'vitest';
-import { groupBlock } from '../factory/item-factory';
-import { SCOPE } from '../testing/test-catalogue';
-import { call, col, lit, op } from '../testing/test-items';
-import { kindOfExpression } from './analyze-formula';
+import { ItemFactory } from '../factory/item-factory';
+import { TestCatalogue } from '../testing/test-catalogue';
+import { TestItems } from '../testing/test-items';
+import { FormulaChecker } from './formula-checker';
 
 describe('kindOfExpression', () => {
   it('follows a column, a value and the operators through the stack', () => {
-    expect(kindOfExpression([col('Ordered')], SCOPE)).toBe('date');
-    expect(kindOfExpression([lit('x')], SCOPE)).toBe('text');
-    expect(kindOfExpression([col('Qty'), op('>'), lit(1)], SCOPE)).toBe('bool');
-    expect(kindOfExpression([col('Qty'), op('*'), col('Price'), op('+'), lit(1)], SCOPE)).toBe(
-      'number',
-    );
-    expect(kindOfExpression([col('Region'), op('&'), col('Qty')], SCOPE)).toBe('text');
-    expect(kindOfExpression([groupBlock([col('Qty'), op('+'), lit(1)])], SCOPE)).toBe('number');
+    expect(FormulaChecker.kindOf([TestItems.col('Ordered')], TestCatalogue.SCOPE)).toBe('date');
+    expect(FormulaChecker.kindOf([TestItems.lit('x')], TestCatalogue.SCOPE)).toBe('text');
+    expect(
+      FormulaChecker.kindOf(
+        [TestItems.col('Qty'), TestItems.op('>'), TestItems.lit(1)],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('bool');
+    expect(
+      FormulaChecker.kindOf(
+        [
+          TestItems.col('Qty'),
+          TestItems.op('*'),
+          TestItems.col('Price'),
+          TestItems.op('+'),
+          TestItems.lit(1),
+        ],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('number');
+    expect(
+      FormulaChecker.kindOf(
+        [TestItems.col('Region'), TestItems.op('&'), TestItems.col('Qty')],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('text');
+    expect(
+      FormulaChecker.kindOf(
+        [ItemFactory.group([TestItems.col('Qty'), TestItems.op('+'), TestItems.lit(1)])],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('number');
   });
 
   it('gives a function that returns whatever its any-arguments are their shared kind', () => {
-    const cond = [col('Shipped')];
-    expect(kindOfExpression([call('IF', cond, [lit(1)], [lit(2)])], SCOPE)).toBe('number');
-    expect(kindOfExpression([call('IF', cond, [lit(1)], [lit('x')])], SCOPE)).toBe('any');
-    expect(kindOfExpression([call('IF', cond, [lit(null)], [lit(2)])], SCOPE)).toBe('number');
+    const cond = [TestItems.col('Shipped')];
+    expect(
+      FormulaChecker.kindOf(
+        [TestItems.call('IF', cond, [TestItems.lit(1)], [TestItems.lit(2)])],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('number');
+    expect(
+      FormulaChecker.kindOf(
+        [TestItems.call('IF', cond, [TestItems.lit(1)], [TestItems.lit('x')])],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('any');
+    expect(
+      FormulaChecker.kindOf(
+        [TestItems.call('IF', cond, [TestItems.lit(null)], [TestItems.lit(2)])],
+        TestCatalogue.SCOPE,
+      ),
+    ).toBe('number');
   });
 });

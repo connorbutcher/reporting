@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { ExpressionAddress, FormulaIssue, ROOT, expressionAt } from '../model';
+import { ExpressionAddress, FormulaIssue, FormulaItems, ExpressionTree } from '../model';
 import { DragPayload } from './drag-payload';
 import { DropPoint } from './drop-point';
 import { FormulaDocument } from './formula-document';
@@ -15,7 +15,7 @@ export class FormulaInteraction {
   /** Where the drag in progress would land, for the insertion marker. */
   public readonly dropPoint = signal<DropPoint | null>(null);
   /** The expression that click-to-add puts things into: the last one worked in. */
-  public readonly active = signal<ExpressionAddress>(ROOT);
+  public readonly active = signal<ExpressionAddress>(FormulaItems.ROOT);
   /** A one-line nudge shown near the palette. */
   public readonly hint = signal<string | null>(null);
   /** A block id to draw attention to, after clicking its problem in the list. */
@@ -28,7 +28,7 @@ export class FormulaInteraction {
   /** The expression click-to-add puts things into: the one last worked in, or the root when that has gone. */
   public activeAddress(): ExpressionAddress {
     const active = this.active();
-    return expressionAt(this.document.root(), active) ? active : ROOT;
+    return ExpressionTree.expressionAt(this.document.root(), active) ? active : FormulaItems.ROOT;
   }
 
   public toggleCollapsed(id: number): void {
