@@ -6,7 +6,7 @@ import { AxisKey } from '../types/axis-key';
 import { HistogramBinAxis } from './histogram-bin-axis';
 import { HistogramChart } from './histogram-chart';
 
-/** Spec bands and guide lines on the binned variable, drawn across the bins. */
+/** Spec bands and guide lines on the binned variable, on the bins' hidden position axis. */
 export class HistogramMarks {
   public static reference(chart: HistogramChart): LineSeriesOption | null {
     const bands = HistogramBinAxis.bands(chart.data?.toleranceBands ?? [], chart.bins);
@@ -15,6 +15,7 @@ export class HistogramMarks {
     return ReferenceSeries.build(
       [...ToleranceMarks.lines(bands, () => axis), ...GuideLineMarks.lines(lines, () => axis)],
       [...ToleranceMarks.areas(bands, () => axis), ...GuideLineMarks.areas(lines, () => axis)],
+      chart.horizontal ? { yAxisIndex: 1 } : { xAxisIndex: 1 },
     );
   }
 }

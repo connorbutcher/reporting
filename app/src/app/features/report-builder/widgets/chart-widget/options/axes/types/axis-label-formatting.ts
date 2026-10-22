@@ -7,4 +7,5 @@ export type AxisLabelFormatting = {
   rotate?: number;
   /** Category axes only: how many labels to skip between shown ones (`0` shows every label). */
   interval?: number;
+  hideOverlap?: boolean;
 };

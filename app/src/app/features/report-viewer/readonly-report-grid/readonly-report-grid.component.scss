@@ -111,4 +111,31 @@
     min-height: 0;
     overflow: auto;
   }
+
+  .item.bare {
+    .header {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 1;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .comments {
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    // Shown on hover or focus, and always once a thread exists so it can still be found.
+    .comments:not(.has-comments) {
+      opacity: 0;
+    }
+
+    &:hover .comments,
+    &:focus-within .comments {
+      opacity: 1;
+    }
+  }
 }

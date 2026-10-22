@@ -39,9 +39,9 @@ internal static class SeedWidgets
         for (var i = 0; i < sections.Length; i++)
         {
             var x = i % 2 * 24;
-            var y = top + i / 2 * 10;
+            var y = top + i / 2 * 7;
             tab.Widgets.Add(Heading(sections[i].Heading, x, y, 24, 2));
-            tab.Widgets.Add(Paragraph(sections[i].Body, x, y + 2, 24, 8));
+            tab.Widgets.Add(Paragraph(sections[i].Body, x, y + 2, 24, 5));
         }
     }
 

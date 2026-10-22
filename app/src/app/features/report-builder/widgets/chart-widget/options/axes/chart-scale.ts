@@ -10,11 +10,20 @@ import { ValueAxisFragment } from './types/value-axis-fragment';
  * narrows to one echarts axis member.
  */
 export class ChartScale {
+  private static readonly AUTO_ROTATE_AFTER = 6;
+
+  /** Roughly what fits flat under a third-width widget. */
+  private static readonly AUTO_ROTATE_CHARS = 40;
+
   /** A `time` axis whose ticks format through the column's date pattern. */
   public static dateAxis(config?: DateColumnConfig): DateAxisFragment {
     return {
       type: 'time',
-      axisLabel: { formatter: (value: number | string) => ChartFormat.date(Number(value), config) },
+      axisLabel: {
+        formatter: (value: number | string) => ChartFormat.date(Number(value), config),
+        // Month and year boundary ticks land between the regular ones; drop any that would collide.
+        hideOverlap: true,
+      },
     };
   }
 
@@ -46,7 +55,8 @@ export class ChartScale {
       ...(scale ? { scale: true } : {}),
       axisLabel: {
         formatter: (value: number | string) =>
-          typeof value === 'number' ? ChartFormat.numeric(value, config) : String(value),
+          typeof value === 'number' ? ChartFormat.tick(value, config) : String(value),
+        hideOverlap: true,
       },
     };
   }
@@ -60,6 +70,20 @@ export class ChartScale {
       return 0;
     }
     return auto;
+  }
+
+  /**
+   * Tilt for category labels the user hasn't oriented: long lists, or a few labels too long to sit
+   * side by side, which echarts would otherwise thin out so some categories go unlabelled.
+   */
+  public static autoCategoryRotate(labels: readonly string[], horizontal: boolean): number {
+    if (horizontal) {
+      return 0;
+    }
+    const totalChars = labels.reduce((n, label) => n + label.length, 0);
+    return labels.length > ChartScale.AUTO_ROTATE_AFTER || totalChars > ChartScale.AUTO_ROTATE_CHARS
+      ? 30
+      : 0;
   }
 
   public static longestLen(labels: readonly string[]): number {

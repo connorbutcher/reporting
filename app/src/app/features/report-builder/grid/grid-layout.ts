@@ -11,6 +11,11 @@ export class GridLayout {
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
+  /** Rows down to the bottom of the lowest rect, so a read-only grid ends at its last widget. */
+  public static usedRows(rects: readonly GridRect[]): number {
+    return rects.reduce((rows, rect) => Math.max(rows, rect.y + rect.h), 1);
+  }
+
   public static clamp(value: number, min: number, max: number): number {
     return Math.min(Math.max(value, min), max);
   }

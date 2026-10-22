@@ -12,7 +12,8 @@ export class XBarRMarks {
     const guideLines = (chart.config.guideLines ?? []).filter((l) => l.axis === 'y');
     return ReferenceSeries.build(
       [
-        ...ToleranceMarks.lines(bands, () => 'yAxis'),
+        // UCL, CL and LCL label the right-hand end, so spec labels take the left.
+        ...ToleranceMarks.lines(bands, () => 'yAxis', 'start'),
         ...GuideLineMarks.lines(guideLines, () => 'yAxis'),
         ...XBarRMarks.baseline(chart),
       ],

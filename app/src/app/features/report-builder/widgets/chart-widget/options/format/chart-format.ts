@@ -33,6 +33,22 @@ export class ChartFormat {
     return `${config?.prefix ?? ''}${formatted}${config?.suffix ?? ''}`;
   }
 
+  /**
+   * An axis tick: the column's format, but with a fixed decimal count trimmed of trailing zeros, so
+   * round ticks read "200 h" rather than "200.0 h" and stay short enough not to collide.
+   */
+  public static tick(value: number, config?: NumericColumnConfig): string {
+    if (config?.decimals == null || config.decimals <= 0) {
+      return ChartFormat.numeric(value, config);
+    }
+    const formatted = new Intl.NumberFormat('en-US', {
+      useGrouping: config.useGrouping !== false,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: config.decimals,
+    }).format(value);
+    return `${config.prefix ?? ''}${formatted}${config.suffix ?? ''}`;
+  }
+
   /** Formats in UTC, since the server encodes dates as wall-clock time in UTC millis. Pair with `useUTC`. */
   public static date(millis: number, config?: DateColumnConfig): string {
     const pattern = config?.dateFormat || ChartFormat.DEFAULT_DATE_FORMAT;

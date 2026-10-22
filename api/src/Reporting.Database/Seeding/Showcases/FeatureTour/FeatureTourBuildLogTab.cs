@@ -7,7 +7,7 @@ internal static class FeatureTourBuildLogTab
 {
     public static void Add(ReportRevision revision, SeedBatch batch, FeatureTourContext context)
     {
-        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0, Rows = 34 };
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Build log", Order = 0, Rows = 36 };
         revision.Tabs.Add(tab);
         tab.Widgets.Add(SeedWidgets.Title(FeatureTourShowcase.Name, 0, 0, 48, 2));
         tab.Widgets.Add(SeedWidgets.Paragraph(
@@ -25,7 +25,7 @@ internal static class FeatureTourBuildLogTab
     /// <summary>Totals, search, a frozen ID column, data bars, rule highlighting and spec banding in one table.</summary>
     private static void AddLogTable(Tab tab, SeedBatch batch, FeatureTourContext context)
     {
-        var table = SeedWidgets.Placeholder(tab, WidgetType.DataTable, 0, 6, 48, 16);
+        var table = SeedWidgets.Placeholder(tab, WidgetType.DataTable, 0, 6, 48, 18);
         batch.AddChart(table, () =>
             TableWidgetJson.Config("Engine build log (search, totals, click a row for details)", context.Log,
             [
@@ -56,8 +56,8 @@ internal static class FeatureTourBuildLogTab
         tab.Widgets.Add(SeedWidgets.Paragraph(
             "The table on the right has its own widget filter (Rework Count above 0), on top of the report filter. "
             + "Readers can narrow any widget further from its filter button in the viewer without changing the report.",
-            0, 22, 16, 12));
-        var reworkTable = SeedWidgets.Placeholder(tab, WidgetType.DataTable, 16, 22, 32, 12);
+            0, 24, 16, 12));
+        var reworkTable = SeedWidgets.Placeholder(tab, WidgetType.DataTable, 16, 24, 32, 12);
         batch.AddChart(reworkTable, () =>
             TableWidgetJson.Config("Builds needing rework", context.Log,
                 ["Build ID", "Engine Type", "Assembly Line", "Rework Count", "Passed"],

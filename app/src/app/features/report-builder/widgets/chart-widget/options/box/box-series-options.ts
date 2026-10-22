@@ -19,6 +19,8 @@ export class BoxSeriesOptions {
     return {
       name: s.name,
       type: 'boxplot',
+      // The legend swatch reads the series style; the items' own colours don't reach it.
+      itemStyle: { color: s.color, borderColor: s.color },
       data: s.result.boxes.map((box) => BoxSeriesOptions.item(chart, s, box, outline)),
     };
   }

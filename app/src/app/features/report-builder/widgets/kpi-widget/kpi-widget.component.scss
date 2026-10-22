@@ -117,9 +117,11 @@
   padding: 10px;
   overflow-y: auto;
 
+  // Border-box, so two tiles still share a narrow widget instead of stacking into a scroll.
   .kpi-tile {
-    flex: 1 1 120px;
-    min-width: 100px;
+    box-sizing: border-box;
+    flex: 1 1 96px;
+    min-width: 80px;
     display: flex;
     flex-direction: column;
     gap: 2px;
