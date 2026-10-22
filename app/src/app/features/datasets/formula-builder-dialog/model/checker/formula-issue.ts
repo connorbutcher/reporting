@@ -5,10 +5,10 @@ import { FormulaIssueKind } from './formula-issue-kind';
  * or a value of the wrong kind — also names the function and argument (`ownerId`, `arg`), so it can be
  * shown on that argument's row.
  */
-export interface FormulaIssue {
+export type FormulaIssue = {
   kind: FormulaIssueKind;
   blockId: number;
   message: string;
   ownerId?: number;
   arg?: number;
-}
+};

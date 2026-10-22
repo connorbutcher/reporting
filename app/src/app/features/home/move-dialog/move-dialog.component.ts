@@ -7,14 +7,14 @@ import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
 import { ROOT_KEY } from '../folder-tree.store';
 import { groupByParent } from '../group-by-parent.util';
 
-export interface MoveDialogData {
+export type MoveDialogData = {
   kind: 'folder' | 'report';
   itemName: string;
   folders: Folder[];
   currentFolderId: number | null;
   /** When moving a folder, its own id — it and its descendants can't be valid targets. */
   excludeSubtreeOf?: number;
-}
+};
 
 /**
  * Lets the user pick a destination folder from the same tree shown on the

@@ -7,12 +7,12 @@ import { FilterGroupModel } from '../../models/filter';
 import { FilterFixtures } from '../../models/filter/testing/filter-fixtures';
 import { FilterBuilderComponent } from './filter-builder.component';
 
-interface Setup {
+type Setup = {
   dto?: FilterGroup | null;
   context?: Parameters<typeof FilterFixtures.contextOf>[0];
   additionalFilter?: FilterGroup | null;
   hint?: string;
-}
+};
 
 describe('FilterBuilderComponent', () => {
   let fixture: ComponentFixture<FilterBuilderComponent>;

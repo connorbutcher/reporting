@@ -3,7 +3,7 @@ import { FilterGroup } from '../filter';
 
 export type ToleranceStatus = 'none' | 'pass' | 'concession' | 'fail';
 
-export interface TableQueryRequest {
+export type TableQueryRequest = {
   filter: FilterGroup | null;
   sortColumnId: string | null;
   sortDirection: SortDirection;
@@ -14,27 +14,27 @@ export interface TableQueryRequest {
   search?: string | null;
   /** Narrows the query to one row, for the row-detail view. */
   rowId?: string | null;
-}
+};
 
-export interface TableCell {
+export type TableCell = {
   displayValue: string | null;
   /** The typed value: a number, true/false, a date as an ISO string, or text. Null for a blank cell. */
   value?: number | string | boolean | null;
   tolerance: ToleranceStatus;
-}
+};
 
-export interface TableRowResult {
+export type TableRowResult = {
   id: string;
   cells: Record<string, TableCell>;
-}
+};
 
 /** The range of a data-bar column over every matched row. */
-export interface TableColumnStats {
+export type TableColumnStats = {
   min: number | null;
   max: number | null;
-}
+};
 
-export interface TableQueryResult {
+export type TableQueryResult = {
   id: string;
   name: string;
   rows: TableRowResult[];
@@ -44,4 +44,4 @@ export interface TableQueryResult {
   totals?: Record<string, TableCell>;
   /** Min/max per data-bar column over every matched row. */
   columnStats?: Record<string, TableColumnStats>;
-}
+};

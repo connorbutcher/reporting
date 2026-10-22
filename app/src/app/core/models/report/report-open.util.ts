@@ -1,20 +1,20 @@
 import { AccessLevel } from '../permission';
 
 /** The minimal report identity the open logic needs — satisfied by both ReportSummary and ReportSearchResult. */
-export interface OpenableReport {
+export type OpenableReport = {
   id: number;
   hasDraft: boolean;
   latestVersionNumber: number | null;
   accessLevel: AccessLevel;
-}
+};
 
 /** One way to open a report: a label, an icon, and the router link that opens it. */
-export interface ReportOpenOption {
+export type ReportOpenOption = {
   kind: 'view' | 'edit';
   label: string;
   icon: string;
   route: (string | number)[];
-}
+};
 
 /** Whether the current user may edit the report (Editor or Manager). */
 export function canEditReport(report: Pick<OpenableReport, 'accessLevel'>): boolean {

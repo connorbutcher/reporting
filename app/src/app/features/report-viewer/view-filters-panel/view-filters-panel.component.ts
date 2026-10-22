@@ -8,10 +8,10 @@ import { PageFilterRowComponent } from './page-filter-row/page-filter-row.compon
 import { SharedLinkBannerComponent } from './shared-link-banner/shared-link-banner.component';
 import { WidgetFilterRowComponent } from './widget-filter-row/widget-filter-row.component';
 
-interface TabWidgets {
+type TabWidgets = {
   readonly tabName: string;
   readonly items: readonly ViewWidgetFilters[];
-}
+};
 
 /** The viewer's filter panel: the page filters, then each widget's, grouped by tab. */
 @Component({

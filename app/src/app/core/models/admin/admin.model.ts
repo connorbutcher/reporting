@@ -2,24 +2,24 @@
 export type AppPermission = 'globalAdmin' | 'manageUsers' | 'createGroups';
 
 /** A user or group reference, for member/membership lists. */
-export interface UserRef {
+export type UserRef = {
   id: string;
   displayName: string;
   email: string;
-}
+};
 
 /** A person in the ungated directory, with whether they are a global admin (whose access is inferred, not granted). */
-export interface DirectoryUser extends UserRef {
+export type DirectoryUser = UserRef & {
   isGlobalAdmin: boolean;
-}
+};
 
-export interface GroupRef {
+export type GroupRef = {
   id: string;
   name: string;
-}
+};
 
 /** A user row in the admin list. */
-export interface AdminUser {
+export type AdminUser = {
   id: string;
   displayName: string;
   email: string;
@@ -30,54 +30,54 @@ export interface AdminUser {
   /** Holds the create-groups permission (directly, or implied by `isGlobalAdmin`). */
   canCreateGroups: boolean;
   groupCount: number;
-}
+};
 
 /** A user with the extra detail the edit dialog needs. */
-export interface AdminUserDetail extends AdminUser {
+export type AdminUserDetail = AdminUser & {
   groups: GroupRef[];
   createdAt: string;
-}
+};
 
 /** Create or update a user. On update the email is fixed and ignored. */
-export interface SaveUser {
+export type SaveUser = {
   displayName: string;
   email: string;
   canManageUsers: boolean;
   canCreateGroups: boolean;
   /** RefIds of the groups the user should belong to (set to exactly this). */
   groupIds: string[];
-}
+};
 
 /** A group row in the admin list. */
-export interface AdminGroup {
+export type AdminGroup = {
   id: string;
   name: string;
   memberCount: number;
-}
+};
 
 /** A group with its members and managers, for the detail card. */
-export interface AdminGroupDetail extends AdminGroup {
+export type AdminGroupDetail = AdminGroup & {
   members: UserRef[];
   /** The users delegated to manage this group (always a subset of `members`). */
   managers: UserRef[];
-}
+};
 
 /** Whether a candidate group name is free to use, for live validation as the admin types. */
-export interface GroupNameAvailable {
+export type GroupNameAvailable = {
   available: boolean;
-}
+};
 
 /** Create or update a group. */
-export interface SaveGroup {
+export type SaveGroup = {
   name: string;
   /** RefIds of the users that should be members (set to exactly this). */
   memberIds: string[];
   /** RefIds of the users that should manage this group (must be a subset of `memberIds`). */
   managerIds: string[];
-}
+};
 
 /** The signed-in user's own identity and resolved app permissions. */
-export interface CurrentUser {
+export type CurrentUser = {
   id: string;
   displayName: string;
   email: string;
@@ -90,4 +90,4 @@ export interface CurrentUser {
   canManageGroups: boolean;
   /** Can create a new group (and becomes its manager on creation). */
   canCreateGroups: boolean;
-}
+};

@@ -2,7 +2,7 @@ import { ChartSort, ChartToleranceBand, ControlChartMode, DateGrouping } from '.
 import { FilterGroup } from '../filter';
 import { ChartCategoryDetail, ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
-export interface XBarRChartQueryRequest {
+export type XBarRChartQueryRequest = {
   filter: FilterGroup | null;
   /** The column whose distinct values become the subgroups (any type). */
   categoryColumnId: string;
@@ -14,14 +14,14 @@ export interface XBarRChartQueryRequest {
   mode?: ControlChartMode;
   baselineSubgroups?: number | null;
   runRules?: boolean;
-}
+};
 
 /**
  * One subgroup's mean and range, plus the control limits it's judged against — carried per
  * subgroup rather than once for the whole chart, since they vary with that subgroup's own sample
  * size when subgroup sizes aren't all equal.
  */
-export interface XBarRSubgroup {
+export type XBarRSubgroup = {
   mean: number;
   range: number;
   /** How many rows fed this subgroup. */
@@ -40,9 +40,9 @@ export interface XBarRSubgroup {
   meanRules?: number[];
   /** Nelson rules broken on the range/σ/moving-range chart. */
   rangeRules?: number[];
-}
+};
 
-export interface XBarRChartQueryResult extends ChartRowCounts {
+export type XBarRChartQueryResult = ChartRowCounts & {
   id: string;
   name: string;
   /** The subgroup labels, in display order — the shared axis both charts align to. */
@@ -58,4 +58,4 @@ export interface XBarRChartQueryResult extends ChartRowCounts {
   baselineCount?: number | null;
   categoryDetails?: ChartCategoryDetail[];
   toleranceBands: ResolvedToleranceBand[];
-}
+};

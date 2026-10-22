@@ -3,28 +3,28 @@ import { AccessLevel } from '../../core/models/permission';
 import { ReportSummary } from '../../core/models/report';
 
 /** A row plus the mouse event that triggered its context menu, emitted up to the page which owns the shared menu. */
-export interface RowAction {
+export type RowAction = {
   event: MouseEvent;
   row: ContentRow;
-}
+};
 
-interface ContentRowBase {
+type ContentRowBase = {
   id: number;
   name: string;
   modifiedAt: string;
-}
+};
 
 /** A folder, normalized into the shared row shape so it can share row-action logic (open/rename/move/delete) with a report. */
-export interface FolderRow extends ContentRowBase {
+export type FolderRow = ContentRowBase & {
   kind: 'folder';
   number: null;
   status: null;
   statusKind: null;
   folder: Folder;
-}
+};
 
 /** A report, normalized into the shared row shape. `statusKind` drives the status stripe/text colour. */
-export interface ReportRow extends ContentRowBase {
+export type ReportRow = ContentRowBase & {
   kind: 'report';
   number: number;
   status: string;
@@ -34,7 +34,7 @@ export interface ReportRow extends ContentRowBase {
   /** Whether the current user has starred this report — drives the star toggle's filled state. */
   isFavorite: boolean;
   report: ReportSummary;
-}
+};
 
 /**
  * A folder or report, normalized to one shape so both can share row-action logic. A discriminated

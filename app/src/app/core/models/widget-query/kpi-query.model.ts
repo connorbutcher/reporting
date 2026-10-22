@@ -9,7 +9,7 @@ import {
   ToleranceConfig,
 } from '../report';
 
-export interface KpiQueryRequest {
+export type KpiQueryRequest = {
   filter: FilterGroup | null;
 
   valueSource: KpiValueSource;
@@ -39,7 +39,7 @@ export interface KpiQueryRequest {
 
   groupByColumnId: string | null;
   maxGroups: number;
-}
+};
 
 /** Which way the headline number moved since the comparison value. */
 export type KpiTrend = 'unknown' | 'up' | 'down' | 'flat';
@@ -47,21 +47,21 @@ export type KpiTrend = 'unknown' | 'up' | 'down' | 'flat';
 export type KpiTrendSentiment = 'neutral' | 'good' | 'bad';
 
 /** One point of a sparkline's trailing history. */
-export interface KpiHistoryPoint {
+export type KpiHistoryPoint = {
   periodStart: string;
   /** Null when the bucket had nothing to reduce. */
   value: number | null;
-}
+};
 
 /** One tile of a grouped KPI — the reduced value for one distinct value of the group-by column. */
-export interface KpiGroupResult {
+export type KpiGroupResult = {
   label: string;
   value: number | null;
   displayValue: string | null;
   status: KpiStatus;
-}
+};
 
-export interface KpiQueryResult {
+export type KpiQueryResult = {
   /** The reduced figure. Null when there was nothing to reduce, or when {@link groups} is set instead. */
   value: number | null;
   displayValue: string | null;
@@ -82,4 +82,4 @@ export interface KpiQueryResult {
   matchedRowCount: number;
   totalRowCount: number;
   truncated: boolean;
-}
+};

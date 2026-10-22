@@ -1,7 +1,7 @@
 import { BlockSpan } from './block-span';
 import { FormulaSegment } from './formula-segment';
 
-export interface SerializedFormula {
+export type SerializedFormula = {
   /** The formula as text. Only valid formula text when {@link complete}. */
   text: string;
   segments: FormulaSegment[];
@@ -9,4 +9,4 @@ export interface SerializedFormula {
   spans: Map<number, BlockSpan>;
   /** False when something is missing, so {@link text} holds a placeholder and mustn't be sent to the server. */
   complete: boolean;
-}
+};

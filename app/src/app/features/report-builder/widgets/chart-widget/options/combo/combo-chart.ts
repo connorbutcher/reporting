@@ -4,7 +4,7 @@ import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/mod
 import { ComboSeries } from './combo-series';
 
 /** A combination chart's config and data, resolved once and shared by each part of its option. */
-export interface ComboChart {
+export type ComboChart = {
   readonly config: ComboChartWidgetConfig;
   readonly data: BarChartQueryResult | null;
   readonly categoryColumn: DatasetColumn;
@@ -18,4 +18,4 @@ export interface ComboChart {
   readonly seriesConfigs: Map<BarSeriesResult, NumericColumnConfig | undefined>;
   readonly showLegend: boolean;
   readonly zoom: boolean;
-}
+};

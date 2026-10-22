@@ -13,16 +13,16 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DatasetSource, DatasetSourceKey } from '../../../core/models/dataset';
 
-export interface DatasetCreateDialogData {
+export type DatasetCreateDialogData = {
   sources: DatasetSource[];
   /** The report's existing dataset names, so a duplicate is rejected inline. */
   existingNames: string[];
-}
+};
 
-export interface DatasetCreateDialogResult {
+export type DatasetCreateDialogResult = {
   name: string;
   sourceId: number;
-}
+};
 
 /** Icon shown for each source in the picker. */
 const SOURCE_ICONS: Record<DatasetSourceKey, string> = {

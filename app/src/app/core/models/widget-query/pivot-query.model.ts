@@ -2,15 +2,15 @@ import { PivotAggregate, PivotFieldGrouping, PivotShowAs } from '../report';
 import { FilterGroup } from '../filter';
 
 /** One measure the pivot computes: an aggregate over a column (null column for `count`). */
-export interface PivotMeasureRequest {
+export type PivotMeasureRequest = {
   columnId: string | null;
   aggregate: PivotAggregate;
   showAs?: PivotShowAs;
   /** Overrides the derived column header; blank uses the derived one. */
   label: string;
-}
+};
 
-export interface PivotQueryRequest {
+export type PivotQueryRequest = {
   filter: FilterGroup | null;
   /** The columns rows are grouped by, in order. */
   rowFields: string[];
@@ -26,38 +26,38 @@ export interface PivotQueryRequest {
   sortDescending: boolean;
   showGrandTotal: boolean;
   showSubtotals?: boolean;
-}
+};
 
 /** A dimension column in the result header. */
-export interface PivotFieldResult {
+export type PivotFieldResult = {
   columnId: string;
   label: string;
-}
+};
 
 /** A measure column in the result header — its resolved label and which measure it came from. */
-export interface PivotMeasureColumn {
+export type PivotMeasureColumn = {
   /** Stable per-result key ("m0", "m1", …) naming the measure's position in the request. */
   key: string;
   label: string;
   columnId: string | null;
   aggregate: PivotAggregate;
   showAs?: PivotShowAs;
-}
+};
 
 /** One combination of column-field values across the top. */
-export interface PivotColumnKey {
+export type PivotColumnKey = {
   labels: string[];
   /** Conditions selecting the rows behind this column; null when they can't be expressed. */
   drill?: FilterGroup | null;
-}
+};
 
 /** One measure's value in a row, raw and already formatted. */
-export interface PivotCell {
+export type PivotCell = {
   value: number | null;
   displayValue: string | null;
-}
+};
 
-export interface PivotRow {
+export type PivotRow = {
   /** Formatted dimension values, one per row field in order; empty for a total-only pivot. */
   dimensions: string[];
   /** Without column fields, one per measure; with them, a block of measures per column key, then the row totals. */
@@ -69,9 +69,9 @@ export interface PivotRow {
   depth?: number;
   /** Conditions selecting the rows behind this row; null when they can't be expressed. */
   drill?: FilterGroup | null;
-}
+};
 
-export interface PivotQueryResult {
+export type PivotQueryResult = {
   id: string;
   name: string;
   rowFields: PivotFieldResult[];
@@ -94,4 +94,4 @@ export interface PivotQueryResult {
   columnsTruncated?: boolean;
   /** True when any cap was hit. */
   truncated: boolean;
-}
+};

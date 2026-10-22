@@ -75,14 +75,14 @@ const OPERATORS = [
   },
 ];
 
-interface Sent {
+type Sent = {
   method: string;
   url: string;
   body: unknown;
-}
+};
 
 /** What the fake server holds. */
-export interface FakeServer {
+export type FakeServer = {
   saved: string | null;
   /** The report publishes a page filter on dataset 7 whose condition is missing its value. */
   publishedBlankFilter?: boolean;
@@ -92,11 +92,11 @@ export interface FakeServer {
   failSaved?: boolean;
   /** Loading any shared link fails (a 500), as opposed to the link not existing. */
   failViews?: boolean;
-}
+};
 
 type Spy = ReturnType<typeof vi.fn>;
 
-export interface ViewerHarness {
+export type ViewerHarness = {
   readonly session: ViewFilterSession;
   readonly notify: { warn: Spy; error: Spy; success: Spy };
   /** Opens the viewer at a URL and lets it load. */
@@ -114,7 +114,7 @@ export interface ViewerHarness {
   /** Non-GET requests sent since the viewer finished loading. */
   writes(): Sent[];
   url(): string;
-}
+};
 
 /**
  * Drives the real store, session, router and HTTP layer against a fake server. Call inside a

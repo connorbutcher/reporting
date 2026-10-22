@@ -12,10 +12,10 @@ type WireCondition =
   | [columnId: string, operator: string, values: string[]]
   | [columnId: string, operator: string, values: string[], disabled: 0];
 
-export interface WireGroup {
+export type WireGroup = {
   j: 'a' | 'o';
   c: WireNode[];
-}
+};
 
 type WireNode = WireGroup | WireCondition;
 

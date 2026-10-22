@@ -8,7 +8,7 @@ import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../../core/mod
 import { ControlChartNames } from './control-chart-names';
 
 /** A control chart's config and data, resolved once and shared by each part of its option. */
-export interface XBarRChart {
+export type XBarRChart = {
   readonly config: XBarRChartWidgetConfig;
   readonly data: XBarRChartQueryResult | null;
   readonly categoryColumn: DatasetColumn;
@@ -26,4 +26,4 @@ export interface XBarRChart {
   readonly meanAxisConfig: ChartValueAxis;
   readonly highlight: boolean;
   readonly zoom: boolean;
-}
+};

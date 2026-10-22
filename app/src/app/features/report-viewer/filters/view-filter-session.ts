@@ -18,12 +18,12 @@ import { ViewFilterSchemas } from './view-filter-schemas';
 /** Long enough that typing a value isn't one save per key. */
 const SETTLE_MS = 300;
 
-interface StartingState {
+type StartingState = {
   readonly overrides: ViewFilterOverrides;
   readonly fromLink: boolean;
   /** The URL named a link but fetching it failed (not the same as it not existing). */
   readonly lookupFailed: boolean;
-}
+};
 
 /**
  * The reader's filters for the report on screen. They start from a shared link's (`?view=<id>`),

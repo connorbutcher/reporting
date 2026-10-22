@@ -8,7 +8,7 @@ import {
 import { FilterGroup } from '../filter';
 import { ChartCategoryDetail, ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 
-export interface BoxPlotQueryRequest {
+export type BoxPlotQueryRequest = {
   filter: FilterGroup | null;
   /** The column whose distinct values become the boxes (any type). */
   categoryColumnId: string;
@@ -25,10 +25,10 @@ export interface BoxPlotQueryRequest {
   categoryGrouping?: DateGrouping | null;
   /** Extra numeric columns averaged over each box's rows, for its tooltip. */
   tooltipColumns?: ChartTooltipColumn[];
-}
+};
 
 /** One category's box summary for a series. */
-export interface Box {
+export type Box = {
   /** The lower whisker end: the actual minimum, or the smallest value inside the lower fence. */
   min: number;
   q1: number;
@@ -46,16 +46,16 @@ export interface Box {
   points: number[];
   /** Each tooltip column's average over this box's rows, formatted. */
   tooltipLines?: string[];
-}
+};
 
 /** A single value beyond a Tukey whisker, tagged with the category slot it belongs to. */
-export interface BoxOutlier {
+export type BoxOutlier = {
   /** Index into {@link BoxPlotQueryResult.categories} — the box this point sits above. */
   categoryIndex: number;
   value: number;
-}
+};
 
-export interface BoxPlotSeriesResult {
+export type BoxPlotSeriesResult = {
   label: string;
   /** One entry per category in {@link BoxPlotQueryResult.categories} order; null where this series has no rows there. */
   boxes: (Box | null)[];
@@ -63,9 +63,9 @@ export interface BoxPlotSeriesResult {
   outliers: BoxOutlier[];
   /** Conditions selecting this series' rows (its split value), for drill-through; null with no split. */
   drill?: FilterGroup | null;
-}
+};
 
-export interface BoxPlotQueryResult extends ChartRowCounts {
+export type BoxPlotQueryResult = ChartRowCounts & {
   id: string;
   name: string;
   /** The box categories, in display order — the shared axis every series aligns to. */
@@ -73,4 +73,4 @@ export interface BoxPlotQueryResult extends ChartRowCounts {
   categoryDetails?: ChartCategoryDetail[];
   series: BoxPlotSeriesResult[];
   toleranceBands: ResolvedToleranceBand[];
-}
+};

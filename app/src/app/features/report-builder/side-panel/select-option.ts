@@ -1,5 +1,5 @@
 /** A label/value pair for PrimeNG selects. */
-export interface SelectOption<T> {
+export type SelectOption<T> = {
   label: string;
   value: T;
-}
+};

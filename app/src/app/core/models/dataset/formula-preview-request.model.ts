@@ -1,7 +1,7 @@
 import { DatasetColumnType } from './schema.model';
 
-export interface FormulaPreviewRequest {
+export type FormulaPreviewRequest = {
   expression: string;
   type: DatasetColumnType | null;
   sampleSize: number;
-}
+};

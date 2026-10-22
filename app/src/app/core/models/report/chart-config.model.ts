@@ -31,7 +31,7 @@ export type SortAggregate = 'sum' | 'average' | 'count' | 'min' | 'max' | 'media
  * the chart, reduced per category by `aggregate` (ignored for a point chart, whose rows aren't
  * grouped).
  */
-export interface ChartSort {
+export type ChartSort = {
   by: ChartSortBy;
   /** The column to rank by; required (and resolved against its own dataset) when `by` is `'column'`. */
   columnId: string | null;
@@ -41,7 +41,7 @@ export interface ChartSort {
   limit?: number | null;
   /** With `limit`, rolls the remaining categories into one "Other" category. */
   showOther?: boolean;
-}
+};
 
 /** A fresh sort: the chart's own natural order, ascending. */
 export const DEFAULT_CHART_SORT: ChartSort = {
@@ -91,7 +91,7 @@ export type AxisLabelRotation = 'horizontal' | 'vertical';
  * echarts multi-axis / dual-axis chart. Only point charts (scatter, line) use
  * more than one; a bar chart has a single value axis.
  */
-export interface ChartValueAxis {
+export type ChartValueAxis = {
   /** Client-generated, referenced by a binding's {@link ChartSeriesBinding.yAxisId} — not meaningful server-side. */
   id: string;
   /** Blank falls back to the bound column's name (primary axis) or the axis's default label. */
@@ -109,7 +109,7 @@ export interface ChartValueAxis {
   rotate?: AxisLabelRotation;
   /** Fits the axis to the data instead of anchoring it at zero. Ignored on a category axis. */
   scale?: boolean;
-}
+};
 
 /** The primary axis's id: constant so a legacy-folded config and null bindings agree on it. */
 export const PRIMARY_AXIS_ID = 'primary';
@@ -119,7 +119,7 @@ export const PRIMARY_AXIS_ID = 'primary';
  * limits dataset — the chart equivalent of a table column's ToleranceConfig.
  * A chart can carry several, e.g. one per spec being plotted.
  */
-export interface ChartToleranceBand {
+export type ChartToleranceBand = {
   /** Client-generated, only for addressing this band in the editor — not meaningful server-side. */
   id: string;
   axis: ChartAxis;
@@ -140,14 +140,14 @@ export interface ChartToleranceBand {
   fill?: boolean;
   /** Outlines plotted points that fall outside the band's outermost line. */
   outlinePoints?: boolean;
-}
+};
 
 /**
  * A single dashed line drawn at a fixed value on an axis, captioned with a short label —
  * the lightweight alternative to a {@link ChartToleranceBand} for marking a target, a cap,
  * or any other fixed point that doesn't need resolving against a separate dataset row.
  */
-export interface ChartGuideLine {
+export type ChartGuideLine = {
   /** Client-generated, only for addressing this line in the editor — not meaningful server-side. */
   id: string;
   axis: ChartAxis;
@@ -175,10 +175,10 @@ export interface ChartGuideLine {
    * of range. Null/absent defaults to `above`.
    */
   direction?: LineDirection | null;
-}
+};
 
 /** One extra field shown in a point's tooltip, beyond the X/Y values. */
-export interface ChartTooltipColumn {
+export type ChartTooltipColumn = {
   columnId: string;
   prefix?: string;
   suffix?: string;
@@ -187,7 +187,7 @@ export interface ChartTooltipColumn {
    * picked from can fall back to its own column of that name.
    */
   columnName?: string;
-}
+};
 
 /** Which pair of control charts an Xbar-R widget draws. */
 export type ControlChartMode = 'xBarR' | 'xBarS' | 'individuals' | 'p' | 'np';
@@ -198,7 +198,7 @@ export type ControlChartMode = 'xBarR' | 'xBarS' | 'individuals' | 'p' | 'np';
  * axes is how two datasets are plotted against each other. Each binding is
  * queried on its own dataset and its series merged client-side.
  */
-export interface ChartSeriesBinding {
+export type ChartSeriesBinding = {
   /** Client-generated, addresses this binding in the editor — not meaningful server-side. */
   id: string;
   /** Null until the user binds this series to a dataset. */
@@ -248,14 +248,14 @@ export interface ChartSeriesBinding {
    * (bar, combo, box plot, histogram), which order via their own chart-level `sort` instead.
    */
   sort?: ChartSort | null;
-}
+};
 
 /**
  * Configuration common to every chart kind (scatter, line, and future bar/area).
  * Concrete kinds narrow `type` and add their own presentation options; everything
  * about data binding, tolerance bands, tooltips, and filtering is shared here.
  */
-export interface ChartWidgetConfigBase extends WidgetConfigBase {
+export type ChartWidgetConfigBase = WidgetConfigBase & {
   /**
    * The datasets this chart overlays on its shared axes, each queried on its own
    * dataset and its series merged client-side. Always at least one entry once the
@@ -317,13 +317,13 @@ export interface ChartWidgetConfigBase extends WidgetConfigBase {
   guideLines: ChartGuideLine[];
   /** Extra fields shown in a point's tooltip, in order, beyond the X/Y values. */
   tooltipColumns: ChartTooltipColumn[];
-}
+};
 
-export interface ScatterChartWidgetConfig extends ChartWidgetConfigBase {
+export type ScatterChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'scatterChart';
-}
+};
 
-export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
+export type LineChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'lineChart';
 
   /** Draws the line with curved rather than straight segments. */
@@ -336,7 +336,7 @@ export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
   aggregate?: Aggregate | null;
   /** Buckets a date X axis by period before aggregating; ignored without `aggregate`. */
   xGrouping?: DateGrouping | null;
-}
+};
 
 /**
  * A bar chart. Unlike scatter/line it doesn't plot raw rows: rows are grouped by
@@ -344,7 +344,7 @@ export interface LineChartWidgetConfig extends ChartWidgetConfigBase {
  * measure column (`yColumnId`) are reduced to one bar by `aggregate`. The measure
  * is unused — and may be left unbound — when `aggregate` is `'count'`, which counts rows.
  */
-export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
+export type BarChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'barChart';
 
   aggregate: Aggregate;
@@ -360,7 +360,7 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
   percentStacked?: boolean;
   /** Prints each stack's total above it. */
   showStackTotals?: boolean;
-}
+};
 
 /**
  * A combination chart: the bar chart's category + aggregate data model, but each series (binding)
@@ -369,7 +369,7 @@ export interface BarChartWidgetConfig extends ChartWidgetConfigBase {
  * so bars on one scale and a line on another read cleanly. Reuses the bar query end to end; only
  * the rendering differs, per {@link ChartSeriesBinding.renderAs}.
  */
-export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
+export type ComboChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'comboChart';
 
   /** How each category's rows are reduced to one value per series — shared by bars and lines. */
@@ -388,7 +388,7 @@ export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
   categoryGrouping?: DateGrouping | null;
   /** Draws line series straight across categories they have no value for, instead of breaking. */
   connectNulls?: boolean;
-}
+};
 
 /**
  * A box-and-whisker chart. Like a bar chart it groups rows by its binding's category column
@@ -396,7 +396,7 @@ export interface ComboChartWidgetConfig extends ChartWidgetConfigBase {
  * column (`yColumnId`) into a five-number summary (min, Q1, median, Q3, max) drawn as a box.
  * A series column, if set, splits each category into several boxes side by side.
  */
-export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
+export type BoxPlotWidgetConfig = ChartWidgetConfigBase & {
   type: 'boxPlot';
 
   /** Where the whiskers end, and whether outliers are drawn beyond them. */
@@ -420,14 +420,14 @@ export interface BoxPlotWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
   /** Buckets a date category by period; null/absent groups by the exact date. */
   categoryGrouping?: DateGrouping | null;
-}
+};
 
 /**
  * A histogram. Unlike the other charts it plots the distribution of a single numeric column
  * (`xColumnId`): its values are binned into equal ranges and each bin's frequency drawn as a bar.
  * A series column, if set, overlays a separate distribution per distinct value.
  */
-export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
+export type HistogramWidgetConfig = ChartWidgetConfigBase & {
   type: 'histogram';
 
   /** How the bin edges are chosen. */
@@ -448,7 +448,7 @@ export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
   horizontal: boolean;
   /** Overlays a fitted normal curve per series (ignored when cumulative). */
   showNormalCurve?: boolean;
-}
+};
 
 /**
  * An Xbar-R control chart: a Shewhart pair monitoring a process over time. Like a box plot it
@@ -458,7 +458,7 @@ export interface HistogramWidgetConfig extends ChartWidgetConfigBase {
  * control limits derived from the data itself. No series split — a control chart watches one
  * process stream.
  */
-export interface XBarRChartWidgetConfig extends ChartWidgetConfigBase {
+export type XBarRChartWidgetConfig = ChartWidgetConfigBase & {
   type: 'xbarRChart';
 
   /** How the subgroups are ordered along the shared axis — critical here, since the chart reads
@@ -474,7 +474,7 @@ export interface XBarRChartWidgetConfig extends ChartWidgetConfigBase {
   baselineSubgroups?: number | null;
   /** Also flags the Nelson run rules 2–5, not just points beyond the limits. */
   runRules?: boolean;
-}
+};
 
 export type ChartWidgetConfig =
   | ScatterChartWidgetConfig

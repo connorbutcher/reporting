@@ -18,9 +18,9 @@ export type FormatRuleStyle = 'red' | 'amber' | 'green' | 'blue' | 'bold';
  * `operator` against `value` (and `value2` for between) takes `style`. Rules are checked in order and
  * the first match wins; they're evaluated client-side against each cell's raw value.
  */
-export interface FormatRule {
+export type FormatRule = {
   operator: FormatRuleOperator;
   value: string;
   value2?: string | null;
   style: FormatRuleStyle;
-}
+};

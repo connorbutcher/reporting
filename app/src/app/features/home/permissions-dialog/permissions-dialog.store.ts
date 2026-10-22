@@ -18,12 +18,12 @@ import {
 } from '../confirm-dialog/confirm-dialog.component';
 import type { PermissionsDialogData } from './permissions-dialog.component';
 
-export interface SubjectOption {
+export type SubjectOption = {
   label: string;
   value: string;
   subjectType: GrantSubjectType;
   subjectId: string | null;
-}
+};
 
 /** One row of the effective-access list: either a group label or a grant, in display order. */
 export type EffectiveRow =

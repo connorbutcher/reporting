@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 
-export interface ConfirmDialogData {
+export type ConfirmDialogData = {
   title: string;
   message: string;
   /** Specifics listed under the message, one per line — e.g. what a delete would break. */
@@ -9,7 +9,7 @@ export interface ConfirmDialogData {
   confirmLabel?: string;
   /** Styles the confirm button as a destructive action. */
   danger?: boolean;
-}
+};
 
 /** Generic confirm/cancel prompt, used for destructive actions like delete. */
 @Component({

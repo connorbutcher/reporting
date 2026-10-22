@@ -7,10 +7,10 @@ import { PageFilterEntry, WidgetFilterEntry, createViewFilterEntry } from './vie
 import { EntryContext, buildViewFilterGroup } from './view-filter-group';
 import { buildChartEntries, buildTableEntry } from './widget-filter-entries';
 
-export interface ViewFilterEntries {
+export type ViewFilterEntries = {
   readonly pageEntries: PageFilterEntry[];
   readonly widgetEntries: WidgetFilterEntry[];
-}
+};
 
 /** Every filter a reader can edit: one per widget dataset, and one page filter per dataset in use. */
 export function collectViewFilterEntries(

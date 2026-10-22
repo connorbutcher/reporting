@@ -31,60 +31,60 @@ export type WidgetConfig =
  * to the matching shape (e.g. inside a `switch (widget.type)` or after a
  * `widget.type === 'dataTable'` check).
  */
-export interface DataTableWidget extends WidgetBase {
+export type DataTableWidget = WidgetBase & {
   type: 'dataTable';
   config: DataTableWidgetConfig;
-}
+};
 
-export interface StaticTextWidget extends WidgetBase {
+export type StaticTextWidget = WidgetBase & {
   type: 'staticText';
   config: StaticTextWidgetConfig;
-}
+};
 
-export interface ScatterChartWidget extends WidgetBase {
+export type ScatterChartWidget = WidgetBase & {
   type: 'scatterChart';
   config: ScatterChartWidgetConfig;
-}
+};
 
-export interface LineChartWidget extends WidgetBase {
+export type LineChartWidget = WidgetBase & {
   type: 'lineChart';
   config: LineChartWidgetConfig;
-}
+};
 
-export interface BarChartWidget extends WidgetBase {
+export type BarChartWidget = WidgetBase & {
   type: 'barChart';
   config: BarChartWidgetConfig;
-}
+};
 
-export interface ComboChartWidget extends WidgetBase {
+export type ComboChartWidget = WidgetBase & {
   type: 'comboChart';
   config: ComboChartWidgetConfig;
-}
+};
 
-export interface BoxPlotWidget extends WidgetBase {
+export type BoxPlotWidget = WidgetBase & {
   type: 'boxPlot';
   config: BoxPlotWidgetConfig;
-}
+};
 
-export interface HistogramWidget extends WidgetBase {
+export type HistogramWidget = WidgetBase & {
   type: 'histogram';
   config: HistogramWidgetConfig;
-}
+};
 
-export interface XBarRChartWidget extends WidgetBase {
+export type XBarRChartWidget = WidgetBase & {
   type: 'xbarRChart';
   config: XBarRChartWidgetConfig;
-}
+};
 
-export interface PivotTableWidget extends WidgetBase {
+export type PivotTableWidget = WidgetBase & {
   type: 'pivotTable';
   config: PivotTableWidgetConfig;
-}
+};
 
-export interface KpiWidget extends WidgetBase {
+export type KpiWidget = WidgetBase & {
   type: 'kpi';
   config: KpiWidgetConfig;
-}
+};
 
 /** Every chart kind, for code that treats charts uniformly. */
 export type ChartWidget =

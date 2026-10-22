@@ -10,14 +10,14 @@ import { ChartWidget, Widget, WidgetType } from './report';
 /** Category a widget type belongs to, used to group the add-widget menu. */
 export type WidgetGroup = 'data' | 'text' | 'chart';
 
-export interface WidgetGroupInfo {
+export type WidgetGroupInfo = {
   id: WidgetGroup;
   label: string;
   /** Display order of the group in the add-widget menu. */
   order: number;
-}
+};
 
-export interface WidgetTypeDescriptor {
+export type WidgetTypeDescriptor = {
   type: WidgetType;
   label: string;
   /** One-line description shown under the label in the add-widget menu. */
@@ -25,7 +25,7 @@ export interface WidgetTypeDescriptor {
   /** PrimeIcons class, e.g. 'pi pi-chart-scatter'. */
   icon: string;
   group: WidgetGroup;
-}
+};
 
 export const WIDGET_GROUPS: readonly WidgetGroupInfo[] = [
   { id: 'data', label: 'Data', order: 0 },

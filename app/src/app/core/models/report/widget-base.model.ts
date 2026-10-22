@@ -12,16 +12,16 @@ export type WidgetType =
   | 'kpi';
 
 /** Fields every widget config carries, regardless of type. */
-export interface WidgetConfigBase {
+export type WidgetConfigBase = {
   title: string;
   showTitle: boolean;
-}
+};
 
 /** Geometry every widget carries on the grid, regardless of type. */
-export interface WidgetBase {
+export type WidgetBase = {
   id: string;
   x: number;
   y: number;
   w: number;
   h: number;
-}
+};

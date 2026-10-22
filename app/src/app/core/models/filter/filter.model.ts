@@ -39,7 +39,7 @@ export const TOLERANCE_OPERATORS: ReadonlySet<FilterOperator> = new Set<FilterOp
   'outOfTolerance',
 ]);
 
-export interface FilterCondition {
+export type FilterCondition = {
   kind: 'condition';
   columnId: string;
   operator: FilterOperator;
@@ -47,32 +47,32 @@ export interface FilterCondition {
   values: string[];
   /** Omitted means enabled, so older filters still apply. A disabled condition is kept but not applied. */
   enabled?: boolean;
-}
+};
 
-export interface FilterGroup {
+export type FilterGroup = {
   kind: 'group';
   join: FilterJoin;
   children: FilterNode[];
-}
+};
 
 export type FilterNode = FilterGroup | FilterCondition;
 
 /** Applies to every widget bound to the dataset. */
-export interface ReportFilter {
+export type ReportFilter = {
   datasetId: number;
   filter: FilterGroup;
-}
+};
 
-export interface DatasetQueryResult {
+export type DatasetQueryResult = {
   id: number;
   name: string;
   rows: { id: string; values: Record<string, string> }[];
   totalRowCount: number;
   matchedRowCount: number;
-}
+};
 
 /** Just the counts, for the live "matches N of M" readout. */
-export interface DatasetCountResult {
+export type DatasetCountResult = {
   totalRowCount: number;
   matchedRowCount: number;
-}
+};

@@ -18,7 +18,7 @@ export type KpiStatus = 'none' | 'good' | 'warning' | 'critical';
  * target or the previous rolling period, with a {@link direction} so the client knows whether the
  * trend is good or bad news.
  */
-export interface KpiWidgetConfig extends WidgetConfigBase {
+export type KpiWidgetConfig = WidgetConfigBase & {
   type: 'kpi';
 
   /** Null until the user binds the widget to a dataset. */
@@ -72,7 +72,7 @@ export interface KpiWidgetConfig extends WidgetConfigBase {
 
   /** Rows this widget summarises, narrowed server-side. Null means no widget-level filter. */
   filter: FilterGroup | null;
-}
+};
 
 export const DEFAULT_KPI_CONFIG: Omit<KpiWidgetConfig, 'type'> = {
   datasetId: null,

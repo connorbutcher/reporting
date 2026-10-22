@@ -11,12 +11,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import { ReportViewerStore } from '../report-viewer.store';
 
 /** Where a comment on a chart is pinned, shared between the panel and the chart that owns the point. */
-export interface CommentAnchorTarget {
+export type CommentAnchorTarget = {
   widgetId: string;
   x: number;
   y: number;
   yAxisIndex?: number;
-}
+};
 
 /**
  * Comments engineers leave on a widget while viewing a report: the focused widget's thread, the whole

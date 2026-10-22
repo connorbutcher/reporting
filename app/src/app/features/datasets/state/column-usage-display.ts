@@ -2,7 +2,7 @@ import { ColumnUse } from '../../../core/models/dataset';
 import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
 
 /** How one use reads in the columns panel and in the delete confirmation. */
-export interface ColumnUseLine {
+export type ColumnUseLine = {
   /** The widget to open in the builder; null for the report filter. */
   widgetId: string | null;
   /** The widget's title, or its type when untitled — or "Report filter". */
@@ -13,7 +13,7 @@ export interface ColumnUseLine {
   roles: string;
   /** PrimeIcons class for the widget's type. */
   icon: string;
-}
+};
 
 export function describeUse(use: ColumnUse): ColumnUseLine {
   const roles = use.roles.join(', ');

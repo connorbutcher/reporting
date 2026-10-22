@@ -5,10 +5,10 @@
  */
 export type DatasetIssueSeverity = 'error' | 'warning';
 
-export interface DatasetIssue {
+export type DatasetIssue = {
   /** Stable across recomputes so the list doesn't flicker. */
   id: string;
   severity: DatasetIssueSeverity;
   title: string;
   detail: string;
-}
+};

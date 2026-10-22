@@ -1,7 +1,7 @@
 import { SchemaSource } from './schema-source';
 import { CatalogueSource } from './catalogue-source';
 
-export interface ModelSources {
+export type ModelSources = {
   readonly schemas: SchemaSource;
   readonly catalogue: CatalogueSource;
-}
+};

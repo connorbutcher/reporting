@@ -11,7 +11,7 @@ export type DatasetColumnType = 'string' | 'int' | 'double' | 'bool' | 'dateTime
 export type DatasetColumnConfigKind = 'numeric' | 'date' | 'bool' | 'text';
 
 /** Numeric columns (int and double). */
-export interface NumericColumnConfig {
+export type NumericColumnConfig = {
   kind: 'numeric';
   /** Fixed number of decimal places; omitted formats up to 3, trimmed of trailing zeros. */
   decimals?: number;
@@ -20,27 +20,27 @@ export interface NumericColumnConfig {
   /** Text placed before/after the formatted number. */
   prefix?: string;
   suffix?: string;
-}
+};
 
 /** Date/time columns. */
-export interface DateColumnConfig {
+export type DateColumnConfig = {
   kind: 'date';
   /** Angular date pattern, e.g. "dd/MM/yyyy". */
   dateFormat?: string;
-}
+};
 
 /** Boolean columns. */
-export interface BoolColumnConfig {
+export type BoolColumnConfig = {
   kind: 'bool';
   /** Labels used instead of Yes/No. */
   trueLabel?: string;
   falseLabel?: string;
-}
+};
 
 /** Text columns carry no formatting options yet. */
-export interface TextColumnConfig {
+export type TextColumnConfig = {
   kind: 'text';
-}
+};
 
 /**
  * A column's typed display configuration, persisted on the dataset column so it
@@ -50,7 +50,7 @@ export interface TextColumnConfig {
 export type DatasetColumnConfiguration =
   NumericColumnConfig | DateColumnConfig | BoolColumnConfig | TextColumnConfig;
 
-export interface DatasetColumn {
+export type DatasetColumn = {
   id: string;
   name: string;
   type: DatasetColumnType;
@@ -61,9 +61,9 @@ export interface DatasetColumn {
   formulaError?: string | null;
   /** The API always returns a typed config matching {@link type}. */
   configuration: DatasetColumnConfiguration;
-}
+};
 
-export interface DatasetSchema {
+export type DatasetSchema = {
   id: number;
   name: string;
   /** The dataset source's primary key, for the source picker. */
@@ -73,4 +73,4 @@ export interface DatasetSchema {
   /** The source-specific configuration; its concrete shape matches {@link source}. */
   sourceConfig: DatasetSourceConfig;
   columns: DatasetColumn[];
-}
+};

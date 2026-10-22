@@ -1,5 +1,5 @@
 /** The smallest and largest of a set of numbers. */
-export interface NumericExtent {
+export type NumericExtent = {
   min: number;
   max: number;
-}
+};

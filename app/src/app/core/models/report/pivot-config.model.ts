@@ -13,16 +13,16 @@ export type PivotShowAs = 'value' | 'percentOfTotal' | 'percentOfParent';
 export type DateGrouping = 'day' | 'week' | 'month' | 'quarter' | 'year';
 
 /** Groups a date row or column field by period rather than by exact value. */
-export interface PivotFieldGrouping {
+export type PivotFieldGrouping = {
   columnId: string;
   grouping: DateGrouping;
-}
+};
 
 /**
  * One measure a pivot computes and shows as a value column: an aggregate over a column, reduced
  * within each group. `columnId` is null (and unused) for the `count` aggregate, which counts rows.
  */
-export interface PivotMeasure {
+export type PivotMeasure = {
   /** Client-generated, addresses this measure in the editor — not meaningful server-side. */
   id: string;
   /** The column reduced; null for `count`. */
@@ -36,13 +36,13 @@ export interface PivotMeasure {
   dataBars?: boolean;
   /** Conditional highlighting, checked in order; the first rule a value matches wins. */
   formatRules?: FormatRule[];
-}
+};
 
 /**
  * A pivot / aggregation table: rows are grouped by one or more dimension columns (`rowFields`) and
  * each group reduced to one or more measures (`measures`) — the tabular counterpart of the bar chart.
  */
-export interface PivotTableWidgetConfig extends WidgetConfigBase {
+export type PivotTableWidgetConfig = WidgetConfigBase & {
   type: 'pivotTable';
 
   /** Null until the user binds the pivot to a dataset. */
@@ -73,7 +73,7 @@ export interface PivotTableWidgetConfig extends WidgetConfigBase {
 
   /** Rows this widget aggregates, narrowed server-side. Null means no widget-level filter. */
   filter: FilterGroup | null;
-}
+};
 
 export const DEFAULT_PIVOT_CONFIG: Omit<PivotTableWidgetConfig, 'type'> = {
   datasetId: null,

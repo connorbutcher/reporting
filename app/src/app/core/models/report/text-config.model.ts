@@ -4,7 +4,7 @@ export type TextFontWeight = 'normal' | 'medium' | 'semibold' | 'bold';
 export type TextAlign = 'left' | 'center' | 'right' | 'justify';
 export type TextVerticalAlign = 'top' | 'middle' | 'bottom';
 
-export interface StaticTextWidgetConfig extends WidgetConfigBase {
+export type StaticTextWidgetConfig = WidgetConfigBase & {
   type: 'staticText';
 
   /** Plain text; line breaks are preserved, never rendered as HTML. */
@@ -26,7 +26,7 @@ export interface StaticTextWidgetConfig extends WidgetConfigBase {
   /** False lets long lines overflow with a scrollbar instead of wrapping. */
   wrap: boolean;
   padding: number;
-}
+};
 
 export const DEFAULT_TEXT_CONFIG: Omit<StaticTextWidgetConfig, 'type'> = {
   title: 'Text',

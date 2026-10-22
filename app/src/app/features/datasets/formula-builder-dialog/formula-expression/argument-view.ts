@@ -2,7 +2,7 @@ import { FormulaParameter } from '../../../../core/models/dataset';
 import { Expression, FormulaIssue } from '../model';
 
 /** One argument of a function, prepared for the template. */
-export interface ArgumentView {
+export type ArgumentView = {
   index: number;
   expression: Expression;
   parameter: FormulaParameter | null;
@@ -11,4 +11,4 @@ export interface ArgumentView {
   issues: FormulaIssue[];
   /** A repeating parameter's spare argument the user can take away again. */
   removable: boolean;
-}
+};

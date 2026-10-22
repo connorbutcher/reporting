@@ -20,7 +20,7 @@ export function describeConditions(total: number, active: number): string {
 }
 
 /** One editable filter in the viewer's panel. */
-export interface ViewFilterEntry {
+export type ViewFilterEntry = {
   /** A dataset id (page filter) or widget id (widget filter; chart bindings use {@link chartBindingKey}). */
   readonly key: string;
   readonly datasetId: number;
@@ -31,13 +31,13 @@ export interface ViewFilterEntry {
   /** The finished filter when it differs from published, else undefined: what gets saved or shared. */
   readonly override: Signal<FilterGroup | null | undefined>;
   readonly summary: Signal<string>;
-}
+};
 
-export interface PageFilterEntry extends ViewFilterEntry {
+export type PageFilterEntry = ViewFilterEntry & {
   readonly label: Signal<string>;
-}
+};
 
-export interface ViewFilterWidget {
+export type ViewFilterWidget = {
   readonly id: string;
   readonly title: string;
   readonly type: WidgetType;
@@ -45,11 +45,11 @@ export interface ViewFilterWidget {
   readonly tabName: string;
   /** Tells this filter from the widget's others: the series label, else the dataset name. */
   readonly sourceLabel: Signal<string>;
-}
+};
 
-export interface WidgetFilterEntry extends ViewFilterEntry {
+export type WidgetFilterEntry = ViewFilterEntry & {
   readonly widget: ViewFilterWidget;
-}
+};
 
 type EntryInit = Pick<ViewFilterEntry, 'key' | 'datasetId' | 'group' | 'published'>;
 

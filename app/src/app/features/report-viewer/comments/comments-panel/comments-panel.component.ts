@@ -6,18 +6,18 @@ import { ReportViewerStore } from '../../report-viewer.store';
 import { ReportComments } from '../report-comments';
 
 /** One run of a comment's body: plain text, or an `@name` mention rendered as a chip. */
-interface CommentPart {
+type CommentPart = {
   text: string;
   isMention: boolean;
-}
+};
 
 /** A thread comment with its body pre-split for rendering and its chart anchor, when it has one, pre-resolved. */
-interface DisplayComment extends WidgetComment {
+type DisplayComment = WidgetComment & {
   parts: CommentPart[];
   anchor: { x: number; y: number; yAxisIndex?: number; label: string } | null;
   /** Whether this comment's own anchor is the one currently drawing attention — on the chart or the comment card alike. */
   isHighlighted: boolean;
-}
+};
 
 /** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
 function escapeRegExp(s: string): string {

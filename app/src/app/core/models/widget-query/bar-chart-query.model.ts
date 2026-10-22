@@ -13,7 +13,7 @@ import {
   ResolvedToleranceBand,
 } from './chart-query.model';
 
-export interface BarChartQueryRequest {
+export type BarChartQueryRequest = {
   filter: FilterGroup | null;
   /** The column whose distinct values become the bars (any type). */
   categoryColumnId: string;
@@ -26,9 +26,9 @@ export interface BarChartQueryRequest {
   sort: ChartSort;
   categoryGrouping?: DateGrouping | null;
   tooltipColumns?: ChartTooltipColumn[];
-}
+};
 
-export interface BarSeriesResult {
+export type BarSeriesResult = {
   /**
    * The series' display label. From the server it's the split (colour-by) key ("" when no split);
    * {@link ChartQuery} rewrites it to the composed legend label (binding · measure · split).
@@ -50,9 +50,9 @@ export interface BarSeriesResult {
   categoryDrills?: (FilterGroup | null)[];
   /** Conditions selecting this series' rows (its split value), for drill-through; null with no split. */
   drill?: FilterGroup | null;
-}
+};
 
-export interface BarChartQueryResult extends ChartRowCounts, PartialChartLoad {
+export type BarChartQueryResult = {
   id: string;
   name: string;
   /** The bar categories, in display order — the shared axis every series aligns to. */
@@ -61,4 +61,5 @@ export interface BarChartQueryResult extends ChartRowCounts, PartialChartLoad {
   categoryDetails?: ChartCategoryDetail[];
   series: BarSeriesResult[];
   toleranceBands: ResolvedToleranceBand[];
-}
+} & ChartRowCounts &
+  PartialChartLoad;

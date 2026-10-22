@@ -10,11 +10,11 @@ import { KIND_BADGES, KIND_LABELS, OPERATORS, OperatorDefinition, columnTypeKind
 
 type PaletteItem = PalettePayload;
 
-interface FunctionGroup {
+type FunctionGroup = {
   category: FormulaFunctionCategory;
   label: string;
   functions: FormulaFunction[];
-}
+};
 
 const CATEGORY_ORDER: { category: FormulaFunctionCategory; label: string }[] = [
   { category: 'math', label: 'Math' },

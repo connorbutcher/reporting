@@ -6,11 +6,11 @@ import { SelectModule } from 'primeng/select';
 import { AccessGrant, AccessLevel, SecurableKind } from '../../../core/models/permission';
 import { PermissionsDialogStore } from './permissions-dialog.store';
 
-export interface PermissionsDialogData {
+export type PermissionsDialogData = {
   kind: SecurableKind;
   id: number;
   name: string;
-}
+};
 
 const LEVELS: { label: string; value: AccessLevel }[] = [
   { label: 'Viewer', value: 'viewer' },

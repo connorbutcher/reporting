@@ -4,7 +4,7 @@ import { OperatorCatalogue } from '../../../../core/models/filter';
 import { PanelView } from '../../side-panel/panel-view';
 
 /** What a filter node needs to describe itself and validate against. */
-export interface FilterContext {
+export type FilterContext = {
   /** The dataset being filtered, once its schema has loaded. */
   readonly schema: Signal<DatasetSchema | null>;
   readonly catalogue: Signal<OperatorCatalogue | null>;
@@ -18,4 +18,4 @@ export interface FilterContext {
   readonly ownerId: string;
   /** Ties an issue to its widget. */
   readonly widgetId?: string;
-}
+};

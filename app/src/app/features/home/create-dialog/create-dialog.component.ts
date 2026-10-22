@@ -23,19 +23,19 @@ import { groupByParent } from '../group-by-parent.util';
 
 export type CreateKind = 'folder' | 'report';
 
-export interface CreateDialogData {
+export type CreateDialogData = {
   folders: Folder[];
   reports: ReportSummary[];
   /** The folder the new item will be created in (null = Home). Drives the uniqueness check. */
   folderId: number | null;
-}
+};
 
-export interface CreateDialogResult {
+export type CreateDialogResult = {
   kind: CreateKind;
   name: string;
   /** Set when the user picked an existing report to start from — undefined means start blank. */
   sourceReportId?: number;
-}
+};
 
 /** Lets the user pick folder-vs-report, name it, and (for reports) optionally copy an existing one — in one step, before creating either. */
 @Component({

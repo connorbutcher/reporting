@@ -1,6 +1,6 @@
 import { AxisLabelFormatting } from './axis-label-formatting';
 
-export interface DateAxisFragment {
+export type DateAxisFragment = {
   type: 'time';
   axisLabel?: AxisLabelFormatting;
-}
+};

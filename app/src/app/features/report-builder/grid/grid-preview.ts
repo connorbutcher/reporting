@@ -1,5 +1,5 @@
 import { GridRect } from './grid-rect';
 
-export interface GridPreview extends GridRect {
+export type GridPreview = GridRect & {
   invalid: boolean;
-}
+};

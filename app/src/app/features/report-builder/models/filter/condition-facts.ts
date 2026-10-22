@@ -1,4 +1,4 @@
-export interface ConditionFacts {
+export type ConditionFacts = {
   readonly columnMissing: boolean;
   /** A tolerance operator on a column that has no banding. */
   readonly toleranceMissing: boolean;
@@ -6,4 +6,4 @@ export interface ConditionFacts {
   readonly columnName: string | null;
   readonly operatorLabel: string;
   readonly needed: number;
-}
+};

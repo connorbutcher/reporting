@@ -8,7 +8,7 @@ import {
 } from '../report';
 import { FilterGroup } from '../filter';
 
-export interface ChartQueryRequest {
+export type ChartQueryRequest = {
   filter: FilterGroup | null;
   xColumnId: string;
   yColumnId: string;
@@ -25,18 +25,18 @@ export interface ChartQueryRequest {
   aggregate?: Aggregate | null;
   /** Buckets a date X by period before aggregating. */
   xGrouping?: DateGrouping | null;
-}
+};
 
-export interface ChartPoint {
+export type ChartPoint = {
   /** A number for a numeric axis column, a category label for a text one. */
   x: number | string;
   y: number | string;
   /** The bubble size column's value for this point; absent when not bound or not set on this row. */
   size?: number | null;
   tooltipLines: string[];
-}
+};
 
-export interface ChartSeriesResult {
+export type ChartSeriesResult = {
   label: string;
   points: ChartPoint[];
   /**
@@ -49,13 +49,13 @@ export interface ChartSeriesResult {
   bindingId?: string;
   /** This series' least-squares fit, when requested and both axes are numeric/date. */
   trendLine?: TrendLine | null;
-}
+};
 
 /**
  * A series' linear trend: the two endpoints to draw a line through (its fitted Y at the series'
  * min and max X), plus the fit's slope/intercept/R² should the client want to show them.
  */
-export interface TrendLine {
+export type TrendLine = {
   x1: number;
   y1: number;
   x2: number;
@@ -64,9 +64,9 @@ export interface TrendLine {
   intercept: number;
   /** The coefficient of determination (0..1) — how well the line fits the series' points. */
   rSquared: number;
-}
+};
 
-export interface ResolvedToleranceBand {
+export type ResolvedToleranceBand = {
   id: string;
   axis: ChartAxis;
   min: number | null;
@@ -77,14 +77,14 @@ export interface ResolvedToleranceBand {
   fill: boolean;
   /** Outline plotted points that fall outside the band's outermost line. */
   outlinePoints: boolean;
-}
+};
 
 /**
  * The row counts every chart response carries, so a chart can show the same "N of M rows" footer as
  * the table. Counted against the dataset before any per-chart narrowing (rows with no axis value,
  * rows with no measure).
  */
-export interface ChartRowCounts {
+export type ChartRowCounts = {
   /** Every row in the dataset, ignoring the filter. */
   totalRowCount: number;
   /** The rows the filter matches; equals {@link totalRowCount} when there is no filter. */
@@ -93,7 +93,7 @@ export interface ChartRowCounts {
   truncated?: boolean;
   /** How many rows a capped scan (box plot, histogram) actually read; only meaningful with {@link truncated}. */
   scannedRowCount?: number;
-}
+};
 
 /**
  * Set client-side when an overlay chart queries several bindings and some fail: the chart still
@@ -103,19 +103,19 @@ export interface ChartRowCounts {
  * What a grouping chart knows about one category beyond its label: its natural sort key, so several
  * datasets' categories merge in order, and the conditions selecting its rows, for drill-through.
  */
-export interface ChartCategoryDetail {
+export type ChartCategoryDetail = {
   sortNumber?: number | null;
   sortText?: string | null;
   isBlank?: boolean;
   isOther?: boolean;
   drill?: FilterGroup | null;
-}
+};
 
-export interface PartialChartLoad {
+export type PartialChartLoad = {
   failedBindingCount?: number;
-}
+};
 
-export interface ChartQueryResult extends ChartRowCounts, PartialChartLoad {
+export type ChartQueryResult = {
   id: string;
   name: string;
   series: ChartSeriesResult[];
@@ -124,4 +124,5 @@ export interface ChartQueryResult extends ChartRowCounts, PartialChartLoad {
   totalPoints?: number;
   /** A truncated chart thinned evenly across its X range, rather than cut off. */
   sampled?: boolean;
-}
+} & ChartRowCounts &
+  PartialChartLoad;

@@ -8,7 +8,7 @@ export type ColumnAlign = 'left' | 'center' | 'right';
 export type TableDensity = 'compact' | 'normal' | 'comfortable';
 
 /** A column placed on the table, in display order. */
-export interface DataTableColumnSetting {
+export type DataTableColumnSetting = {
   columnId: string;
   /** Overrides the dataset column's name in the header. */
   header?: string;
@@ -27,33 +27,33 @@ export interface DataTableColumnSetting {
   dataBars?: boolean;
   /** Conditional highlighting, checked in order; the first rule a value matches wins. */
   formatRules?: FormatRule[];
-}
+};
 
 /** The limits dataset and which of its columns hold the bounds — what every tolerance pointer carries. */
-export interface ToleranceLimits {
+export type ToleranceLimits = {
   sourceDatasetId: number;
   minColumnId: string;
   maxColumnId: string;
   concessionLowerColumnId?: string;
   concessionUpperColumnId?: string;
-}
+};
 
 /** Limits taken from one fixed row of the limits dataset. */
-export interface FixedToleranceConfig extends ToleranceLimits {
+export type FixedToleranceConfig = ToleranceLimits & {
   sourceRowId: string;
-}
+};
 
 /**
  * Opt-in: pick each data row's limits row by value. The limits row used is the one whose
  * {@link sourceColumnId} equals the data row's {@link columnId} (text ignoring case and spaces,
  * numbers by value). A row with no match isn't highlighted.
  */
-export interface ToleranceMatch {
+export type ToleranceMatch = {
   /** A column of the table's own dataset whose value identifies the row's spec. */
   columnId: string;
   /** The column of the limits dataset holding the same identifier. */
   sourceColumnId: string;
-}
+};
 
 /**
  * Red/amber banding for a numeric column, resolved against a separate limits dataset so the same
@@ -63,10 +63,10 @@ export interface ToleranceMatch {
  * By default every value is checked against one fixed row ({@link sourceRowId}); with {@link match}
  * the row is chosen per data row instead, and there is no fixed row.
  */
-export interface ToleranceConfig extends ToleranceLimits {
+export type ToleranceConfig = ToleranceLimits & {
   sourceRowId?: string;
   match?: ToleranceMatch;
-}
+};
 
 /**
  * Whether a column's limits are one fixed band. The tolerance filter operators ("in tolerance",
@@ -77,7 +77,7 @@ export function hasFixedLimits(tolerance: ToleranceConfig | null | undefined): b
   return !!tolerance && !tolerance.match;
 }
 
-export interface DataTableWidgetConfig extends WidgetConfigBase {
+export type DataTableWidgetConfig = WidgetConfigBase & {
   type: 'dataTable';
   /** Null until the user binds the table to a dataset. */
   datasetId: number | null;
@@ -112,7 +112,7 @@ export interface DataTableWidgetConfig extends WidgetConfigBase {
 
   /** Rows this widget shows, narrowed server-side. Null means no widget-level filter. */
   filter: FilterGroup | null;
-}
+};
 
 export const DEFAULT_TABLE_CONFIG: Omit<DataTableWidgetConfig, 'type'> = {
   datasetId: null,

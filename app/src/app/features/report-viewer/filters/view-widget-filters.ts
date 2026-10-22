@@ -2,7 +2,7 @@ import { Signal, computed } from '@angular/core';
 import { ViewFilterWidget, WidgetFilterEntry, describeConditions } from './view-filter-entry';
 
 /** One widget as the panel lists it: several entries only for a chart overlaying several datasets. */
-export interface ViewWidgetFilters {
+export type ViewWidgetFilters = {
   readonly widget: ViewFilterWidget;
   /** Never empty. */
   readonly entries: readonly WidgetFilterEntry[];
@@ -11,7 +11,7 @@ export interface ViewWidgetFilters {
   readonly changed: Signal<boolean>;
   /** Across all the widget's datasets, so a collapsed row never hides that one is filtered. */
   readonly summary: Signal<string>;
-}
+};
 
 /** Groups entries by widget, in the order each widget first appears. */
 export function groupWidgetEntries(entries: readonly WidgetFilterEntry[]): ViewWidgetFilters[] {
