@@ -13,6 +13,8 @@ public sealed class AuthorizeDatasetAttribute(AccessLevel required) : ResourceAu
     /// <summary>When true, the action mutates the dataset, so it's refused on an immutable published version.</summary>
     public bool Mutation { get; set; }
 
-    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id) =>
-        authorizer.AuthorizeDatasetAsync(id, Required, Mutation);
+    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id)
+    {
+        return authorizer.AuthorizeDatasetAsync(id, Required, Mutation);
+    }
 }

@@ -32,13 +32,16 @@ public class MeController(
         };
     }
 
-    /// <summary>The reports the current user has starred.</summary>
     [HttpGet("favorites")]
-    public async Task<ActionResult<List<ReportSummaryDto>>> GetFavorites() =>
-        await personalization.GetFavoritesAsync();
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetFavorites()
+    {
+        return await personalization.GetFavoritesAsync();
+    }
 
-    /// <summary>The current user's most-recently-opened reports, newest first.</summary>
+    /// <summary>Newest first.</summary>
     [HttpGet("recent")]
-    public async Task<ActionResult<List<ReportSummaryDto>>> GetRecent([FromQuery] int take = 8) =>
-        await personalization.GetRecentAsync(Math.Clamp(take, 1, 24));
+    public async Task<ActionResult<List<ReportSummaryDto>>> GetRecent([FromQuery] int take = 8)
+    {
+        return await personalization.GetRecentAsync(Math.Clamp(take, 1, 24));
+    }
 }

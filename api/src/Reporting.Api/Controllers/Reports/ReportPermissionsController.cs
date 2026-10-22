@@ -5,7 +5,7 @@ using Reporting.DAL.Permissions;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Manage the grants on a report — its own overrides on top of what it inherits from its folder. Managing permissions needs Manager on the report.</summary>
+/// <summary>A report's own grants on top of what it inherits from its folder.</summary>
 [ApiController]
 [Route("api/reports/{reportId:int}/permissions")]
 [AuthorizeReport(AccessLevel.Manager)]
@@ -26,8 +26,10 @@ public class ReportPermissionsController(PermissionAdminService admin) : Control
     }
 
     [HttpPut("inheritance")]
-    public async Task<IActionResult> SetInheritance(int reportId, SetInheritanceDto dto) =>
-        await admin.SetReportInheritanceAsync(reportId, dto) ? NoContent() : NotFound();
+    public async Task<IActionResult> SetInheritance(int reportId, SetInheritanceDto dto)
+    {
+        return await admin.SetReportInheritanceAsync(reportId, dto) ? NoContent() : NotFound();
+    }
 
     [HttpPut]
     public async Task<ActionResult<AccessGrantDto>> Upsert(int reportId, SaveGrantDto dto)
@@ -37,6 +39,8 @@ public class ReportPermissionsController(PermissionAdminService admin) : Control
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Remove(int reportId, [FromBody] RemoveGrantDto dto) =>
-        await admin.RemoveReportGrantAsync(reportId, dto) ? NoContent() : NotFound();
+    public async Task<IActionResult> Remove(int reportId, [FromBody] RemoveGrantDto dto)
+    {
+        return await admin.RemoveReportGrantAsync(reportId, dto) ? NoContent() : NotFound();
+    }
 }

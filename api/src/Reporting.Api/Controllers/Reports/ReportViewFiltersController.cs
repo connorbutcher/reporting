@@ -15,8 +15,10 @@ public class ReportViewFiltersController(
     /// <summary><c>Filters</c> is null when the user has none saved.</summary>
     [HttpGet("view-filters")]
     [AuthorizeReport(AccessLevel.Viewer)]
-    public async Task<ActionResult<ReportViewFiltersDto>> GetSaved(int reportId) =>
-        new ReportViewFiltersDto { Filters = await viewStates.GetAsync(reportId) };
+    public async Task<ActionResult<ReportViewFiltersDto>> GetSaved(int reportId)
+    {
+        return new ReportViewFiltersDto { Filters = await viewStates.GetAsync(reportId) };
+    }
 
     [HttpPut("view-filters")]
     [AuthorizeReport(AccessLevel.Viewer)]
@@ -37,12 +39,16 @@ public class ReportViewFiltersController(
     /// <summary>The short id for these filters; the same one if they were shared before.</summary>
     [HttpPost("shared-views")]
     [AuthorizeReport(AccessLevel.Viewer)]
-    public async Task<ActionResult<ReportSharedViewDto>> Share(int reportId, SaveReportViewFiltersDto dto) =>
-        await sharedViews.CreateAsync(reportId, dto.Filters);
+    public async Task<ActionResult<ReportSharedViewDto>> Share(int reportId, SaveReportViewFiltersDto dto)
+    {
+        return await sharedViews.CreateAsync(reportId, dto.Filters);
+    }
 
     /// <summary><c>Filters</c> is null when this report has no snapshot with that id.</summary>
     [HttpGet("shared-views/{viewId}")]
     [AuthorizeReport(AccessLevel.Viewer)]
-    public async Task<ActionResult<ReportSharedViewDto>> GetShared(int reportId, string viewId) =>
-        await sharedViews.GetAsync(reportId, viewId);
+    public async Task<ActionResult<ReportSharedViewDto>> GetShared(int reportId, string viewId)
+    {
+        return await sharedViews.GetAsync(reportId, viewId);
+    }
 }

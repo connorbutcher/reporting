@@ -17,7 +17,7 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
         return await WhereVisibleAsync(all);
     }
 
-    /// <summary>Direct child folders of <paramref name="parentId"/> (root if omitted) the caller can see, each flagged with whether it has children of its own — enough for the tree to draw an expand arrow without fetching further.</summary>
+    /// <summary>Visible direct children of <paramref name="parentId"/> (root if omitted), each flagged with whether it has children.</summary>
     [HttpGet("children")]
     public async Task<ActionResult<List<FolderDto>>> GetChildren([FromQuery] int? parentId)
     {
@@ -25,7 +25,7 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
         return await WhereVisibleAsync(children);
     }
 
-    /// <summary>The chain of ancestors from the root down to <paramref name="id"/>, for building a breadcrumb without the whole tree.</summary>
+    /// <summary>Ancestors from the root down to <paramref name="id"/>, for a breadcrumb.</summary>
     [HttpGet("{id:int}/path")]
     [AuthorizeFolder(AccessLevel.Viewer)]
     public async Task<ActionResult<List<FolderDto>>> GetPath(int id)
@@ -35,9 +35,8 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
     }
 
     /// <summary>
-    /// Whether a candidate folder name is free among its siblings. With no <paramref name="excludeId"/>
-    /// this is a create check (Editor on <paramref name="parentFolderId"/>, matching <see cref="Create"/>);
-    /// with one, it's a rename check on that folder (Manager on it, matching <see cref="Update"/>).
+    /// Without <paramref name="excludeId"/> this is a create check (Editor on the parent); with one it's a
+    /// rename check (Manager on that folder), matching the actions it precedes.
     /// </summary>
     [HttpGet("name-available")]
     public async Task<ActionResult<FolderNameAvailableDto>> NameAvailable(
@@ -65,7 +64,6 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
             return BadRequest("A folder needs a name.");
         }
 
-        // Creating a subfolder is an Editor action on the containing folder (or the root).
         var createAuth = await authorizer.AuthorizeCreateInAsync(dto.ParentFolderId);
         if (!createAuth.Allowed)
         {
@@ -102,10 +100,11 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
 
     [HttpDelete("{id:int}")]
     [AuthorizeFolder(AccessLevel.Manager)]
-    public async Task<IActionResult> Delete(int id) =>
-        await folders.DeleteAsync(id) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(int id)
+    {
+        return await folders.DeleteAsync(id) ? NoContent() : NotFound();
+    }
 
-    /// <summary>Keeps only the folders the caller can see (≥ Viewer).</summary>
     private async Task<List<FolderDto>> WhereVisibleAsync(IEnumerable<FolderDto> folders)
     {
         var visible = new List<FolderDto>();

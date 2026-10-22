@@ -5,7 +5,6 @@ using Reporting.DAL.Permissions;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Manage the grants on a folder. Every action needs Manager on the folder (an invisible one 404s).</summary>
 [ApiController]
 [Route("api/folders/{folderId:int}/permissions")]
 [AuthorizeFolder(AccessLevel.Manager)]
@@ -26,8 +25,10 @@ public class FolderPermissionsController(PermissionAdminService admin) : Control
     }
 
     [HttpPut("inheritance")]
-    public async Task<IActionResult> SetInheritance(int folderId, SetInheritanceDto dto) =>
-        await admin.SetFolderInheritanceAsync(folderId, dto) ? NoContent() : NotFound();
+    public async Task<IActionResult> SetInheritance(int folderId, SetInheritanceDto dto)
+    {
+        return await admin.SetFolderInheritanceAsync(folderId, dto) ? NoContent() : NotFound();
+    }
 
     [HttpPut]
     public async Task<ActionResult<AccessGrantDto>> Upsert(int folderId, SaveGrantDto dto)
@@ -37,6 +38,8 @@ public class FolderPermissionsController(PermissionAdminService admin) : Control
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Remove(int folderId, [FromBody] RemoveGrantDto dto) =>
-        await admin.RemoveFolderGrantAsync(folderId, dto) ? NoContent() : NotFound();
+    public async Task<IActionResult> Remove(int folderId, [FromBody] RemoveGrantDto dto)
+    {
+        return await admin.RemoveFolderGrantAsync(folderId, dto) ? NoContent() : NotFound();
+    }
 }

@@ -5,16 +5,18 @@ using Reporting.DAL.Repositories;
 namespace Reporting.Api.Controllers;
 
 /// <summary>
-/// Admin-area group management: list, view, create, edit, and delete. Every action is scoped in the
-/// service by whether the caller manages groups — a global admin manages all (and creates them), a
-/// delegated group manager only the ones they manage. Independent of the manage-users permission.
+/// Scoped in the service: a global admin manages every group, a delegated manager only theirs.
+/// Independent of the manage-users permission.
 /// </summary>
 [ApiController]
 [Route("api/admin/user-groups")]
 public class AdminGroupsController(UserGroupAdminService groups) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AdminGroupDto>>> GetAll() => await groups.ListAsync();
+    public async Task<ActionResult<List<AdminGroupDto>>> GetAll()
+    {
+        return await groups.ListAsync();
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AdminGroupDetailDto>> Get(Guid id)
@@ -25,8 +27,10 @@ public class AdminGroupsController(UserGroupAdminService groups) : ControllerBas
 
     [HttpGet("name-available")]
     public async Task<ActionResult<GroupNameAvailableDto>> NameAvailable(
-        [FromQuery] string name, [FromQuery] Guid? excludeId) =>
-        new GroupNameAvailableDto { Available = await groups.NameAvailableAsync(name, excludeId) };
+        [FromQuery] string name, [FromQuery] Guid? excludeId)
+    {
+        return new GroupNameAvailableDto { Available = await groups.NameAvailableAsync(name, excludeId) };
+    }
 
     [HttpPost]
     public async Task<ActionResult<AdminGroupDetailDto>> Create(SaveGroupDto dto)
@@ -43,6 +47,8 @@ public class AdminGroupsController(UserGroupAdminService groups) : ControllerBas
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id) =>
-        await groups.DeleteAsync(id) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        return await groups.DeleteAsync(id) ? NoContent() : NotFound();
+    }
 }

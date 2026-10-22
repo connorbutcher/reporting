@@ -7,6 +7,8 @@ namespace Reporting.Api.Authorization;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
 public sealed class AuthorizeFolderAttribute(AccessLevel required) : ResourceAuthorizeAttribute(required, "folderId")
 {
-    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id) =>
-        authorizer.AuthorizeFolderAsync(id, Required);
+    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id)
+    {
+        return authorizer.AuthorizeFolderAsync(id, Required);
+    }
 }

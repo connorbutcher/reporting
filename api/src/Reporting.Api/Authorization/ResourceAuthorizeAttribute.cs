@@ -5,13 +5,7 @@ using Reporting.DAL.Permissions;
 
 namespace Reporting.Api.Authorization;
 
-/// <summary>
-/// Shared base for the resource-authorization attributes. Reads the target's id from the route,
-/// delegates the decision to the one <see cref="ResourceAuthorizer"/>, and maps the outcome to the
-/// right status at the edge — 404 when hidden/missing (so nothing private leaks), 403 when visible
-/// but below the required level, 400 when a mutation hits a published version's immutable data. A
-/// denied request never reaches the action.
-/// </summary>
+/// <summary>Reads the target's id from the route and stops a denied request before it reaches the action.</summary>
 public abstract class ResourceAuthorizeAttribute(AccessLevel required, string routeKey)
     : Attribute, IAsyncAuthorizationFilter
 {
@@ -30,7 +24,6 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
 
         var authorizer = context.HttpContext.RequestServices.GetRequiredService<ResourceAuthorizer>();
         var result = await AuthorizeAsync(authorizer, id);
-        // The same outcome→status mapping the imperative actions use, so the two can't drift.
         if (!result.Allowed)
         {
             context.Result = AuthorizationResultExtensions.Map(result, Required);
@@ -42,8 +35,7 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
     private bool TryGetId(AuthorizationFilterContext context, out int id)
     {
         var values = context.RouteData.Values;
-        // The configured key (e.g. "reportId" on a nested route), falling back to a plain "id"
-        // so the same attribute serves both {id:int} and {reportId:int}/{folderId:int} routes.
+        // Falls back to a plain "id" so one attribute serves both {id:int} and {reportId:int} routes.
         if (values.TryGetValue(RouteKey, out var raw) && int.TryParse(raw?.ToString(), out id))
         {
             return true;

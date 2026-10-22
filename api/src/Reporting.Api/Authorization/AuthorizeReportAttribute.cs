@@ -7,6 +7,8 @@ namespace Reporting.Api.Authorization;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
 public sealed class AuthorizeReportAttribute(AccessLevel required) : ResourceAuthorizeAttribute(required, "reportId")
 {
-    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id) =>
-        authorizer.AuthorizeReportAsync(id, Required);
+    protected override Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id)
+    {
+        return authorizer.AuthorizeReportAsync(id, Required);
+    }
 }

@@ -10,8 +10,14 @@ namespace Reporting.Api.Controllers;
 public class UsersController(UserRepository users) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<UserDto>>> GetUsers() => await users.GetUsersAsync();
+    public async Task<ActionResult<List<UserDto>>> GetUsers()
+    {
+        return await users.GetUsersAsync();
+    }
 
     [HttpGet("~/api/user-groups")]
-    public async Task<ActionResult<List<UserGroupDto>>> GetGroups() => await users.GetGroupsAsync();
+    public async Task<ActionResult<List<UserGroupDto>>> GetGroups()
+    {
+        return await users.GetGroupsAsync();
+    }
 }

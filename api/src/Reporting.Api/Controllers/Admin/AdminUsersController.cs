@@ -5,14 +5,16 @@ using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
-/// <summary>Admin-area user management: list, view, create, and edit. The whole controller requires the manage-users permission (403 otherwise).</summary>
 [ApiController]
 [Route("api/admin/users")]
 [RequireAppPermission(AppPermission.ManageUsers)]
 public class AdminUsersController(UserAdminService users) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<AdminUserDto>>> GetAll() => await users.ListAsync();
+    public async Task<ActionResult<List<AdminUserDto>>> GetAll()
+    {
+        return await users.ListAsync();
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AdminUserDetailDto>> Get(Guid id)

@@ -1,109 +1,20 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.EntityFrameworkCore;
 using Reporting.Api;
-using Reporting.Abstractions;
-using Reporting.DAL.Identity;
-using Reporting.DAL.Formulas;
-using Reporting.DAL.Formulas.Catalogue;
-using Reporting.DAL.Permissions;
-using Reporting.DAL.Repositories;
-using Reporting.DAL.Widgets;
-using Reporting.Database;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-
-        // Widget configs are polymorphic. Without this the "type" discriminator
-        // would have to be the first property in the payload, which is a trap
-        // for any client that builds the object by spreading defaults.
-        options.JsonSerializerOptions.AllowOutOfOrderMetadataProperties = true;
-    });
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-// Fully open CORS: any origin, header, and method. No credentials, since
-// AllowAnyOrigin and AllowCredentials can't be combined.
-builder.Services.AddCors(options =>
-    options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
-
-builder.Services.AddDbContext<ReportingDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-
-builder.Services.AddScoped<DatasetResolver>();
-builder.Services.AddScoped<DatasetRepository>();
-builder.Services.AddScoped<DatasetRowRepository>();
-builder.Services.AddScoped<DatasetColumnUsageService>();
-builder.Services.AddScoped<FormulaFunctionCatalogueLoader>();
-builder.Services.AddScoped<FormulaCalculationService>();
-builder.Services.AddScoped<DatasetFormulaRepository>();
-builder.Services.AddScoped<FolderRepository>();
-builder.Services.AddScoped<ReportRepository>();
-builder.Services.AddScoped<ReportPersonalizationService>();
-builder.Services.AddScoped<ReportViewStateService>();
-builder.Services.AddScoped<ReportSharedViewService>();
-builder.Services.AddScoped<WidgetCommentService>();
-builder.Services.AddScoped<ToleranceResolver>();
-builder.Services.AddScoped<ChartToleranceBands>();
-builder.Services.AddScoped<TableQueryService>();
-builder.Services.AddScoped<PivotQueryService>();
-builder.Services.AddScoped<ChartQueryService>();
-builder.Services.AddScoped<BarChartQueryService>();
-builder.Services.AddScoped<BoxPlotQueryService>();
-builder.Services.AddScoped<XBarRChartQueryService>();
-builder.Services.AddScoped<HistogramQueryService>();
-builder.Services.AddScoped<KpiQueryService>();
-builder.Services.AddScoped<PermissionService>();
-builder.Services.AddScoped<ResourceAuthorizer>();
-builder.Services.AddScoped<PermissionAdminService>();
-builder.Services.AddScoped<AppPermissionService>();
-builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<UserAdminService>();
-builder.Services.AddScoped<UserGroupAdminService>();
-
-// Until authentication is wired up the app runs as the seeded default user. Real auth
-// swaps this single registration for a claims-backed accessor.
-builder.Services.AddScoped<ICurrentUserAccessor, DevCurrentUserAccessor>();
+builder.Services.AddReportingApi();
+builder.Services.AddReportingData(builder.Configuration);
 
 var app = builder.Build();
+DatabaseStartup.MigrateAndSeed(app.Services);
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
-    db.Database.Migrate();
-    DbSeeder.Seed(db);
-    DbSeeder.SeedBoxPlotShowcase(db);
-    DbSeeder.SeedStackedBarShowcase(db);
-    DbSeeder.SeedHistogramShowcase(db);
-    DbSeeder.SeedPivotShowcase(db);
-    DbSeeder.SeedFeatureShowcase(db);
-    DbSeeder.SeedCrossReferenceShowcase(db);
-    DbSeeder.SeedIdentity(db);
-}
-
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
-
 app.UseCors();
-
-// Maps every domain exception (thrown by the repositories/services or propagated from an action)
-// to the HTTP status it stands for, so controller actions carry only their happy path.
 app.UseMiddleware<DomainExceptionMiddleware>();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
