@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
@@ -28,11 +27,8 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
         // The bands draw reference lines, and a tolerance filter reuses the band on the filtered column's axis.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.XColumnId, dto.YColumnId);
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
-        var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
+        var filtered = await WidgetRowFilter.FilterAsync(db, resolved, columnsByRef, dto.Filter, toleranceByColumn);
+        var matching = filtered.Matching;
 
         var sort = dto.Sort ?? new ChartSort();
         var columns = PointColumns.Resolve(dto, sort, columnsByRef, dataset.Columns);
@@ -41,8 +37,8 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
             Id = resolved.Id,
             Name = resolved.Name,
             ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount,
+            TotalRowCount = filtered.TotalRowCount,
+            MatchedRowCount = filtered.MatchedRowCount,
         };
 
         if (dto.Aggregate is { } aggregate && columns.X is { } xColumn)

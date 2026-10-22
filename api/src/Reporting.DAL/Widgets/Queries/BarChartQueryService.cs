@@ -1,5 +1,4 @@
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
@@ -21,7 +20,6 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         }
         var dataset = resolved.Physical;
 
-        var empty = new BarChartQueryResultDto { Id = resolved.Id, Name = resolved.Name };
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
         var valueColumnIds = ValueColumnIds(dto);
 
@@ -29,27 +27,32 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(
             dto.ToleranceBands, bounds, dto.CategoryColumnId, valueColumnIds.FirstOrDefault());
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
-        var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
-        empty.TotalRowCount = totalRowCount;
-        empty.MatchedRowCount = matchedRowCount;
+        var filtered = await WidgetRowFilter.FilterAsync(db, resolved, columnsByRef, dto.Filter, toleranceByColumn);
 
+        var result = new BarChartQueryResultDto
+        {
+            Id = resolved.Id,
+            Name = resolved.Name,
+            TotalRowCount = filtered.TotalRowCount,
+            MatchedRowCount = filtered.MatchedRowCount
+        };
         var categoryColumn = columnsByRef.GetValueOrDefault(dto.CategoryColumnId);
-        if (categoryColumn is null)
-        {
-            return empty;
-        }
-        var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
-
         var measures = Measures(dto, valueColumnIds, columnsByRef);
-        if (measures.Count == 0)
+        if (categoryColumn is null || measures.Count == 0)
         {
-            return empty;
+            return result;
         }
 
+        var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
+        await ApplyBarsAsync(result, filtered.Matching, dto, reader, measures, columnsByRef, dataset.Columns);
+        result.ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds);
+        return result;
+    }
+
+    private static async Task ApplyBarsAsync(
+        BarChartQueryResultDto result, IQueryable<DatasetRow> matching, BarChartQueryDto dto, ChartCategoryReader reader,
+        List<DatasetColumn?> measures, Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> allColumns)
+    {
         // With no series column, id 0 matches no cell, so every row falls in the one unlabelled series "".
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
@@ -64,20 +67,12 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
 
         var sort = dto.Sort ?? new ChartSort();
         var orderedKeys = await OrderCategoriesAsync(matching, reader, categories, sort, columnsByRef);
-        var tooltipStats = await TooltipStatsAsync(matching, reader, categories, seriesId, dto, columnsByRef, dataset.Columns);
+        var tooltipStats = await TooltipStatsAsync(matching, reader, categories, seriesId, dto, columnsByRef, allColumns);
         orderedKeys = ApplyTopN(orderedKeys, sort, categories, perMeasure, tooltipStats);
 
-        return new BarChartQueryResultDto
-        {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Categories = orderedKeys.Select(key => reader.Label(categories[key])).ToList(),
-            CategoryDetails = orderedKeys.Select(key => reader.Detail(categories[key])).ToList(),
-            Series = Series(perMeasure, orderedKeys, tooltipStats, seriesColumn, dto.Aggregate),
-            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount
-        };
+        result.Categories = orderedKeys.Select(key => reader.Label(categories[key])).ToList();
+        result.CategoryDetails = orderedKeys.Select(key => reader.Detail(categories[key])).ToList();
+        result.Series = Series(perMeasure, orderedKeys, tooltipStats, seriesColumn, dto.Aggregate);
     }
 
     /// <summary>In request order; the deprecated single ValueColumnId folds in when the list is empty.</summary>

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
@@ -22,26 +21,33 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         }
         var dataset = resolved.Physical;
 
-        var empty = new HistogramQueryResultDto { Id = resolved.Id, Name = resolved.Name };
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
         var measures = Measures(dto, columnsByRef);
 
         // Bands sit on the binned (X) axis; with several measures the first stands in for a tolerance filter.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, measures.FirstOrDefault()?.RefId ?? Guid.Empty, null);
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
-        var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
-        empty.TotalRowCount = totalRowCount;
-        empty.MatchedRowCount = matchedRowCount;
+        var filtered = await WidgetRowFilter.FilterAsync(db, resolved, columnsByRef, dto.Filter, toleranceByColumn);
 
-        if (measures.Count == 0)
+        var result = new HistogramQueryResultDto
         {
-            return empty;
+            Id = resolved.Id,
+            Name = resolved.Name,
+            TotalRowCount = filtered.TotalRowCount,
+            MatchedRowCount = filtered.MatchedRowCount
+        };
+        if (measures.Count > 0 && await ApplyBinsAsync(result, filtered.Matching, dto, measures, columnsByRef, dataset.Columns))
+        {
+            result.ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds);
         }
+        return result;
+    }
 
+    /// <summary>False, leaving <paramref name="result"/> empty, when no measure has a value.</summary>
+    private static async Task<bool> ApplyBinsAsync(
+        HistogramQueryResultDto result, IQueryable<DatasetRow> matching, HistogramQueryDto dto, List<DatasetColumn> measures,
+        Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> allColumns)
+    {
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
 
@@ -49,7 +55,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         var allValues = perMeasure.SelectMany(m => m.Projected.Select(p => p.Value)).ToList();
         if (allValues.Count == 0)
         {
-            return empty;
+            return false;
         }
 
         var (min, max) = Range(dto, allValues);
@@ -66,21 +72,14 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             .ToList();
 
         await HistogramTooltips.ApplyAsync(
-            matching, dto, measures, series, seriesId, edges, bins.Count, fixedRange ? (min, max) : null, columnsByRef, dataset.Columns);
+            matching, dto, measures, series, seriesId, edges, bins.Count, fixedRange ? (min, max) : null, columnsByRef, allColumns);
 
-        return new HistogramQueryResultDto
-        {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Bins = bins,
-            Series = series,
-            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount,
-            Truncated = truncated,
-            ScannedRowCount = scannedCount,
-            ExcludedCount = excluded
-        };
+        result.Bins = bins;
+        result.Series = series;
+        result.Truncated = truncated;
+        result.ScannedRowCount = scannedCount;
+        result.ExcludedCount = excluded;
+        return true;
     }
 
     /// <summary>In request order; the deprecated single ValueColumnId folds in when the list is empty.</summary>

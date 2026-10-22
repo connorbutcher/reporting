@@ -1,5 +1,4 @@
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
@@ -19,40 +18,44 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
             return null;
         }
         var dataset = resolved.Physical;
-
-        var empty = new XBarRChartQueryResultDto { Id = resolved.Id, Name = resolved.Name };
-
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
         // The band sits on the measure axis, which a tolerance filter reuses.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.CategoryColumnId, dto.ValueColumnId);
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
-        var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
-        empty.TotalRowCount = totalRowCount;
-        empty.MatchedRowCount = matchedRowCount;
+        var filtered = await WidgetRowFilter.FilterAsync(db, resolved, columnsByRef, dto.Filter, toleranceByColumn);
 
+        var result = new XBarRChartQueryResultDto
+        {
+            Id = resolved.Id,
+            Name = resolved.Name,
+            TotalRowCount = filtered.TotalRowCount,
+            MatchedRowCount = filtered.MatchedRowCount
+        };
         var categoryColumn = columnsByRef.GetValueOrDefault(dto.CategoryColumnId);
-        if (categoryColumn is null)
-        {
-            return empty;
-        }
-        var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
-
         var valueColumn = columnsByRef.GetValueOrDefault(dto.ValueColumnId);
-        if (valueColumn is null)
+        if (categoryColumn is null || valueColumn is null)
         {
-            return empty;
+            return result;
         }
-        var valueId = valueColumn.Id;
 
+        var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
+        if (await ApplyPointsAsync(result, filtered.Matching, dto, reader, valueColumn.Id, columnsByRef))
+        {
+            result.ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds);
+        }
+        return result;
+    }
+
+    /// <summary>False, leaving <paramref name="result"/> empty, when no row has a value.</summary>
+    private static async Task<bool> ApplyPointsAsync(
+        XBarRChartQueryResultDto result, IQueryable<DatasetRow> matching, XBarRChartQueryDto dto, ChartCategoryReader reader,
+        int valueId, Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
         var (projected, truncated, scannedCount) = await XBarRScan.ValuesAsync(matching, reader, valueId);
         if (projected.Count == 0)
         {
-            return empty;
+            return false;
         }
 
         var valuesByCategory = projected
@@ -61,9 +64,8 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
         var categories = projected.Select(p => p.CategoryValue).DistinctBy(c => c.Key).ToDictionary(c => c.Key);
 
         var naturalOrder = reader.NaturalOrder(categories.Values).Select(c => c.Key).ToList();
-        var sort = dto.Sort ?? new ChartSort();
         var orderedCategoryKeys = await CategorySorting.OrderedCategoryKeysAsync(
-            matching, reader, valueId, projected, naturalOrder, sort, columnsByRef);
+            matching, reader, valueId, projected, naturalOrder, dto.Sort ?? new ChartSort(), columnsByRef);
 
         // Individuals plot every row as its own point; the other charts one point per subgroup.
         var pointKeys = dto.Mode == ControlChartMode.Individuals
@@ -76,22 +78,15 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
         var limits = ControlChartLimits.Build(stats, basis, dto.Mode);
         limits.ApplyRules(dto.RunRules);
 
-        return new XBarRChartQueryResultDto
-        {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Categories = pointKeys.Select(key => reader.Label(categories[key])).ToList(),
-            CategoryDetails = pointKeys.Select(key => reader.Detail(categories[key])).ToList(),
-            Subgroups = limits.Subgroups,
-            XBarCenterLine = limits.XBarBar,
-            RCenterLine = limits.DispersionBar,
-            Mode = dto.Mode,
-            BaselineCount = baseline,
-            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount,
-            Truncated = truncated,
-            ScannedRowCount = scannedCount
-        };
+        result.Categories = pointKeys.Select(key => reader.Label(categories[key])).ToList();
+        result.CategoryDetails = pointKeys.Select(key => reader.Detail(categories[key])).ToList();
+        result.Subgroups = limits.Subgroups;
+        result.XBarCenterLine = limits.XBarBar;
+        result.RCenterLine = limits.DispersionBar;
+        result.Mode = dto.Mode;
+        result.BaselineCount = baseline;
+        result.Truncated = truncated;
+        result.ScannedRowCount = scannedCount;
+        return true;
     }
 }

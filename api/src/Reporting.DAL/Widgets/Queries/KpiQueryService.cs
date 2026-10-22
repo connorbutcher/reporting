@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
 
@@ -23,14 +22,11 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
         var dataset = resolved.Physical;
 
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == dataset.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, operatorCatalogue: operatorCatalogue);
+        var filtered = await WidgetRowFilter.FilterAsync(db, resolved, columnsByRef, dto.Filter);
+        var matching = filtered.Matching;
 
         var result = new KpiQueryResultDto();
-        var (totalRowCount, filteredRowCount) = await RowCounts.CountRowsAsync(all, matching);
-        result.TotalRowCount = totalRowCount;
+        result.TotalRowCount = filtered.TotalRowCount;
 
         // Captured once so EF translates it as a constant, and every window below agrees on "now".
         var today = DateTime.UtcNow.Date;
@@ -39,7 +35,7 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
         if (dto.GroupByColumnId is { } groupRef && columnsByRef.TryGetValue(groupRef, out var groupColumn))
         {
             await ApplyGroupsAsync(result, dto, matching, columnsByRef, groupColumn);
-            result.MatchedRowCount = filteredRowCount;
+            result.MatchedRowCount = filtered.MatchedRowCount;
             return result;
         }
 
@@ -54,7 +50,7 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
             var current = await ComputeValueAsync(dto, matching, columnsByRef);
             result.Value = current.Value;
             result.ComparisonValue = dto.ComparisonMode == KpiComparisonMode.FixedTarget ? dto.TargetValue : null;
-            result.MatchedRowCount = filteredRowCount;
+            result.MatchedRowCount = filtered.MatchedRowCount;
             result.Truncated = current.Truncated;
         }
 
