@@ -4,22 +4,16 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;
 
-/// <summary>
-/// All querying and persistence for the folder tree. Pure data access: it makes no authorization
-/// decisions — the controller filters listings to what the caller may see (via the
-/// <see cref="Permissions.ResourceAuthorizer"/>) and gates mutations with an <c>[AuthorizeFolder]</c>
-/// attribute or an imperative check. Read methods return every matching folder, shaped as a DTO.
-/// </summary>
+/// <summary>Querying and persistence for the folder tree. Makes no authorization decisions: the controller does.</summary>
 public class FolderRepository(ReportingDbContext db)
 {
-    /// <summary>Every folder, shaped as a DTO — unfiltered. The caller keeps only what the user may see.</summary>
     public async Task<List<FolderDto>> GetAllAsync()
     {
         var folders = await db.Folders.ToListAsync();
         return folders.Select(f => f.ToDto()).ToList();
     }
 
-    /// <summary>Direct children of <paramref name="parentId"/> (root if null), each flagged with whether it has children of its own — enough for the tree to draw an expand arrow. Unfiltered.</summary>
+    /// <summary>Root if <paramref name="parentId"/> is null. Each is flagged with whether it has children.</summary>
     public async Task<List<FolderDto>> GetChildrenAsync(int? parentId)
     {
         if (parentId is { } pid && !await db.Folders.AnyAsync(f => f.Id == pid))
@@ -43,10 +37,8 @@ public class FolderRepository(ReportingDbContext db)
     }
 
     /// <summary>
-    /// The chain of ancestors from the root down to <paramref name="id"/>, for building a breadcrumb
-    /// without the whole tree. Null if <paramref name="id"/> doesn't exist. The ancestors above the
-    /// target are surfaced as name-only path segments even where the caller can't open them; the
-    /// caller authorizes visibility of the target itself.
+    /// Root down to <paramref name="id"/>, or null if it doesn't exist. Ancestors appear as name-only
+    /// segments even where the caller can't open them.
     /// </summary>
     public async Task<List<FolderDto>?> GetPathAsync(int id)
     {
@@ -68,20 +60,15 @@ public class FolderRepository(ReportingDbContext db)
         return path;
     }
 
-    /// <summary>The current parent of a folder (null if it sits at the root), for deciding whether an update is a move. Assumes the folder exists.</summary>
+    /// <summary>Null at the root. Assumes the folder exists.</summary>
     public async Task<int?> GetParentFolderIdAsync(int id)
     {
         return await db.Folders.Where(f => f.Id == id).Select(f => f.ParentFolderId).FirstOrDefaultAsync();
     }
 
     /// <summary>
-    /// Whether <paramref name="name"/> is free among <paramref name="parentId"/>'s direct child folders
-    /// (root siblings when null), ignoring <paramref name="excludeId"/> (the folder being renamed, if
-    /// any). Checked against every child folder regardless of what the caller can see — a subfolder's
-    /// own ACL can hide it from someone who still has Editor on the parent, so listing only the visible
-    /// children (as the tree/picker UI does) isn't a reliable way to judge uniqueness. The caller
-    /// authorizes the action first (Editor on the container to create, Manager on the folder itself to
-    /// rename it), and this only answers yes/no, so it can't be used to enumerate hidden sibling names.
+    /// Checked against every sibling, visible or not, since a subfolder's own ACL can hide it from a
+    /// parent's editor. Only answers yes/no, so it can't enumerate hidden names.
     /// </summary>
     public async Task<bool> NameAvailableAsync(string? name, int? parentId, int? excludeId = null)
     {
@@ -94,10 +81,7 @@ public class FolderRepository(ReportingDbContext db)
         return !await db.Folders.AnyAsync(f => f.ParentFolderId == parentId && f.Name == trimmed && f.Id != excludeId);
     }
 
-    /// <summary>
-    /// Creates a subfolder. The caller authorizes the create (Editor on the container) first; this
-    /// throws <see cref="DataValidationException"/> only if the parent folder doesn't exist.
-    /// </summary>
+    /// <summary>Throws <see cref="DataValidationException"/> if the parent doesn't exist.</summary>
     public async Task<FolderDto> CreateAsync(string name, int? parentId)
     {
         Folder? parent = null;
@@ -123,10 +107,8 @@ public class FolderRepository(ReportingDbContext db)
     }
 
     /// <summary>
-    /// Renames/moves a folder. The caller authorizes it (Manager on the folder, Editor on the
-    /// destination when moved) first. Null if <paramref name="id"/> doesn't exist; throws
-    /// <see cref="DataValidationException"/> if the new parent doesn't exist or would move the folder
-    /// into its own subtree.
+    /// Null if <paramref name="id"/> doesn't exist. Throws <see cref="DataValidationException"/> if the new
+    /// parent doesn't exist or is inside the folder's own subtree.
     /// </summary>
     public async Task<FolderDto?> UpdateAsync(int id, string name, int? parentId)
     {
@@ -142,9 +124,7 @@ public class FolderRepository(ReportingDbContext db)
             parent = await db.Folders.FirstOrDefaultAsync(f => f.Id == pid)
                 ?? throw new DataValidationException("Parent folder does not exist.");
 
-            // Walking the new parent's own ancestor chain catches not just a direct
-            // self-parent but moving a folder into any of its own descendants, which
-            // would otherwise splice a cycle into the tree.
+            // Walking the new parent's ancestors catches a move into any descendant, not just itself.
             var cursor = (Folder?)parent;
             var visited = new HashSet<int>();
             while (cursor is not null)

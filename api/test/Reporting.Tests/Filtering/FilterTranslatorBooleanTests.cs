@@ -1,6 +1,4 @@
 using Reporting.Abstractions;
-using Reporting.DAL.Filtering;
-using Reporting.Database;
 using static Reporting.Tests.FilterTranslatorFixture;
 
 namespace Reporting.Tests;

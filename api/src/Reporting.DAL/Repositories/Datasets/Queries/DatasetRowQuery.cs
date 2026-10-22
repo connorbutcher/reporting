@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.Database;
 using Reporting.DAL.Filtering;
-using Reporting.DAL.Formulas;
-using Reporting.DAL.Formulas.References;
 
 namespace Reporting.DAL.Repositories;
 

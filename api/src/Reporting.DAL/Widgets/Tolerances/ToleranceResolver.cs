@@ -4,17 +4,10 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>
-/// Resolves tolerance pointers (spec row + min/max/concession column ids) against
-/// the typed <see cref="DatasetCell.NumberValue"/> already stored for those cells —
-/// no re-parsing, and no need to load the whole limits dataset the pointer targets.
-/// </summary>
+/// <summary>Resolves tolerance pointers against the typed number already stored in each limit cell.</summary>
 public class ToleranceResolver(ReportingDbContext db)
 {
-    /// <summary>
-    /// Resolves many pointers in one query, keyed by whatever the caller wants to
-    /// address them by (a table's column id, or a chart band's client-generated id).
-    /// </summary>
+    /// <summary>Many pointers in one query, keyed however the caller addresses them.</summary>
     public async Task<Dictionary<TKey, ToleranceBounds?>> ResolveAsync<TKey>(
         IReadOnlyList<(TKey Key, int SourceDatasetId, Guid SourceRowId, Guid MinColumnId, Guid MaxColumnId,
             Guid? ConcessionLowerColumnId, Guid? ConcessionUpperColumnId)> pointers)
@@ -62,10 +55,8 @@ public class ToleranceResolver(ReportingDbContext db)
     }
 
     /// <summary>
-    /// Resolves limits that are chosen per data row: for each spec, every row of its limits dataset
-    /// with its bounds, indexed by the value in the spec's match column. Looked up per data row with
-    /// <see cref="MatchedLimits.For"/>. A limits dataset is a spec table (rows of limits), so it is
-    /// read whole — just the match, min, max and concession columns — rather than queried per row.
+    /// Limits chosen per data row: each spec's limits dataset is read whole (just the needed columns) and
+    /// indexed by its match column, then looked up with <see cref="MatchedLimits.For"/>.
     /// </summary>
     public async Task<Dictionary<TKey, MatchedLimits>> ResolveMatchedAsync<TKey>(
         IReadOnlyList<(TKey Key, int SourceDatasetId, Guid MatchColumnId, Guid MinColumnId, Guid MaxColumnId,

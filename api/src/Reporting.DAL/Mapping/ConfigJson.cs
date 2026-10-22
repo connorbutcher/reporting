@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Reporting.Abstractions;
-using Reporting.Database;
 
 namespace Reporting.DAL;
 

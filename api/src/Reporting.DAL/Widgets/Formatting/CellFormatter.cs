@@ -4,11 +4,7 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>
-/// Turns a cell's already-typed value into the same display string the client used
-/// to build from a raw string plus the column's stored formatting configuration —
-/// ported field-for-field from the table widget's old client-side `format()`.
-/// </summary>
+/// <summary>A cell's typed value as a display string, per its column's formatting configuration.</summary>
 public static class CellFormatter
 {
     private const string DefaultDateFormat = "dd/MM/yyyy";
@@ -27,20 +23,13 @@ public static class CellFormatter
         };
     }
 
-    /// <summary>
-    /// Formats a raw numeric value with a column's numeric configuration — for values that never
-    /// existed as a cell, such as a pivot's aggregated measures. Null config uses the numeric defaults.
-    /// </summary>
+    /// <summary>For values that never existed as a cell, such as a pivot's aggregates. Null config uses the defaults.</summary>
     public static string Number(double value, NumericColumnConfig? config)
     {
         return FormatNumber(value, config);
     }
 
-    /// <summary>
-    /// Formats a raw date value with a column's date configuration — for values that never existed
-    /// as a cell, such as a chart's grouping key (its grouping string is the cell's raw input text,
-    /// not a display string — e.g. a date column's rows group by their ISO round-trip text).
-    /// </summary>
+    /// <summary>For values that never existed as a cell, such as a chart's grouping key.</summary>
     public static string Date(DateTime value, DateColumnConfig? config)
     {
         return FormatDate(value, config);

@@ -1,7 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Identity;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.Database;

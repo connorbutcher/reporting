@@ -6,30 +6,20 @@ using Reporting.Database;
 namespace Reporting.DAL.Permissions;
 
 /// <summary>
-/// The single place every report/folder/dataset access decision is made. Wraps the pure level
-/// resolution of <see cref="PermissionService"/> with the policy layer around it — the required-level
-/// comparison and the "hidden ⇒ 404, visible-but-insufficient ⇒ 403, immutable ⇒ 400" masking that
-/// keeps a private object's existence from leaking. Controllers and their authorization attributes
-/// call this instead of re-implementing the resolve→mask→compare dance; repositories no longer make
-/// authorization decisions at all. Because it rides <see cref="PermissionService"/>'s per-request
-/// snapshot, resolving many items (e.g. filtering a list) costs no extra round trips. Scoped.
+/// The single place every report, folder and dataset access decision is made: hidden is NotFound so a
+/// private object's existence never leaks, below the required level is Forbidden, and a mutation of a
+/// published version is ReadOnly. Rides <see cref="PermissionService"/>'s per-request snapshot, so
+/// filtering a list costs no extra round trips.
 /// </summary>
 public class ResourceAuthorizer(ReportingDbContext db, PermissionService permissions, DatasetRepository datasets)
 {
-    // --- reports ----------------------------------------------------------
-
-    /// <summary>
-    /// Authorizes an action on a report by id: a report the caller can't see (or that doesn't exist)
-    /// is <see cref="AccessOutcome.NotFound"/>, one below <paramref name="required"/> is
-    /// <see cref="AccessOutcome.Forbidden"/>, otherwise <see cref="AccessOutcome.Allowed"/>.
-    /// </summary>
     public async Task<ResourceAuthorization> AuthorizeReportAsync(int reportId, AccessLevel required)
     {
         var report = await db.Reports.Include(r => r.Revisions).FirstOrDefaultAsync(r => r.Id == reportId);
         return report is null ? ResourceAuthorization.NotFound : await AuthorizeReportAsync(report, required);
     }
 
-    /// <summary>Authorizes a report the caller has already loaded (its <see cref="Report.Revisions"/> must be included).</summary>
+    /// <summary>Its <see cref="Report.Revisions"/> must be loaded.</summary>
     public async Task<ResourceAuthorization> AuthorizeReportAsync(Report report, AccessLevel required)
     {
         var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
@@ -41,13 +31,11 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         return new ResourceAuthorization(level < required ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
-    /// <summary>The caller's effective level on a report, with no gating — for stamping onto a summary DTO after the action is authorized.</summary>
+    /// <summary>No gating: for stamping onto a summary after the action is authorized.</summary>
     public Task<AccessLevel> LevelForReportAsync(Report report)
     {
         return permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
     }
-
-    // --- folders ----------------------------------------------------------
 
     public async Task<ResourceAuthorization> AuthorizeFolderAsync(int folderId, AccessLevel required)
     {
@@ -65,11 +53,10 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         return new ResourceAuthorization(level < required ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
-    /// <summary>Creating an item inside a folder (or at the root when null) needs Editor on that container.</summary>
+    /// <summary>Creating inside a folder (or the root when null) needs Editor on it.</summary>
     public async Task<ResourceAuthorization> AuthorizeCreateInAsync(int? folderId)
     {
         var level = folderId is { } id ? await permissions.LevelForFolderAsync(id) : await permissions.LevelForRootAsync();
-        // A missing/invisible container is masked as 404; a visible one below Editor is 403.
         if (folderId is not null && level < AccessLevel.Viewer)
         {
             return ResourceAuthorization.NotFound;
@@ -78,13 +65,7 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         return new ResourceAuthorization(level < AccessLevel.Editor ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
-    // --- datasets ---------------------------------------------------------
-
-    /// <summary>
-    /// Authorizes an action on a dataset against the report that owns it: hidden/missing ⇒ NotFound,
-    /// below <paramref name="required"/> ⇒ Forbidden, and a <paramref name="mutation"/> against a
-    /// published version's immutable data ⇒ ReadOnly.
-    /// </summary>
+    /// <summary>Against the report that owns the dataset.</summary>
     public async Task<ResourceAuthorization> AuthorizeDatasetAsync(int datasetId, AccessLevel required, bool mutation)
     {
         var owner = await datasets.GetOwnerAsync(datasetId);
@@ -112,13 +93,7 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         return new ResourceAuthorization(AccessOutcome.Allowed, level);
     }
 
-    // --- list visibility --------------------------------------------------
-
-    /// <summary>
-    /// Keeps only the reports the caller can see, projecting each survivor with the caller's effective
-    /// level (and stopping once <paramref name="take"/> survivors are found, if given). The single home
-    /// for the "filter a report list to what's visible" loop the listings and personalization share.
-    /// </summary>
+    /// <summary>Visible reports projected with the caller's level, stopping after <paramref name="take"/> if given.</summary>
     public async Task<List<T>> FilterVisibleReportsAsync<T>(
         IEnumerable<Report> reports, Func<Report, AccessLevel, T> project, int? take = null)
     {
@@ -140,7 +115,7 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         return visible;
     }
 
-    /// <summary>Whether the caller can see a folder at all (≥ Viewer). The folder listings filter their DTOs through this.</summary>
+    /// <summary>At least Viewer.</summary>
     public async Task<bool> CanSeeFolderAsync(int folderId)
     {
         return await permissions.LevelForFolderAsync(folderId) >= AccessLevel.Viewer;

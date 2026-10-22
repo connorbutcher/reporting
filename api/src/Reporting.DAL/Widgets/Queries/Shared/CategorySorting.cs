@@ -4,26 +4,15 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>
-/// Re-ranks a chart's categories by a column other than the one it already pools for its own
-/// purpose — shared by bar, box-plot and Xbar-R, whose categories are otherwise ordered by the
-/// category column's own natural order.
-/// </summary>
+/// <summary>Re-ranks a chart's categories by a chosen column's aggregate instead of their natural order.</summary>
 public static class CategorySorting
 {
-    /// <summary>
-    /// Ceiling on rows scanned when a chart sorts its categories by a column other than the one
-    /// it already pools for its own purpose — a separate, lightweight (category, value) scan run
-    /// purely to rank the categories.
-    /// </summary>
+    /// <summary>Ceiling on the extra (category, value) scan run purely to rank categories.</summary>
     private const int MaxCategorySortScanRows = 200_000;
 
     /// <summary>
-    /// A column sort re-ranks <paramref name="naturalOrder"/> by a chosen column's aggregate —
-    /// shared by box-plot and Xbar-R. Sorting by the already-bound measure column reuses the
-    /// values <paramref name="projected"/> already pooled in memory rather than scanning the
-    /// dataset again; any other column pays for one extra, purpose-built scan. An unresolvable
-    /// column — a stale reference — falls back to the natural order, same as bar's own column sort.
+    /// Sorting by the bound measure reuses the values already in <paramref name="projected"/>; any other
+    /// column pays for one extra scan. A stale column falls back to the natural order.
     /// </summary>
     public static async Task<List<string>> OrderedCategoryKeysAsync(
         IQueryable<DatasetRow> matching,
@@ -55,14 +44,9 @@ public static class CategorySorting
     }
 
     /// <summary>
-    /// Per-category metric for a column sort that isn't already pooled in memory for some other
-    /// reason — a bar chart's SQL-only aggregation, or a box plot/Xbar-R sorting by a column other
-    /// than its bound measure. Scans (capped) the matching rows' category and sort-column values and
-    /// reduces each category's values by the chosen aggregate; categories are keyed by
-    /// <paramref name="reader"/>, exactly as the chart keys them. A category with no values for the
-    /// sort column is simply absent from the result, so the caller can sink it to the end. A text
-    /// sort column ranks alphabetically (Min/Max) or by row count — reduced in C# since there's no
-    /// SQL aggregate for "alphabetically first"; a date column reduces as its epoch-ms number.
+    /// Scans (capped) each matching row's category and sort-column value and reduces per category. A
+    /// category with no values is absent, so the caller sinks it to the end. Text reduces in memory (no
+    /// SQL aggregate for "alphabetically first"); a date reduces as its epoch-ms number.
     /// </summary>
     public static async Task<Dictionary<string, IComparable>> CategorySortMetricsAsync(
         IQueryable<DatasetRow> matching, ChartCategoryReader reader, DatasetColumn sortColumn, SortAggregate aggregate)
@@ -144,11 +128,7 @@ public static class CategorySorting
         }
     }
 
-    /// <summary>
-    /// Reduces one category's pooled text values to the single value a text column sort ranks it
-    /// by: alphabetically first/last, or how many rows had one. Sum/Average/Median/Spread have no
-    /// meaning for text and fall back to the alphabetically-first value.
-    /// </summary>
+    /// <summary>Alphabetically first/last, or the row count. Aggregates meaningless for text fall back to first.</summary>
     private static IComparable ReduceTextForSort(List<string> values, SortAggregate aggregate)
     {
         return aggregate switch
@@ -160,9 +140,8 @@ public static class CategorySorting
     }
 
     /// <summary>
-    /// Re-orders a category list by a per-category metric, keeping <paramref name="naturalOrder"/>
-    /// (the category column's own order) as the stable tiebreak and as the fallback position for
-    /// any category the metric has no value for — sunk to the end regardless of direction.
+    /// <paramref name="naturalOrder"/> breaks ties, and a category without a metric sinks to the end
+    /// regardless of direction.
     /// </summary>
     public static List<string> OrderByMetric(
         List<string> naturalOrder, IReadOnlyDictionary<string, IComparable> metrics, bool descending)

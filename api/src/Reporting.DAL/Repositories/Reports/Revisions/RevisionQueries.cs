@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Reporting.Abstractions;
 using Reporting.Database;
 
 namespace Reporting.DAL.Repositories;

@@ -1,5 +1,3 @@
-using Reporting.Abstractions;
-
 namespace Reporting.Database;
 
 /// <summary>

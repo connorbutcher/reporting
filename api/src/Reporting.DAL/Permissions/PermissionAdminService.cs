@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
-using Reporting.DAL.Repositories;
 using Reporting.Database;
 
 namespace Reporting.DAL.Permissions;

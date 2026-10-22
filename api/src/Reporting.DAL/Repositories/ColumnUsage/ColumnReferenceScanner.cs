@@ -4,12 +4,9 @@ using Reporting.Abstractions;
 namespace Reporting.DAL.Repositories;
 
 /// <summary>
-/// Finds every reference to a set of columns inside a widget's (or a report filter's) config JSON.
-/// Column ids are globally unique GUIDs, so rather than know each widget type's shape the scanner
-/// walks the whole document and matches any string equal to one of them — which keeps it correct as
-/// widget types and options are added. What a reference <em>means</em> is read from where in the
-/// document it sits (see <see cref="Describe"/>), and what it <em>needs</em> from the same place plus
-/// the widget type (see <see cref="NeedsNumber"/>).
+/// Finds references to a set of columns in a widget's or report filter's config JSON. Column ids are
+/// unique GUIDs, so it walks the whole document matching strings rather than knowing each widget's
+/// shape, and stays correct as widget options are added.
 /// </summary>
 public static class ColumnReferenceScanner
 {

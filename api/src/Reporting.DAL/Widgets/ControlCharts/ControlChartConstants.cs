@@ -1,12 +1,8 @@
 namespace Reporting.DAL.Widgets;
 
 /// <summary>
-/// Standard Shewhart Xbar-R control chart constants, by subgroup size. A2 scales the average range
-/// into the X-bar chart's control limits around the grand mean; D3/D4 scale it into the R chart's
-/// own lower/upper limits. Published tables (e.g. Montgomery's <em>Introduction to Statistical
-/// Quality Control</em>) cover n = 2..25 — the practical range for an Xbar-R chart, since larger
-/// subgroups move to an Xbar-S chart instead — so a subgroup outside that range clamps to the
-/// nearest end rather than extrapolating.
+/// Shewhart control chart constants by subgroup size, from the published n = 2..25 tables. A size
+/// outside that range clamps to the nearest end rather than extrapolating.
 /// </summary>
 internal static class ControlChartConstants
 {

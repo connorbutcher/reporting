@@ -32,9 +32,7 @@ public class ReportPersonalizationService(
     {
         var userId = (await currentUser.GetAsync()).Id;
 
-        // The recency order lives on the view rows; pull the ordered ids, then load the reports and
-        // re-order them in memory. Some may no longer be visible, so the visible-filter happens before
-        // the cap — we can't know the final count until then.
+        // Some may no longer be visible, so the visibility filter runs before the cap.
         var orderedIds = await db.ReportViews
             .Where(v => v.UserId == userId)
             .OrderByDescending(v => v.ViewedAt)
@@ -50,7 +48,7 @@ public class ReportPersonalizationService(
         return await ProjectVisibleAsync(ordered, take: take);
     }
 
-    /// <summary>Stars a report for the current user. Idempotent. The controller has already authorized visibility (≥ Viewer).</summary>
+    /// <summary>Idempotent.</summary>
     public async Task<bool> AddFavoriteAsync(int reportId)
     {
         var userId = (await currentUser.GetAsync()).Id;
@@ -63,7 +61,7 @@ public class ReportPersonalizationService(
         return true;
     }
 
-    /// <summary>Removes a user's star. Idempotent, and never blocked — a user can always un-star.</summary>
+    /// <summary>Idempotent, and never blocked.</summary>
     public async Task RemoveFavoriteAsync(int reportId)
     {
         var userId = (await currentUser.GetAsync()).Id;
@@ -75,10 +73,7 @@ public class ReportPersonalizationService(
         }
     }
 
-    /// <summary>
-    /// Records that the current user just opened a report, updating its timestamp if already present so
-    /// the table stays one row per report. The controller has already authorized visibility (≥ Viewer).
-    /// </summary>
+    /// <summary>Updates the timestamp if already present, so there's one row per report.</summary>
     public async Task<bool> RecordViewAsync(int reportId)
     {
         var userId = (await currentUser.GetAsync()).Id;
