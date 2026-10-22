@@ -45,7 +45,9 @@ export class DatasetToolbarComponent {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();
     const current = this.selected();
-    if (!current) return;
+    if (!current) {
+      return;
+    }
     if (!name || this.store.datasetNameTaken(name)) {
       input.value = current.name;
     }
@@ -59,7 +61,9 @@ export class DatasetToolbarComponent {
   /** Confirms before deleting the selected dataset, matching the app's other destructive actions. */
   protected deleteDataset(): void {
     const dataset = this.selected();
-    if (!dataset) return;
+    if (!dataset) {
+      return;
+    }
     this.dialog
       .open<boolean>(ConfirmDialogComponent, {
         data: {
@@ -70,7 +74,9 @@ export class DatasetToolbarComponent {
         } satisfies ConfirmDialogData,
       })
       .closed.subscribe((confirmed) => {
-        if (confirmed) this.store.deleteDataset();
+        if (confirmed) {
+          this.store.deleteDataset();
+        }
       });
   }
 }

@@ -52,7 +52,9 @@ export class DatasetColumnCommands {
 
   /** Refetches schema and rows when the dataset has formula columns, whose values follow other columns' changes. */
   private refreshComputed(): void {
-    if (!this.schema.columns().some((c) => c.formula != null)) return;
+    if (!this.schema.columns().some((c) => c.formula != null)) {
+      return;
+    }
     this.schema.reload();
     this.rows.reload();
   }
@@ -60,7 +62,9 @@ export class DatasetColumnCommands {
   addColumn(name: string, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
-    if (!id || !trimmed) return;
+    if (!id || !trimmed) {
+      return;
+    }
     // Column names are the key the whole app references, so they must stay unique.
     if (this.columnNameTaken(trimmed)) {
       this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
@@ -80,7 +84,9 @@ export class DatasetColumnCommands {
   renameColumn(column: DatasetColumn, name: string): void {
     const id = this.collection.selectedId();
     const trimmed = name.trim();
-    if (!id || !trimmed || trimmed === column.name) return;
+    if (!id || !trimmed || trimmed === column.name) {
+      return;
+    }
     if (this.columnNameTaken(trimmed, column.id)) {
       this.notify.error(`A column called "${trimmed}" already exists. Choose a different name.`);
       return;
@@ -99,7 +105,9 @@ export class DatasetColumnCommands {
 
   retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
     const id = this.collection.selectedId();
-    if (!id || type === column.type) return;
+    if (!id || type === column.type) {
+      return;
+    }
     this.autosave.track(this.api.updateColumn(id, column.id, column.name, type)).subscribe({
       next: (updated) => {
         this.schema.columns.update((columns) =>
@@ -117,7 +125,9 @@ export class DatasetColumnCommands {
 
   deleteColumn(column: DatasetColumn): void {
     const id = this.collection.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     // A dataset must keep at least one column, so refuse to delete the last one
     // rather than save it into a "no columns" error state.
     if (this.schema.columns().length <= 1) {
@@ -144,7 +154,9 @@ export class DatasetColumnCommands {
     const previous = this.schema.columns();
     const columns = [...previous];
     const target = index + offset;
-    if (!id || target < 0 || target >= columns.length) return;
+    if (!id || target < 0 || target >= columns.length) {
+      return;
+    }
 
     [columns[index], columns[target]] = [columns[target], columns[index]];
     this.schema.columns.set(columns);

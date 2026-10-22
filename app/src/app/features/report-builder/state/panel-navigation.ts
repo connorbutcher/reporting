@@ -38,13 +38,17 @@ export class PanelNavigation {
   }
 
   public back(): void {
-    if (!this.canGoBack()) return;
+    if (!this.canGoBack()) {
+      return;
+    }
     this.index.update((i) => i - 1);
     this.syncSelectionToView();
   }
 
   public forward(): void {
-    if (!this.canGoForward()) return;
+    if (!this.canGoForward()) {
+      return;
+    }
     this.index.update((i) => i + 1);
     this.syncSelectionToView();
   }
@@ -58,14 +62,18 @@ export class PanelNavigation {
 
     this.focusTabFor(widgetId);
     this.selection.select(widgetId);
-    if (!alreadyThere) this.navigate({ kind: 'widget', widgetId });
+    if (!alreadyThere) {
+      this.navigate({ kind: 'widget', widgetId });
+    }
   }
 
   /** For ctrl/shift-click on the canvas. */
   public toggleWidgetSelection(widgetId: string): void {
     this.selection.toggle(widgetId);
     const primary = this.selection.selectedWidgetIds().at(-1);
-    if (primary) this.navigate({ kind: 'widget', widgetId: primary });
+    if (primary) {
+      this.navigate({ kind: 'widget', widgetId: primary });
+    }
   }
 
   /**
@@ -83,7 +91,9 @@ export class PanelNavigation {
 
   private focusTabFor(widgetId: string): void {
     const tab = this.session.model()?.tabOf(widgetId);
-    if (tab && this.session.activeTabId() !== tab.id) this.session.goToTab(tab.id);
+    if (tab && this.session.activeTabId() !== tab.id) {
+      this.session.goToTab(tab.id);
+    }
   }
 
   private syncSelectionToView(): void {

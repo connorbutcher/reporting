@@ -127,7 +127,9 @@ export class KpiWidgetModel extends WidgetModel {
 
   /** Clears every column choice, the tolerance and the filter. */
   public setDataset(datasetId: number | null): void {
-    if (datasetId === this.datasetId()) return;
+    if (datasetId === this.datasetId()) {
+      return;
+    }
     this.datasetId.set(datasetId);
     this.valueColumnId.set(null);
     this.tolerance.set(null);
@@ -138,12 +140,16 @@ export class KpiWidgetModel extends WidgetModel {
 
   public setValueSource(source: KpiValueSource): void {
     this.valueSource.set(source);
-    if (source === 'aggregate' && this.aggregate() === 'count') this.valueColumnId.set(null);
+    if (source === 'aggregate' && this.aggregate() === 'count') {
+      this.valueColumnId.set(null);
+    }
   }
 
   public setAggregate(aggregate: Aggregate): void {
     this.aggregate.set(aggregate);
-    if (aggregate === 'count') this.valueColumnId.set(null);
+    if (aggregate === 'count') {
+      this.valueColumnId.set(null);
+    }
   }
 
   public setTolerance(tolerance: ToleranceConfig | null): void {
@@ -153,14 +159,20 @@ export class KpiWidgetModel extends WidgetModel {
   /** Drops fields the new mode doesn't use; the date column stays while the sparkline needs it. */
   public setComparisonMode(mode: KpiComparisonMode): void {
     this.comparisonMode.set(mode);
-    if (mode !== 'fixedTarget') this.targetValue.set(null);
-    if (mode !== 'previousPeriod' && !this.showSparkline()) this.dateColumnId.set(null);
+    if (mode !== 'fixedTarget') {
+      this.targetValue.set(null);
+    }
+    if (mode !== 'previousPeriod' && !this.showSparkline()) {
+      this.dateColumnId.set(null);
+    }
   }
 
   /** Keeps the date column while the comparison still uses it. */
   public setShowSparkline(show: boolean): void {
     this.showSparkline.set(show);
-    if (!show && this.comparisonMode() !== 'previousPeriod') this.dateColumnId.set(null);
+    if (!show && this.comparisonMode() !== 'previousPeriod') {
+      this.dateColumnId.set(null);
+    }
   }
 
   public override toDto(): KpiWidget {
@@ -227,7 +239,9 @@ export class KpiWidgetModel extends WidgetModel {
 
   private valueColumnIssue(): ValidationIssue | null {
     const needsColumn = this.valueSource() === 'aggregate' && this.aggregate() !== 'count';
-    if (!needsColumn || this.valueColumnId()) return null;
+    if (!needsColumn || this.valueColumnId()) {
+      return null;
+    }
     return this.issue(
       'noValueColumn',
       'warning',
@@ -237,8 +251,12 @@ export class KpiWidgetModel extends WidgetModel {
   }
 
   private toleranceSetupIssue(): ValidationIssue | null {
-    if (this.valueSource() !== 'toleranceOutOfLimits') return null;
-    if (this.valueColumnId() && this.tolerance()) return null;
+    if (this.valueSource() !== 'toleranceOutOfLimits') {
+      return null;
+    }
+    if (this.valueColumnId() && this.tolerance()) {
+      return null;
+    }
     return this.issue(
       'noTolerance',
       'warning',
@@ -248,7 +266,9 @@ export class KpiWidgetModel extends WidgetModel {
   }
 
   private targetIssue(): ValidationIssue | null {
-    if (this.comparisonMode() !== 'fixedTarget' || this.targetValue() !== null) return null;
+    if (this.comparisonMode() !== 'fixedTarget' || this.targetValue() !== null) {
+      return null;
+    }
     return this.issue(
       'noTarget',
       'warning',
@@ -259,7 +279,9 @@ export class KpiWidgetModel extends WidgetModel {
 
   private dateColumnIssue(): ValidationIssue | null {
     const needsDate = this.comparisonMode() === 'previousPeriod' || this.showSparkline();
-    if (!needsDate || this.dateColumnId()) return null;
+    if (!needsDate || this.dateColumnId()) {
+      return null;
+    }
     return this.issue(
       'noDateColumn',
       'warning',
@@ -271,7 +293,9 @@ export class KpiWidgetModel extends WidgetModel {
   /** Columns that were picked but have since been removed from the dataset. */
   private removedColumnIssues(): ValidationIssue[] {
     const schema = this.schema();
-    if (!schema) return [];
+    if (!schema) {
+      return [];
+    }
     const columnIds = new Set(schema.columns.map((c) => c.id));
     const name = this.label();
     const issues: ValidationIssue[] = [];
@@ -311,7 +335,9 @@ export class KpiWidgetModel extends WidgetModel {
 
   private removedToleranceColumnIssue(): ValidationIssue | null {
     const toleranceSchema = this.toleranceSchema();
-    if (!toleranceSchema || !this.tolerancePointsAtRemovedColumn(toleranceSchema)) return null;
+    if (!toleranceSchema || !this.tolerancePointsAtRemovedColumn(toleranceSchema)) {
+      return null;
+    }
     return this.issue(
       'toleranceMissing',
       'error',
@@ -323,7 +349,9 @@ export class KpiWidgetModel extends WidgetModel {
   /** Limit columns live in the limits dataset; the match column lives in this widget's own dataset. */
   private tolerancePointsAtRemovedColumn(toleranceSchema: DatasetSchema): boolean {
     const tolerance = this.tolerance();
-    if (!tolerance) return false;
+    if (!tolerance) {
+      return false;
+    }
     const columnIds = new Set(toleranceSchema.columns.map((c) => c.id));
     const pointers = [
       tolerance.minColumnId,

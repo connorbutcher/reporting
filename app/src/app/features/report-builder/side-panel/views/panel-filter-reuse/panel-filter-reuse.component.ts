@@ -28,7 +28,9 @@ export class PanelFilterReuseComponent {
   public readonly reusable = computed<ReusableFilter[]>(() => {
     const model = this.session.model();
     const datasetId = this.datasetId();
-    if (!model || datasetId === null) return [];
+    if (!model || datasetId === null) {
+      return [];
+    }
     return ReusableFilters.find(model, datasetId, this.target());
   });
 
@@ -48,7 +50,9 @@ export class PanelFilterReuseComponent {
   public promote(): void {
     const model = this.session.model();
     const datasetId = this.datasetId();
-    if (!model || datasetId === null) return;
+    if (!model || datasetId === null) {
+      return;
+    }
     model.ensureReportFilter(datasetId).group.replaceWith(this.target().toDto());
     this.target().clear();
   }

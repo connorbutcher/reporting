@@ -29,21 +29,29 @@ export function groupToWire(group: FilterGroup): WireGroup {
 
 /** Null when the value isn't a well-formed group. */
 export function wireToGroup(value: unknown, depth = 0): FilterGroup | null {
-  if (depth > MAX_DEPTH || !isRecord(value)) return null;
+  if (depth > MAX_DEPTH || !isRecord(value)) {
+    return null;
+  }
   const { j, c } = value;
-  if ((j !== 'a' && j !== 'o') || !Array.isArray(c)) return null;
+  if ((j !== 'a' && j !== 'o') || !Array.isArray(c)) {
+    return null;
+  }
 
   const children: FilterNode[] = [];
   for (const child of c) {
     const node = Array.isArray(child) ? wireToCondition(child) : wireToGroup(child, depth + 1);
-    if (!node) return null;
+    if (!node) {
+      return null;
+    }
     children.push(node);
   }
   return { kind: 'group', join: j === 'o' ? 'or' : 'and', children };
 }
 
 function nodeToWire(node: FilterNode): WireNode {
-  if (node.kind === 'group') return groupToWire(node);
+  if (node.kind === 'group') {
+    return groupToWire(node);
+  }
   return node.enabled === false
     ? [node.columnId, node.operator, node.values, 0]
     : [node.columnId, node.operator, node.values];
@@ -51,9 +59,15 @@ function nodeToWire(node: FilterNode): WireNode {
 
 function wireToCondition(value: unknown[]): FilterCondition | null {
   const [columnId, operator, values, disabled] = value;
-  if (typeof columnId !== 'string' || typeof operator !== 'string') return null;
-  if (!Array.isArray(values) || !values.every((v) => typeof v === 'string')) return null;
-  if (disabled !== undefined && disabled !== 0) return null;
+  if (typeof columnId !== 'string' || typeof operator !== 'string') {
+    return null;
+  }
+  if (!Array.isArray(values) || !values.every((v) => typeof v === 'string')) {
+    return null;
+  }
+  if (disabled !== undefined && disabled !== 0) {
+    return null;
+  }
 
   return {
     kind: 'condition',

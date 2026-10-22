@@ -21,8 +21,12 @@ export class DatasetIssuesComponent {
 
   protected readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
     const issues = this.issues();
-    if (issues.some((i) => i.severity === 'error')) return 'error';
-    if (issues.length) return 'warning';
+    if (issues.some((i) => i.severity === 'error')) {
+      return 'error';
+    }
+    if (issues.length) {
+      return 'warning';
+    }
     return 'ok';
   });
 
@@ -30,8 +34,12 @@ export class DatasetIssuesComponent {
     const issues = this.issues();
     const errors = issues.filter((i) => i.severity === 'error').length;
     const warnings = issues.length - errors;
-    if (errors) return `${errors} error${errors > 1 ? 's' : ''}`;
-    if (warnings) return `${warnings} warning${warnings > 1 ? 's' : ''}`;
+    if (errors) {
+      return `${errors} error${errors > 1 ? 's' : ''}`;
+    }
+    if (warnings) {
+      return `${warnings} warning${warnings > 1 ? 's' : ''}`;
+    }
     return 'No issues';
   });
 }

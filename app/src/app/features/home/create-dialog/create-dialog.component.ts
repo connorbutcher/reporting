@@ -61,7 +61,9 @@ export class CreateDialogComponent implements AfterViewInit {
     // repositories' NameAvailableAsync), so a sibling with a stricter ACL of its own can hide from it.
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
-      if (!name) return null;
+      if (!name) {
+        return null;
+      }
       const taken = this.siblingNames().some((existing) => existing === name);
       return taken
         ? {
@@ -148,12 +150,16 @@ export class CreateDialogComponent implements AfterViewInit {
 
   public selectKind(kind: CreateKind): void {
     this.kind.set(kind);
-    if (kind === 'folder') this.selectedSource.set(null);
+    if (kind === 'folder') {
+      this.selectedSource.set(null);
+    }
   }
 
   public create(): void {
     const name = this.form.name().value().trim();
-    if (!this.form().valid() || !name) return;
+    if (!this.form().valid() || !name) {
+      return;
+    }
     const sourceKey = this.selectedSource()?.key;
     const sourceReportId =
       this.kind() === 'report' && sourceKey !== undefined ? Number(sourceKey) : undefined;

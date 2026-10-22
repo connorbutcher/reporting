@@ -24,7 +24,9 @@ export class DatasetSourceCommands {
   /** Repoints the selected dataset at a different source; its config resets server-side. */
   setSource(sourceId: number): void {
     const id = this.collection.selectedId();
-    if (!id || !sourceId || sourceId === this.schema.sourceId()) return;
+    if (!id || !sourceId || sourceId === this.schema.sourceId()) {
+      return;
+    }
     this.autosave.track(this.api.setSource(id, sourceId)).subscribe({
       next: (schema) => {
         // The PUT returns the fresh schema, so seed the editor's local state from it instead of
@@ -46,7 +48,9 @@ export class DatasetSourceCommands {
   /** Replaces the selected dataset's source config, showing the edit immediately. */
   updateSourceConfig(config: DatasetSourceConfig): void {
     const id = this.collection.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     const previous = this.schema.sourceConfig();
     this.schema.sourceConfig.set(config);
     this.autosave.track(this.api.updateSourceConfig(id, config)).subscribe({

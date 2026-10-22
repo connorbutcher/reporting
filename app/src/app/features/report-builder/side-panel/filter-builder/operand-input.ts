@@ -25,14 +25,20 @@ export class OperandInput {
   }
 
   public static placeholder(descriptor: OperatorDescriptor | null, index: number): string {
-    if (descriptor?.operandKind === 'list') return 'value, value, …';
-    if (descriptor?.operandCount === 2) return index === 0 ? 'from' : 'to';
+    if (descriptor?.operandKind === 'list') {
+      return 'value, value, …';
+    }
+    if (descriptor?.operandCount === 2) {
+      return index === 0 ? 'from' : 'to';
+    }
     return 'value';
   }
 
   /** Dates round-trip as ISO strings, but a date input wants yyyy-MM-dd. */
   public static displayValue(descriptor: OperatorDescriptor | null, raw: string): string {
-    if (descriptor?.operandKind !== 'date' || !raw) return raw;
+    if (descriptor?.operandKind !== 'date' || !raw) {
+      return raw;
+    }
 
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString().slice(0, 10);

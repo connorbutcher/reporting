@@ -60,7 +60,9 @@ export class ReportViewerStore {
     const id = this.reportId();
     // hasValue() guards the read: value() throws while the resource is loading or errored.
     const report = this.reportResource.hasValue() ? this.reportResource.value() : null;
-    if (!id || !report) return undefined;
+    if (!id || !report) {
+      return undefined;
+    }
     const target = this.viewingVersion() ?? report.latestVersionNumber;
     return target != null ? `/api/reports/${id}/versions/${target}` : undefined;
   });
@@ -107,7 +109,9 @@ export class ReportViewerStore {
     effect(() => {
       const content = this.content();
       untracked(() => {
-        if (content) this.recordView(content.reportId);
+        if (content) {
+          this.recordView(content.reportId);
+        }
       });
     });
 
@@ -120,7 +124,9 @@ export class ReportViewerStore {
     effect(() => {
       const tabs = this.tabs();
       untracked(() => {
-        if (!tabs.length || this.activeTabId() !== null) return;
+        if (!tabs.length || this.activeTabId() !== null) {
+          return;
+        }
         const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
         const targetTab = targetWidgetId
           ? tabs.find((t) => t.widgets.some((w) => w.id === targetWidgetId))
@@ -151,7 +157,9 @@ export class ReportViewerStore {
    * to record a view should never disrupt viewing.
    */
   private recordView(reportId: number): void {
-    if (reportId === this.lastRecordedView) return;
+    if (reportId === this.lastRecordedView) {
+      return;
+    }
     this.lastRecordedView = reportId;
     this.reportApi.recordView(reportId).subscribe({ error: () => {} });
   }
@@ -162,7 +170,9 @@ export class ReportViewerStore {
 
   /** Switches which report tab the grid shows by navigating the `tab` query param. */
   selectTab(tabId: string): void {
-    if (this.activeTabId() === tabId) return;
+    if (this.activeTabId() === tabId) {
+      return;
+    }
     this.goToTab(tabId);
   }
 
@@ -181,7 +191,9 @@ export class ReportViewerStore {
   /** Checks out a draft — from a specific version when restoring, otherwise from latest — then edits it. */
   edit(fromVersion?: number): void {
     const id = this.reportId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     this.reportApi.checkout(id, fromVersion).subscribe({
       next: () => this.router.navigate(['/reports', id, 'edit']),
       // A 403 (not an editor) is surfaced by the global interceptor; other failures show this.

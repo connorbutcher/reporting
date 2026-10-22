@@ -27,7 +27,9 @@ export class BarChartResolver {
     const bindings = readChartBindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
-    if (!categoryColumn) return null;
+    if (!categoryColumn) {
+      return null;
+    }
 
     const categories = data?.categories ?? [];
     const series = data?.series ?? [];
@@ -63,7 +65,9 @@ export class BarChartResolver {
     primary: ChartSeriesBinding | undefined,
     columns: DatasetColumn[],
   ): DatasetColumn | null {
-    if (config.aggregate === 'count') return null;
+    if (config.aggregate === 'count') {
+      return null;
+    }
     const measureIds = [
       ...new Set(
         series.map((s) => s.valueColumnId ?? primary?.yColumnId ?? null).filter((id) => id != null),

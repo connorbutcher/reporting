@@ -45,7 +45,9 @@ export class ReportViewFilters {
     const overrides: ViewFilterOverrides = {};
     for (const entry of this.allEntries) {
       const override = entry.override();
-      if (override !== undefined) overrides[entry.key] = override;
+      if (override !== undefined) {
+        overrides[entry.key] = override;
+      }
     }
     return overrides;
   });
@@ -72,7 +74,9 @@ export class ReportViewFilters {
   }
 
   public reset(): void {
-    for (const entry of this.allEntries) entry.group.replaceWith(entry.published);
+    for (const entry of this.allEntries) {
+      entry.group.replaceWith(entry.published);
+    }
   }
 
   /** The override keys naming no filter in this version, which {@link apply} ignores. */
@@ -88,7 +92,9 @@ export class ReportViewFilters {
   public apply(overrides: ViewFilterOverrides): void {
     for (const entry of this.allEntries) {
       const target = Object.hasOwn(overrides, entry.key) ? overrides[entry.key] : entry.published;
-      if (filterKey(target) !== filterKey(entry.group.toDto())) entry.group.replaceWith(target);
+      if (filterKey(target) !== filterKey(entry.group.toDto())) {
+        entry.group.replaceWith(target);
+      }
     }
   }
 

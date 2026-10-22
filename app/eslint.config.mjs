@@ -15,11 +15,23 @@ import tseslint from 'typescript-eslint';
  *    rule can't be machine-checked (typescript-eslint has no accessibility-scoped
  *    `readonly` member type), so it is a hand-applied convention, not a lint error.
  *
+ * Code-standard rules apply to every `.ts` file, specs included: control statements
+ * always use braces and object shapes are type aliases, never interfaces.
+ *
  * Only `.ts` sources are linted; this config intentionally skips template linting.
  */
 export default tseslint.config(
   {
     ignores: ['dist/**', 'node_modules/**', '.angular/**'],
+  },
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { '@typescript-eslint': tseslint.plugin },
+    rules: {
+      curly: ['error', 'all'],
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+    },
   },
   {
     files: ['src/**/*.ts'],

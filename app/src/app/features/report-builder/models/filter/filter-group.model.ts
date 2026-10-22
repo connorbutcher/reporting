@@ -23,7 +23,9 @@ export class FilterGroupModel extends EditorNode {
   public readonly columns: Signal<DatasetColumn[]> = computed(() => {
     const all = this.context.schema()?.columns ?? [];
     const allowed = this.context.columns?.();
-    if (!allowed) return all;
+    if (!allowed) {
+      return all;
+    }
 
     // A condition may use a column since taken off the table; keep it listed so its select isn't blank.
     const referenced = new Set(this.children().map((c) => c.columnId()));
@@ -57,7 +59,9 @@ export class FilterGroupModel extends EditorNode {
   public addCondition(columnId?: string): FilterConditionModel | null {
     const offerable = this.columns();
     const column = columnId ? offerable.find((c) => c.id === columnId) : offerable[0];
-    if (!column) return null;
+    if (!column) {
+      return null;
+    }
 
     const operator = this.context.catalogue()?.[column.type]?.[0]?.value ?? 'equals';
     const model = new FilterConditionModel(

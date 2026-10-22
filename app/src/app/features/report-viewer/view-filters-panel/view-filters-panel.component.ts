@@ -47,8 +47,11 @@ export class ViewFiltersPanelComponent {
     const byTab = new Map<string, ViewWidgetFilters[]>();
     for (const item of this.filters().widgetItems) {
       const items = byTab.get(item.widget.tabName);
-      if (items) items.push(item);
-      else byTab.set(item.widget.tabName, [item]);
+      if (items) {
+        items.push(item);
+      } else {
+        byTab.set(item.widget.tabName, [item]);
+      }
     }
     return [...byTab].map(([tabName, items]) => ({ tabName, items }));
   });

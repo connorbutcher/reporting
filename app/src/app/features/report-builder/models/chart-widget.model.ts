@@ -129,14 +129,20 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public removeYAxis(id: string): void {
     let removed = false;
     this.yAxes.update((axes) => {
-      if (axes.length <= 1 || axes[0].id === id) return axes;
+      if (axes.length <= 1 || axes[0].id === id) {
+        return axes;
+      }
       removed = true;
       return axes.filter((a) => a.id !== id);
     });
-    if (!removed) return;
+    if (!removed) {
+      return;
+    }
 
     for (const binding of this.bindings()) {
-      if (binding.yAxisId() === id) binding.yAxisId.set(null);
+      if (binding.yAxisId() === id) {
+        binding.yAxisId.set(null);
+      }
     }
     this.toleranceBands.update((bands) =>
       bands.map((b) => (b.yAxisId === id ? { ...b, yAxisId: null } : b)),
@@ -152,7 +158,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   public setDataset(datasetId: number | null): void {
     const primary = this.primaryBinding();
-    if (datasetId === primary.datasetId()) return;
+    if (datasetId === primary.datasetId()) {
+      return;
+    }
     primary.setDataset(datasetId);
     // Tooltip columns are chart-wide but keyed to the old schema.
     this.tooltipColumns.set([]);
@@ -210,7 +218,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
   public addTooltipColumn(): void {
     const used = new Set(this.tooltipColumns().map((c) => c.columnId));
     const next = (this.schema()?.columns ?? []).find((c) => !used.has(c.id));
-    if (!next) return;
+    if (!next) {
+      return;
+    }
     this.tooltipColumns.update((cols) => [...cols, { columnId: next.id }]);
   }
 
@@ -229,7 +239,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   /** Drops the entry instead when the new column is already shown. */
   public replaceTooltipColumn(oldColumnId: string, newColumnId: string): void {
-    if (oldColumnId === newColumnId) return;
+    if (oldColumnId === newColumnId) {
+      return;
+    }
     this.tooltipColumns.update((cols) =>
       cols
         .filter((c) => c.columnId !== newColumnId)
@@ -336,7 +348,9 @@ export abstract class ChartWidgetModel extends WidgetModel {
       const bandSchema = band.sourceDatasetId
         ? (this.sources.schemas()[band.sourceDatasetId] ?? null)
         : null;
-      if (!bandSchema) continue;
+      if (!bandSchema) {
+        continue;
+      }
 
       const columnIds = new Set(bandSchema.columns.map((c) => c.id));
       const pointers = [

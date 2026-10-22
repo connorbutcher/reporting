@@ -23,13 +23,17 @@ export function collectViewFilterEntries(
   const ctx: EntryContext = {
     schemaFor: (id) => {
       let schema = schemaSignals.get(id);
-      if (!schema) schemaSignals.set(id, (schema = computed(() => schemas()[id] ?? null)));
+      if (!schema) {
+        schemaSignals.set(id, (schema = computed(() => schemas()[id] ?? null)));
+      }
       return schema;
     },
     catalogue,
     addTolerant: (id, columnIds) => {
       const set = tolerantByDataset.get(id) ?? new Set<string>();
-      for (const columnId of columnIds) set.add(columnId);
+      for (const columnId of columnIds) {
+        set.add(columnId);
+      }
       tolerantByDataset.set(id, set);
     },
   };

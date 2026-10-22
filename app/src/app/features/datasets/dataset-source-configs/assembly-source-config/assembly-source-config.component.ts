@@ -28,7 +28,9 @@ export class AssemblySourceConfigComponent {
   /** Commits the type id, treating a blank field as "not chosen". */
   protected setTypeId(value: string): void {
     const config = this.config();
-    if (!config) return;
+    if (!config) {
+      return;
+    }
     const parsed = value.trim() === '' ? null : Number(value);
     const typeId = parsed !== null && Number.isInteger(parsed) ? parsed : null;
     this.store.updateSourceConfig({ ...config, typeId });
@@ -39,15 +41,21 @@ export class AssemblySourceConfigComponent {
     const config = this.config();
     const raw = this.newPhaseId().trim();
     this.newPhaseId.set('');
-    if (!config || raw === '') return;
+    if (!config || raw === '') {
+      return;
+    }
     const id = Number(raw);
-    if (!Number.isInteger(id) || config.phaseIds.includes(id)) return;
+    if (!Number.isInteger(id) || config.phaseIds.includes(id)) {
+      return;
+    }
     this.store.updateSourceConfig({ ...config, phaseIds: [...config.phaseIds, id] });
   }
 
   protected removePhase(id: number): void {
     const config = this.config();
-    if (!config) return;
+    if (!config) {
+      return;
+    }
     this.store.updateSourceConfig({ ...config, phaseIds: config.phaseIds.filter((p) => p !== id) });
   }
 }

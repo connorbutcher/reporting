@@ -46,7 +46,9 @@ export class PanelChartToleranceBandComponent {
    */
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return PanelChartToleranceBandComponent.AXIS_OPTIONS;
+    if (!chart) {
+      return PanelChartToleranceBandComponent.AXIS_OPTIONS;
+    }
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
     const options = PanelChartToleranceBandComponent.AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
@@ -70,7 +72,9 @@ export class PanelChartToleranceBandComponent {
    */
   public readonly yAxisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return [];
+    if (!chart) {
+      return [];
+    }
     const axes = chart.yAxes();
     const numeric = axes.filter((a) => this.axisIsNumeric(a.id));
     return (numeric.length ? numeric : axes).map((axis) => ({
@@ -96,7 +100,9 @@ export class PanelChartToleranceBandComponent {
     effect(() => {
       const bandId = this.bandId();
       const band = this.band();
-      if (!band || bandId === this.lastBandId) return;
+      if (!band || bandId === this.lastBandId) {
+        return;
+      }
       this.lastBandId = bandId;
 
       untracked(() => {
@@ -111,7 +117,9 @@ export class PanelChartToleranceBandComponent {
       const bandId = this.bandId();
       const axis = this.axis();
       const pointer = this.picker.toPointer();
-      if (!bandId || !pointer) return;
+      if (!bandId || !pointer) {
+        return;
+      }
 
       untracked(() => this.chart()?.updateToleranceBand(bandId, { axis, ...pointer }));
     });
@@ -119,7 +127,9 @@ export class PanelChartToleranceBandComponent {
 
   public setYAxis(yAxisId: string | null): void {
     const bandId = this.bandId();
-    if (!bandId) return;
+    if (!bandId) {
+      return;
+    }
     // Store null for the primary axis so the band stays anchored to it even if the
     // axis list is later reordered.
     const primaryId = this.chart()?.yAxes()[0]?.id ?? null;
@@ -130,27 +140,37 @@ export class PanelChartToleranceBandComponent {
 
   public setFill(fill: boolean): void {
     const bandId = this.bandId();
-    if (bandId) this.chart()?.updateToleranceBand(bandId, { fill });
+    if (bandId) {
+      this.chart()?.updateToleranceBand(bandId, { fill });
+    }
   }
 
   public setOutlinePoints(outlinePoints: boolean): void {
     const bandId = this.bandId();
-    if (bandId) this.chart()?.updateToleranceBand(bandId, { outlinePoints });
+    if (bandId) {
+      this.chart()?.updateToleranceBand(bandId, { outlinePoints });
+    }
   }
 
   public remove(): void {
     const bandId = this.bandId();
-    if (bandId) this.chart()?.removeToleranceBand(bandId);
+    if (bandId) {
+      this.chart()?.removeToleranceBand(bandId);
+    }
     this.navigation.back();
   }
 
   /** Whether any series plotted on the given Y axis binds a numeric column, i.e. it's a value axis. */
   private axisIsNumeric(axisId: string): boolean {
     const chart = this.chart();
-    if (!chart) return false;
+    if (!chart) {
+      return false;
+    }
     const primaryId = chart.yAxes()[0]?.id;
     return chart.bindings().some((binding) => {
-      if ((binding.yAxisId() ?? primaryId) !== axisId) return false;
+      if ((binding.yAxisId() ?? primaryId) !== axisId) {
+        return false;
+      }
       const yId = binding.yColumnId();
       return !!yId && binding.numericColumns().some((c) => c.id === yId);
     });

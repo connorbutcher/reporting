@@ -40,7 +40,9 @@ export class PanelChartAxisListComponent {
   /** Its own label, else the bound column's name, else a prompt. */
   public xLabel(): string {
     const label = this.chart().xAxisLabel().trim();
-    if (label) return label;
+    if (label) {
+      return label;
+    }
     const columnId = this.chart().xColumnId();
     return (
       this.chart()

@@ -104,7 +104,9 @@ describe('view filter overrides codec', () => {
 
     it('is rejected when groups nest deeper than a reader could build', () => {
       let nested: unknown = { j: 'a', c: [] };
-      for (let i = 0; i < 20; i++) nested = { j: 'a', c: [nested] };
+      for (let i = 0; i < 20; i++) {
+        nested = { j: 'a', c: [nested] };
+      }
       expect(decodeViewFilterOverrides(encodeRaw({ w1: nested }))).toBeNull();
     });
 

@@ -30,7 +30,9 @@ export class ViewFilterSchemas {
   /** Fetches the schema of each dataset a version's filterable widgets use, once each. */
   public load(content: ReportRevisionContent): void {
     for (const datasetId of filterableDatasetIds(content)) {
-      if (this.requested.has(datasetId)) continue;
+      if (this.requested.has(datasetId)) {
+        continue;
+      }
       this.requested.add(datasetId);
       this.datasetApi.getSchema(datasetId).subscribe((schema) => {
         this.loaded.update((all) => ({ ...all, [datasetId]: schema }));
@@ -43,10 +45,14 @@ function filterableDatasetIds(content: ReportRevisionContent): Set<number> {
   const ids = new Set<number>();
   for (const widget of content.tabs.flatMap((tab) => tab.widgets)) {
     if (widget.type === 'dataTable') {
-      if (widget.config.datasetId) ids.add(widget.config.datasetId);
+      if (widget.config.datasetId) {
+        ids.add(widget.config.datasetId);
+      }
     } else if (isChartWidget(widget)) {
       for (const binding of readChartBindings(widget.config)) {
-        if (binding.datasetId) ids.add(binding.datasetId);
+        if (binding.datasetId) {
+          ids.add(binding.datasetId);
+        }
       }
     }
   }

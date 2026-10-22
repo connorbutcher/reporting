@@ -5,7 +5,9 @@ import { BoxSeries } from '../box-series';
 export class BoxOutlierOverlay {
   /** Raw points already show every value, outliers included. */
   public static build(chart: BoxChart, s: BoxSeries): ScatterSeriesOption | null {
-    if (chart.showPoints || s.result.outliers.length === 0) return null;
+    if (chart.showPoints || s.result.outliers.length === 0) {
+      return null;
+    }
     return {
       id: `outlier:${s.name}`,
       name: s.name,

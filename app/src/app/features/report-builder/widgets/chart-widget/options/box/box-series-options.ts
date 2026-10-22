@@ -30,7 +30,9 @@ export class BoxSeriesOptions {
     box: Box | null,
     outline: (min: number, max: number) => string | null,
   ) {
-    if (!box) return { value: [NaN, NaN, NaN, NaN, NaN] };
+    if (!box) {
+      return { value: [NaN, NaN, NaN, NaN, NaN] };
+    }
     const border = outline(box.min, box.max);
     return {
       value: [box.min, box.q1, box.median, box.q3, box.max],

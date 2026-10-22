@@ -68,7 +68,9 @@ export class SharedViewLink {
   /** Removes `?view=` once it no longer describes the filters. */
   public drop(): void {
     this.applied = null;
-    if (!this.id()) return;
+    if (!this.id()) {
+      return;
+    }
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { [VIEW_PARAM]: null },
@@ -81,7 +83,9 @@ export class SharedViewLink {
   /** Copies a link to this report and tab. The filters go to the server for a short id, so the link carries no filter data. */
   public async copy(encoded: string | null): Promise<void> {
     const reportId = this.store.reportId();
-    if (reportId === null) return;
+    if (reportId === null) {
+      return;
+    }
 
     let viewId: string | null = null;
     if (encoded) {

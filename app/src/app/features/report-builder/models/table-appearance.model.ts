@@ -42,10 +42,18 @@ export class TableAppearanceModel extends EditorNode {
   /** The notable settings, for the panel's summary line. */
   public summary(): string {
     const parts: string[] = [this.density()];
-    if (this.resizableColumns()) parts.push('resizable');
-    if (this.paginator()) parts.push('paginated');
-    if (this.showTotals()) parts.push('totals');
-    if (this.showSearch()) parts.push('search');
+    if (this.resizableColumns()) {
+      parts.push('resizable');
+    }
+    if (this.paginator()) {
+      parts.push('paginated');
+    }
+    if (this.showTotals()) {
+      parts.push('totals');
+    }
+    if (this.showSearch()) {
+      parts.push('search');
+    }
     return parts.join(' · ');
   }
 
@@ -76,7 +84,9 @@ export class TableAppearanceModel extends EditorNode {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    if (!this.paginator() || this.rowsPerPage() >= 1) return [];
+    if (!this.paginator() || this.rowsPerPage() >= 1) {
+      return [];
+    }
 
     return [
       {

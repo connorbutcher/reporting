@@ -38,7 +38,9 @@ export function buildTableEntry(
   ctx: EntryContext,
 ): WidgetFilterEntry | null {
   const { datasetId, filter } = widget.config;
-  if (!datasetId) return null;
+  if (!datasetId) {
+    return null;
+  }
 
   const schema = ctx.schemaFor(datasetId);
   const placed = new Set(widget.config.columns.map((c) => c.columnId));

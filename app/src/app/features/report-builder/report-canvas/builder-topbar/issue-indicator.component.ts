@@ -62,17 +62,27 @@ import { ReportSession } from '../../state/report-session';
 })
 export class IssueIndicatorComponent {
   public readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
-    if (this.session.errors().length) return 'error';
-    if (this.session.warnings().length) return 'warning';
+    if (this.session.errors().length) {
+      return 'error';
+    }
+    if (this.session.warnings().length) {
+      return 'warning';
+    }
     return 'ok';
   });
 
   public readonly label = computed(() => {
-    if (this.session.saveBlocked()) return 'Fix errors';
+    if (this.session.saveBlocked()) {
+      return 'Fix errors';
+    }
     const errors = this.session.errors().length;
     const warnings = this.session.warnings().length;
-    if (errors) return `${errors} error${errors > 1 ? 's' : ''}`;
-    if (warnings) return `${warnings} warning${warnings > 1 ? 's' : ''}`;
+    if (errors) {
+      return `${errors} error${errors > 1 ? 's' : ''}`;
+    }
+    if (warnings) {
+      return `${warnings} warning${warnings > 1 ? 's' : ''}`;
+    }
     return 'No issues';
   });
 

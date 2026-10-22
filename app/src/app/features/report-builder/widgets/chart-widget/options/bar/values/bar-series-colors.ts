@@ -27,7 +27,9 @@ export class BarSeriesColors {
   private static seriesPerBinding(series: readonly BarSeriesResult[]): Map<string, number> {
     const counts = new Map<string, number>();
     for (const s of series) {
-      if (s.bindingId) counts.set(s.bindingId, (counts.get(s.bindingId) ?? 0) + 1);
+      if (s.bindingId) {
+        counts.set(s.bindingId, (counts.get(s.bindingId) ?? 0) + 1);
+      }
     }
     return counts;
   }

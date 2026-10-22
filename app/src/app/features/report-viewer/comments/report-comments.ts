@@ -128,7 +128,9 @@ export class ReportComments {
     const reportId = this.reportId();
     const widgetId = this.widgetId();
     const trimmed = body.trim();
-    if (!reportId || !widgetId || !trimmed || this.posting()) return;
+    if (!reportId || !widgetId || !trimmed || this.posting()) {
+      return;
+    }
 
     const anchor = this.pendingAnchor();
     this.posting.set(true);
@@ -160,7 +162,9 @@ export class ReportComments {
   public remove(commentId: number): void {
     const reportId = this.reportId();
     const widgetId = this.widgetId();
-    if (!reportId || !widgetId) return;
+    if (!reportId || !widgetId) {
+      return;
+    }
 
     // Removed from the list right away — deleting your own comment never fails in a way worth waiting on.
     this.thread.update((current) => current.filter((c) => c.id !== commentId));

@@ -9,7 +9,9 @@ export class HistogramNormalCurve {
   /** A cumulative chart has no bell to fit. */
   public static series(chart: HistogramChart): LineSeriesOption[] {
     const { config } = chart;
-    if (!config.showNormalCurve || config.cumulative) return [];
+    if (!config.showNormalCurve || config.cumulative) {
+      return [];
+    }
     return chart.series.flatMap((s, i) => {
       const values = HistogramNormalCurve.values(s.result, chart.bins, config.normalize);
       return values ? [HistogramNormalCurve.line(s, i, values)] : [];
@@ -26,9 +28,13 @@ export class HistogramNormalCurve {
     normalize: HistogramNormalize,
   ): number[] | null {
     const { mean, stdDev, count } = series;
-    if (mean == null || stdDev == null || !(stdDev > 0) || bins.length === 0) return null;
+    if (mean == null || stdDev == null || !(stdDev > 0) || bins.length === 0) {
+      return null;
+    }
     const width = bins[0].upper - bins[0].lower;
-    if (!(width > 0)) return null;
+    if (!(width > 0)) {
+      return null;
+    }
     const scale =
       normalize === 'density' ? 1 : normalize === 'frequency' ? width : (count ?? 0) * width;
     return bins.map((bin) => {

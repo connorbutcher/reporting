@@ -35,14 +35,18 @@ export class ChartBindingModel extends EditorNode {
   /** The bar editor's measures: the explicit list, else a legacy single {@link yColumnId}. */
   public readonly barValueColumnIds = computed<string[]>(() => {
     const list = this.valueColumnIds();
-    if (list.length) return [...list];
+    if (list.length) {
+      return [...list];
+    }
     const y = this.yColumnId();
     return y ? [y] : [];
   });
   /** The histogram editor's columns: the explicit list, else a legacy single {@link xColumnId}. */
   public readonly histogramValueColumnIds = computed<string[]>(() => {
     const list = this.valueColumnIds();
-    if (list.length) return [...list];
+    if (list.length) {
+      return [...list];
+    }
     const x = this.xColumnId();
     return x ? [x] : [];
   });
@@ -145,7 +149,9 @@ export class ChartBindingModel extends EditorNode {
 
   /** Clears every column choice, since they belong to the old schema. */
   public setDataset(datasetId: number | null): void {
-    if (datasetId === this.datasetId()) return;
+    if (datasetId === this.datasetId()) {
+      return;
+    }
     this.datasetId.set(datasetId);
     this.xColumnId.set(null);
     this.yColumnId.set(null);
@@ -187,7 +193,9 @@ export class ChartBindingModel extends EditorNode {
   public override ownIssues(): ValidationIssue[] {
     const schema = this.schema();
     // A pending schema fetch must not look like a deleted column.
-    if (!schema) return [];
+    if (!schema) {
+      return [];
+    }
 
     const columnIds = new Set(schema.columns.map((c) => c.id));
     const sort = this.sort();
@@ -203,7 +211,9 @@ export class ChartBindingModel extends EditorNode {
       .filter(([, ids]) => ids.some((id) => !!id && !columnIds.has(id)))
       .map(([label]) => label);
 
-    if (brokenFields.length === 0) return [];
+    if (brokenFields.length === 0) {
+      return [];
+    }
 
     return [
       {

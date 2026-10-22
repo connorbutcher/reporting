@@ -93,14 +93,18 @@ export class WidgetHostComponent {
   /** The report-level filter for a table's or pivot's dataset. */
   public readonly reportFilter = computed(() => {
     const datasetId = this.filterableModel()?.datasetId();
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     return this.reportFilterFor(datasetId);
   });
 
   /** Each chart binding's report filter layered under its own finished conditions, keyed by binding id. */
   public readonly bindingFilters = computed(() => {
     const chart = this.chartModel();
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const filters: Record<string, FilterGroup | null> = {};
     for (const binding of chart.bindings()) {
@@ -145,7 +149,9 @@ export class WidgetHostComponent {
       return;
     }
     // Keep a multi-selection intact so the group can be dragged.
-    if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) return;
+    if (this.selection.hasMultiSelection() && this.selection.has(this.widget().id)) {
+      return;
+    }
     this.navigation.selectWidget(this.widget().id);
   }
 
@@ -180,12 +186,16 @@ export class WidgetHostComponent {
   /** Persists resized widths. Only updates existing columns, since layout reflows trigger this too. */
   public onColumnResize(widths: { columnId: string; width: number }[]): void {
     const table = this.tableModel();
-    if (!table?.appearance.resizableColumns()) return;
+    if (!table?.appearance.resizableColumns()) {
+      return;
+    }
     table.applyColumnWidths(widths);
   }
 
   private reportFilterFor(datasetId: number | null): FilterGroup | null {
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     return this.session.model()?.reportFilter(datasetId)?.group.toQueryDto() ?? null;
   }
 }

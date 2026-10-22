@@ -38,8 +38,12 @@ export const httpErrorNotificationInterceptor: HttpInterceptorFn = (req, next) =
   return next(req).pipe(
     tap({
       error: (error: unknown) => {
-        if (req.context.get(SKIP_HTTP_ERROR_NOTIFICATION)) return;
-        if (!(error instanceof HttpErrorResponse)) return;
+        if (req.context.get(SKIP_HTTP_ERROR_NOTIFICATION)) {
+          return;
+        }
+        if (!(error instanceof HttpErrorResponse)) {
+          return;
+        }
 
         if (error.status === 403) {
           notify.error("You don't have permission to access this resource.", 'Access denied');

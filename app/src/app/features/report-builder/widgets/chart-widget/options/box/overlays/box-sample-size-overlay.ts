@@ -5,13 +5,17 @@ import { BoxSeries } from '../box-series';
 export class BoxSampleSizeOverlay {
   /** An "n=" label above each box, with no marker or tooltip. */
   public static build(chart: BoxChart, s: BoxSeries): ScatterSeriesOption | null {
-    if (!chart.config.showSampleSize) return null;
+    if (!chart.config.showSampleSize) {
+      return null;
+    }
     const labels = s.result.boxes.flatMap((box, c) =>
       box
         ? [{ value: chart.horizontal ? [box.max, c] : [c, box.max], name: `n=${box.count}` }]
         : [],
     );
-    if (labels.length === 0) return null;
+    if (labels.length === 0) {
+      return null;
+    }
     return {
       id: `n:${s.name}`,
       name: s.name,

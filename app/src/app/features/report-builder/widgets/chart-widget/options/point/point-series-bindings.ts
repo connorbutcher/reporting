@@ -16,7 +16,9 @@ export class PointSeriesBindings {
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
     const splitCounts = new Map<string, number>();
     for (const s of series) {
-      if (s.bindingId) splitCounts.set(s.bindingId, (splitCounts.get(s.bindingId) ?? 0) + 1);
+      if (s.bindingId) {
+        splitCounts.set(s.bindingId, (splitCounts.get(s.bindingId) ?? 0) + 1);
+      }
     }
     return series.map((s) => {
       const binding = s.bindingId ? bindingsById.get(s.bindingId) : undefined;

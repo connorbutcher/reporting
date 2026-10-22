@@ -68,7 +68,9 @@ export class ReadonlyReportGridComponent {
    * object on every change-detection pass (a fresh one each time would re-set its input forever).
    */
   protected outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
-    if (!this.canFilter(widget)) return NO_OUTPUTS;
+    if (!this.canFilter(widget)) {
+      return NO_OUTPUTS;
+    }
     let outputs = this.widgetOutputs.get(widget.id);
     if (!outputs) {
       outputs = { filterRequest: () => this.filterWidget.emit(widget.id) };
@@ -133,7 +135,9 @@ export class ReadonlyReportGridComponent {
 
   protected widgetFilterFor(widget: Widget): FilterGroup | null {
     const override = this.widgetFilters()?.get(widget.id);
-    if (override) return override();
+    if (override) {
+      return override();
+    }
     return widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi'
       ? widget.config.filter
       : null;
@@ -151,10 +155,14 @@ export class ReadonlyReportGridComponent {
   private readonly chartBindingFilters = computed(() => {
     const map = new Map<string, Record<string, FilterGroup | null>>();
     for (const widget of this.tab().widgets) {
-      if (!isChartWidget(widget)) continue;
+      if (!isChartWidget(widget)) {
+        continue;
+      }
       const filters: Record<string, FilterGroup | null> = {};
       for (const binding of readChartBindings(widget.config)) {
-        if (!binding.datasetId) continue;
+        if (!binding.datasetId) {
+          continue;
+        }
         const report = this.reportFilterForDataset(binding.datasetId);
         const own = this.bindingOwnFilter(widget.id, binding.id, binding.filter);
         filters[binding.id] = combineFilters(report, own);
@@ -180,9 +188,13 @@ export class ReadonlyReportGridComponent {
   }
 
   private reportFilterForDataset(datasetId: number | null): FilterGroup | null {
-    if (!datasetId) return null;
+    if (!datasetId) {
+      return null;
+    }
     const override = this.pageFilters()?.get(String(datasetId));
-    if (override) return override();
+    if (override) {
+      return override();
+    }
     return this.content().filters?.find((f) => f.datasetId === datasetId)?.filter ?? null;
   }
 

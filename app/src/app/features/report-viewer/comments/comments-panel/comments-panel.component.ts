@@ -26,7 +26,9 @@ function escapeRegExp(s: string): string {
 
 /** Splits a comment body into plain-text and mention runs, for highlighting `@name` inline. */
 function commentParts(body: string, mentions: readonly WidgetCommentAuthor[]): CommentPart[] {
-  if (mentions.length === 0) return [{ text: body, isMention: false }];
+  if (mentions.length === 0) {
+    return [{ text: body, isMention: false }];
+  }
   const tags = new Set(mentions.map((m) => `@${m.displayName}`));
   const pattern = new RegExp(`(${[...tags].map(escapeRegExp).join('|')})`, 'g');
   return body
@@ -66,10 +68,14 @@ export class CommentsPanelComponent {
     this.widgetId = this.store.commentsWidgetId;
     this.widgetTitle = computed(() => {
       const id = this.widgetId();
-      if (!id) return null;
+      if (!id) {
+        return null;
+      }
       for (const tab of this.store.content()?.tabs ?? []) {
         const widget = tab.widgets.find((w) => w.id === id);
-        if (widget) return widget.config.title || widget.type;
+        if (widget) {
+          return widget.config.title || widget.type;
+        }
       }
       return null;
     });
@@ -100,7 +106,9 @@ export class CommentsPanelComponent {
     );
     this.mentionCandidates = computed(() => {
       const query = this.mentionQuery();
-      if (query == null) return [];
+      if (query == null) {
+        return [];
+      }
       const already = new Set(this.mentionedUsers().map((u) => u.id));
       return this.comments
         .directory()
@@ -132,7 +140,9 @@ export class CommentsPanelComponent {
     // change-detection pass: typing right after this click (as a reader finishing their sentence
     // normally would) must land after the mention it just inserted, not race it.
     const el = this.composerInput()?.nativeElement;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     el.value = next;
     el.focus();
     el.setSelectionRange(next.length, next.length);
@@ -143,7 +153,9 @@ export class CommentsPanelComponent {
   }
 
   public post(): void {
-    if (!this.canPost()) return;
+    if (!this.canPost()) {
+      return;
+    }
     this.comments.post(this.composerText(), this.mentionedUsers());
     this.composerText.set('');
     this.mentionQuery.set(null);
@@ -156,7 +168,9 @@ export class CommentsPanelComponent {
 
   public highlightAnchor(anchor: { x: number; y: number; yAxisIndex?: number }): void {
     const widgetId = this.widgetId();
-    if (!widgetId) return;
+    if (!widgetId) {
+      return;
+    }
     this.comments.highlight({ widgetId, ...anchor });
   }
 

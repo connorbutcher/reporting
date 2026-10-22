@@ -135,7 +135,9 @@ export class PanelChartSeriesComponent {
 
   /** Point charts and combo line series only. */
   public showMarker(binding: ChartBindingModel): boolean {
-    if (this.isHistogram()) return false;
+    if (this.isHistogram()) {
+      return false;
+    }
     return !this.isBarLike() || this.isLineSeries(binding);
   }
 
@@ -161,7 +163,9 @@ export class PanelChartSeriesComponent {
   public removeSeries(): void {
     const chart = this.chart();
     const id = this.bindingId();
-    if (chart && id) chart.removeBinding(id);
+    if (chart && id) {
+      chart.removeBinding(id);
+    }
     this.navigation.back();
   }
 }

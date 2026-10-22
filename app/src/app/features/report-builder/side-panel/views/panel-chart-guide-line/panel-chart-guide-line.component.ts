@@ -67,10 +67,13 @@ export class PanelChartGuideLineComponent {
   /** Only numeric axes can carry a line; falls back to both so the control still renders. */
   public readonly axisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return PanelChartGuideLineComponent.AXIS_OPTIONS;
+    if (!chart) {
+      return PanelChartGuideLineComponent.AXIS_OPTIONS;
+    }
     // A control chart's X axis is its subgroups, with no numeric scale.
-    if (chart instanceof XBarRChartWidgetModel)
+    if (chart instanceof XBarRChartWidgetModel) {
       return PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) => o.value === 'y');
+    }
     const numeric = new Set(chart.numericColumns().map((c) => c.id));
     const options = PanelChartGuideLineComponent.AXIS_OPTIONS.filter((o) =>
       numeric.has((o.value === 'x' ? chart.xColumnId() : chart.yColumnId()) ?? ''),
@@ -86,7 +89,9 @@ export class PanelChartGuideLineComponent {
   /** Numeric axes only, as for tolerance bands. */
   public readonly yAxisOptions = computed(() => {
     const chart = this.chart();
-    if (!chart) return [];
+    if (!chart) {
+      return [];
+    }
     const axes = chart.yAxes();
     const numeric = axes.filter((a) => this.axisIsNumeric(a.id));
     return (numeric.length ? numeric : axes).map((axis) => ({
@@ -105,12 +110,16 @@ export class PanelChartGuideLineComponent {
 
   public setAxis(axis: ChartAxis): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { axis });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { axis });
+    }
   }
 
   public setYAxis(yAxisId: string | null): void {
     const lineId = this.lineId();
-    if (!lineId) return;
+    if (!lineId) {
+      return;
+    }
     // Null for the primary axis keeps the line on it even if axes are reordered.
     const primaryId = this.chart()?.yAxes()[0]?.id ?? null;
     this.chart()?.updateGuideLine(lineId, { yAxisId: yAxisId === primaryId ? null : yAxisId });
@@ -118,65 +127,89 @@ export class PanelChartGuideLineComponent {
 
   public setValue(value: number | null): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { value: value ?? 0 });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { value: value ?? 0 });
+    }
   }
 
   /** Seeds `valueTo` with the current value, so a new range starts zero-width. */
   public setRange(isRange: boolean): void {
     const lineId = this.lineId();
     const line = this.line();
-    if (!lineId || !line) return;
+    if (!lineId || !line) {
+      return;
+    }
     this.chart()?.updateGuideLine(lineId, { valueTo: isRange ? line.value : null });
   }
 
   public setValueTo(valueTo: number | null): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { valueTo: valueTo ?? 0 });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { valueTo: valueTo ?? 0 });
+    }
   }
 
   public setFill(fill: boolean): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { fill });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { fill });
+    }
   }
 
   public setDirection(direction: LineDirection): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { direction });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { direction });
+    }
   }
 
   public setOutlinePoints(outlinePoints: boolean): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { outlinePoints });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { outlinePoints });
+    }
   }
 
   public setLabel(label: string): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { label });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { label });
+    }
   }
 
   public setColor(color: string | null): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { color });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { color });
+    }
   }
 
   public setDashStyle(dashStyle: LineDashStyle | null): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.updateGuideLine(lineId, { dashStyle });
+    if (lineId) {
+      this.chart()?.updateGuideLine(lineId, { dashStyle });
+    }
   }
 
   public remove(): void {
     const lineId = this.lineId();
-    if (lineId) this.chart()?.removeGuideLine(lineId);
+    if (lineId) {
+      this.chart()?.removeGuideLine(lineId);
+    }
     this.navigation.back();
   }
 
   /** Whether any series on the axis binds a numeric column. */
   private axisIsNumeric(axisId: string): boolean {
     const chart = this.chart();
-    if (!chart) return false;
+    if (!chart) {
+      return false;
+    }
     const primaryId = chart.yAxes()[0]?.id;
     return chart.bindings().some((binding) => {
-      if ((binding.yAxisId() ?? primaryId) !== axisId) return false;
+      if ((binding.yAxisId() ?? primaryId) !== axisId) {
+        return false;
+      }
       const yId = binding.yColumnId();
       return !!yId && binding.numericColumns().some((c) => c.id === yId);
     });

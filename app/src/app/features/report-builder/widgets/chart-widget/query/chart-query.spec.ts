@@ -80,7 +80,9 @@ const binsFrom = (min: number, max: number, count: number): HistogramBin[] => {
 
 const runHistogram = (api: DatasetApiService, config: ChartWidgetConfig) => {
   const request = ChartQuery.build(api, config, null);
-  if (!request) throw new Error('expected a query');
+  if (!request) {
+    throw new Error('expected a query');
+  }
   return firstValueFrom(request) as Promise<HistogramQueryResult>;
 };
 
@@ -100,7 +102,9 @@ const apiWith = (countsByDataset: Record<number, ChartRowCounts>): DatasetApiSer
 
 const run = (api: DatasetApiService, config: ChartWidgetConfig) => {
   const request = ChartQuery.build(api, config, null);
-  if (!request) throw new Error('expected a query');
+  if (!request) {
+    throw new Error('expected a query');
+  }
   return firstValueFrom(request) as Promise<BarChartQueryResult>;
 };
 

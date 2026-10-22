@@ -7,7 +7,9 @@ export class BoxCapability {
    * Null when σ is zero.
    */
   public static text(box: Box, spec: ResolvedToleranceBand | null): string | null {
-    if (!spec || spec.min === null || spec.max === null || box.stdDev <= 0) return null;
+    if (!spec || spec.min === null || spec.max === null || box.stdDev <= 0) {
+      return null;
+    }
     const pp = (spec.max - spec.min) / (6 * box.stdDev);
     const ppk = Math.min(spec.max - box.mean, box.mean - spec.min) / (3 * box.stdDev);
     return `Pp: ${pp.toFixed(2)} · Ppk: ${ppk.toFixed(2)}`;

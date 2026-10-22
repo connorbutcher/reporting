@@ -12,8 +12,11 @@ export function groupByParent<T>(
   for (const item of items) {
     const key = parentIdOf(item);
     const siblings = byParent.get(key);
-    if (siblings) siblings.push(item);
-    else byParent.set(key, [item]);
+    if (siblings) {
+      siblings.push(item);
+    } else {
+      byParent.set(key, [item]);
+    }
   }
   return byParent;
 }

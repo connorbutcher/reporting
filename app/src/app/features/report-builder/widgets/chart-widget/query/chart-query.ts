@@ -84,9 +84,13 @@ export class ChartQuery {
     const needsValue = config.aggregate !== 'count';
     const parts = bindings
       .map((binding): Observable<BarChartPart | null> | null => {
-        if (!binding.datasetId || !binding.xColumnId) return null;
+        if (!binding.datasetId || !binding.xColumnId) {
+          return null;
+        }
         const valueColumnIds = barValueColumnIds(binding);
-        if (needsValue && valueColumnIds.length === 0) return null;
+        if (needsValue && valueColumnIds.length === 0) {
+          return null;
+        }
 
         return api
           .queryBarChart(binding.datasetId, {
@@ -108,12 +112,16 @@ export class ChartQuery {
       })
       .filter((part): part is Observable<BarChartPart | null> => part !== null);
 
-    if (parts.length === 0) return null;
+    if (parts.length === 0) {
+      return null;
+    }
 
     return forkJoin(parts).pipe(
       map((results) => {
         const ok = results.filter((r): r is BarChartPart => r !== null);
-        if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+        if (ok.length === 0) {
+          throw new Error('Every chart dataset failed to load');
+        }
         return {
           ...BarMerge.merge(ok, config.sort),
           failedBindingCount: results.length - ok.length,
@@ -130,7 +138,9 @@ export class ChartQuery {
     tooltipColumns: ChartTooltipColumn[],
   ): Observable<BoxPlotQueryResult> | null {
     const primary = bindings[0];
-    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) {
+      return null;
+    }
 
     return api.queryBoxPlot(primary.datasetId, {
       filter: bindingFilters?.[primary.id] ?? null,
@@ -154,7 +164,9 @@ export class ChartQuery {
     bindingFilters: Record<string, FilterGroup | null> | null,
   ): Observable<XBarRChartQueryResult> | null {
     const primary = bindings[0];
-    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) return null;
+    if (!primary?.datasetId || !primary.xColumnId || !primary.yColumnId) {
+      return null;
+    }
 
     return api.queryXBarRChart(primary.datasetId, {
       filter: bindingFilters?.[primary.id] ?? null,
@@ -178,7 +190,9 @@ export class ChartQuery {
     tooltipColumns: ChartTooltipColumn[],
   ): Observable<HistogramQueryResult> | null {
     const bound = bindings.filter((b) => b.datasetId && b.xColumnId);
-    if (bound.length === 0) return null;
+    if (bound.length === 0) {
+      return null;
+    }
 
     // Only an auto-fit range or Auto bin count lets datasets pick different bins.
     const needsSharedEdges =
@@ -200,7 +214,9 @@ export class ChartQuery {
     return ChartQuery.queryHistograms(api, config, bound, bindingFilters, tooltipColumns, {}).pipe(
       switchMap((probe) => {
         const ok = probe.filter((r): r is HistogramPart => r !== null && r.result.bins.length > 0);
-        if (ok.length === 0) return of(ChartQuery.histogramResult(probe));
+        if (ok.length === 0) {
+          return of(ChartQuery.histogramResult(probe));
+        }
 
         return ChartQuery.queryHistograms(
           api,
@@ -223,7 +239,9 @@ export class ChartQuery {
     const rangeMax =
       config.rangeMax ??
       Math.max(...probed.map((r) => r.result.bins[r.result.bins.length - 1].upper));
-    if (config.binMode !== 'auto') return { rangeMin, rangeMax };
+    if (config.binMode !== 'auto') {
+      return { rangeMin, rangeMax };
+    }
     const binCount = Math.max(...probed.map((r) => r.result.bins.length));
     return { rangeMin, rangeMax, binMode: 'count', binCount };
   }
@@ -264,7 +282,9 @@ export class ChartQuery {
 
   private static histogramResult(results: (HistogramPart | null)[]): HistogramQueryResult {
     const ok = results.filter((r): r is HistogramPart => r !== null);
-    if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+    if (ok.length === 0) {
+      throw new Error('Every chart dataset failed to load');
+    }
     return { ...HistogramMerge.merge(ok), failedBindingCount: results.length - ok.length };
   }
 
@@ -282,7 +302,9 @@ export class ChartQuery {
     const wanted = new Set<string>();
     const parts = bindings
       .map((binding): Observable<ChartQueryPart | null> | null => {
-        if (!binding.datasetId || !binding.xColumnId || !binding.yColumnId) return null;
+        if (!binding.datasetId || !binding.xColumnId || !binding.yColumnId) {
+          return null;
+        }
 
         const request: ChartQueryRequest = {
           filter: bindingFilters?.[binding.id] ?? null,
@@ -307,14 +329,24 @@ export class ChartQuery {
       })
       .filter((part): part is Observable<ChartQueryPart | null> => part !== null);
 
-    if (parts.length === 0) return null;
+    if (parts.length === 0) {
+      return null;
+    }
 
-    if (cache) for (const key of [...cache.keys()]) if (!wanted.has(key)) cache.delete(key);
+    if (cache) {
+      for (const key of [...cache.keys()]) {
+        if (!wanted.has(key)) {
+          cache.delete(key);
+        }
+      }
+    }
 
     return forkJoin(parts).pipe(
       map((results) => {
         const ok = results.filter((r): r is ChartQueryPart => r !== null);
-        if (ok.length === 0) throw new Error('Every chart dataset failed to load');
+        if (ok.length === 0) {
+          throw new Error('Every chart dataset failed to load');
+        }
         return { ...PointMerge.merge(ok), failedBindingCount: results.length - ok.length };
       }),
     );
@@ -328,7 +360,9 @@ export class ChartQuery {
     cache: Map<string, ChartQueryResult> | undefined,
   ): Observable<ChartQueryResult> {
     const cached = cache?.get(key);
-    if (cached) return of(cached);
+    if (cached) {
+      return of(cached);
+    }
     return api.queryChart(datasetId, request).pipe(
       map((result) => {
         cache?.set(key, result);

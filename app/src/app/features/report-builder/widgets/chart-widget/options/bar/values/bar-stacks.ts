@@ -30,7 +30,9 @@ export class BarStacks {
     percent: boolean,
     stackTotals: Map<string, number[]>,
   ): (number | null)[] {
-    if (!percent) return s.values;
+    if (!percent) {
+      return s.values;
+    }
     const totals = stackTotals.get(BarStacks.of(s));
     return s.values.map((v, c) => {
       const total = totals?.[c] ?? 0;

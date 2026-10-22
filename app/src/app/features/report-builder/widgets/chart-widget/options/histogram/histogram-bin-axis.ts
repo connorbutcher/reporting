@@ -23,7 +23,9 @@ export class HistogramBinAxis {
     bins: HistogramBin[],
   ): ResolvedToleranceBand[] {
     const geometry = HistogramBinAxis.geometry(bins);
-    if (!geometry) return [];
+    if (!geometry) {
+      return [];
+    }
     const [firstLower, binWidth] = geometry;
     return bands
       .filter((band) => band.axis === 'x')
@@ -42,7 +44,9 @@ export class HistogramBinAxis {
     bins: HistogramBin[],
   ): ChartGuideLine[] {
     const geometry = HistogramBinAxis.geometry(bins);
-    if (!geometry) return [];
+    if (!geometry) {
+      return [];
+    }
     const [firstLower, binWidth] = geometry;
     return lines
       .filter((line) => line.axis === 'x')
@@ -58,7 +62,9 @@ export class HistogramBinAxis {
 
   /** The first bin's lower edge and the bin width, or null when there's no width to map onto. */
   private static geometry(bins: HistogramBin[]): [firstLower: number, binWidth: number] | null {
-    if (bins.length === 0) return null;
+    if (bins.length === 0) {
+      return null;
+    }
     const binWidth = bins[0].upper - bins[0].lower;
     return binWidth > 0 ? [bins[0].lower, binWidth] : null;
   }

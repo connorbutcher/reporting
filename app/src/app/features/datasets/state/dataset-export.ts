@@ -31,7 +31,9 @@ export class DatasetExport {
   exportCsv(): void {
     const id = this.collection.selectedId();
     const columns = this.schema.columns();
-    if (id == null || columns.length === 0 || this._exporting()) return;
+    if (id == null || columns.length === 0 || this._exporting()) {
+      return;
+    }
 
     this._exporting.set(true);
     this.api.getData(id).subscribe({

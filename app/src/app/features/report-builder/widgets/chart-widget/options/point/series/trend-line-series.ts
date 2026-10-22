@@ -19,7 +19,9 @@ export class TrendLineSeries {
     xIsDate = false,
   ): LineSeriesOption | null {
     const trend = series.trendLine;
-    if (!trend) return null;
+    if (!trend) {
+      return null;
+    }
     const stats = TrendLineSeries.statsText(trend, xIsDate);
     return {
       type: 'line',
@@ -58,7 +60,9 @@ export class TrendLineSeries {
       .filter((s) => s.trendLine)
       .map((s) => TrendLineSeries.statsText(s.trendLine!, xIsDate).length);
     const maxLen = Math.max(0, ...lengths);
-    if (maxLen === 0) return 0;
+    if (maxLen === 0) {
+      return 0;
+    }
     return Math.round(
       maxLen * TrendLineSeries.CHAR_WIDTH +
         TrendLineSeries.LABEL_DISTANCE +
@@ -76,7 +80,9 @@ export class TrendLineSeries {
   }
 
   private static significant(value: number): string {
-    if (value === 0 || !Number.isFinite(value)) return '0';
+    if (value === 0 || !Number.isFinite(value)) {
+      return '0';
+    }
     return Number(value.toPrecision(3)).toLocaleString('en-US', { maximumFractionDigits: 10 });
   }
 }

@@ -33,7 +33,9 @@ export class PointChartResolver {
     const primary = bindings.find((b) => b.datasetId) ?? null;
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
-    if (!x || !y) return null;
+    if (!x || !y) {
+      return null;
+    }
 
     const series = data?.series ?? [];
     const axes = readChartAxes(config);

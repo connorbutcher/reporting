@@ -14,7 +14,9 @@ export class OfferableOperators {
     hasBanding: boolean,
     current: FilterOperator,
   ): OperatorDescriptor[] {
-    if (hasBanding) return [...all];
+    if (hasBanding) {
+      return [...all];
+    }
     return all.filter((o) => !TOLERANCE_OPERATORS.has(o.value) || o.value === current);
   }
 }

@@ -65,14 +65,18 @@ export class TabModel extends EditorNode {
   }
 
   public setGridColumns(value: number): void {
-    if (!Number.isFinite(value)) return;
+    if (!Number.isFinite(value)) {
+      return;
+    }
     this.gridColumns.set(
       GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
     );
   }
 
   public setGridRows(value: number): void {
-    if (!Number.isFinite(value)) return;
+    if (!Number.isFinite(value)) {
+      return;
+    }
     this.gridRows.set(
       GridLayout.clamp(Math.round(value), TabModel.MIN_GRID_SIZE, TabModel.MAX_GRID_SIZE),
     );
@@ -108,7 +112,9 @@ export class TabModel extends EditorNode {
   /** Copies a widget and its configuration into the nearest free space. */
   public duplicateWidget(widgetId: string): WidgetModel | null {
     const source = this.widget(widgetId);
-    if (!source) return null;
+    if (!source) {
+      return null;
+    }
 
     const dto = source.toDto();
     // Avoid every widget, the original included, or the copy lands on top of it.
@@ -139,7 +145,9 @@ export class TabModel extends EditorNode {
     for (let y = 0; y + h <= this.gridRows(); y++) {
       for (let x = 0; x + w <= this.gridColumns(); x++) {
         const candidate = { x, y, w, h };
-        if (!taken.some((rect) => GridLayout.rectsOverlap(candidate, rect))) return { x, y };
+        if (!taken.some((rect) => GridLayout.rectsOverlap(candidate, rect))) {
+          return { x, y };
+        }
       }
     }
 
@@ -177,7 +185,9 @@ export class TabModel extends EditorNode {
 
     for (const widget of widgets) {
       const rect = widget.rect();
-      if (rect.x + rect.w <= columns && rect.y + rect.h <= rows) continue;
+      if (rect.x + rect.w <= columns && rect.y + rect.h <= rows) {
+        continue;
+      }
 
       issues.push({
         id: `${widget.id}:bounds`,
@@ -194,7 +204,9 @@ export class TabModel extends EditorNode {
       const overlapping = widgets
         .slice(0, index)
         .find((other) => GridLayout.rectsOverlap(widget.rect(), other.rect()));
-      if (!overlapping) return;
+      if (!overlapping) {
+        return;
+      }
 
       issues.push({
         id: `${widget.id}:overlap`,
@@ -278,6 +290,8 @@ export class TabModel extends EditorNode {
 
   /** Grows the grid so a widget at the fallback slot fits, rather than failing validation. */
   private growRowsFor(y: number, h: number): void {
-    if (y + h > this.gridRows()) this.setGridRows(y + h);
+    if (y + h > this.gridRows()) {
+      this.setGridRows(y + h);
+    }
   }
 }

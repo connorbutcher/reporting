@@ -79,7 +79,9 @@ export class ViewFilterSession {
   /** Makes a shared link's filters the reader's own. */
   public saveLinkAsMine(): void {
     const encoded = this.encodedFilters();
-    if (encoded === undefined) return;
+    if (encoded === undefined) {
+      return;
+    }
     if (this.saved.failed()) {
       this.notify.error(
         "Couldn't save these filters because your saved filters didn't load. Reload and try again.",
@@ -92,7 +94,9 @@ export class ViewFilterSession {
   /** Leaves a shared link's filters for the reader's own saved (or the published) ones. */
   public discardLink(): void {
     const filters = this.viewFilters();
-    if (!filters) return;
+    if (!filters) {
+      return;
+    }
     this.link.drop();
     filters.apply(decodeViewFilterOverrides(this.saved.encoded() ?? null) ?? {});
     this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
@@ -110,14 +114,18 @@ export class ViewFilterSession {
       const content = this.store.content();
       const ready = this.saved.settled() && this.link.settled();
       untracked(() => {
-        if (content) this.schemas.load(content);
+        if (content) {
+          this.schemas.load(content);
+        }
         if (!content) {
           this.builtFor = null;
           this.viewFilters.set(null);
           return;
         }
         // Already built for this version: a later `view` change is applyLinkChanges'.
-        if (content === this.builtFor) return;
+        if (content === this.builtFor) {
+          return;
+        }
         if (!ready) {
           this.viewFilters.set(null);
           return;
@@ -145,7 +153,9 @@ export class ViewFilterSession {
       const ready = this.saved.settled() && this.link.settled();
       untracked(() => {
         const filters = this.viewFilters();
-        if (!filters || !ready || this.link.isApplied()) return;
+        if (!filters || !ready || this.link.isApplied()) {
+          return;
+        }
         const start = this.startingState();
         filters.apply(start.overrides);
         this.settle(filters, start);
@@ -157,7 +167,9 @@ export class ViewFilterSession {
   private rebaselineWhenReady(): void {
     effect(() => {
       const filters = this.viewFilters();
-      if (!filters?.ready()) return;
+      if (!filters?.ready()) {
+        return;
+      }
       untracked(() => {
         this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
       });
@@ -171,7 +183,9 @@ export class ViewFilterSession {
       const missing = filters?.missingColumnCount() ?? 0;
       const fromLink = this.linkOrigin() !== null;
       untracked(() => {
-        if (!filters || missing === 0 || fromLink || this.missingReportedFor === filters) return;
+        if (!filters || missing === 0 || fromLink || this.missingReportedFor === filters) {
+          return;
+        }
         this.missingReportedFor = filters;
         this.notify.warn(
           missing === 1
@@ -191,7 +205,9 @@ export class ViewFilterSession {
       )
       .subscribe(() => {
         const encoded = this.encodedFilters();
-        if (encoded !== undefined && encoded !== this.editBaseline) this.commit(encoded);
+        if (encoded !== undefined && encoded !== this.editBaseline) {
+          this.commit(encoded);
+        }
       });
   }
 
@@ -200,7 +216,9 @@ export class ViewFilterSession {
     if (this.link.id()) {
       const encoded = this.link.filters();
       const overrides = encoded ? decodeViewFilterOverrides(encoded) : null;
-      if (overrides) return { overrides, fromLink: true, lookupFailed: false };
+      if (overrides) {
+        return { overrides, fromLink: true, lookupFailed: false };
+      }
 
       this.notify.warn(
         lookupFailed
@@ -225,8 +243,11 @@ export class ViewFilterSession {
     } else {
       this.linkOrigin.set(null);
       // A failed fetch keeps `?view=` so a reload retries; a missing snapshot drops it.
-      if (start.lookupFailed) this.link.markApplied(this.link.id());
-      else this.link.drop();
+      if (start.lookupFailed) {
+        this.link.markApplied(this.link.id());
+      } else {
+        this.link.drop();
+      }
     }
     this.saved.reportFailure();
   }

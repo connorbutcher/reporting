@@ -64,19 +64,25 @@ export class DatasetRowWindow {
       this.lastFirst = 0;
       this.lastCount = WINDOW;
       this.scrollTo.set(null);
-      if (id !== null) this.fetch(id, 0, WINDOW);
+      if (id !== null) {
+        this.fetch(id, 0, WINDOW);
+      }
     });
   }
 
   /** Loads `count` rows from `first`; driven by the grid's lazy-load event as it scrolls. */
   load(first: number, count: number): void {
     const id = this.collection.selectedId();
-    if (id === null) return;
+    if (id === null) {
+      return;
+    }
     const size = count || WINDOW;
     // The grid fires its first lazy-load (first = 0) the moment it mounts, which
     // repeats the window already fetched eagerly on selection. Ignore a request
     // identical to the one in flight (or just completed) so it isn't fetched twice.
-    if (first === this.lastFirst && size === this.lastCount) return;
+    if (first === this.lastFirst && size === this.lastCount) {
+      return;
+    }
     this.fetch(id, first, size);
   }
 
@@ -87,7 +93,9 @@ export class DatasetRowWindow {
     this.loading.set(true);
     this.api.getRowWindow(id, first, count).subscribe({
       next: ({ total, rows }) => {
-        if (seq !== this.requestSeq) return; // A newer request (or selection) superseded this one.
+        if (seq !== this.requestSeq) {
+          return;
+        } // A newer request (or selection) superseded this one.
         // Keep the other loaded windows when the total is unchanged; otherwise
         // start a fresh sparse array of the new length.
         const next =
@@ -105,7 +113,9 @@ export class DatasetRowWindow {
         }
       },
       error: (err) => {
-        if (seq !== this.requestSeq) return; // A newer request (or selection) superseded this one.
+        if (seq !== this.requestSeq) {
+          return;
+        } // A newer request (or selection) superseded this one.
         this.loading.set(false);
         // Forget the window so an identical follow-up load (e.g. the grid's
         // mount-time lazy-load) isn't deduped away and can retry the failed fetch.
@@ -122,7 +132,9 @@ export class DatasetRowWindow {
   /** Starts over from the first window — for after values changed on the server (a formula column recomputed). */
   reload(): void {
     const id = this.collection.selectedId();
-    if (id === null) return;
+    if (id === null) {
+      return;
+    }
     this._ready.set(false);
     this.fetch(id, 0, WINDOW);
   }
@@ -139,7 +151,9 @@ export class DatasetRowWindow {
    */
   afterAdd(): void {
     const id = this.collection.selectedId();
-    if (id === null) return;
+    if (id === null) {
+      return;
+    }
     const newTotal = this._total() + 1;
     this._ready.set(false);
     this.pendingScroll = newTotal - 1;
@@ -160,7 +174,9 @@ export class DatasetRowWindow {
   stripColumn(columnId: string): void {
     this._rows.update((rows) =>
       rows.map((r) => {
-        if (!r) return r;
+        if (!r) {
+          return r;
+        }
         const { [columnId]: _removed, ...rest } = r.values;
         return { ...r, values: rest };
       }),

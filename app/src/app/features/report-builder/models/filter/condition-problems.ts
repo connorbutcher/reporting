@@ -6,8 +6,12 @@ import { ConditionFacts } from './condition-facts';
 /** Finds what's wrong with a filter condition and words it for the row cue and the Issues panel. */
 export class ConditionProblems {
   public static find(facts: ConditionFacts): ConditionProblem | null {
-    if (facts.columnMissing) return { kind: 'missingColumn' };
-    if (facts.toleranceMissing) return { kind: 'missingTolerance', columnName: facts.columnName };
+    if (facts.columnMissing) {
+      return { kind: 'missingColumn' };
+    }
+    if (facts.toleranceMissing) {
+      return { kind: 'missingTolerance', columnName: facts.columnName };
+    }
     if (!facts.complete) {
       return {
         kind: 'missingValue',

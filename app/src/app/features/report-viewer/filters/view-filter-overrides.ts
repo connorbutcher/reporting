@@ -8,25 +8,35 @@ export type ViewFilterOverrides = Record<string, FilterGroup | null>;
 /** Compact URL-safe encoding, or null when there's nothing to encode. */
 export function encodeViewFilterOverrides(overrides: ViewFilterOverrides): string | null {
   const entries = Object.entries(overrides);
-  if (entries.length === 0) return null;
+  if (entries.length === 0) {
+    return null;
+  }
 
   const wire: Record<string, WireGroup | null> = {};
-  for (const [key, group] of entries) wire[key] = group && groupToWire(group);
+  for (const [key, group] of entries) {
+    wire[key] = group && groupToWire(group);
+  }
   return toBase64Url(JSON.stringify(wire));
 }
 
 /** No param is no overrides (`{}`); an unreadable or malformed one is null, so it's ignored whole rather than half-applied. */
 export function decodeViewFilterOverrides(raw: string | null): ViewFilterOverrides | null {
-  if (!raw) return {};
+  if (!raw) {
+    return {};
+  }
 
   try {
     const parsed: unknown = JSON.parse(fromBase64Url(raw));
-    if (!isRecord(parsed)) return null;
+    if (!isRecord(parsed)) {
+      return null;
+    }
 
     const overrides: ViewFilterOverrides = {};
     for (const [key, wire] of Object.entries(parsed)) {
       const group = wire === null ? null : wireToGroup(wire);
-      if (wire !== null && !group) return null;
+      if (wire !== null && !group) {
+        return null;
+      }
       overrides[key] = group;
     }
     return overrides;

@@ -43,7 +43,9 @@ export class BoxTooltip {
     const boxByKey = new Map<string, Box>();
     for (const { result, name } of chart.series) {
       result.boxes.forEach((box, i) => {
-        if (box) boxByKey.set(`${name}#${i}`, box);
+        if (box) {
+          boxByKey.set(`${name}#${i}`, box);
+        }
       });
     }
     return boxByKey;
@@ -74,7 +76,9 @@ export class BoxTooltip {
       ['Lower quartile', box.q1],
       ['Minimum', box.min],
     ];
-    if (ctx.showMean || ctx.showCapability) rows.push(['Mean', box.mean], ['Std dev', box.stdDev]);
+    if (ctx.showMean || ctx.showCapability) {
+      rows.push(['Mean', box.mean], ['Std dev', box.stdDev]);
+    }
     return rows;
   }
 
@@ -85,8 +89,12 @@ export class BoxTooltip {
     ctx: BoxTooltipContext,
   ): string {
     const shown = ChartFormat.numeric(ctx.horizontal ? value[0] : value[1], ctx.config);
-    if (seriesId.startsWith('mean:')) return `Mean: ${shown}`;
-    if (seriesId.startsWith('outlier:')) return `Outlier: ${shown}`;
+    if (seriesId.startsWith('mean:')) {
+      return `Mean: ${shown}`;
+    }
+    if (seriesId.startsWith('outlier:')) {
+      return `Outlier: ${shown}`;
+    }
     return shown;
   }
 }

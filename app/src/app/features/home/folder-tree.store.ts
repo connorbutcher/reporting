@@ -69,7 +69,9 @@ export class FolderTreeStore {
   public merge(key: string, children: Folder[]): void {
     this.knownFolders.update((m) => {
       const next = new Map(m);
-      for (const folder of children) next.set(String(folder.id), folder);
+      for (const folder of children) {
+        next.set(String(folder.id), folder);
+      }
       return next;
     });
     this.childrenOf.update((m) =>
@@ -82,9 +84,13 @@ export class FolderTreeStore {
 
   public onNodeExpand(event: TreeNodeExpandEvent): void {
     const key = event.node?.key;
-    if (!key) return;
+    if (!key) {
+      return;
+    }
     this.expandedKeys.update((s) => new Set(s).add(key));
-    if (this.childrenOf().has(key)) return;
+    if (this.childrenOf().has(key)) {
+      return;
+    }
     this.fetchChildren(key === ROOT_KEY ? null : Number(key), key);
   }
 
@@ -98,14 +104,18 @@ export class FolderTreeStore {
     for (const folder of path.slice(0, -1)) {
       const key = String(folder.id);
       this.expandedKeys.update((s) => new Set(s).add(key));
-      if (!this.childrenOf().has(key)) this.fetchChildren(folder.id, key);
+      if (!this.childrenOf().has(key)) {
+        this.fetchChildren(folder.id, key);
+      }
     }
   }
 
   /** Refreshes a folder's tree entry from the server — for a folder other than the one just loaded via `merge`. */
   public refreshNodeIfPresent(folderId: number | null): void {
     const key = folderId !== null ? String(folderId) : ROOT_KEY;
-    if (!this.childrenOf().has(key)) return;
+    if (!this.childrenOf().has(key)) {
+      return;
+    }
     this.folderApi.children(folderId).subscribe((children) => this.merge(key, children));
   }
 

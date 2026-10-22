@@ -9,9 +9,13 @@ export function chartBindingKey(widgetId: string, bindingId: string): string {
 }
 
 export function describeConditions(total: number, active: number): string {
-  if (total === 0) return 'No conditions';
+  if (total === 0) {
+    return 'No conditions';
+  }
   // Some switched off: say how many actually narrow the data.
-  if (active < total) return `${active} of ${total} active`;
+  if (active < total) {
+    return `${active} of ${total} active`;
+  }
   return `${total} condition${total > 1 ? 's' : ''}`;
 }
 

@@ -5,7 +5,9 @@ import { KpiQueryRequest } from '../../../../core/models/widget-query';
 export class KpiQuery {
   /** A dataset, plus a value column unless counting, plus a tolerance when counting out-of-limits rows. */
   public static isConfigured(config: KpiWidgetConfig): boolean {
-    if (!config.datasetId) return false;
+    if (!config.datasetId) {
+      return false;
+    }
     if (config.valueSource === 'aggregate') {
       return config.aggregate === 'count' || !!config.valueColumnId;
     }

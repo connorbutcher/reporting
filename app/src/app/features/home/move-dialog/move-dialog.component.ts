@@ -57,13 +57,17 @@ export class MoveDialogComponent {
   );
 
   private readonly excludedIds = computed(() => {
-    if (this.data.excludeSubtreeOf === undefined) return new Set<number>();
+    if (this.data.excludeSubtreeOf === undefined) {
+      return new Set<number>();
+    }
     return this.collectSubtreeIds(this.data.excludeSubtreeOf);
   });
 
   public onNodeSelect(event: TreeNodeSelectEvent): void {
     const key = event.node.key;
-    if (key && this.excludedIds().has(Number(key))) return;
+    if (key && this.excludedIds().has(Number(key))) {
+      return;
+    }
     this.selectedFolderId.set(key === ROOT_KEY || !key ? null : Number(key));
   }
 

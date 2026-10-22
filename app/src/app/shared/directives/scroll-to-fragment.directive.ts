@@ -23,7 +23,9 @@ export class ScrollToFragmentDirective {
 
   constructor() {
     effect(() => {
-      if (this.fragments.fragment() !== this.appScrollToFragment()) return;
+      if (this.fragments.fragment() !== this.appScrollToFragment()) {
+        return;
+      }
       this.element.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       this.highlighted.set(true);
       setTimeout(() => this.highlighted.set(false), 1600);

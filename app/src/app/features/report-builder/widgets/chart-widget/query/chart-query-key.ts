@@ -41,13 +41,17 @@ export class ChartQueryKey {
 
   /** Mean, n, capability and highlighting are render-only. */
   private static box(config: ChartWidgetConfig): object | null {
-    if (config.type !== 'boxPlot') return null;
+    if (config.type !== 'boxPlot') {
+      return null;
+    }
     return { w: config.whisker, f: config.whiskerFactor, s: config.sort, p: config.showPoints };
   }
 
   /** Every binning option changes the response. */
   private static histogram(config: ChartWidgetConfig): object | null {
-    if (config.type !== 'histogram') return null;
+    if (config.type !== 'histogram') {
+      return null;
+    }
     return {
       m: config.binMode,
       c: config.binCount,
@@ -60,12 +64,16 @@ export class ChartQueryKey {
   }
 
   private static line(config: ChartWidgetConfig): object | null {
-    if (config.type !== 'lineChart') return null;
+    if (config.type !== 'lineChart') {
+      return null;
+    }
     return { a: config.aggregate ?? null, g: config.xGrouping ?? null };
   }
 
   private static control(config: ChartWidgetConfig): object | null {
-    if (config.type !== 'xbarRChart') return null;
+    if (config.type !== 'xbarRChart') {
+      return null;
+    }
     return {
       s: config.sort,
       m: config.mode ?? 'xBarR',

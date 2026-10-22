@@ -23,7 +23,9 @@ export class UndoHistory {
   public capture(json: string): void {
     const entries = this.entries();
     const index = this.index();
-    if (index >= 0 && entries[index] === json) return;
+    if (index >= 0 && entries[index] === json) {
+      return;
+    }
 
     // A new edit after undoing discards the redo branch.
     const kept = entries.slice(0, index + 1);
@@ -33,13 +35,17 @@ export class UndoHistory {
   }
 
   public undo(): ReportRevisionContent | null {
-    if (!this.canUndo()) return null;
+    if (!this.canUndo()) {
+      return null;
+    }
     this.index.update((i) => i - 1);
     return this.current();
   }
 
   public redo(): ReportRevisionContent | null {
-    if (!this.canRedo()) return null;
+    if (!this.canRedo()) {
+      return null;
+    }
     this.index.update((i) => i + 1);
     return this.current();
   }

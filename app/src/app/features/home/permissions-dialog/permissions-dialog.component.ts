@@ -50,7 +50,9 @@ export class PermissionsDialogComponent {
 
   public addGrant(): void {
     const option = this.store.subjectOptions().find((o) => o.value === this.newSubject());
-    if (!option) return;
+    if (!option) {
+      return;
+    }
     this.store.addGrant(option, this.newLevel(), () => this.newSubject.set(null));
   }
 

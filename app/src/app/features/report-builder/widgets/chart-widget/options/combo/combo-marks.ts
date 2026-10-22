@@ -30,7 +30,9 @@ export class ComboMarks {
         ],
         chart.multiAxis ? { yAxisIndex: k } : {},
       );
-      if (reference) references.push(reference);
+      if (reference) {
+        references.push(reference);
+      }
     }
     return references;
   }
@@ -40,7 +42,9 @@ export class ComboMarks {
     chart: ComboChart,
     axisIndex: number,
   ): (value: number) => string | null {
-    if (!chart.axes[axisIndex]) return OutlineSeverity.forValue([]);
+    if (!chart.axes[axisIndex]) {
+      return OutlineSeverity.forValue([]);
+    }
     return OutlineSeverity.forValue([
       ...ToleranceOutline.zonesFor(ComboMarks.bandsOn(chart, axisIndex)),
       ...GuideLineOutline.zonesFor(ComboMarks.guideLinesOn(chart, axisIndex)),

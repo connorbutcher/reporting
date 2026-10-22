@@ -44,7 +44,9 @@ export class PanelChartSortComponent {
   public readonly showTopN = input(false);
 
   public readonly showGrouping = computed(() => {
-    if (this.grouping() === undefined) return false;
+    if (this.grouping() === undefined) {
+      return false;
+    }
     const id = this.categoryColumnId();
     return !!id && this.columns().find((c) => c.id === id)?.type === 'dateTime';
   });

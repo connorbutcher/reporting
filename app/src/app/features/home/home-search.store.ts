@@ -29,7 +29,9 @@ export class HomeSearchStore {
         distinctUntilChanged(),
         switchMap((query) => {
           const trimmed = query.trim();
-          if (!trimmed) return of(null);
+          if (!trimmed) {
+            return of(null);
+          }
           this.searching.set(true);
           // Caught here, inside the switchMap: an uncaught error would propagate to the outer
           // subscribe and tear down the whole pipeline, leaving every later keystroke dead.

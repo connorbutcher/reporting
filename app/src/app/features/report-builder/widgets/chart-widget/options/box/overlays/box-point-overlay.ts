@@ -5,7 +5,9 @@ import { BoxSeries } from '../box-series';
 export class BoxPointOverlay {
   /** Each box's raw values, jittered across its category. */
   public static build(chart: BoxChart, s: BoxSeries): ScatterSeriesOption | null {
-    if (!chart.showPoints) return null;
+    if (!chart.showPoints) {
+      return null;
+    }
     const points: [number, number][] = [];
     s.result.boxes.forEach((box, c) => {
       box?.points.forEach((v, k) => {
@@ -13,7 +15,9 @@ export class BoxPointOverlay {
         points.push(chart.horizontal ? [v, jx] : [jx, v]);
       });
     });
-    if (points.length === 0) return null;
+    if (points.length === 0) {
+      return null;
+    }
     return {
       id: `points:${s.name}`,
       name: s.name,

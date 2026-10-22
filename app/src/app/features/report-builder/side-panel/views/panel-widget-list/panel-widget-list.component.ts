@@ -39,7 +39,9 @@ export class PanelWidgetListComponent {
    * clicked option, and onChange covers keyboard selection.
    */
   public open(widgetId: string | null | undefined): void {
-    if (widgetId) this.navigation.selectWidget(widgetId);
+    if (widgetId) {
+      this.navigation.selectWidget(widgetId);
+    }
   }
 
   public navigate(view: PanelView): void {

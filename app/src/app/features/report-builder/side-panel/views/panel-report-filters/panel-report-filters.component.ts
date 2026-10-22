@@ -47,7 +47,9 @@ export class PanelReportFiltersComponent {
     effect(() => {
       const datasetId = this.activeDatasetId();
       const model = this.session.model();
-      if (!datasetId || !model) return;
+      if (!datasetId || !model) {
+        return;
+      }
       untracked(() => model.ensureReportFilter(datasetId));
     });
   }

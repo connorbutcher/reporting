@@ -25,20 +25,29 @@ export class BuilderShortcutsDirective {
   private readonly selection = inject(WidgetSelection);
 
   private static isTextEntry(target: EventTarget | null): boolean {
-    if (!(target instanceof HTMLElement)) return false;
-    if (target.isContentEditable) return true;
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+    if (target.isContentEditable) {
+      return true;
+    }
     return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
   }
 
   public onKeyDown(event: KeyboardEvent): void {
-    if (BuilderShortcutsDirective.isTextEntry(event.target)) return;
+    if (BuilderShortcutsDirective.isTextEntry(event.target)) {
+      return;
+    }
 
     const ctrl = event.ctrlKey || event.metaKey;
 
     if (ctrl && event.key.toLowerCase() === 'z') {
       event.preventDefault();
-      if (event.shiftKey) this.autosave.redo();
-      else this.autosave.undo();
+      if (event.shiftKey) {
+        this.autosave.redo();
+      } else {
+        this.autosave.undo();
+      }
       return;
     }
 
@@ -56,7 +65,9 @@ export class BuilderShortcutsDirective {
 
     if (event.key === 'Delete' || event.key === 'Backspace') {
       const ids = this.selection.selectedWidgetIds();
-      if (ids.length === 0) return;
+      if (ids.length === 0) {
+        return;
+      }
       event.preventDefault();
       this.commands.removeWidgets(ids);
       return;

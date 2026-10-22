@@ -153,20 +153,34 @@ export function useViewerHarness(): ViewerHarness {
       server.views['newlink123'] = filters;
       return { id: 'newlink123', filters };
     }
-    if (method !== 'GET') return null;
+    if (method !== 'GET') {
+      return null;
+    }
 
     const shared = /\/api\/reports\/3\/shared-views\/([^/]+)$/.exec(url);
-    if (shared) return { id: shared[1], filters: server.views[shared[1]] ?? null };
-    if (url.endsWith('/api/filters/operators')) return OPERATORS;
-    if (url.endsWith('/api/reports/3')) return REPORT;
-    if (url.endsWith('/api/reports/3/versions')) return [];
+    if (shared) {
+      return { id: shared[1], filters: server.views[shared[1]] ?? null };
+    }
+    if (url.endsWith('/api/filters/operators')) {
+      return OPERATORS;
+    }
+    if (url.endsWith('/api/reports/3')) {
+      return REPORT;
+    }
+    if (url.endsWith('/api/reports/3/versions')) {
+      return [];
+    }
     if (url.endsWith('/api/reports/3/versions/1')) {
       return server.publishedBlankFilter
         ? { ...CONTENT, filters: [{ datasetId: 7, filter: group('') }] }
         : CONTENT;
     }
-    if (url.endsWith('/api/reports/3/view-filters')) return { filters: server.saved };
-    if (url.endsWith('/api/datasets/7/schema')) return SCHEMA;
+    if (url.endsWith('/api/reports/3/view-filters')) {
+      return { filters: server.saved };
+    }
+    if (url.endsWith('/api/datasets/7/schema')) {
+      return SCHEMA;
+    }
     return null;
   };
 
@@ -183,8 +197,11 @@ export function useViewerHarness(): ViewerHarness {
       for (const req of http.match(() => true)) {
         const { method, url, body } = req.request;
         sent.push({ method, url, body });
-        if (fails(method, url)) req.flush('boom', { status: 500, statusText: 'Server Error' });
-        else req.flush(answer(method, url, body) as object | null);
+        if (fails(method, url)) {
+          req.flush('boom', { status: 500, statusText: 'Server Error' });
+        } else {
+          req.flush(answer(method, url, body) as object | null);
+        }
       }
     }
   };

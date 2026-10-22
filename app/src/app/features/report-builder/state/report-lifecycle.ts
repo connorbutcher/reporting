@@ -53,7 +53,9 @@ export class ReportLifecycle {
     effect(() => {
       const id = this.session.reportId();
       const failed = this.draftResource.error() !== undefined;
-      if (id === null || !failed) return;
+      if (id === null || !failed) {
+        return;
+      }
 
       untracked(() => {
         if (this.checkoutAttemptedFor === id) {
@@ -79,7 +81,9 @@ export class ReportLifecycle {
     effect(() => {
       const content = this.draftResource.hasValue() ? this.draftResource.value() : null;
       untracked(() => {
-        if (content) this.setLoadedReport(content);
+        if (content) {
+          this.setLoadedReport(content);
+        }
       });
     });
   }
@@ -87,7 +91,9 @@ export class ReportLifecycle {
   /** Publishes the draft as a new version, then returns to the viewer. */
   public publish(notes: string | null): void {
     const model = this.session.model();
-    if (!model) return;
+    if (!model) {
+      return;
+    }
 
     this.reportApi.publish(model.reportId, notes).subscribe({
       next: () => {

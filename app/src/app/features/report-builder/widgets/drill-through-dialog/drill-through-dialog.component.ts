@@ -22,7 +22,9 @@ export class DrillThroughDialogComponent {
 
   public readonly config = computed<DataTableWidgetConfig | null>(() => {
     const columns = this.columns();
-    if (!columns) return null;
+    if (!columns) {
+      return null;
+    }
     return {
       ...DEFAULT_TABLE_CONFIG,
       type: 'dataTable',

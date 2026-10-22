@@ -29,7 +29,9 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   /** Whether the chart can have several series (overlays, measures or a split); stacking only applies then. */
   public readonly multiSeries = computed(() => {
     const bindings = this.bindings();
-    if (bindings.length > 1) return true;
+    if (bindings.length > 1) {
+      return true;
+    }
     return bindings.some((b) => !!b.seriesColumnId() || b.barValueColumnIds().length > 1);
   });
 

@@ -84,7 +84,9 @@ export class GroupDetailComponent {
     // instantly. A delegated manager doesn't see every group though, so it can't be the whole story.
     validate(path.name, ({ value }) => {
       const name = value().trim().toLowerCase();
-      if (!name) return null;
+      if (!name) {
+        return null;
+      }
       return this.existingNames().includes(name)
         ? { kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }
         : null;
@@ -140,7 +142,9 @@ export class GroupDetailComponent {
       checked ? [...new Set([...ids, id])] : ids.filter((existing) => existing !== id),
     );
     // A manager must stay a member; dropping the membership drops the manager role too.
-    if (!checked) this.managerIds.update((ids) => ids.filter((existing) => existing !== id));
+    if (!checked) {
+      this.managerIds.update((ids) => ids.filter((existing) => existing !== id));
+    }
   }
 
   public toggleManager(id: string, checked: boolean): void {
@@ -150,7 +154,9 @@ export class GroupDetailComponent {
   }
 
   public save(): void {
-    if (!this.form().valid() || this.saving()) return;
+    if (!this.form().valid() || this.saving()) {
+      return;
+    }
     this.saving.set(true);
     this.saveError.set(null);
 
@@ -176,7 +182,9 @@ export class GroupDetailComponent {
   }
 
   public remove(): void {
-    if (this.isNew() || !this.refId) return;
+    if (this.isNew() || !this.refId) {
+      return;
+    }
     const name = this.form.name().value().trim();
     this.dialog
       .open<boolean>(ConfirmDialogComponent, {
@@ -188,7 +196,9 @@ export class GroupDetailComponent {
         } satisfies ConfirmDialogData,
       })
       .closed.subscribe((confirmed) => {
-        if (!confirmed) return;
+        if (!confirmed) {
+          return;
+        }
         this.saving.set(true);
         this.api.deleteGroup(this.refId!).subscribe({
           next: () => {
@@ -251,8 +261,12 @@ export class GroupDetailComponent {
 
   private messageFor(err: unknown, fallback: string): string {
     const e = err as { status?: number; error?: unknown };
-    if (e?.status === 403) return 'You no longer have permission to do that.';
-    if (e?.status === 400 && typeof e.error === 'string') return e.error;
+    if (e?.status === 403) {
+      return 'You no longer have permission to do that.';
+    }
+    if (e?.status === 400 && typeof e.error === 'string') {
+      return e.error;
+    }
     return fallback;
   }
 }

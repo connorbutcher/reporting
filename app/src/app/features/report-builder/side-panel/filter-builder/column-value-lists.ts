@@ -13,13 +13,17 @@ export class ColumnValueLists {
   /** Empty until loaded. */
   public valuesFor(columnId: string): Signal<string[]> {
     let list = this.lists.get(columnId);
-    if (!list) this.lists.set(columnId, (list = signal<string[]>([])));
+    if (!list) {
+      this.lists.set(columnId, (list = signal<string[]>([])));
+    }
     return list;
   }
 
   /** Fetches once per column; later calls do nothing. */
   public load(datasetId: number, columnId: string): void {
-    if (this.requested.has(columnId)) return;
+    if (this.requested.has(columnId)) {
+      return;
+    }
     this.requested.add(columnId);
 
     const list = this.lists.get(columnId) ?? signal<string[]>([]);

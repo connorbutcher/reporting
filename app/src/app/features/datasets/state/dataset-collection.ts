@@ -82,14 +82,18 @@ export class DatasetCollection {
     effect(() => {
       const list = this.datasets();
       untracked(() => {
-        if (this.selectedId() === null && list.length) this.openDataset(list[0].id, true);
+        if (this.selectedId() === null && list.length) {
+          this.openDataset(list[0].id, true);
+        }
       });
     });
   }
 
   /** Points the store at a report's draft datasets; the list refetches reactively. */
   setReport(reportId: number): void {
-    if (reportId === this.reportId()) return;
+    if (reportId === this.reportId()) {
+      return;
+    }
     this.reportId.set(reportId);
   }
 
@@ -136,7 +140,9 @@ export class DatasetCollection {
   createDataset(name: string, sourceId: number): void {
     const trimmed = name.trim();
     const reportId = this.reportId();
-    if (!trimmed || reportId === null || !sourceId) return;
+    if (!trimmed || reportId === null || !sourceId) {
+      return;
+    }
     // Don't save a name that already exists — it would land the report with two
     // indistinguishable datasets (see DatasetValidation's duplicate-name check).
     if (this.nameTaken(trimmed, null)) {
@@ -158,7 +164,9 @@ export class DatasetCollection {
     const trimmed = name.trim();
     // Skip the save when the name is blank or unchanged, so blurring the field
     // without editing it doesn't fire a needless request.
-    if (!id || !trimmed || trimmed === this.selected()?.name) return;
+    if (!id || !trimmed || trimmed === this.selected()?.name) {
+      return;
+    }
     // Don't save a name another dataset already uses — it would leave the report
     // with two datasets that can't be told apart.
     if (this.nameTaken(trimmed, id)) {
@@ -177,17 +185,23 @@ export class DatasetCollection {
 
   /** The name, suffixed with a counter if needed, so it doesn't collide with an existing dataset. */
   private uniqueName(base: string): string {
-    if (!this.nameTaken(base, null)) return base;
+    if (!this.nameTaken(base, null)) {
+      return base;
+    }
     for (let n = 2; ; n++) {
       const candidate = `${base} ${n}`;
-      if (!this.nameTaken(candidate, null)) return candidate;
+      if (!this.nameTaken(candidate, null)) {
+        return candidate;
+      }
     }
   }
 
   /** Deep-copies the selected dataset and opens the copy. */
   cloneDataset(): void {
     const dataset = this.selected();
-    if (!dataset) return;
+    if (!dataset) {
+      return;
+    }
     // A plain "(copy)" would clash on a second clone, so land on a free name.
     this.autosave
       .track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`)))
@@ -204,7 +218,9 @@ export class DatasetCollection {
 
   deleteDataset(): void {
     const id = this.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     const name = this.selected()?.name;
     // Pick the next surviving dataset up front so the delete opens it directly,
     // rather than briefly clearing the selection and re-defaulting to the first.

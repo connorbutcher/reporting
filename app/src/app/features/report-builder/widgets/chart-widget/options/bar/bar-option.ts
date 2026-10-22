@@ -21,7 +21,9 @@ export class BarOption {
     colors: Map<string, string>,
   ): ECOption | null {
     const chart = BarChartResolver.resolve(config, data, columns, colors);
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const categoryAxis = BarAxes.category(chart);
     const valueAxis = BarAxes.value(chart);

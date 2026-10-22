@@ -98,9 +98,15 @@ export class WidgetResizeDirective {
   }
 
   private collides(candidate: GridRect): boolean {
-    if (candidate.x < 0 || candidate.y < 0 || candidate.w < 1 || candidate.h < 1) return true;
-    if (candidate.x + candidate.w > this.session.gridColumns()) return true;
-    if (candidate.y + candidate.h > this.session.gridRows()) return true;
+    if (candidate.x < 0 || candidate.y < 0 || candidate.w < 1 || candidate.h < 1) {
+      return true;
+    }
+    if (candidate.x + candidate.w > this.session.gridColumns()) {
+      return true;
+    }
+    if (candidate.y + candidate.h > this.session.gridRows()) {
+      return true;
+    }
 
     const siblings = this.session.model()?.siblingsOf(this.widget().id) ?? [];
     return siblings.some((other) => GridLayout.rectsOverlap(candidate, other.rect()));

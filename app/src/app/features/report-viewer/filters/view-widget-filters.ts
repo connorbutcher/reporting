@@ -18,8 +18,11 @@ export function groupWidgetEntries(entries: readonly WidgetFilterEntry[]): ViewW
   const byWidget = new Map<string, WidgetFilterEntry[]>();
   for (const entry of entries) {
     const group = byWidget.get(entry.widget.id);
-    if (group) group.push(entry);
-    else byWidget.set(entry.widget.id, [entry]);
+    if (group) {
+      group.push(entry);
+    } else {
+      byWidget.set(entry.widget.id, [entry]);
+    }
   }
   return [...byWidget.values()].map(toViewWidgetFilters);
 }

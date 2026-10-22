@@ -87,7 +87,9 @@ export class ReportSession {
   /** Skips any that have since been removed. */
   public readonly selectedWidgets = computed<WidgetModel[]>(() => {
     const model = this.model();
-    if (!model) return [];
+    if (!model) {
+      return [];
+    }
     return this.selection
       .selectedWidgetIds()
       .map((id) => model.widget(id))
@@ -158,10 +160,14 @@ export class ReportSession {
     effect(() => {
       const model = this.model();
       const param = this.tabParam();
-      if (!model) return;
+      if (!model) {
+        return;
+      }
       const tabs = model.tabs();
       untracked(() => {
-        if (!tabs.length) return;
+        if (!tabs.length) {
+          return;
+        }
         const valid = param && tabs.some((t) => t.id === param) ? param : null;
         if (valid === null) {
           const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
@@ -203,7 +209,9 @@ export class ReportSession {
    * it counts as unsaved and is written back.
    */
   public restore(report: ReportRevisionContent | null): void {
-    if (!report) return;
+    if (!report) {
+      return;
+    }
     this.model.set(new ReportModel(report, this.sources));
     // The tab sync effect reselects the active tab against the rebuilt tabs.
 

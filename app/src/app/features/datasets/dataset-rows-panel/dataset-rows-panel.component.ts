@@ -45,7 +45,9 @@ export class DatasetRowsPanelComponent {
     // Bring a requested row (e.g. a freshly added last row) into view for editing.
     effect(() => {
       const index = this.store.rowScrollTo();
-      if (index == null) return;
+      if (index == null) {
+        return;
+      }
       this.store.clearRowScroll();
       // The grid has just remounted; let its virtual scroller settle, then scroll
       // to the row via PrimeNG's API and nudge a scroll event so it recomputes the
@@ -95,7 +97,9 @@ export class DatasetRowsPanelComponent {
   /** Dates round-trip as ISO strings but the date input wants yyyy-MM-dd. */
   protected cellValue(row: DatasetRow, column: DatasetColumn): string {
     const raw = row.values[column.id] ?? '';
-    if (column.type !== 'dateTime' || !raw) return raw;
+    if (column.type !== 'dateTime' || !raw) {
+      return raw;
+    }
 
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? raw : parsed.toISOString().slice(0, 10);

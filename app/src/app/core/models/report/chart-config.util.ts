@@ -26,7 +26,9 @@ export function bandedChartColumns(
     ['x', binding.xColumnId],
     ['y', binding.yColumnId],
   ] as const) {
-    if (columnId && complete.filter((b) => b.axis === axis).length === 1) columns.push(columnId);
+    if (columnId && complete.filter((b) => b.axis === axis).length === 1) {
+      columns.push(columnId);
+    }
   }
   return columns;
 }
@@ -46,7 +48,9 @@ export function readChartBindings(config: ChartWidgetConfigBase): ChartSeriesBin
  */
 export function barValueColumnIds(binding: ChartSeriesBinding): string[] {
   const ids = binding.valueColumnIds?.filter((id): id is string => !!id);
-  if (ids?.length) return ids;
+  if (ids?.length) {
+    return ids;
+  }
   return binding.yColumnId ? [binding.yColumnId] : [];
 }
 
@@ -57,7 +61,9 @@ export function barValueColumnIds(binding: ChartSeriesBinding): string[] {
  */
 export function histogramValueColumnIds(binding: ChartSeriesBinding): string[] {
   const ids = binding.valueColumnIds?.filter((id): id is string => !!id);
-  if (ids?.length) return ids;
+  if (ids?.length) {
+    return ids;
+  }
   return binding.xColumnId ? [binding.xColumnId] : [];
 }
 
@@ -69,7 +75,9 @@ export function histogramValueColumnIds(binding: ChartSeriesBinding): string[] {
  */
 export function readChartAxes(config: ChartWidgetConfigBase): ChartValueAxis[] {
   // `yAxes` is required on the type but genuinely absent from reports persisted before it existed.
-  if (config.yAxes?.length) return config.yAxes;
+  if (config.yAxes?.length) {
+    return config.yAxes;
+  }
   return [{ id: PRIMARY_AXIS_ID, label: config.yAxisLabel ?? '', side: 'left' }];
 }
 
@@ -78,7 +86,9 @@ export function readChartAxes(config: ChartWidgetConfigBase): ChartValueAxis[] {
  * one no longer among the chart's axes, falls back to the primary (index 0).
  */
 export function chartAxisIndex(axes: readonly ChartValueAxis[], yAxisId: string | null): number {
-  if (!yAxisId) return 0;
+  if (!yAxisId) {
+    return 0;
+  }
   const index = axes.findIndex((a) => a.id === yAxisId);
   return index < 0 ? 0 : index;
 }
@@ -86,6 +96,8 @@ export function chartAxisIndex(axes: readonly ChartValueAxis[], yAxisId: string 
 /** A value axis's display name for pickers and legends: its label, else a positional fallback naming its side. */
 export function chartAxisDisplayName(axis: ChartValueAxis, index: number): string {
   const label = axis.label.trim();
-  if (label) return label;
+  if (label) {
+    return label;
+  }
   return index === 0 ? `Primary (${axis.side})` : `Axis ${index + 1} (${axis.side})`;
 }

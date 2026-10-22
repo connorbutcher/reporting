@@ -33,10 +33,15 @@ export class ChartExport {
       // A combo chart's data is the bar result, whichever series draw as lines.
       return ChartExport.barTable(data as BarChartQueryResult);
     }
-    if (config.type === 'boxPlot') return ChartExport.boxTable(data as BoxPlotQueryResult);
-    if (config.type === 'histogram')
+    if (config.type === 'boxPlot') {
+      return ChartExport.boxTable(data as BoxPlotQueryResult);
+    }
+    if (config.type === 'histogram') {
       return ChartExport.histogramTable(data as HistogramQueryResult);
-    if (config.type === 'xbarRChart') return ChartExport.xBarRTable(data as XBarRChartQueryResult);
+    }
+    if (config.type === 'xbarRChart') {
+      return ChartExport.xBarRTable(data as XBarRChartQueryResult);
+    }
 
     // Date axes carry epoch millis.
     const primary = readChartBindings(config).find((b) => b.datasetId);
@@ -84,7 +89,9 @@ export class ChartExport {
     ];
     for (const series of data.series) {
       series.boxes.forEach((box, i) => {
-        if (!box) return;
+        if (!box) {
+          return;
+        }
         rows.push([
           ...(multi ? [series.label] : []),
           data.categories[i],

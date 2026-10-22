@@ -93,8 +93,12 @@ export class DataTableWidgetComponent extends DataWidgetBase {
    */
   public readonly rows = computed<(TableRowResult | undefined)[]>(() => {
     const result = this.source.result();
-    if (!result) return [];
-    if (this.config().paginator) return result.rows;
+    if (!result) {
+      return [];
+    }
+    if (this.config().paginator) {
+      return result.rows;
+    }
 
     const rows = new Array<TableRowResult | undefined>(
       Math.max(result.matchedRowCount, result.rows.length),
@@ -123,8 +127,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
   public readonly countLabel = computed(() => {
     const matched = this.matchedRowCount().toLocaleString();
-    if (this.isFiltered())
+    if (this.isFiltered()) {
       return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
+    }
     return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
   });
 
@@ -210,7 +215,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     },
     fetch: () => {
       const datasetId = this.datasetId();
-      if (!datasetId) return null;
+      if (!datasetId) {
+        return null;
+      }
 
       this.windows.set(new Map());
       this.windowGeneration++;
@@ -267,7 +274,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     });
 
     effect(() => {
-      if (!this.datasetId()) return;
+      if (!this.datasetId()) {
+        return;
+      }
       this.effectiveFilter();
       this.searchTerm();
       this.config().columns;
@@ -289,7 +298,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       const hasRows = this.rows().length > 0;
       const settled = !this.loading();
       const scroller = this.table()?.scroller();
-      if (!hasRows || !settled || !scroller) return;
+      if (!hasRows || !settled || !scroller) {
+        return;
+      }
 
       untracked(() => {
         requestAnimationFrame(() => scroller.init());
@@ -342,16 +353,26 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   public cellClass(col: DisplayColumn, cell: TableCell | undefined): string {
     const classes: string[] = [];
     const tolerance = this.toleranceClass(cell);
-    if (tolerance) classes.push(tolerance);
+    if (tolerance) {
+      classes.push(tolerance);
+    }
     const style = FormatRules.match(cell?.value, col.formatRules);
-    if (style) classes.push(FormatRules.STYLE_CLASS[style]);
-    if (col.wrap) classes.push(this.config().paginator ? 'wrap' : 'wrap-clamped');
-    if (col.dataBars) classes.push('has-bar');
+    if (style) {
+      classes.push(FormatRules.STYLE_CLASS[style]);
+    }
+    if (col.wrap) {
+      classes.push(this.config().paginator ? 'wrap' : 'wrap-clamped');
+    }
+    if (col.dataBars) {
+      classes.push('has-bar');
+    }
     return classes.join(' ');
   }
 
   public barPercent(col: DisplayColumn, cell: TableCell | undefined): number | null {
-    if (!col.dataBars) return null;
+    if (!col.dataBars) {
+      return null;
+    }
     const stats = this.columnStats()[col.column.id];
     return FormatRules.dataBarPercent(cell?.value, stats?.min, stats?.max);
   }
@@ -370,14 +391,18 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
   public totalCell(col: DisplayColumn, index: number): string {
     const total = this.totals()[col.column.id]?.displayValue;
-    if (total) return total;
+    if (total) {
+      return total;
+    }
     return index === 0 && !col.total ? 'Total' : '';
   }
 
   /** Shows every dataset column, not only those on the table. */
   public openRow(row: TableRowResult | undefined): void {
     const datasetId = this.datasetId();
-    if (!row || !datasetId || !this.rowDetails()) return;
+    if (!row || !datasetId || !this.rowDetails()) {
+      return;
+    }
 
     const own = new Map(this.config().columns.map((c) => [c.columnId, c]));
     const fields = this.source.columns().map((column) => {
@@ -426,7 +451,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
         columnId: th.dataset['columnId'] as string,
         width: Math.round(th.getBoundingClientRect().width),
       }));
-      if (widths.length) this.columnResize.emit(widths);
+      if (widths.length) {
+        this.columnResize.emit(widths);
+      }
     });
   }
 
@@ -445,7 +472,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   public async exportCsv(): Promise<string | null> {
     const datasetId = this.datasetId();
     const cols = this.displayColumns();
-    if (!datasetId || cols.length === 0) return null;
+    if (!datasetId || cols.length === 0) {
+      return null;
+    }
 
     const result = await firstValueFrom(this.datasetApi.exportTable(datasetId, this.request(0, 0)));
     if (result.rows.length < result.matchedRowCount) {
@@ -486,7 +515,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
   private loadWindows(from: number, to: number): void {
     const datasetId = this.datasetId();
     const result = this.source.result();
-    if (!datasetId || !result) return;
+    if (!datasetId || !result) {
+      return;
+    }
 
     const last = Math.min(to, result.matchedRowCount) - 1;
     for (
@@ -494,7 +525,9 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       index <= Math.floor(last / DataTableWidgetComponent.SCROLL_WINDOW);
       index++
     ) {
-      if (index === 0 || this.windows().has(index) || this.windowsInFlight.has(index)) continue;
+      if (index === 0 || this.windows().has(index) || this.windowsInFlight.has(index)) {
+        continue;
+      }
 
       const generation = this.windowGeneration;
       this.windowsInFlight.add(index);
@@ -508,12 +541,16 @@ export class DataTableWidgetComponent extends DataWidgetBase {
         )
         .subscribe({
           next: (window) => {
-            if (generation !== this.windowGeneration) return;
+            if (generation !== this.windowGeneration) {
+              return;
+            }
             this.windowsInFlight.delete(index);
             this.windows.update((windows) => new Map(windows).set(index, window.rows));
           },
           error: () => {
-            if (generation === this.windowGeneration) this.windowsInFlight.delete(index);
+            if (generation === this.windowGeneration) {
+              this.windowsInFlight.delete(index);
+            }
           },
         });
     }

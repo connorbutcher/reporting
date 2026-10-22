@@ -16,12 +16,16 @@ export class PanelWidgetFiltersComponent {
   /** The chart binding's filter when the view names one, else the widget's own. */
   public readonly target = computed(() => {
     const widget = this.widget();
-    if (!widget) return null;
+    if (!widget) {
+      return null;
+    }
 
     const view = this.navigation.view();
     if (widget instanceof ChartWidgetModel && view.kind === 'widgetFilters' && view.bindingId) {
       const binding = widget.binding(view.bindingId);
-      if (binding) return { datasetId: binding.datasetId, filter: binding.filter };
+      if (binding) {
+        return { datasetId: binding.datasetId, filter: binding.filter };
+      }
     }
     return { datasetId: widget.datasetId, filter: widget.filter };
   });

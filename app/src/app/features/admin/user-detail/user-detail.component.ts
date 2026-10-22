@@ -56,7 +56,9 @@ export class UserDetailComponent {
     required(path.email, { message: 'An email is required.' });
     emailRule(path.email, { message: 'Enter a valid email address.' });
     validate(path.email, ({ value }) => {
-      if (!this.isNew()) return null;
+      if (!this.isNew()) {
+        return null;
+      }
       const taken = this.existingEmails().includes(value().trim().toLowerCase());
       return taken
         ? { kind: 'duplicate', message: 'A user with that email already exists.' }
@@ -98,7 +100,9 @@ export class UserDetailComponent {
   }
 
   public save(): void {
-    if (!this.form().valid() || this.saving()) return;
+    if (!this.form().valid() || this.saving()) {
+      return;
+    }
     this.saving.set(true);
     this.saveError.set(null);
 
@@ -176,8 +180,12 @@ export class UserDetailComponent {
 
   private messageFor(err: unknown, fallback: string): string {
     const e = err as { status?: number; error?: unknown };
-    if (e?.status === 403) return 'You no longer have permission to do that.';
-    if (e?.status === 400 && typeof e.error === 'string') return e.error;
+    if (e?.status === 403) {
+      return 'You no longer have permission to do that.';
+    }
+    if (e?.status === 400 && typeof e.error === 'string') {
+      return e.error;
+    }
     return fallback;
   }
 }

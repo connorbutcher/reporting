@@ -117,7 +117,9 @@ const DESCRIPTORS_BY_TYPE = new Map(WIDGET_TYPES.map((d) => [d.type, d]));
 
 export function widgetTypeDescriptor(type: WidgetType): WidgetTypeDescriptor {
   const descriptor = DESCRIPTORS_BY_TYPE.get(type);
-  if (!descriptor) throw new Error(`Unknown widget type: ${type}`);
+  if (!descriptor) {
+    throw new Error(`Unknown widget type: ${type}`);
+  }
   return descriptor;
 }
 

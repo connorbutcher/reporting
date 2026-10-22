@@ -31,10 +31,15 @@ async function storeWith(users: UserSummary[]): Promise<PermissionsDialogStore> 
   const http = TestBed.inject(HttpTestingController);
 
   const answer = (url: string): unknown => {
-    if (url.endsWith('/api/reports/1/permissions'))
+    if (url.endsWith('/api/reports/1/permissions')) {
       return { inheritsPermissions: true, explicit: [], effective: [] };
-    if (url.endsWith('/api/users')) return users;
-    if (url.endsWith('/api/user-groups')) return [{ id: 'g1', name: 'QA', memberCount: 2 }];
+    }
+    if (url.endsWith('/api/users')) {
+      return users;
+    }
+    if (url.endsWith('/api/user-groups')) {
+      return [{ id: 'g1', name: 'QA', memberCount: 2 }];
+    }
     return null;
   };
 

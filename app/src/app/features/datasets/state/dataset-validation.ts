@@ -26,13 +26,20 @@ export class DatasetValidation {
     for (const dataset of this.collection.datasets()) {
       const key = dataset.name.trim().toLowerCase();
       const ids = byName.get(key);
-      if (ids) ids.push(dataset.id);
-      else byName.set(key, [dataset.id]);
+      if (ids) {
+        ids.push(dataset.id);
+      } else {
+        byName.set(key, [dataset.id]);
+      }
     }
 
     const conflicts = new Set<number>();
     for (const ids of byName.values()) {
-      if (ids.length > 1) for (const id of ids) conflicts.add(id);
+      if (ids.length > 1) {
+        for (const id of ids) {
+          conflicts.add(id);
+        }
+      }
     }
     return conflicts;
   });
@@ -40,7 +47,9 @@ export class DatasetValidation {
   /** Every validation problem with the currently selected dataset, most severe first. */
   readonly selectedIssues = computed<DatasetIssue[]>(() => {
     const selected = this.collection.selected();
-    if (!selected) return [];
+    if (!selected) {
+      return [];
+    }
 
     const issues: DatasetIssue[] = [];
 
@@ -56,7 +65,9 @@ export class DatasetValidation {
     // Columns and source are only known once the schema has loaded; skip those
     // checks while it's loading or failed (the editor shows its own load error),
     // so an empty in-flight schema isn't mistaken for a dataset with no columns.
-    if (this.schema.schemaLoading() || this.schema.error()) return issues;
+    if (this.schema.schemaLoading() || this.schema.error()) {
+      return issues;
+    }
 
     const columns = this.schema.columns();
     if (columns.length === 0) {
@@ -81,7 +92,9 @@ export class DatasetValidation {
     }
 
     const sourceIssue = sourceConfigIssue(this.schema.sourceConfig());
-    if (sourceIssue) issues.push(sourceIssue);
+    if (sourceIssue) {
+      issues.push(sourceIssue);
+    }
 
     return issues;
   });
@@ -93,15 +106,20 @@ function duplicateColumnNames(columns: readonly DatasetColumn[]): string[] {
   for (const column of columns) {
     const key = column.name.trim().toLowerCase();
     const entry = seen.get(key);
-    if (entry) entry.count++;
-    else seen.set(key, { name: column.name.trim() || '(unnamed)', count: 1 });
+    if (entry) {
+      entry.count++;
+    } else {
+      seen.set(key, { name: column.name.trim() || '(unnamed)', count: 1 });
+    }
   }
   return [...seen.values()].filter((entry) => entry.count > 1).map((entry) => entry.name);
 }
 
 /** The problem with a source's configuration, or null when it's valid (or still loading). */
 function sourceConfigIssue(config: DatasetSourceConfig | null): DatasetIssue | null {
-  if (!config) return null;
+  if (!config) {
+    return null;
+  }
 
   switch (config.source) {
     case 'assembly':

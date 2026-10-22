@@ -84,7 +84,9 @@ export class HomeContentsStore {
     () => {
       const id = this.selectedFolderId();
       const params: Record<string, string> = {};
-      if (id !== null) params['parentId'] = String(id);
+      if (id !== null) {
+        params['parentId'] = String(id);
+      }
       return { url: '/api/folders/children', params };
     },
     { defaultValue: [] },
@@ -93,7 +95,9 @@ export class HomeContentsStore {
     () => {
       const id = this.selectedFolderId();
       const params: Record<string, string> = {};
-      if (id !== null) params['folderId'] = String(id);
+      if (id !== null) {
+        params['folderId'] = String(id);
+      }
       return { url: '/api/reports', params };
     },
     { defaultValue: [] },
@@ -121,7 +125,9 @@ export class HomeContentsStore {
     // blank the tree and drop its loading skeleton before the real folders land) and skips an
     // error state (reading .value() there would throw).
     effect(() => {
-      if (!this.foldersResource.hasValue()) return;
+      if (!this.foldersResource.hasValue()) {
+        return;
+      }
       const folders = this.foldersResource.value();
       untracked(() => this.tree.merge(String(this.selectedFolderId() ?? ROOT_KEY), folders));
     });
@@ -129,7 +135,9 @@ export class HomeContentsStore {
     // Expand the tree down to the selected folder, so a shared deep link lands with the folder
     // revealed in the rail — not just its contents shown on the right.
     effect(() => {
-      if (!this.pathResource.hasValue()) return;
+      if (!this.pathResource.hasValue()) {
+        return;
+      }
       const path = this.pathResource.value();
       untracked(() => this.tree.revealPath(path));
     });

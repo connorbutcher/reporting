@@ -19,7 +19,9 @@ export class PanelAddColumnComponent {
   public readonly matches = computed(() => {
     const available = this.table()?.availableColumns() ?? [];
     const term = this.search().trim().toLowerCase();
-    if (!term) return available;
+    if (!term) {
+      return available;
+    }
     return available.filter((column) => column.name.toLowerCase().includes(term));
   });
 

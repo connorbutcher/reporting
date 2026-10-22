@@ -31,7 +31,9 @@ export class PointOption {
       commentAnchors,
       highlightedAnchor,
     );
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const { multiAxis, axes } = chart;
     const yAxes = PointYAxis.all(chart);

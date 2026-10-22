@@ -17,7 +17,9 @@ export abstract class WidgetExportBase {
 
   public async downloadCsv(): Promise<void> {
     const csv = await this.exportCsv();
-    if (csv === null) return;
+    if (csv === null) {
+      return;
+    }
     // A BOM stops Excel mangling non-ASCII characters such as £ or µ.
     const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: 'text/csv;charset=utf-8' });
     this.downloadBlob(blob, `${this.exportName()}.csv`);

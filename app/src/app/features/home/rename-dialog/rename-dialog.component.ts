@@ -87,7 +87,9 @@ export class RenameDialogComponent implements AfterViewInit {
 
   public save(): void {
     const name = this.form.name().value().trim();
-    if (!this.form().valid() || !name) return;
+    if (!this.form().valid() || !name) {
+      return;
+    }
     this.dialogRef.close(name);
   }
 

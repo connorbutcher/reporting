@@ -40,7 +40,9 @@ export class StaticTextWidgetModel extends WidgetModel {
   }
 
   public override ownIssues(): ValidationIssue[] {
-    if (this.content().trim().length > 0) return [];
+    if (this.content().trim().length > 0) {
+      return [];
+    }
 
     return [
       this.issue(

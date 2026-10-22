@@ -86,7 +86,9 @@ export class PermissionsDialogStore {
     }
     for (const user of this.users()) {
       // A global admin's access is inferred from that status, so there's nothing to grant them.
-      if (user.isGlobalAdmin) continue;
+      if (user.isGlobalAdmin) {
+        continue;
+      }
       const value = `user:${user.id}`;
       if (!used.has(value)) {
         options.push({ label: user.displayName, value, subjectType: 'user', subjectId: user.id });
@@ -117,9 +119,15 @@ export class PermissionsDialogStore {
       const matches = list
         .filter((g) => g.subjectType === subjectType)
         .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
-      if (!matches.length) continue;
-      if (label) rows.push({ kind: 'header', label });
-      for (const grant of matches) rows.push({ kind: 'grant', grant });
+      if (!matches.length) {
+        continue;
+      }
+      if (label) {
+        rows.push({ kind: 'header', label });
+      }
+      for (const grant of matches) {
+        rows.push({ kind: 'grant', grant });
+      }
     }
     return rows;
   });
@@ -156,7 +164,9 @@ export class PermissionsDialogStore {
   /** A failure loading the permissions themselves, e.g. viewing sharing without Manager access. */
   private readonly loadError = computed(() => {
     const err = this.permissionsResource.error() as { status?: number } | undefined;
-    if (!err) return null;
+    if (!err) {
+      return null;
+    }
     return err.status === 403
       ? `You need Manager access to change sharing on this ${this.data.kind}.`
       : 'Could not load permissions.';
@@ -171,7 +181,9 @@ export class PermissionsDialogStore {
 
   public addGrant(option: SubjectOption, level: AccessLevel, onSuccess: () => void): void {
     this.confirmBroadAccess(option.subjectType, level).subscribe((proceed) => {
-      if (!proceed) return;
+      if (!proceed) {
+        return;
+      }
       this.mutate(
         this.api.upsertGrant(this.data.kind, this.data.id, {
           subjectType: option.subjectType,
@@ -184,9 +196,13 @@ export class PermissionsDialogStore {
   }
 
   public changeLevel(grant: AccessGrant, level: AccessLevel): void {
-    if (grant.level === level) return;
+    if (grant.level === level) {
+      return;
+    }
     this.confirmBroadAccess(grant.subjectType, level).subscribe((proceed) => {
-      if (!proceed) return;
+      if (!proceed) {
+        return;
+      }
       this.mutate(
         this.api.upsertGrant(this.data.kind, this.data.id, {
           subjectType: grant.subjectType,
@@ -199,7 +215,9 @@ export class PermissionsDialogStore {
 
   public remove(grant: AccessGrant): void {
     this.confirmRemoval(grant).subscribe((proceed) => {
-      if (!proceed) return;
+      if (!proceed) {
+        return;
+      }
       this.mutate(
         this.api.removeGrant(this.data.kind, this.data.id, {
           subjectType: grant.subjectType,
@@ -241,7 +259,9 @@ export class PermissionsDialogStore {
     subjectType: GrantSubjectType,
     level: AccessLevel,
   ): Observable<boolean> {
-    if (subjectType !== 'everyone' || (level !== 'editor' && level !== 'manager')) return of(true);
+    if (subjectType !== 'everyone' || (level !== 'editor' && level !== 'manager')) {
+      return of(true);
+    }
     const capability =
       level === 'manager' ? 'manage its sharing and edit its content' : 'edit its content';
     return this.dialog

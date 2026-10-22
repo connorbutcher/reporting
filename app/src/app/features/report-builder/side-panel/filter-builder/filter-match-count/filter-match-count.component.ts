@@ -23,7 +23,9 @@ export class FilterMatchCountComponent {
     computed(() => {
       const group = this.group();
       const datasetId = group.datasetId();
-      if (!group.ready() || datasetId === null) return null;
+      if (!group.ready() || datasetId === null) {
+        return null;
+      }
       return { datasetId, filter: combineFilters(this.additionalFilter(), group.toQueryDto()) };
     }),
     inject(DatasetApiService),
@@ -33,7 +35,9 @@ export class FilterMatchCountComponent {
   public readonly numbers = linkedSignal<MatchState, DatasetCountResult | null>({
     source: this.match,
     computation: (match, previous) => {
-      if (match.state === 'ready') return match.result;
+      if (match.state === 'ready') {
+        return match.result;
+      }
       return match.state === 'idle' ? null : (previous?.value ?? null);
     },
   });

@@ -56,7 +56,9 @@ export class DatasetListComponent {
         } satisfies DatasetCreateDialogData,
       })
       .closed.subscribe((result) => {
-        if (result) this.store.createDataset(result.name, result.sourceId);
+        if (result) {
+          this.store.createDataset(result.name, result.sourceId);
+        }
       });
   }
 }

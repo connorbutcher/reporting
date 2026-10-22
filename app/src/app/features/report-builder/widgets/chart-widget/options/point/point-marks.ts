@@ -41,7 +41,9 @@ export class PointMarks {
     chart: PointChart,
     axisIndex: number,
   ): (x: Coord, y: Coord) => string | null {
-    if (chart.colorByValue) return () => null;
+    if (chart.colorByValue) {
+      return () => null;
+    }
     return OutlineSeverity.forPoints([
       ...ToleranceOutline.zonesFor(
         PointMarks.bands(chart).filter(
@@ -66,7 +68,9 @@ export class PointMarks {
 
   /** Resolved bands lose their Y axis, so read it from the config; X bands group with the primary. */
   private static bandAxis(chart: PointChart, band: ResolvedToleranceBand): number {
-    if (band.axis === 'x') return 0;
+    if (band.axis === 'x') {
+      return 0;
+    }
     const yAxisIds = new Map(chart.config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
     return chartAxisIndex(chart.axes, yAxisIds.get(band.id) ?? null);
   }

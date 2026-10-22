@@ -20,9 +20,12 @@ export class PointXAxis {
 
   private static scale(chart: PointChart) {
     const { config } = chart;
-    if (chart.xIsDate) return ChartScale.dateAxis(chart.xDateConfig);
-    if (chart.xIsText)
+    if (chart.xIsDate) {
+      return ChartScale.dateAxis(chart.xDateConfig);
+    }
+    if (chart.xIsText) {
       return ChartScale.categoryAxis(chart.xCategories ?? [], config.xAxisInterval);
+    }
     return ChartScale.numericAxis(
       config.xLogScale,
       config.xAxisMin,
@@ -34,7 +37,9 @@ export class PointXAxis {
   }
 
   private static longestLabel(chart: PointChart): number {
-    if (chart.xIsText) return ChartScale.longestLen(chart.xCategories ?? []);
+    if (chart.xIsText) {
+      return ChartScale.longestLen(chart.xCategories ?? []);
+    }
     return ValueExtent.labelLength(
       chart.series.flatMap((s) => s.points.map((p) => p.x)),
       chart.formatX,

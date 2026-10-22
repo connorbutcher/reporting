@@ -92,7 +92,9 @@ export class FilteredSourceConfigComponent {
       )
       .subscribe((filter) => {
         const config = this.config();
-        if (!config) return;
+        if (!config) {
+          return;
+        }
         this.store.updateSourceConfig({ ...config, filter });
       });
   }
@@ -100,7 +102,9 @@ export class FilteredSourceConfigComponent {
   /** Repoints the filter at a different base dataset. The filter resets — it named the old base's columns. */
   protected setBaseDataset(baseDatasetId: number): void {
     const config = this.config();
-    if (!config || baseDatasetId === config.baseDatasetId) return;
+    if (!config || baseDatasetId === config.baseDatasetId) {
+      return;
+    }
     this.store.updateSourceConfig({ ...config, baseDatasetId, filter: null });
   }
 }

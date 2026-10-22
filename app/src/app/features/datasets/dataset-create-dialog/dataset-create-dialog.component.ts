@@ -112,7 +112,9 @@ export class DatasetCreateDialogComponent implements AfterViewInit {
 
   protected create(): void {
     const name = this.form.name().value().trim();
-    if (!this.form().valid() || !name || !this.form.sourceId().value()) return;
+    if (!this.form().valid() || !name || !this.form.sourceId().value()) {
+      return;
+    }
     this.dialogRef.close({ name, sourceId: this.form.sourceId().value() });
   }
 

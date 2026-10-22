@@ -50,7 +50,9 @@ export class WidgetDataSource<T> {
       .pipe(
         switchMap(() => {
           const request = options.fetch();
-          if (!request) return EMPTY;
+          if (!request) {
+            return EMPTY;
+          }
 
           return request.pipe(
             // Caught inside the switchMap, since an outer error would stop all future reloads.

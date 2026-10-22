@@ -19,12 +19,16 @@ export function describeFilter(
   columns: readonly NamedColumn[],
   catalogue: OperatorCatalogue | null,
 ): string[] {
-  if (!filter) return [];
+  if (!filter) {
+    return [];
+  }
   const byId = new Map(columns.map((c) => [c.id, c]));
 
   const condition = (c: FilterCondition): string | null => {
     const column = byId.get(c.columnId);
-    if (c.enabled === false || !column) return null;
+    if (c.enabled === false || !column) {
+      return null;
+    }
     const label =
       catalogue?.[column.type]?.find((o) => o.value === c.operator)?.label ?? spellOut(c.operator);
     const operands = c.operator === 'between' ? c.values.join(' – ') : c.values.join(', ');
@@ -33,16 +37,24 @@ export function describeFilter(
 
   // One line for a node: a group of several parts reads as a single clause.
   const clause = (node: FilterNode): string | null => {
-    if (node.kind === 'condition') return condition(node);
+    if (node.kind === 'condition') {
+      return condition(node);
+    }
     const parts = node.children.map(clause).filter((p): p is string => p !== null);
-    if (parts.length === 0) return null;
-    if (parts.length === 1) return parts[0];
+    if (parts.length === 0) {
+      return null;
+    }
+    if (parts.length === 1) {
+      return parts[0];
+    }
     return node.join === 'or' ? `(${parts.join(' or ')})` : parts.join(' and ');
   };
 
   // The top of an AND tree is a list of things that must all hold: show them one per line.
   const lines = (node: FilterNode): string[] => {
-    if (node.kind === 'group' && node.join === 'and') return node.children.flatMap(lines);
+    if (node.kind === 'group' && node.join === 'and') {
+      return node.children.flatMap(lines);
+    }
     const line = clause(node);
     return line ? [line] : [];
   };

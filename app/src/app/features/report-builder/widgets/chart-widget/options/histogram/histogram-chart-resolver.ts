@@ -24,7 +24,9 @@ export class HistogramChartResolver {
     const bindings = readChartBindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const valueColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
-    if (!valueColumn) return null;
+    if (!valueColumn) {
+      return null;
+    }
 
     const bins = data?.bins ?? [];
     const results = data?.series ?? [];

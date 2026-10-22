@@ -35,8 +35,12 @@ export class ChartCountBar {
     }
 
     const excluded = (result as HistogramQueryResult).excludedCount ?? 0;
-    if (excluded > 0) label += ` · ${excluded.toLocaleString()} outside the bin range`;
-    if (failed > 0) label += ` · ${failed} series couldn’t load`;
+    if (excluded > 0) {
+      label += ` · ${excluded.toLocaleString()} outside the bin range`;
+    }
+    if (failed > 0) {
+      label += ` · ${failed} series couldn’t load`;
+    }
     return { label, icon, warning: !!result.truncated || failed > 0 };
   }
 }

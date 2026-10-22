@@ -34,17 +34,20 @@ export class SaveStatusComponent {
     full: string;
     short: string;
   }>(() => {
-    if (this.saveFailed())
+    if (this.saveFailed()) {
       return {
         tone: 'error',
         icon: 'pi-exclamation-circle',
         full: 'Save failed',
         short: 'save failed',
       };
-    if (this.saving())
+    }
+    if (this.saving()) {
       return { tone: 'pending', icon: 'pi-spin pi-spinner', full: 'Saving…', short: 'saving…' };
-    if (this.dirty())
+    }
+    if (this.dirty()) {
       return { tone: 'pending', icon: 'pi-circle-fill', full: 'Unsaved changes', short: 'unsaved' };
+    }
     return { tone: 'ok', icon: 'pi-check', full: 'All changes saved', short: 'saved' };
   });
 }

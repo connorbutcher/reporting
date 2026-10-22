@@ -19,12 +19,16 @@ export class PanelColumnListComponent {
 
   public openSettings(columnId: string): void {
     const widgetId = this.widgetId();
-    if (widgetId) this.navigation.navigate({ kind: 'columnSettings', widgetId, columnId });
+    if (widgetId) {
+      this.navigation.navigate({ kind: 'columnSettings', widgetId, columnId });
+    }
   }
 
   public openAdd(): void {
     const widgetId = this.widgetId();
-    if (widgetId) this.navigation.navigate({ kind: 'addColumn', widgetId });
+    if (widgetId) {
+      this.navigation.navigate({ kind: 'addColumn', widgetId });
+    }
   }
 
   public get table() {

@@ -27,7 +27,9 @@ export class XBarRMarks {
   /** A dotted marker after the last baseline subgroup shows the limits are held from it. */
   private static baseline(chart: XBarRChart) {
     const count = chart.data?.baselineCount ?? null;
-    if (count == null || count <= 0 || count >= chart.categories.length) return [];
+    if (count == null || count <= 0 || count >= chart.categories.length) {
+      return [];
+    }
     return [
       {
         xAxis: count - 1,

@@ -63,7 +63,9 @@ export class HomeStore {
 
   public readonly contextMenuItems = computed<MenuItem[]>(() => {
     const row = this.contextRow();
-    if (!row) return [];
+    if (!row) {
+      return [];
+    }
     // A report offers its real open methods (view published / edit draft) rather than one generic
     // "Open" — this is where a reader gets only "Open published" while an editor sees both.
     const openItems: MenuItem[] =
@@ -155,8 +157,11 @@ export class HomeStore {
   // --- row actions --------------------------------------------------------
 
   public openRow(row: ContentRow): void {
-    if (row.kind === 'folder') this.selectFolder(row.id);
-    else this.openReport(row.report);
+    if (row.kind === 'folder') {
+      this.selectFolder(row.id);
+    } else {
+      this.openReport(row.report);
+    }
   }
 
   /**
@@ -166,7 +171,9 @@ export class HomeStore {
    */
   public openReport(report: OpenableReport): void {
     const option = defaultOpenOption(report);
-    if (option) this.router.navigate(option.route);
+    if (option) {
+      this.router.navigate(option.route);
+    }
   }
 
   public toggleFavorite(report: ReportSummary): void {
@@ -201,8 +208,9 @@ export class HomeStore {
   private move(row: ContentRow): void {
     this.actions.move(row).subscribe((destination) => {
       this.contents.reload();
-      if (destination !== this.contents.selectedFolderId())
+      if (destination !== this.contents.selectedFolderId()) {
         this.tree.refreshNodeIfPresent(destination);
+      }
       this.notify.success(`${this.label(row)} moved.`);
     });
   }
@@ -210,7 +218,9 @@ export class HomeStore {
   private permissions(row: ContentRow): void {
     // Changing sharing can change what's visible, so refresh the contents if anything was saved.
     this.actions.permissions(row).subscribe((changed) => {
-      if (changed) this.contents.reload();
+      if (changed) {
+        this.contents.reload();
+      }
     });
   }
 

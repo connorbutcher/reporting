@@ -18,7 +18,9 @@ export class DatasetSchemaCacheService {
 
   /** Fetches a dataset's schema once; later calls for the same id are no-ops. */
   ensure(datasetId: number): void {
-    if (this.cache()[datasetId] || this.inFlight.has(datasetId)) return;
+    if (this.cache()[datasetId] || this.inFlight.has(datasetId)) {
+      return;
+    }
 
     this.inFlight.add(datasetId);
     this.datasetApi.getSchema(datasetId).subscribe({
@@ -53,7 +55,9 @@ export class DatasetSchemaCacheService {
   ): void {
     this.cache.update((all) => {
       const schema = all[datasetId];
-      if (!schema) return all;
+      if (!schema) {
+        return all;
+      }
       return {
         ...all,
         [datasetId]: {

@@ -24,7 +24,9 @@ export class HistogramOption {
     colors: Map<string, string>,
   ): ECOption | null {
     const chart = HistogramChartResolver.resolve(config, data, columns, colors);
-    if (!chart) return null;
+    if (!chart) {
+      return null;
+    }
 
     const binAxis = HistogramAxes.bin(chart);
     const countAxis = HistogramAxes.count(chart);

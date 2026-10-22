@@ -113,7 +113,9 @@ export class DatasetColumnsPanelComponent {
   protected toggleUsage(column: DatasetColumn): void {
     this.expanded.update((open) => {
       const next = new Set(open);
-      if (!next.delete(column.id)) next.add(column.id);
+      if (!next.delete(column.id)) {
+        next.add(column.id);
+      }
       return next;
     });
   }
@@ -128,7 +130,9 @@ export class DatasetColumnsPanelComponent {
   }
 
   protected add(): void {
-    if (!this.addForm().valid()) return;
+    if (!this.addForm().valid()) {
+      return;
+    }
     const { name, type } = this.addForm().value();
     this.store.addColumn(name.trim(), type);
     this.addForm.name().value.set('');
@@ -161,10 +165,14 @@ export class DatasetColumnsPanelComponent {
    * filter operator the new type lacks) is confirmed first, and cancelling puts the dropdown back.
    */
   protected retype(column: DatasetColumn, type: DatasetColumnType, select: Select): void {
-    if (type === column.type) return;
+    if (type === column.type) {
+      return;
+    }
 
     const check = this.store.columnTypeImpact(column.id, type);
-    if (!check) return;
+    if (!check) {
+      return;
+    }
 
     // If the question can't be answered the change isn't blocked — it's confirmed, with that said.
     check.pipe(catchError(() => of(null))).subscribe((impact) => {
@@ -178,8 +186,11 @@ export class DatasetColumnsPanelComponent {
           data: this.typeChangeConfirmation(column, type, impact),
         })
         .closed.subscribe((confirmed) => {
-          if (confirmed) this.store.retypeColumn(column, type);
-          else select.writeValue(column.type);
+          if (confirmed) {
+            this.store.retypeColumn(column, type);
+          } else {
+            select.writeValue(column.type);
+          }
         });
     });
   }
@@ -230,7 +241,9 @@ export class DatasetColumnsPanelComponent {
     this.dialog
       .open<boolean>(ConfirmDialogComponent, { data: this.deleteConfirmation(column) })
       .closed.subscribe((confirmed) => {
-        if (confirmed) this.store.deleteColumn(column);
+        if (confirmed) {
+          this.store.deleteColumn(column);
+        }
       });
   }
 
@@ -265,7 +278,9 @@ export class DatasetColumnsPanelComponent {
   /** Opens the formula builder to add a formula column, or — given one — to edit it. */
   protected openFormulaBuilder(column: DatasetColumn | null): void {
     const datasetId = this.store.selectedId();
-    if (datasetId === null) return;
+    if (datasetId === null) {
+      return;
+    }
 
     this.dialog
       .open<DatasetColumn | undefined, FormulaBuilderData>(FormulaBuilderDialogComponent, {
@@ -274,7 +289,9 @@ export class DatasetColumnsPanelComponent {
         autoFocus: 'dialog',
       })
       .closed.subscribe((saved) => {
-        if (saved) this.store.applyFormulaColumnSaved(saved);
+        if (saved) {
+          this.store.applyFormulaColumnSaved(saved);
+        }
       });
   }
 

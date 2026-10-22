@@ -21,7 +21,9 @@ export class DatasetRowCommands {
 
   addRow(): void {
     const id = this.collection.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     this.autosave.track(this.api.addRow(id, {})).subscribe({
       // The new row lands at the end; re-seat the grid onto the final window and
       // scroll it into view for editing.
@@ -32,7 +34,9 @@ export class DatasetRowCommands {
 
   setCell(row: DatasetRow, columnId: string, value: string): void {
     const id = this.collection.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
 
     const values = { ...row.values, [columnId]: value };
     // Show the edit straight away; the server response then confirms it, or a
@@ -49,7 +53,9 @@ export class DatasetRowCommands {
 
   deleteRow(row: DatasetRow): void {
     const id = this.collection.selectedId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
     this.autosave.track(this.api.removeRow(id, row.id)).subscribe({
       next: () => this.window.removeRow(row.id),
       error: (err) => this.notify.apiError(err, "Couldn't delete the row. Please try again."),

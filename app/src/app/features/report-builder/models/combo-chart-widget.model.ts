@@ -35,7 +35,9 @@ export class ComboChartWidgetModel extends ChartWidgetModel {
   /** Whether there can be several bar series to stack, as on the bar chart. */
   public readonly multiSeries = computed(() => {
     const bindings = this.bindings();
-    if (bindings.length > 1) return true;
+    if (bindings.length > 1) {
+      return true;
+    }
     return bindings.some((b) => !!b.seriesColumnId() || b.barValueColumnIds().length > 1);
   });
 

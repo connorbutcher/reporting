@@ -7,9 +7,15 @@ export class ValueExtent {
     let min = Infinity;
     let max = -Infinity;
     for (const v of values) {
-      if (typeof v !== 'number') continue;
-      if (v < min) min = v;
-      if (v > max) max = v;
+      if (typeof v !== 'number') {
+        continue;
+      }
+      if (v < min) {
+        min = v;
+      }
+      if (v > max) {
+        max = v;
+      }
     }
     return Number.isFinite(min) ? { min, max } : null;
   }
@@ -20,7 +26,9 @@ export class ValueExtent {
    */
   public static labelLength(values: Iterable<unknown>, format: (value: number) => string): number {
     const extent = ValueExtent.of(values);
-    if (!extent) return 0;
+    if (!extent) {
+      return 0;
+    }
     return Math.max(format(extent.min).length, format(extent.max).length);
   }
 }

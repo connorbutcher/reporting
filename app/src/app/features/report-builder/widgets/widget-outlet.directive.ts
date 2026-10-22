@@ -70,7 +70,9 @@ export class WidgetOutletDirective {
   }
 
   private ensureComponent(type: WidgetType): void {
-    if (this.ref && this.renderedType === type) return;
+    if (this.ref && this.renderedType === type) {
+      return;
+    }
 
     this.clearOutputSubscriptions();
     this.ref?.destroy();
@@ -87,7 +89,9 @@ export class WidgetOutletDirective {
     const instance = this.ref.instance as Record<string, OutputRef<unknown>>;
     for (const output of mirror?.outputs ?? []) {
       const handler = handlers[output.templateName];
-      if (!handler) continue;
+      if (!handler) {
+        continue;
+      }
       this.outputSubscriptions.push(
         instance[output.propName].subscribe((value) => handler(value as never)),
       );
@@ -95,11 +99,15 @@ export class WidgetOutletDirective {
   }
 
   private setOptionalInput(name: string, value: unknown): void {
-    if (this.declaredInputs.has(name)) this.ref!.setInput(name, value);
+    if (this.declaredInputs.has(name)) {
+      this.ref!.setInput(name, value);
+    }
   }
 
   private clearOutputSubscriptions(): void {
-    for (const subscription of this.outputSubscriptions) subscription.unsubscribe();
+    for (const subscription of this.outputSubscriptions) {
+      subscription.unsubscribe();
+    }
     this.outputSubscriptions = [];
   }
 }

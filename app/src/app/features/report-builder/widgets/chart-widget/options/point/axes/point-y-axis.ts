@@ -56,8 +56,12 @@ export class PointYAxis {
   }
 
   private static scale(chart: PointChart, axis: ChartValueAxis, shape: PointYAxisShape) {
-    if (shape.isDate) return ChartScale.dateAxis(chart.yDateConfig);
-    if (shape.isText) return ChartScale.categoryAxis(shape.categories ?? [], axis.interval);
+    if (shape.isDate) {
+      return ChartScale.dateAxis(chart.yDateConfig);
+    }
+    if (shape.isText) {
+      return ChartScale.categoryAxis(shape.categories ?? [], axis.interval);
+    }
     return ChartScale.numericAxis(
       axis.logScale,
       axis.min,
@@ -69,7 +73,9 @@ export class PointYAxis {
   }
 
   private static longestLabel(chart: PointChart, shape: PointYAxisShape): number {
-    if (shape.isText) return ChartScale.longestLen(shape.categories ?? []);
+    if (shape.isText) {
+      return ChartScale.longestLen(shape.categories ?? []);
+    }
     return ValueExtent.labelLength(
       shape.series.flatMap((s) => s.points.map((p) => p.y)),
       shape.isDate
@@ -80,7 +86,9 @@ export class PointYAxis {
 
   /** An axis carrying a single series is drawn in its colour, so readers can match them. */
   private static color(chart: PointChart, index: number): string | null {
-    if (!chart.multiAxis) return null;
+    if (!chart.multiAxis) {
+      return null;
+    }
     const onAxis = chart.seriesAxisIndex.flatMap((k, i) => (k === index ? [i] : []));
     return onAxis.length === 1 ? chart.seriesColors[onAxis[0]] : null;
   }

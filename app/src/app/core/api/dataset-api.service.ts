@@ -162,7 +162,9 @@ export class DatasetApiService {
    */
   columnValues(datasetId: number, columnId: string, search?: string): Observable<string[]> {
     let params = new HttpParams();
-    if (search) params = params.set('search', search);
+    if (search) {
+      params = params.set('search', search);
+    }
     return this.http.get<string[]>(`/api/datasets/${datasetId}/columns/${columnId}/values`, {
       params,
     });

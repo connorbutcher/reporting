@@ -13,7 +13,9 @@ export class FilterApiService {
     .pipe(
       map((entries) => {
         const catalogue = {} as OperatorCatalogue;
-        for (const entry of entries) catalogue[entry.type] = entry.operators;
+        for (const entry of entries) {
+          catalogue[entry.type] = entry.operators;
+        }
         return catalogue;
       }),
       shareReplay({ bufferSize: 1, refCount: false }),

@@ -24,7 +24,9 @@ export class BoxChartResolver {
     const primary = readChartBindings(config)[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
-    if (!categoryColumn || !valueColumn) return null;
+    if (!categoryColumn || !valueColumn) {
+      return null;
+    }
 
     const categories = data?.categories ?? [];
     const results = data?.series ?? [];
