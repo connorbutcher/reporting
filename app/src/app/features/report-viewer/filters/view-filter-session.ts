@@ -102,36 +102,7 @@ export class ViewFilterSession {
     effect(() => {
       const content = this.store.content();
       const ready = this.saved.settled() && this.link.settled();
-      untracked(() => {
-        if (content) {
-          this.schemas.load(content);
-        }
-        if (!content) {
-          this.builtFor = null;
-          this.viewFilters.set(null);
-          return;
-        }
-        // Already built for this version: a later `view` change is applyLinkChanges'.
-        if (content === this.builtFor) {
-          return;
-        }
-        if (!ready) {
-          this.viewFilters.set(null);
-          return;
-        }
-
-        this.builtFor = content;
-        const start = this.startingState();
-        const filters = new ReportViewFilters(
-          content,
-          this.schemas.schemas,
-          this.schemas.catalogue,
-          start.overrides,
-        );
-        this.viewFilters.set(filters);
-        this.settle(filters, start);
-        this.store.openFilterKey.set(null);
-      });
+      untracked(() => this.seed(content, ready));
     });
   }
 
@@ -247,5 +218,37 @@ export class ViewFilterSession {
     this.linkOrigin.set(null);
     this.link.drop();
     this.saved.save(encoded);
+  }
+
+  private seed(content: ReportRevisionContent | null, ready: boolean): void {
+    if (!content) {
+      this.builtFor = null;
+      this.viewFilters.set(null);
+      return;
+    }
+    this.schemas.load(content);
+    // Already built for this version: a later `view` change is applyLinkChanges'.
+    if (content === this.builtFor) {
+      return;
+    }
+    if (!ready) {
+      this.viewFilters.set(null);
+      return;
+    }
+    this.build(content);
+  }
+
+  private build(content: ReportRevisionContent): void {
+    this.builtFor = content;
+    const start = this.startingState();
+    const filters = new ReportViewFilters(
+      content,
+      this.schemas.schemas,
+      this.schemas.catalogue,
+      start.overrides,
+    );
+    this.viewFilters.set(filters);
+    this.settle(filters, start);
+    this.store.openFilterKey.set(null);
   }
 }

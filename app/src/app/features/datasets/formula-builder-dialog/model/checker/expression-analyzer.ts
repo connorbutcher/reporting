@@ -115,7 +115,6 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   ): TypedValue | null {
     const expression = call.args[index];
     const param = params.length > 0 ? FormulaParameters.forArgument(params, index) : null;
-
     if (expression.length === 0) {
       if (param && !FormulaParameters.slotIsOptional(params, index)) {
         this.issues.push({
@@ -126,27 +125,31 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
           message: `Add a value for ${param.name} in ${call.name}().`,
         });
       }
-
       return null;
     }
 
     const typed = this.analyze(expression);
-    if (
-      param &&
-      typed &&
-      param.kind !== 'any' &&
-      typed.kind !== 'any' &&
-      typed.kind !== param.kind
-    ) {
-      this.issues.push({
-        kind: 'type',
-        blockId: typed.first,
-        ownerId: call.id,
-        arg: index,
-        message: `${ExpressionAnalyzer.capitalise(param.name)} needs ${ValueKinds.LABELS[param.kind]}, but this is ${ValueKinds.LABELS[typed.kind]}.`,
-      });
+    if (param && typed) {
+      this.checkArgumentKind(call, index, param, typed);
     }
-
     return typed;
+  }
+
+  private checkArgumentKind(
+    call: FunctionBlock,
+    index: number,
+    param: FormulaParameter,
+    typed: TypedValue,
+  ): void {
+    if (param.kind === 'any' || typed.kind === 'any' || typed.kind === param.kind) {
+      return;
+    }
+    this.issues.push({
+      kind: 'type',
+      blockId: typed.first,
+      ownerId: call.id,
+      arg: index,
+      message: `${ExpressionAnalyzer.capitalise(param.name)} needs ${ValueKinds.LABELS[param.kind]}, but this is ${ValueKinds.LABELS[typed.kind]}.`,
+    });
   }
 }

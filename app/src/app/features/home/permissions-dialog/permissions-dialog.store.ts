@@ -63,37 +63,15 @@ export class PermissionsDialogStore {
     const used = new Set(
       (this.permissions()?.explicit ?? []).map((g) => `${g.subjectType}:${g.subjectId ?? ''}`),
     );
-    const options: SubjectOption[] = [];
-    if (!used.has('everyone:')) {
-      options.push({
-        label: 'Everyone',
-        value: 'everyone:',
-        subjectType: 'everyone',
-        subjectId: null,
-      });
-    }
-    for (const user of this.users()) {
-      // A global admin's access is inferred from that status, so there's nothing to grant them.
-      if (user.isGlobalAdmin) {
-        continue;
-      }
-      const value = `user:${user.id}`;
-      if (!used.has(value)) {
-        options.push({ label: user.displayName, value, subjectType: 'user', subjectId: user.id });
-      }
-    }
-    for (const group of this.groups()) {
-      const value = `group:${group.id}`;
-      if (!used.has(value)) {
-        options.push({
-          label: `${group.name} (group)`,
-          value,
-          subjectType: 'group',
-          subjectId: group.id,
-        });
-      }
-    }
-    return options;
+    return [
+      PermissionsDialogStore.option('everyone', null, 'Everyone'),
+      ...this.users()
+        .filter((user) => !user.isGlobalAdmin)
+        .map((user) => PermissionsDialogStore.option('user', user.id, user.displayName)),
+      ...this.groups().map((group) =>
+        PermissionsDialogStore.option('group', group.id, `${group.name} (group)`),
+      ),
+    ].filter((option) => !used.has(option.value));
   });
 
   /**
@@ -159,6 +137,14 @@ export class PermissionsDialogStore {
       ? `You need Manager access to change sharing on this ${this.data.kind}.`
       : 'Could not load permissions.';
   });
+
+  private static option(
+    subjectType: GrantSubjectType,
+    subjectId: string | null,
+    label: string,
+  ): SubjectOption {
+    return { label, value: `${subjectType}:${subjectId ?? ''}`, subjectType, subjectId };
+  }
 
   public toggleInherit(inherits: boolean): void {
     // Copy the current effective grants down when breaking, so nobody (including the editor) is locked out.

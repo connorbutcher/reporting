@@ -6,6 +6,8 @@ import { WidgetCommentAuthor } from '../../../../core/models/widget-comment/widg
 import { DirectoryUser } from '../../../../core/models/admin';
 import { ReportViewerStore } from '../../report-viewer.store';
 import { CommentPart } from './comment-part';
+import { CommentAnchorTarget } from '../comment-anchor-target';
+import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
 
 /**
  * The aside's Comments tab: the focused widget's thread, a composer with `@`-mention autocomplete,
@@ -36,57 +38,18 @@ export class CommentsPanelComponent {
 
   constructor() {
     this.widgetId = this.store.commentsWidgetId;
-    this.widgetTitle = computed(() => {
-      const id = this.widgetId();
-      if (!id) {
-        return null;
-      }
-      for (const tab of this.store.content()?.tabs ?? []) {
-        const widget = tab.widgets.find((w) => w.id === id);
-        if (widget) {
-          return widget.config.title || widget.type;
-        }
-      }
-      return null;
-    });
+    this.widgetTitle = computed(() => this.findWidgetTitle(this.widgetId()));
     this.thread = computed(() => {
       const highlighted = this.comments.highlightedAnchor();
       const widgetId = this.widgetId();
-      return this.comments.comments().map((c) => ({
-        ...c,
-        parts: CommentsPanelComponent.commentParts(c.body, c.mentions),
-        anchor:
-          c.anchorX != null && c.anchorY != null
-            ? {
-                x: c.anchorX,
-                y: c.anchorY,
-                yAxisIndex: c.anchorYAxisIndex,
-                label: this.anchorLabel(c.anchorX, c.anchorY),
-              }
-            : null,
-        isHighlighted:
-          highlighted != null &&
-          highlighted.widgetId === widgetId &&
-          highlighted.x === c.anchorX &&
-          highlighted.y === c.anchorY,
-      }));
+      return this.comments
+        .comments()
+        .map((comment) => this.toDisplay(comment, highlighted, widgetId));
     });
     this.canPost = computed(
       () => this.composerText().trim().length > 0 && !this.comments.posting(),
     );
-    this.mentionCandidates = computed(() => {
-      const query = this.mentionQuery();
-      if (query == null) {
-        return [];
-      }
-      const already = new Set(this.mentionedUsers().map((u) => u.id));
-      return this.comments
-        .directory()
-        .filter(
-          (u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()),
-        )
-        .slice(0, 6);
-    });
+    this.mentionCandidates = computed(() => this.findMentionCandidates(this.mentionQuery()));
   }
 
   /** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
@@ -178,6 +141,57 @@ export class CommentsPanelComponent {
     const first = words[0]?.[0] ?? '';
     const second = words.length > 1 ? words[1][0] : '';
     return (first + second).toUpperCase();
+  }
+
+  private findWidgetTitle(id: string | null): string | null {
+    if (!id) {
+      return null;
+    }
+    for (const tab of this.store.content()?.tabs ?? []) {
+      const widget = tab.widgets.find((w) => w.id === id);
+      if (widget) {
+        return widget.config.title || widget.type;
+      }
+    }
+    return null;
+  }
+
+  private toDisplay(
+    comment: WidgetComment,
+    highlighted: CommentAnchorTarget | null,
+    widgetId: string | null,
+  ): DisplayComment {
+    return {
+      ...comment,
+      parts: CommentsPanelComponent.commentParts(comment.body, comment.mentions),
+      anchor:
+        comment.anchorX != null && comment.anchorY != null
+          ? {
+              x: comment.anchorX,
+              y: comment.anchorY,
+              yAxisIndex: comment.anchorYAxisIndex,
+              label: this.anchorLabel(comment.anchorX, comment.anchorY),
+            }
+          : null,
+      isHighlighted:
+        highlighted != null &&
+        highlighted.widgetId === widgetId &&
+        highlighted.x === comment.anchorX &&
+        highlighted.y === comment.anchorY,
+    };
+  }
+
+  private findMentionCandidates(query: string | null): DirectoryUser[] {
+    if (query == null) {
+      return [];
+    }
+    const already = new Set(this.mentionedUsers().map((u) => u.id));
+    return this.comments
+      .directory()
+      .filter(
+        (u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()),
+      )
+      .slice(0, 6);
   }
 
   private anchorLabel(x: number, y: number): string {

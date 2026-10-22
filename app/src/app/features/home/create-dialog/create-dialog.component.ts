@@ -16,6 +16,7 @@ import { TreeNode } from 'primeng/api';
 import { form, required, validate, validateHttp } from '@angular/forms/signals';
 import { CreateDialogData } from './create-dialog-data';
 import { CreateKind } from './create-kind';
+import { HttpContext } from '@angular/common/http';
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { FolderTreeStore } from '../folder-tree.store';
 import { CreateDialogResult } from './create-dialog-result';
@@ -34,55 +35,19 @@ export class CreateDialogComponent implements AfterViewInit {
   public readonly kind = signal<CreateKind>('report');
   public readonly selectedSource = signal<TreeNode | null>(null);
 
-  // The name is required and must be unique within the destination folder for the
-  // selected kind (folders are checked against sibling folders, reports against
-  // sibling reports). The duplicate check runs as a live validator, so a clashing
-  // name disables Create and shows a message as it's typed — before the dialog closes.
+  /**
+   * The name must be unique among the destination's siblings of the selected kind. The local check
+   * is instant but only sees siblings the caller can see, so the server makes the final call.
+   */
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A name is required.' });
-    // Fast, offline check against the siblings this dialog was handed — catches the common case
-    // instantly. Those lists are ACL-filtered to what the caller can see though (see the folder/report
-    // repositories' NameAvailableAsync), so a sibling with a stricter ACL of its own can hide from it.
-    validate(path.name, ({ value }) => {
-      const name = value().trim().toLowerCase();
-      if (!name) {
-        return null;
-      }
-      const taken = this.siblingNames().some((existing) => existing === name);
-      return taken
-        ? {
-            kind: 'duplicate',
-            message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
-          }
-        : null;
-    });
-    // Authoritative check against every sibling on the server (only once the checks above pass), so a
-    // name that collides with one the caller can't see still can't be reused.
+    validate(path.name, ({ value }) => this.localDuplicateError(value()));
     validateHttp<string, { available: boolean }>(path.name, {
       when: ({ value }) => value().trim().length > 0,
-      request: ({ value }) => ({
-        url:
-          this.kind() === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
-        params: {
-          name: value().trim(),
-          ...(this.data.folderId == null
-            ? {}
-            : this.kind() === 'folder'
-              ? { parentFolderId: this.data.folderId }
-              : { folderId: this.data.folderId }),
-        } as Record<string, string | number>,
-        context: HttpErrorNotification.skip(),
-      }),
+      request: ({ value }) => this.nameAvailableRequest(value().trim()),
       debounce: 400,
       onSuccess: (result, { value }) =>
-        result.available
-          ? []
-          : [
-              {
-                kind: 'duplicate',
-                message: `A ${this.kind()} called "${value().trim()}" already exists here.`,
-              },
-            ],
+        result.available ? [] : [this.duplicateError(value().trim())],
       onError: () => [],
     });
   });
@@ -173,5 +138,34 @@ export class CreateDialogComponent implements AfterViewInit {
       leaf: true,
     }));
     return [...folderNodes, ...reportNodes];
+  }
+
+  private localDuplicateError(value: string): { kind: string; message: string } | null {
+    const name = value.trim().toLowerCase();
+    if (!name || !this.siblingNames().some((existing) => existing === name)) {
+      return null;
+    }
+    return this.duplicateError(value.trim());
+  }
+
+  private duplicateError(name: string): { kind: string; message: string } {
+    return { kind: 'duplicate', message: `A ${this.kind()} called "${name}" already exists here.` };
+  }
+
+  private nameAvailableRequest(name: string): {
+    url: string;
+    params: Record<string, string | number>;
+    context: HttpContext;
+  } {
+    const isFolder = this.kind() === 'folder';
+    const params: Record<string, string | number> = { name };
+    if (this.data.folderId != null) {
+      params[isFolder ? 'parentFolderId' : 'folderId'] = this.data.folderId;
+    }
+    return {
+      url: isFolder ? '/api/folders/name-available' : '/api/reports/name-available',
+      params,
+      context: HttpErrorNotification.skip(),
+    };
   }
 }

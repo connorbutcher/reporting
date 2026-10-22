@@ -1,7 +1,10 @@
 import { effect, inject, Injectable, Signal, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { DatasetRow } from '../../../core/models/dataset';
+import {
+  DatasetRow,
+  DatasetRowWindow as DatasetRowWindowResult,
+} from '../../../core/models/dataset';
 import { DatasetCollection } from './dataset-collection';
 
 @Injectable()
@@ -144,41 +147,45 @@ export class DatasetRowWindow {
     this.lastFirst = first;
     this.lastCount = count;
     this.loading.set(true);
+    // A response superseded by a newer request or selection is ignored.
     this.api.getRowWindow(id, first, count).subscribe({
-      next: ({ total, rows }) => {
-        if (seq !== this.requestSeq) {
-          return;
-        } // A newer request (or selection) superseded this one.
-        // Keep the other loaded windows when the total is unchanged; otherwise
-        // start a fresh sparse array of the new length.
-        const next =
-          this._rows().length === total
-            ? [...this._rows()]
-            : new Array<DatasetRow | undefined>(total);
-        rows.forEach((row, i) => (next[first + i] = row));
-        this._total.set(total);
-        this._rows.set(next);
-        this._ready.set(true);
-        this.loading.set(false);
-        if (this.pendingScroll !== null) {
-          this.scrollTo.set(this.pendingScroll);
-          this.pendingScroll = null;
+      next: (window) => {
+        if (seq === this.requestSeq) {
+          this.applyWindow(first, window);
         }
       },
       error: (err) => {
-        if (seq !== this.requestSeq) {
-          return;
-        } // A newer request (or selection) superseded this one.
-        this.loading.set(false);
-        // Forget the window so an identical follow-up load (e.g. the grid's
-        // mount-time lazy-load) isn't deduped away and can retry the failed fetch.
-        this.lastFirst = -1;
-        this.lastCount = -1;
-        // Let the grid mount on whatever rows already loaded rather than sitting
-        // on the skeleton — but tell the user this window didn't load.
-        this._ready.set(true);
-        this.notify.loadError(err, "Couldn't load these rows. Scroll again or reopen the dataset.");
+        if (seq === this.requestSeq) {
+          this.failWindow(err);
+        }
       },
     });
+  }
+
+  /** Keeps other loaded windows when the total is unchanged; otherwise starts a fresh sparse array. */
+  private applyWindow(first: number, { total, rows }: DatasetRowWindowResult): void {
+    const next =
+      this._rows().length === total ? [...this._rows()] : new Array<DatasetRow | undefined>(total);
+    rows.forEach((row, i) => (next[first + i] = row));
+    this._total.set(total);
+    this._rows.set(next);
+    this._ready.set(true);
+    this.loading.set(false);
+    if (this.pendingScroll !== null) {
+      this.scrollTo.set(this.pendingScroll);
+      this.pendingScroll = null;
+    }
+  }
+
+  /**
+   * Forgets the window so an identical follow-up load can retry it, and lets the grid mount on the
+   * rows already loaded rather than sitting on the skeleton.
+   */
+  private failWindow(err: unknown): void {
+    this.loading.set(false);
+    this.lastFirst = -1;
+    this.lastCount = -1;
+    this._ready.set(true);
+    this.notify.loadError(err, "Couldn't load these rows. Scroll again or reopen the dataset.");
   }
 }
