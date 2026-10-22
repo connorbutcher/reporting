@@ -28,7 +28,11 @@ public class TextFilterSqlTests : SqliteDbTestBase
         foreach (var value in values)
         {
             var row = new DatasetRow { DatasetId = dataset.Id, RefId = Guid.NewGuid() };
-            if (value is not null) row.Cells.Add(new DatasetCell { ColumnId = dataset.Columns[0].Id, StringValue = value });
+            if (value is not null)
+            {
+                row.Cells.Add(new DatasetCell { ColumnId = dataset.Columns[0].Id, StringValue = value });
+            }
+
             Db.DatasetRows.Add(row);
         }
         await Db.SaveChangesAsync();

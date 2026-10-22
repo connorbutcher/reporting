@@ -46,7 +46,10 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
         var auth = excludeId is { } id
             ? await authorizer.AuthorizeFolderAsync(id, AccessLevel.Manager)
             : await authorizer.AuthorizeCreateInAsync(parentFolderId);
-        if (!auth.Allowed) return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+        if (!auth.Allowed)
+        {
+            return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+        }
 
         return new FolderNameAvailableDto
         {
@@ -57,11 +60,17 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
     [HttpPost]
     public async Task<ActionResult<FolderDto>> Create(SaveFolderDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A folder needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A folder needs a name.");
+        }
 
         // Creating a subfolder is an Editor action on the containing folder (or the root).
         var createAuth = await authorizer.AuthorizeCreateInAsync(dto.ParentFolderId);
-        if (!createAuth.Allowed) return this.ToActionResult(createAuth, AccessLevel.Editor);
+        if (!createAuth.Allowed)
+        {
+            return this.ToActionResult(createAuth, AccessLevel.Editor);
+        }
 
         var folder = await folders.CreateAsync(dto.Name.Trim(), dto.ParentFolderId);
         return CreatedAtAction(nameof(GetAll), folder);
@@ -71,14 +80,20 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
     [AuthorizeFolder(AccessLevel.Manager)]
     public async Task<ActionResult<FolderDto>> Update(int id, SaveFolderDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A folder needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A folder needs a name.");
+        }
 
         // Moving into a different container also needs Editor on the destination.
         var currentParentId = await folders.GetParentFolderIdAsync(id);
         if (currentParentId != dto.ParentFolderId)
         {
             var moveAuth = await authorizer.AuthorizeCreateInAsync(dto.ParentFolderId);
-            if (!moveAuth.Allowed) return this.ToActionResult(moveAuth, AccessLevel.Editor);
+            if (!moveAuth.Allowed)
+            {
+                return this.ToActionResult(moveAuth, AccessLevel.Editor);
+            }
         }
 
         var folder = await folders.UpdateAsync(id, dto.Name.Trim(), dto.ParentFolderId);
@@ -95,7 +110,13 @@ public class FoldersController(FolderRepository folders, ResourceAuthorizer auth
     {
         var visible = new List<FolderDto>();
         foreach (var folder in folders)
-            if (await authorizer.CanSeeFolderAsync(folder.Id)) visible.Add(folder);
+        {
+            if (await authorizer.CanSeeFolderAsync(folder.Id))
+            {
+                visible.Add(folder);
+            }
+        }
+
         return visible;
     }
 }

@@ -59,7 +59,10 @@ public static class DbSeeder
             changed = true;
         }
 
-        if (changed) db.SaveChanges();
+        if (changed)
+        {
+            db.SaveChanges();
+        }
 
         SeedDemoDirectory(db);
     }
@@ -81,17 +84,28 @@ public static class DbSeeder
         var added = false;
         foreach (var (email, name) in demoUsers)
         {
-            if (db.Users.Any(u => u.Email == email)) continue;
+            if (db.Users.Any(u => u.Email == email))
+            {
+                continue;
+            }
+
             db.Users.Add(new User { RefId = Guid.NewGuid(), Email = email, DisplayName = name, CreatedAt = DateTime.UtcNow });
             added = true;
         }
-        if (added) db.SaveChanges();
+        if (added)
+        {
+            db.SaveChanges();
+        }
 
         if (!db.UserGroups.Any(g => g.Name == "QA Leads"))
         {
             var alice = db.Users.FirstOrDefault(u => u.Email == "alice@local");
             var group = new UserGroup { RefId = Guid.NewGuid(), Name = "QA Leads" };
-            if (alice is not null) group.Members.Add(new UserGroupMember { User = alice });
+            if (alice is not null)
+            {
+                group.Members.Add(new UserGroupMember { User = alice });
+            }
+
             db.UserGroups.Add(group);
             db.SaveChanges();
         }
@@ -105,7 +119,10 @@ public static class DbSeeder
 
     public static void Seed(ReportingDbContext db)
     {
-        if (db.Reports.Any()) return;
+        if (db.Reports.Any())
+        {
+            return;
+        }
 
         // Each revision owns its own dataset. Two things aren't known until the graph is first saved:
         // a cell's column int id, and a table widget's dataset int id (which its config references).
@@ -138,7 +155,10 @@ public static class DbSeeder
     public static void SeedBoxPlotShowcase(ReportingDbContext db)
     {
         const string name = "Torque Calibration Study";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();
@@ -173,7 +193,10 @@ public static class DbSeeder
     public static void SeedStackedBarShowcase(ReportingDbContext db)
     {
         const string name = "Build Cost Breakdown";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();
@@ -208,7 +231,10 @@ public static class DbSeeder
     public static void SeedHistogramShowcase(ReportingDbContext db)
     {
         const string name = "Bore Diameter Capability";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();
@@ -243,7 +269,10 @@ public static class DbSeeder
     public static void SeedPivotShowcase(ReportingDbContext db)
     {
         const string name = "Production Summary";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();
@@ -280,7 +309,10 @@ public static class DbSeeder
     public static void SeedFeatureShowcase(ReportingDbContext db)
     {
         const string name = "Engine Build — Feature Tour";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();
@@ -323,7 +355,10 @@ public static class DbSeeder
     public static void SeedCrossReferenceShowcase(ReportingDbContext db)
     {
         const string name = "Engine Build Cross-Reference";
-        if (db.Reports.Any(r => r.Name == name)) return;
+        if (db.Reports.Any(r => r.Name == name))
+        {
+            return;
+        }
 
         var pending = new List<PendingCell>();
         var pendingTables = new List<PendingTable>();

@@ -14,13 +14,19 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     private static void EnsureNotFiltered(Dataset dataset)
     {
         if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+        {
             throw new DataValidationException("A filtered dataset's rows come from its base dataset and can't be edited directly.");
+        }
     }
 
     public async Task<DatasetDataDto?> GetDataAsync(int id)
     {
         var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null) return null;
+        if (resolved is null)
+        {
+            return null;
+        }
+
         if (resolved.MandatoryFilter is null)
         {
             var dataset = await db.Datasets
@@ -54,7 +60,11 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     public async Task<DatasetRowWindowDto?> GetRowWindowAsync(int id, int first, int count)
     {
         var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null) return null;
+        if (resolved is null)
+        {
+            return null;
+        }
+
         var physical = resolved.Physical;
 
         var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
@@ -81,7 +91,11 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     public async Task<DatasetRowDto?> AddRowAsync(int id, Dictionary<Guid, string> values)
     {
         var dataset = await db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
+
         EnsureNotFiltered(dataset);
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
@@ -96,12 +110,18 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     public async Task<DatasetRowDto?> UpdateRowAsync(int id, Guid rowId, Dictionary<Guid, string> values)
     {
         var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
 
         var row = await db.DatasetRows
             .Include(r => r.Cells)
             .FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.Id == id);
-        if (row is null) return null;
+        if (row is null)
+        {
+            return null;
+        }
 
         ApplyValues(dataset, row, values);
         await formulas.ApplyToRowAsync(dataset, row);
@@ -112,7 +132,10 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
     public async Task<bool> DeleteRowAsync(int id, Guid rowId)
     {
         var row = await db.DatasetRows.FirstOrDefaultAsync(r => r.RefId == rowId && r.Dataset!.Id == id);
-        if (row is null) return false;
+        if (row is null)
+        {
+            return false;
+        }
 
         db.DatasetRows.Remove(row);
         await db.SaveChangesAsync();
@@ -135,7 +158,10 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
 
         foreach (var (columnRef, raw) in values)
         {
-            if (!columnsByRef.TryGetValue(columnRef, out var column) || column.IsComputed) continue;
+            if (!columnsByRef.TryGetValue(columnRef, out var column) || column.IsComputed)
+            {
+                continue;
+            }
 
             var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column.Id);
             if (cell is null)

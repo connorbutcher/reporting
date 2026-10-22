@@ -42,7 +42,11 @@ public class DatasetsController(
     public async Task<ActionResult<List<DatasetSummaryDto>>> GetForReport(int reportId)
     {
         var context = await datasets.GetDraftContextAsync(reportId);
-        if (context is null) return NotFound();
+        if (context is null)
+        {
+            return NotFound();
+        }
+
         return await datasets.GetAllForRevisionAsync(context.RevisionId);
     }
 
@@ -50,13 +54,23 @@ public class DatasetsController(
     [AuthorizeReport(AccessLevel.Editor)]
     public async Task<ActionResult<DatasetSummaryDto>> Create(int reportId, CreateDatasetDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A dataset needs a name.");
+        }
 
         var context = await datasets.GetDraftContextAsync(reportId);
-        if (context is null) return NotFound();
+        if (context is null)
+        {
+            return NotFound();
+        }
 
         var dataset = await datasets.CreateAsync(context.RevisionId, dto.Name.Trim(), dto.SourceId);
-        if (dataset is null) return BadRequest("Unknown dataset source.");
+        if (dataset is null)
+        {
+            return BadRequest("Unknown dataset source.");
+        }
+
         return CreatedAtAction(nameof(GetSchema), new { id = dataset.Id }, dataset);
     }
 
@@ -283,7 +297,10 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSummaryDto>> Rename(int id, SaveDatasetDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A dataset needs a name.");
+        }
 
         var dataset = await datasets.RenameAsync(id, dto.Name.Trim());
         return dataset is null ? NotFound() : dataset;
@@ -294,7 +311,10 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetSummaryDto>> Clone(int id, SaveDatasetDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A dataset needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A dataset needs a name.");
+        }
 
         var dataset = await datasets.CloneAsync(id, dto.Name.Trim());
         return dataset is null ? NotFound() : CreatedAtAction(nameof(GetSchema), new { id = dataset.Id }, dataset);
@@ -331,7 +351,10 @@ public class DatasetsController(
     [AuthorizeDataset(AccessLevel.Editor, Mutation = true)]
     public async Task<ActionResult<DatasetColumnDto>> AddColumn(int id, SaveDatasetColumnDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A column needs a name.");
+        }
 
         var column = await datasets.AddColumnAsync(id, dto.Name.Trim(), dto.Type);
         return column is null ? NotFound() : column;
@@ -344,7 +367,10 @@ public class DatasetsController(
         Guid columnId,
         SaveDatasetColumnDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A column needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A column needs a name.");
+        }
 
         var column = await datasets.UpdateColumnAsync(id, columnId, dto.Name.Trim(), dto.Type);
         return column is null ? NotFound() : column;

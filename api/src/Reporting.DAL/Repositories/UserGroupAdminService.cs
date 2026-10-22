@@ -27,7 +27,9 @@ public class UserGroupAdminService(
     {
         var (full, scope) = await ScopeAsync();
         if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
+        {
             throw new AccessDeniedException("You don't have access to group administration.");
+        }
 
         var query = full ? db.UserGroups : db.UserGroups.Where(g => scope.Contains(g.Id));
         var groups = await query
@@ -64,8 +66,15 @@ public class UserGroupAdminService(
                     .ToList()
             })
             .FirstOrDefaultAsync();
-        if (group is null) return null;
-        if (!full && !scope.Contains(group.Id)) return null; // hidden from a delegate who can't manage it
+        if (group is null)
+        {
+            return null;
+        }
+
+        if (!full && !scope.Contains(group.Id))
+        {
+            return null; // hidden from a delegate who can't manage it
+        }
 
         return new AdminGroupDetailDto
         {
@@ -87,10 +96,15 @@ public class UserGroupAdminService(
     {
         var (full, scope) = await ScopeAsync();
         if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
+        {
             throw new AccessDeniedException("You don't have access to group administration.");
+        }
 
         var trimmed = (name ?? string.Empty).Trim();
-        if (trimmed.Length == 0) return true;
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
 
         return !await db.UserGroups.AnyAsync(g => g.Name == trimmed && (excludeId == null || g.RefId != excludeId));
     }
@@ -100,12 +114,21 @@ public class UserGroupAdminService(
         // Creating groups needs the CreateGroups permission — held explicitly, or implicitly by a
         // global admin (who holds every app permission; see AppPermissionService).
         if (!await CanCreateGroupsAsync())
+        {
             throw new AccessDeniedException("You don't have permission to create groups.");
+        }
 
         var name = (dto.Name ?? string.Empty).Trim();
-        if (name.Length == 0) throw new DataValidationException("A group name is required.");
+        if (name.Length == 0)
+        {
+            throw new DataValidationException("A group name is required.");
+        }
+
         if (await db.UserGroups.AnyAsync(g => g.Name == name))
+        {
             throw new DataValidationException($"A group called \"{name}\" already exists.");
+        }
+
         await RequireValidMembershipAsync(dto);
 
         var group = new UserGroup { RefId = Guid.NewGuid(), Name = name };
@@ -119,8 +142,15 @@ public class UserGroupAdminService(
         var managerIds = dto.ManagerIds;
         if (!actor.IsGlobalAdmin)
         {
-            if (!memberIds.Contains(actor.RefId)) memberIds = [.. memberIds, actor.RefId];
-            if (!managerIds.Contains(actor.RefId)) managerIds = [.. managerIds, actor.RefId];
+            if (!memberIds.Contains(actor.RefId))
+            {
+                memberIds = [.. memberIds, actor.RefId];
+            }
+
+            if (!managerIds.Contains(actor.RefId))
+            {
+                managerIds = [.. managerIds, actor.RefId];
+            }
         }
 
         await SetMembersAsync(group.Id, memberIds);
@@ -135,13 +165,27 @@ public class UserGroupAdminService(
         var (full, scope) = await ScopeAsync();
 
         var group = await db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
-        if (group is null) return null;
-        if (!full && !scope.Contains(group.Id)) return null; // hidden
+        if (group is null)
+        {
+            return null;
+        }
+
+        if (!full && !scope.Contains(group.Id))
+        {
+            return null; // hidden
+        }
 
         var name = (dto.Name ?? string.Empty).Trim();
-        if (name.Length == 0) throw new DataValidationException("A group name is required.");
+        if (name.Length == 0)
+        {
+            throw new DataValidationException("A group name is required.");
+        }
+
         if (await db.UserGroups.AnyAsync(g => g.Name == name && g.Id != group.Id))
+        {
             throw new DataValidationException($"A group called \"{name}\" already exists.");
+        }
+
         await RequireValidMembershipAsync(dto);
 
         // A delegated manager can't drop themselves and lose access to the group mid-edit.
@@ -149,7 +193,9 @@ public class UserGroupAdminService(
         {
             var actor = await currentUserAccessor.GetAsync();
             if (!dto.ManagerIds.Contains(actor.RefId))
+            {
                 throw new DataValidationException("You can't remove yourself as a manager of this group.");
+            }
         }
 
         group.Name = name;
@@ -165,8 +211,15 @@ public class UserGroupAdminService(
         var (full, scope) = await ScopeAsync();
 
         var group = await db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
-        if (group is null) return false;
-        if (!full && !scope.Contains(group.Id)) return false; // hidden
+        if (group is null)
+        {
+            return false;
+        }
+
+        if (!full && !scope.Contains(group.Id))
+        {
+            return false; // hidden
+        }
 
         // Membership, manager, and ACL-grant rows all cascade from the group.
         db.UserGroups.Remove(group);
@@ -197,7 +250,9 @@ public class UserGroupAdminService(
     {
         var actor = await currentUserAccessor.GetAsync();
         if (actor.IsGlobalAdmin)
+        {
             return (true, new HashSet<int>());
+        }
 
         var managed = await db.UserGroupManagers
             .Where(m => m.UserId == actor.Id)
@@ -226,7 +281,9 @@ public class UserGroupAdminService(
 
         var members = dto.MemberIds.ToHashSet();
         if (!dto.ManagerIds.All(members.Contains))
+        {
             throw new DataValidationException("Managers must be members of the group.");
+        }
     }
 
     /// <summary>Resolves the given user RefIds to database ids and sets the group's members to exactly that set.</summary>
@@ -242,7 +299,9 @@ public class UserGroupAdminService(
 
         db.UserGroupMembers.RemoveRange(current.Where(m => !wantedSet.Contains(m.UserId)));
         foreach (var userId in wantedSet.Where(id => !currentSet.Contains(id)))
+        {
             db.UserGroupMembers.Add(new UserGroupMember { UserGroupId = groupId, UserId = userId });
+        }
     }
 
     /// <summary>Resolves the given user RefIds to database ids and sets the group's managers to exactly that set.</summary>
@@ -258,7 +317,9 @@ public class UserGroupAdminService(
 
         db.UserGroupManagers.RemoveRange(current.Where(m => !wantedSet.Contains(m.UserId)));
         foreach (var userId in wantedSet.Where(id => !currentSet.Contains(id)))
+        {
             db.UserGroupManagers.Add(new UserGroupManager { UserGroupId = groupId, UserId = userId });
+        }
     }
 
 }

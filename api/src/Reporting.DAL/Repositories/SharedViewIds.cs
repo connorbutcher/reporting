@@ -13,7 +13,10 @@ internal static class SharedViewIds
     public static string New() =>
         string.Create(ReportSharedView.ShortIdLength, 0, static (span, _) =>
         {
-            for (var i = 0; i < span.Length; i++) span[i] = Alphabet[RandomNumberGenerator.GetInt32(Alphabet.Length)];
+            for (var i = 0; i < span.Length; i++)
+            {
+                span[i] = Alphabet[RandomNumberGenerator.GetInt32(Alphabet.Length)];
+            }
         });
 
     public static string HashOf(string filters) =>

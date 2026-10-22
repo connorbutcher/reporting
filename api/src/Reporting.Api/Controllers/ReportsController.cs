@@ -47,9 +47,16 @@ public class ReportsController(
     public async Task<ActionResult<ReportSummaryDto>> GetById(int id)
     {
         var report = await reports.GetEntityAsync(id);
-        if (report is null) return NotFound();
+        if (report is null)
+        {
+            return NotFound();
+        }
+
         var auth = await authorizer.AuthorizeReportAsync(report, AccessLevel.Viewer);
-        if (!auth.Allowed) return this.ToActionResult(auth, AccessLevel.Viewer);
+        if (!auth.Allowed)
+        {
+            return this.ToActionResult(auth, AccessLevel.Viewer);
+        }
 
         var favorites = await reports.FavoriteReportIdsAsync();
         return report.ToSummaryDto(auth.Level, favorites.Contains(report.Id));
@@ -67,7 +74,10 @@ public class ReportsController(
         var auth = excludeId is { } id
             ? await authorizer.AuthorizeReportAsync(id, AccessLevel.Manager)
             : await authorizer.AuthorizeCreateInAsync(folderId);
-        if (!auth.Allowed) return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+        if (!auth.Allowed)
+        {
+            return this.ToActionResult(auth, excludeId is null ? AccessLevel.Editor : AccessLevel.Manager);
+        }
 
         return new ReportNameAvailableDto
         {
@@ -78,15 +88,23 @@ public class ReportsController(
     [HttpPost]
     public async Task<ActionResult<ReportSummaryDto>> Create(CreateReportDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A report needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A report needs a name.");
+        }
 
         // Creating a report is an Editor action on the destination folder (or the root).
         var createAuth = await authorizer.AuthorizeCreateInAsync(dto.FolderId);
-        if (!createAuth.Allowed) return this.ToActionResult(createAuth, AccessLevel.Editor);
+        if (!createAuth.Allowed)
+        {
+            return this.ToActionResult(createAuth, AccessLevel.Editor);
+        }
 
         // You can only duplicate a report you're allowed to see; hide the rest behind "does not exist".
         if (dto.SourceReportId is { } sourceId && !(await authorizer.AuthorizeReportAsync(sourceId, AccessLevel.Viewer)).Allowed)
+        {
             return BadRequest("Source report does not exist.");
+        }
 
         var report = await reports.CreateAsync(dto.Name.Trim(), dto.FolderId, dto.SourceReportId);
         var level = await authorizer.LevelForReportAsync(report);
@@ -96,23 +114,40 @@ public class ReportsController(
     [HttpPut("{id:int}")]
     public async Task<ActionResult<ReportSummaryDto>> Update(int id, SaveReportDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("A report needs a name.");
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            return BadRequest("A report needs a name.");
+        }
 
         // Renaming or moving a report is a Manager action on it.
         var report = await reports.GetEntityAsync(id);
-        if (report is null) return NotFound();
+        if (report is null)
+        {
+            return NotFound();
+        }
+
         var auth = await authorizer.AuthorizeReportAsync(report, AccessLevel.Manager);
-        if (!auth.Allowed) return this.ToActionResult(auth, AccessLevel.Manager);
+        if (!auth.Allowed)
+        {
+            return this.ToActionResult(auth, AccessLevel.Manager);
+        }
 
         // Moving into a different folder also needs Editor on the destination.
         if (report.FolderId != dto.FolderId)
         {
             var moveAuth = await authorizer.AuthorizeCreateInAsync(dto.FolderId);
-            if (!moveAuth.Allowed) return this.ToActionResult(moveAuth, AccessLevel.Editor);
+            if (!moveAuth.Allowed)
+            {
+                return this.ToActionResult(moveAuth, AccessLevel.Editor);
+            }
         }
 
         var updated = await reports.UpdateAsync(id, dto.Name.Trim(), dto.FolderId);
-        if (updated is null) return NotFound();
+        if (updated is null)
+        {
+            return NotFound();
+        }
+
         var level = await authorizer.LevelForReportAsync(updated);
         var favorites = await reports.FavoriteReportIdsAsync();
         return updated.ToSummaryDto(level, favorites.Contains(updated.Id));

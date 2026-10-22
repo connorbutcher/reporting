@@ -30,7 +30,11 @@ public class ToleranceMatchTests : SqliteDbTestBase
     private async Task<Dataset> SeedDatasetAsync(string name, params DatasetColumn[] columns)
     {
         var dataset = new Dataset { Name = name, DatasetSourceId = 1, ReportRevisionId = 1 };
-        foreach (var column in columns) dataset.Columns.Add(column);
+        foreach (var column in columns)
+        {
+            dataset.Columns.Add(column);
+        }
+
         Db.Datasets.Add(dataset);
         await Db.SaveChangesAsync();
         return dataset;
@@ -40,7 +44,10 @@ public class ToleranceMatchTests : SqliteDbTestBase
     {
         var row = new DatasetRow { RefId = rowRef, DatasetId = dataset.Id };
         foreach (var (column, text, number) in cells)
+        {
             row.Cells.Add(new DatasetCell { ColumnId = column.Id, StringValue = text, NumberValue = number });
+        }
+
         Db.DatasetRows.Add(row);
     }
 

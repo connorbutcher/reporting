@@ -27,10 +27,26 @@ public class FilterTranslatorTests
     private static DatasetRow Row(string? name = null, double? qty = null, DateTime? when = null, bool? ok = null)
     {
         var row = new DatasetRow();
-        if (name is not null) row.Cells.Add(new DatasetCell { ColumnId = 1, StringValue = name });
-        if (qty is not null) row.Cells.Add(new DatasetCell { ColumnId = 2, NumberValue = qty });
-        if (when is not null) row.Cells.Add(new DatasetCell { ColumnId = 3, DateValue = when });
-        if (ok is not null) row.Cells.Add(new DatasetCell { ColumnId = 4, BoolValue = ok });
+        if (name is not null)
+        {
+            row.Cells.Add(new DatasetCell { ColumnId = 1, StringValue = name });
+        }
+
+        if (qty is not null)
+        {
+            row.Cells.Add(new DatasetCell { ColumnId = 2, NumberValue = qty });
+        }
+
+        if (when is not null)
+        {
+            row.Cells.Add(new DatasetCell { ColumnId = 3, DateValue = when });
+        }
+
+        if (ok is not null)
+        {
+            row.Cells.Add(new DatasetCell { ColumnId = 4, BoolValue = ok });
+        }
+
         return row;
     }
 

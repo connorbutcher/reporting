@@ -149,6 +149,8 @@ public class DatasetFormulaRepository(ReportingDbContext db, FormulaCalculationS
     private static void EnsureNotFiltered(Dataset dataset)
     {
         if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+        {
             throw new DataValidationException("A filtered dataset's columns come from its base dataset — add the formula there instead.");
+        }
     }
 }

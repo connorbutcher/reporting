@@ -67,7 +67,10 @@ public class BoxPlotQueryTests : IDisposable
 
         // Category "A": 1..9, whose type-7 quartiles are Q1=3, median=5, Q3=7.
         foreach (var v in new[] { 1d, 2, 3, 4, 5, 6, 7, 8, 9 })
+        {
             AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
@@ -117,7 +120,10 @@ public class BoxPlotQueryTests : IDisposable
 
         // 1..5 sit inside the fences; 100 is well past the upper Tukey fence.
         foreach (var v in new[] { 1d, 2, 3, 4, 5, 100 })
+        {
             AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
@@ -201,7 +207,11 @@ public class BoxPlotQueryTests : IDisposable
         var valueId = dataset.Columns[1].Id;
 
         // mean = 4; sample sd = sqrt(((2-4)² + 0 + (6-4)²) / 2) = 2.
-        foreach (var v in new[] { 2d, 4, 6 }) AddRow(dataset.Id, categoryId, "A", valueId, v);
+        foreach (var v in new[] { 2d, 4, 6 })
+        {
+            AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
@@ -225,7 +235,10 @@ public class BoxPlotQueryTests : IDisposable
 
         // mean 11, sd sqrt(10) ≈ 3.162; at 1.5σ the upper fence ≈ 15.74, so 20 is an outlier.
         foreach (var v in new[] { 10d, 10, 10, 10, 10, 10, 10, 10, 10, 20 })
+        {
             AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
@@ -251,7 +264,11 @@ public class BoxPlotQueryTests : IDisposable
         var valueId = dataset.Columns[1].Id;
 
         // Q1=2.25, Q3=4.75, IQR=2.5. 9 is an outlier at 1.5×IQR (fence 8.5) but not at 3×IQR (fence 12.25).
-        foreach (var v in new[] { 1d, 2, 3, 4, 5, 9 }) AddRow(dataset.Id, categoryId, "A", valueId, v);
+        foreach (var v in new[] { 1d, 2, 3, 4, 5, 9 })
+        {
+            AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto
@@ -302,7 +319,11 @@ public class BoxPlotQueryTests : IDisposable
         var categoryId = dataset.Columns[0].Id;
         var valueId = dataset.Columns[1].Id;
 
-        foreach (var v in new[] { 5d, 1, 4, 2, 3 }) AddRow(dataset.Id, categoryId, "A", valueId, v);
+        foreach (var v in new[] { 5d, 1, 4, 2, 3 })
+        {
+            AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var withPoints = await Repo().QueryForBoxPlotAsync(dataset.Id, new BoxPlotQueryDto

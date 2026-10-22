@@ -64,7 +64,10 @@ public partial class UserAdminService(
                     .ToList()
             })
             .FirstOrDefaultAsync();
-        if (user is null) return null;
+        if (user is null)
+        {
+            return null;
+        }
 
         var isGlobalAdmin = await HasDirectPermissionAsync(user.Id, AppPermission.GlobalAdmin);
         return new AdminUserDetailDto
@@ -84,10 +87,20 @@ public partial class UserAdminService(
     {
         var displayName = (dto.DisplayName ?? string.Empty).Trim();
         var email = (dto.Email ?? string.Empty).Trim();
-        if (displayName.Length == 0) throw new DataValidationException("A display name is required.");
-        if (!IsValidEmail(email)) throw new DataValidationException("A valid email is required.");
+        if (displayName.Length == 0)
+        {
+            throw new DataValidationException("A display name is required.");
+        }
+
+        if (!IsValidEmail(email))
+        {
+            throw new DataValidationException("A valid email is required.");
+        }
+
         if (await db.Users.AnyAsync(u => u.Email == email))
+        {
             throw new DataValidationException($"A user with the email \"{email}\" already exists.");
+        }
 
         var user = new User
         {
@@ -110,10 +123,16 @@ public partial class UserAdminService(
     public async Task<AdminUserDetailDto?> UpdateAsync(Guid refId, SaveUserDto dto)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.RefId == refId);
-        if (user is null) return null;
+        if (user is null)
+        {
+            return null;
+        }
 
         var displayName = (dto.DisplayName ?? string.Empty).Trim();
-        if (displayName.Length == 0) throw new DataValidationException("A display name is required.");
+        if (displayName.Length == 0)
+        {
+            throw new DataValidationException("A display name is required.");
+        }
 
         // Email is the identity and immutable here; only the display name is editable.
         user.DisplayName = displayName;
@@ -128,7 +147,9 @@ public partial class UserAdminService(
             // Don't let an admin strip their own manage-users access out from under themselves —
             // a global admin can always restore it, but a plain user-admin would lock themselves out.
             if (user.Id == actor.Id && !actor.IsGlobalAdmin && !dto.CanManageUsers && await HasDirectManageUsersAsync(user.Id))
+            {
                 throw new DataValidationException("You can't remove your own manage-users permission.");
+            }
 
             await SetPermissionAsync(user.Id, AppPermission.ManageUsers, dto.CanManageUsers);
             await SetPermissionAsync(user.Id, AppPermission.CreateGroups, dto.CanCreateGroups);
@@ -137,7 +158,9 @@ public partial class UserAdminService(
         // A global admin has full access to every group already, so they belong to none — saving an
         // empty set is how an old membership is cleared.
         if (isGlobalAdmin && dto.GroupIds.Count > 0)
+        {
             throw new DataValidationException("Global administrators already have full access to every group, so they can't be added to one.");
+        }
 
         await SetMembershipsAsync(user.Id, dto.GroupIds);
         await db.SaveChangesAsync();
@@ -160,7 +183,9 @@ public partial class UserAdminService(
 
         db.UserGroupMembers.RemoveRange(current.Where(m => !wantedSet.Contains(m.UserGroupId)));
         foreach (var groupId in wantedSet.Where(id => !currentSet.Contains(id)))
+        {
             db.UserGroupMembers.Add(new UserGroupMember { UserId = userId, UserGroupId = groupId });
+        }
     }
 
     /// <summary>Adds or removes the user's grant for the given app permission to match <paramref name="grant"/>.</summary>

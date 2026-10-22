@@ -23,28 +23,44 @@ public class PermissionAdminService(
     public async Task<PermissionsDto?> GetFolderPermissionsAsync(int folderId)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null) return null;
+        if (folder is null)
+        {
+            return null;
+        }
+
         return await BuildPermissionsAsync(await BuildFolderChainAsync(folder.Id), folder.InheritsPermissions);
     }
 
     public async Task<PermissionsDto?> GetReportPermissionsAsync(int reportId)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
+
         return await BuildPermissionsAsync(await BuildReportChainAsync(report), report.InheritsPermissions);
     }
 
     public async Task<List<GrantAuditEntryDto>?> GetFolderAuditAsync(int folderId)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null) return null;
+        if (folder is null)
+        {
+            return null;
+        }
+
         return await BuildAuditAsync(SecurableType.Folder, folder.Id);
     }
 
     public async Task<List<GrantAuditEntryDto>?> GetReportAuditAsync(int reportId)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
+
         return await BuildAuditAsync(SecurableType.Report, report.Id);
     }
 
@@ -53,12 +69,18 @@ public class PermissionAdminService(
     public async Task<bool> SetFolderInheritanceAsync(int folderId, SetInheritanceDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null) return false;
+        if (folder is null)
+        {
+            return false;
+        }
 
         if (folder.InheritsPermissions != dto.Inherits)
         {
             if (!dto.Inherits && dto.CopyDown)
+            {
                 await CopyEffectiveDownAsync(await BuildFolderChainAsync(folder.Id));
+            }
+
             folder.InheritsPermissions = dto.Inherits;
             folder.UpdatedAt = DateTime.UtcNow;
             await AuditInheritanceAsync(SecurableType.Folder, folder.Id, dto.Inherits);
@@ -70,12 +92,18 @@ public class PermissionAdminService(
     public async Task<bool> SetReportInheritanceAsync(int reportId, SetInheritanceDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return false;
+        if (report is null)
+        {
+            return false;
+        }
 
         if (report.InheritsPermissions != dto.Inherits)
         {
             if (!dto.Inherits && dto.CopyDown)
+            {
                 await CopyEffectiveDownAsync(await BuildReportChainAsync(report));
+            }
+
             report.InheritsPermissions = dto.Inherits;
             report.UpdatedAt = DateTime.UtcNow;
             await AuditInheritanceAsync(SecurableType.Report, report.Id, dto.Inherits);
@@ -89,21 +117,33 @@ public class PermissionAdminService(
     public async Task<AccessGrantDto?> UpsertFolderGrantAsync(int folderId, SaveGrantDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null) return null;
+        if (folder is null)
+        {
+            return null;
+        }
+
         return await UpsertGrantAsync(await BuildFolderChainAsync(folder.Id), dto);
     }
 
     public async Task<AccessGrantDto?> UpsertReportGrantAsync(int reportId, SaveGrantDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
+
         return await UpsertGrantAsync(await BuildReportChainAsync(report), dto);
     }
 
     public async Task<bool> RemoveFolderGrantAsync(int folderId, RemoveGrantDto dto)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null) return false;
+        if (folder is null)
+        {
+            return false;
+        }
+
         await RemoveGrantAsync(await BuildFolderChainAsync(folder.Id), dto.SubjectType, dto.SubjectId);
         return true;
     }
@@ -111,7 +151,11 @@ public class PermissionAdminService(
     public async Task<bool> RemoveReportGrantAsync(int reportId, RemoveGrantDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == reportId);
-        if (report is null) return false;
+        if (report is null)
+        {
+            return false;
+        }
+
         await RemoveGrantAsync(await BuildReportChainAsync(report), dto.SubjectType, dto.SubjectId);
         return true;
     }
@@ -121,7 +165,9 @@ public class PermissionAdminService(
     private async Task<AccessGrantDto> UpsertGrantAsync(List<ChainNode> chain, SaveGrantDto dto)
     {
         if (dto.Level == AccessLevel.None)
+        {
             throw new DataValidationException("Choose an access level (remove the grant to revoke access).");
+        }
 
         var leaf = chain[0];
         var (subjectId, subjectName) = await ResolveSubjectAsync(dto.SubjectType, dto.SubjectId);
@@ -194,7 +240,10 @@ public class PermissionAdminService(
         var existing = await db.AccessGrants.FirstOrDefaultAsync(g =>
             g.SecurableType == leaf.Type && g.FolderId == folderId && g.ReportId == reportId
             && g.SubjectType == subjectType && g.UserId == userId && g.UserGroupId == groupId);
-        if (existing is null) return;
+        if (existing is null)
+        {
+            return;
+        }
 
         var actor = await currentUserAccessor.GetAsync();
         if (!actor.IsGlobalAdmin && existing.Level == AccessLevel.Manager
@@ -218,7 +267,9 @@ public class PermissionAdminService(
                 && g.SubjectType == subjectType && g.SubjectId == subjectId))
             .ToList();
         if (newLevel is { } level && level != AccessLevel.None)
+        {
             grants.Add(new GrantRow(leaf.Type, leaf.Id, subjectType, subjectId, level));
+        }
 
         return !ComputeEffective(chain, grants).Values.Any(v => v.Level == AccessLevel.Manager);
     }
@@ -360,7 +411,10 @@ public class PermissionAdminService(
         {
             chain.Add(new ChainNode(SecurableType.Folder, id, f.Name, f.InheritsPermissions));
             current = f.ParentFolderId;
-            if (++guard > 10_000) break;
+            if (++guard > 10_000)
+            {
+                break;
+            }
         }
         chain.Add(new ChainNode(SecurableType.Root, null, "Root", false));
         return chain;
@@ -421,9 +475,14 @@ public class PermissionAdminService(
                 // Leaf-first walk means the first grant at a level is the nearest; only a strictly
                 // higher level from further up replaces it.
                 if (!effective.TryGetValue(key, out var current) || grant.Level > current.Item1)
+                {
                     effective[key] = (grant.Level, node);
+                }
             }
-            if (!node.Inherits) break;
+            if (!node.Inherits)
+            {
+                break;
+            }
         }
         return effective;
     }

@@ -22,7 +22,11 @@ public class KpiQueryServiceTests : SqliteDbTestBase
     private async Task<Dataset> SeedDatasetAsync(string name, params DatasetColumn[] columns)
     {
         var dataset = new Dataset { Name = name, DatasetSourceId = 1, ReportRevisionId = 1 };
-        foreach (var column in columns) dataset.Columns.Add(column);
+        foreach (var column in columns)
+        {
+            dataset.Columns.Add(column);
+        }
+
         Db.Datasets.Add(dataset);
         await Db.SaveChangesAsync();
         return dataset;
@@ -32,7 +36,10 @@ public class KpiQueryServiceTests : SqliteDbTestBase
     {
         var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
         foreach (var (column, number, date) in cells)
+        {
             row.Cells.Add(new DatasetCell { ColumnId = column.Id, NumberValue = number, DateValue = date });
+        }
+
         Db.DatasetRows.Add(row);
     }
 
@@ -41,7 +48,10 @@ public class KpiQueryServiceTests : SqliteDbTestBase
     {
         var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
         foreach (var (column, number, date, text) in cells)
+        {
             row.Cells.Add(new DatasetCell { ColumnId = column.Id, NumberValue = number, DateValue = date, StringValue = text });
+        }
+
         Db.DatasetRows.Add(row);
     }
 

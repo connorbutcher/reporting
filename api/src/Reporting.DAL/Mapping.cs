@@ -102,7 +102,10 @@ public static class Mapping
         // A revision created before filters existed carries a blank blob, and a
         // malformed one shouldn't take the whole report down — either way, the
         // honest answer is "no report-level filters".
-        if (string.IsNullOrWhiteSpace(revision.FiltersJson)) return [];
+        if (string.IsNullOrWhiteSpace(revision.FiltersJson))
+        {
+            return [];
+        }
 
         try
         {
@@ -163,18 +166,36 @@ public static class Mapping
             case DataTableWidgetConfig table:
                 table.DatasetId = Remap(table.DatasetId);
                 foreach (var column in table.Columns)
-                    if (column.Tolerance is { } tolerance) tolerance.SourceDatasetId = Remap0(tolerance.SourceDatasetId);
+                {
+                    if (column.Tolerance is { } tolerance)
+                    {
+                        tolerance.SourceDatasetId = Remap0(tolerance.SourceDatasetId);
+                    }
+                }
+
                 break;
             case ChartWidgetConfig chart:
-                foreach (var binding in chart.Bindings) binding.DatasetId = Remap(binding.DatasetId);
-                foreach (var band in chart.ToleranceBands) band.SourceDatasetId = Remap0(band.SourceDatasetId);
+                foreach (var binding in chart.Bindings)
+                {
+                    binding.DatasetId = Remap(binding.DatasetId);
+                }
+
+                foreach (var band in chart.ToleranceBands)
+                {
+                    band.SourceDatasetId = Remap0(band.SourceDatasetId);
+                }
+
                 break;
             case PivotTableWidgetConfig pivot:
                 pivot.DatasetId = Remap(pivot.DatasetId);
                 break;
             case KpiWidgetConfig kpi:
                 kpi.DatasetId = Remap(kpi.DatasetId);
-                if (kpi.Tolerance is { } kpiTolerance) kpiTolerance.SourceDatasetId = Remap0(kpiTolerance.SourceDatasetId);
+                if (kpi.Tolerance is { } kpiTolerance)
+                {
+                    kpiTolerance.SourceDatasetId = Remap0(kpiTolerance.SourceDatasetId);
+                }
+
                 break;
         }
 
@@ -223,7 +244,10 @@ public static class Mapping
             try
             {
                 var config = JsonSerializer.Deserialize<DatasetSourceConfig>(dataset.SourceConfigJson, ConfigJsonOptions);
-                if (config is not null && config.SourceKey == dataset.Source!.Key) return config;
+                if (config is not null && config.SourceKey == dataset.Source!.Key)
+                {
+                    return config;
+                }
             }
             catch (Exception ex) when (ex is JsonException or NotSupportedException)
             {

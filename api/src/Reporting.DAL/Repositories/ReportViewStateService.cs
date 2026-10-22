@@ -22,7 +22,10 @@ public class ReportViewStateService(ReportingDbContext db, ICurrentUserAccessor 
         ViewFiltersFormat.EnsureValid(filters);
 
         var userId = (await currentUser.GetAsync()).Id;
-        if (await UpdateAsync(userId, reportId, filters) > 0) return;
+        if (await UpdateAsync(userId, reportId, filters) > 0)
+        {
+            return;
+        }
 
         db.ReportViewStates.Add(new ReportViewState
         {

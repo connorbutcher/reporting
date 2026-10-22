@@ -25,7 +25,10 @@ public class DevCurrentUserAccessor(ReportingDbContext db) : ICurrentUserAccesso
 
     public async Task<ICurrentUser> GetAsync()
     {
-        if (cached is not null) return cached;
+        if (cached is not null)
+        {
+            return cached;
+        }
 
         var user = await db.Users
             .Where(u => u.RefId == WellKnownIds.DefaultUser)

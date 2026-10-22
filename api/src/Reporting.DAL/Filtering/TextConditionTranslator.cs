@@ -40,7 +40,11 @@ internal static class TextConditionTranslator
         // One operand holding a comma-separated list, or several operands.
         var candidates = values.Count > 1 ? values : raw.Split(',').ToList();
         var options = candidates.Select(v => v.Trim()).Where(v => v.Length > 0).ToList();
-        if (options.Count == 0) throw new FilterException("'is any of' needs at least one value.");
+        if (options.Count == 0)
+        {
+            throw new FilterException("'is any of' needs at least one value.");
+        }
+
         return r => r.Cells.Any(c => c.ColumnId == id && c.StringValue != null && options.Contains(c.StringValue));
     }
 

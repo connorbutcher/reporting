@@ -16,7 +16,10 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
     {
         var userId = (await currentUser.GetAsync()).Id;
         var comments = await Rows(reportId, widgetRefId).Include(c => c.Mentions).OrderByDescending(c => c.CreatedAt).ToListAsync();
-        if (comments.Count == 0) return [];
+        if (comments.Count == 0)
+        {
+            return [];
+        }
 
         var authors = await AuthorsByUserIdAsync(comments);
         return comments.Select(c => ToDto(c, authors, userId)).ToList();
@@ -35,7 +38,9 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
     {
         var body = dto.Body.Trim();
         if (body.Length == 0 || body.Length > WidgetComment.MaxBodyLength)
+        {
             throw new DataValidationException("The comment must be between 1 and 4,000 characters.");
+        }
 
         var user = await currentUser.GetAsync();
         var mentionedIds = dto.MentionedUserIds.Distinct().ToList();

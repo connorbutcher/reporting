@@ -19,7 +19,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     /// <summary>Reports directly inside <paramref name="folderId"/> (root if null), name-ordered, with revisions loaded — unfiltered.</summary>
     public async Task<List<Report>> GetInFolderAsync(int? folderId)
     {
-        if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid)) return [];
+        if (folderId is { } fid && !await db.Folders.AnyAsync(f => f.Id == fid))
+        {
+            return [];
+        }
 
         return await db.Reports
             .Include(r => r.Revisions)
@@ -44,7 +47,9 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportSearchResults> SearchAsync(string? query)
     {
         if (string.IsNullOrWhiteSpace(query))
+        {
             return new ReportSearchResults([], new Dictionary<int, string>());
+        }
 
         var trimmed = query.Trim();
         var numericPart = trimmed.StartsWith("R-", StringComparison.OrdinalIgnoreCase) ? trimmed[2..] : trimmed;
@@ -103,7 +108,11 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<bool> NameAvailableAsync(string? name, int? folderId, int? excludeId = null)
     {
         var trimmed = (name ?? string.Empty).Trim();
-        if (trimmed.Length == 0) return true;
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
         return !await db.Reports.AnyAsync(r => r.FolderId == folderId && r.Name == trimmed && r.Id != excludeId);
     }
 
@@ -171,7 +180,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
         var report = await db.Reports
             .Include(r => r.Revisions)
             .FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         Folder? folder = null;
         if (destinationFolderId is { } fid)
@@ -190,7 +202,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<bool> DeleteAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return false;
+        if (report is null)
+        {
+            return false;
+        }
 
         db.Reports.Remove(report);
         await db.SaveChangesAsync();
@@ -202,7 +217,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<List<ReportVersionSummaryDto>?> GetVersionsAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var versions = await db.ReportRevisions
             .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
@@ -215,7 +233,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportRevisionDto?> GetVersionAsync(int id, int versionNumber)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var revision = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -228,7 +249,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportRevisionDto?> GetDraftAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
@@ -244,12 +268,18 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportRevisionDto?> CheckoutAsync(int id, int? fromVersionNumber)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var existingDraft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
-        if (existingDraft is not null) return existingDraft.ToContentDto(report);
+        if (existingDraft is not null)
+        {
+            return existingDraft.ToContentDto(report);
+        }
 
         ReportRevision? source = fromVersionNumber is { } versionNumber
             ? await IncludeContent(db.ReportRevisions)
@@ -259,7 +289,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
                 .OrderByDescending(rv => rv.VersionNumber)
                 .FirstOrDefaultAsync();
 
-        if (fromVersionNumber is not null && source is null) throw new DataNotFoundException("Version not found.");
+        if (fromVersionNumber is not null && source is null)
+        {
+            throw new DataNotFoundException("Version not found.");
+        }
 
         var draft = new ReportRevision
         {
@@ -380,7 +413,10 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
         // First save: assigns primary keys to the revision, its widgets, datasets, columns and rows.
         await db.SaveChangesAsync();
 
-        if (source is null || datasetCopies.Count == 0) return;
+        if (source is null || datasetCopies.Count == 0)
+        {
+            return;
+        }
 
         // Second phase: copy cells against the new column ids, and remap the dataset primary keys.
         foreach (var dataset in datasetCopies)
@@ -390,7 +426,11 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
             {
                 foreach (var cell in sourceRow.Cells)
                 {
-                    if (!columnIdMap.TryGetValue(cell.ColumnId, out var newColumnId)) continue;
+                    if (!columnIdMap.TryGetValue(cell.ColumnId, out var newColumnId))
+                    {
+                        continue;
+                    }
+
                     db.DatasetCells.Add(new DatasetCell
                     {
                         RowId = rowCopy.Id,
@@ -406,22 +446,41 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
 
         var datasetIdMap = datasetCopies.ToDictionary(d => d.Source.Id, d => d.Copy.Id);
         foreach (var widget in target.Tabs.SelectMany(t => t.Widgets))
+        {
             widget.ConfigJson = Mapping.RemapConfigDatasetIds(widget.ConfigJson, datasetIdMap);
+        }
 
         var filters = target.GetFilters();
         var filtersChanged = false;
         foreach (var filter in filters)
+        {
             if (datasetIdMap.TryGetValue(filter.DatasetId, out var mapped)) { filter.DatasetId = mapped; filtersChanged = true; }
-        if (filtersChanged) target.SetFilters(filters);
+        }
+
+        if (filtersChanged)
+        {
+            target.SetFilters(filters);
+        }
 
         // A filtered dataset's SourceConfigJson was copied verbatim above, so its BaseDatasetId
         // still names the *source* revision's dataset — remap it through the same old-id -> new-id
         // map, exactly like a widget's bound dataset id above.
         foreach (var copy in datasetCopies.Select(d => d.Copy))
         {
-            if (copy.DatasetSourceId != DatasetSourceIds.Filtered) continue;
-            if (Mapping.TryGetSourceConfig(copy.SourceConfigJson) is not FilteredDatasetSourceConfig config) continue;
-            if (!datasetIdMap.TryGetValue(config.BaseDatasetId, out var mappedBaseId)) continue;
+            if (copy.DatasetSourceId != DatasetSourceIds.Filtered)
+            {
+                continue;
+            }
+
+            if (Mapping.TryGetSourceConfig(copy.SourceConfigJson) is not FilteredDatasetSourceConfig config)
+            {
+                continue;
+            }
+
+            if (!datasetIdMap.TryGetValue(config.BaseDatasetId, out var mappedBaseId))
+            {
+                continue;
+            }
 
             config.BaseDatasetId = mappedBaseId;
             copy.SetSourceConfig(config);
@@ -441,12 +500,18 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportRevisionDto?> UpdateDraftAsync(int id, ReportRevisionDto dto)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var draft = await db.ReportRevisions
             .Include(rv => rv.Tabs).ThenInclude(t => t.Widgets)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
-        if (draft is null) throw new DataNotFoundException("No draft is checked out.");
+        if (draft is null)
+        {
+            throw new DataNotFoundException("No draft is checked out.");
+        }
 
         draft.SetFilters(dto.Filters);
 
@@ -497,11 +562,17 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<ReportVersionSummaryDto?> PublishAsync(int id, string? notes)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return null;
+        if (report is null)
+        {
+            return null;
+        }
 
         var draft = await IncludeContent(db.ReportRevisions)
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
-        if (draft is null) throw new DataNotFoundException("No draft is checked out.");
+        if (draft is null)
+        {
+            throw new DataNotFoundException("No draft is checked out.");
+        }
 
         var nextVersion = (await db.ReportRevisions
             .Where(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Published)
@@ -532,11 +603,17 @@ public class ReportRepository(ReportingDbContext db, ICurrentUserAccessor curren
     public async Task<bool> DiscardDraftAsync(int id)
     {
         var report = await db.Reports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report is null) return false;
+        if (report is null)
+        {
+            return false;
+        }
 
         var draft = await db.ReportRevisions
             .FirstOrDefaultAsync(rv => rv.ReportId == report.Id && rv.Kind == RevisionKind.Draft);
-        if (draft is null) return false;
+        if (draft is null)
+        {
+            return false;
+        }
 
         db.ReportRevisions.Remove(draft);
         await db.SaveChangesAsync();

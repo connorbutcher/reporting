@@ -20,7 +20,10 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
 
         var hash = SharedViewIds.HashOf(filters);
         var existing = await FindByHashAsync(reportId, hash);
-        if (existing is not null) return ToDto(existing);
+        if (existing is not null)
+        {
+            return ToDto(existing);
+        }
 
         var userId = (await currentUser.GetAsync()).Id;
         for (var attempt = 1; ; attempt++)
@@ -45,7 +48,10 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
                 // Either a concurrent request shared these filters (use its row) or the id collided (retry).
                 db.Entry(view).State = EntityState.Detached;
                 var raced = await FindByHashAsync(reportId, hash);
-                if (raced is not null) return ToDto(raced);
+                if (raced is not null)
+                {
+                    return ToDto(raced);
+                }
             }
         }
     }

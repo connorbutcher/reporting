@@ -31,21 +31,33 @@ public static class AccessResolver
     public static AccessLevel Resolve(ICurrentUser user, SecurableNode node)
     {
         // A global admin sees everything as a Manager, regardless of any grant.
-        if (user.IsGlobalAdmin) return AccessLevel.Manager;
+        if (user.IsGlobalAdmin)
+        {
+            return AccessLevel.Manager;
+        }
 
         var best = AccessLevel.None;
         for (var current = node; current is not null; current = current.Parent)
         {
             foreach (var grant in current.Grants)
             {
-                if (grant.Level > best && Matches(grant, user)) best = grant.Level;
+                if (grant.Level > best && Matches(grant, user))
+                {
+                    best = grant.Level;
+                }
             }
 
             // Manager is the ceiling — nothing higher up can raise it further.
-            if (best == AccessLevel.Manager) break;
+            if (best == AccessLevel.Manager)
+            {
+                break;
+            }
 
             // A broken link cuts the chain: don't consult the parent (or the root baseline).
-            if (!current.InheritsPermissions) break;
+            if (!current.InheritsPermissions)
+            {
+                break;
+            }
         }
 
         return best;

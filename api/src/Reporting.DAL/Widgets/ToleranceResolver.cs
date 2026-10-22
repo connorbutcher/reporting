@@ -18,7 +18,11 @@ public sealed class MatchedLimits(IReadOnlyDictionary<string, ToleranceBounds> b
     /// <summary>The limits for a data row, from its cell in the match column; null when it has no identifier or no limits row matches.</summary>
     public ToleranceBounds? For(DatasetCell? keyCell)
     {
-        if (keyCell is null) return null;
+        if (keyCell is null)
+        {
+            return null;
+        }
+
         var key = ToleranceResolver.MatchKey(keyCell.StringValue, keyCell.NumberValue, keyCell.DateValue);
         return key is not null && byKey.TryGetValue(key, out var bounds) ? bounds : null;
     }
@@ -41,7 +45,10 @@ public class ToleranceResolver(ReportingDbContext db)
         where TKey : notnull
     {
         var result = new Dictionary<TKey, ToleranceBounds?>();
-        if (pointers.Count == 0) return result;
+        if (pointers.Count == 0)
+        {
+            return result;
+        }
 
         // A source dataset scopes its own row/column RefIds: those RefIds are preserved across a
         // revision's copies, so the same RefId exists in every version's copy of the dataset — the
@@ -164,7 +171,10 @@ public class ToleranceResolver(ReportingDbContext db)
             var max = Number(maxPk);
             // A limits row with no identifier, or without both bounds, can't be matched to anything.
             // Rows arrive in id order, so where several share an identifier the first one wins.
-            if (key is null || min is null || max is null || byKey.ContainsKey(key)) continue;
+            if (key is null || min is null || max is null || byKey.ContainsKey(key))
+            {
+                continue;
+            }
 
             byKey[key] = new ToleranceBounds(min.Value, max.Value, Number(lowerPk), Number(upperPk));
         }
@@ -178,8 +188,16 @@ public class ToleranceResolver(ReportingDbContext db)
     /// </summary>
     public static string? MatchKey(string? text, double? number, DateTime? date)
     {
-        if (number is { } n) return n.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
-        if (date is { } d) return d.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        if (number is { } n)
+        {
+            return n.ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        if (date is { } d)
+        {
+            return d.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         var trimmed = text?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
@@ -187,7 +205,10 @@ public class ToleranceResolver(ReportingDbContext db)
     /// <summary>Red below/above a concession bound, amber within the concession band, else in-spec.</summary>
     public static ToleranceStatus Classify(double value, ToleranceBounds? bounds)
     {
-        if (bounds is null) return ToleranceStatus.None;
+        if (bounds is null)
+        {
+            return ToleranceStatus.None;
+        }
 
         if (value < bounds.Min)
         {

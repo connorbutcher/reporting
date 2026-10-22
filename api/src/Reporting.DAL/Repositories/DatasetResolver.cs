@@ -30,7 +30,10 @@ public class DatasetResolver(ReportingDbContext db)
     public async Task<ResolvedDataset?> ResolveAsync(int requestedId)
     {
         var requested = await LoadAsync(requestedId);
-        if (requested is null) return null;
+        if (requested is null)
+        {
+            return null;
+        }
 
         var current = requested;
         var filters = new List<FilterGroupDto>();
@@ -39,13 +42,20 @@ public class DatasetResolver(ReportingDbContext db)
         for (var depth = 0; current.Source!.Key == DatasetSourceKey.Filtered; depth++)
         {
             if (depth >= MaxChainDepth)
+            {
                 throw new FilterException("Filtered dataset chain is too deep.");
+            }
 
             var config = (FilteredDatasetSourceConfig)current.GetSourceConfig();
-            if (config.Filter is { Children.Count: > 0 } filter) filters.Add(filter);
+            if (config.Filter is { Children.Count: > 0 } filter)
+            {
+                filters.Add(filter);
+            }
 
             if (!visited.Add(config.BaseDatasetId))
+            {
                 throw new FilterException("Circular filtered-dataset reference.");
+            }
 
             current = await LoadAsync(config.BaseDatasetId)
                 ?? throw new FilterException("A filtered dataset's base dataset no longer exists.");
@@ -75,11 +85,21 @@ public class DatasetResolver(ReportingDbContext db)
         var currentId = candidateBaseId;
         for (var depth = 0; depth < MaxChainDepth; depth++)
         {
-            if (currentId == datasetId) return true;
-            if (!visited.Add(currentId)) return true; // the candidate's own chain already cycles
+            if (currentId == datasetId)
+            {
+                return true;
+            }
+
+            if (!visited.Add(currentId))
+            {
+                return true; // the candidate's own chain already cycles
+            }
 
             var current = await LoadAsync(currentId);
-            if (current is null || current.Source!.Key != DatasetSourceKey.Filtered) return false;
+            if (current is null || current.Source!.Key != DatasetSourceKey.Filtered)
+            {
+                return false;
+            }
 
             var config = (FilteredDatasetSourceConfig)current.GetSourceConfig();
             currentId = config.BaseDatasetId;

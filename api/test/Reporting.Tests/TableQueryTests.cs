@@ -40,7 +40,10 @@ public class TableQueryTests : SqliteDbTestBase
             var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = dataset.Id };
             row.Cells.Add(new DatasetCell { ColumnId = name, StringValue = text });
             if (value is { } v)
+            {
                 row.Cells.Add(new DatasetCell { ColumnId = cost, NumberValue = v, StringValue = v.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            }
+
             var date = new DateTime(2026, 1, 1).AddDays(day++);
             row.Cells.Add(new DatasetCell { ColumnId = made, DateValue = date, StringValue = date.ToString("o") });
             Db.DatasetRows.Add(row);

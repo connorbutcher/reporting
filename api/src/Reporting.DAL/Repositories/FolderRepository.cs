@@ -22,7 +22,10 @@ public class FolderRepository(ReportingDbContext db)
     /// <summary>Direct children of <paramref name="parentId"/> (root if null), each flagged with whether it has children of its own — enough for the tree to draw an expand arrow. Unfiltered.</summary>
     public async Task<List<FolderDto>> GetChildrenAsync(int? parentId)
     {
-        if (parentId is { } pid && !await db.Folders.AnyAsync(f => f.Id == pid)) return [];
+        if (parentId is { } pid && !await db.Folders.AnyAsync(f => f.Id == pid))
+        {
+            return [];
+        }
 
         var children = await db.Folders
             .Where(f => f.ParentFolderId == parentId)
@@ -50,7 +53,10 @@ public class FolderRepository(ReportingDbContext db)
         var allFolders = await db.Folders.ToListAsync();
         var byId = allFolders.ToDictionary(f => f.Id);
         var start = allFolders.FirstOrDefault(f => f.Id == id);
-        if (start is null) return null;
+        if (start is null)
+        {
+            return null;
+        }
 
         var path = new List<FolderDto>();
         var current = (Folder?)start;
@@ -78,7 +84,11 @@ public class FolderRepository(ReportingDbContext db)
     public async Task<bool> NameAvailableAsync(string? name, int? parentId, int? excludeId = null)
     {
         var trimmed = (name ?? string.Empty).Trim();
-        if (trimmed.Length == 0) return true;
+        if (trimmed.Length == 0)
+        {
+            return true;
+        }
+
         return !await db.Folders.AnyAsync(f => f.ParentFolderId == parentId && f.Name == trimmed && f.Id != excludeId);
     }
 
@@ -119,7 +129,10 @@ public class FolderRepository(ReportingDbContext db)
     public async Task<FolderDto?> UpdateAsync(int id, string name, int? parentId)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == id);
-        if (folder is null) return null;
+        if (folder is null)
+        {
+            return null;
+        }
 
         Folder? parent = null;
         if (parentId is { } pid)
@@ -134,8 +147,16 @@ public class FolderRepository(ReportingDbContext db)
             var visited = new HashSet<int>();
             while (cursor is not null)
             {
-                if (cursor.Id == folder.Id) throw new DataValidationException("Cannot move a folder into its own subtree.");
-                if (!visited.Add(cursor.Id)) break;
+                if (cursor.Id == folder.Id)
+                {
+                    throw new DataValidationException("Cannot move a folder into its own subtree.");
+                }
+
+                if (!visited.Add(cursor.Id))
+                {
+                    break;
+                }
+
                 cursor = cursor.ParentFolderId is { } ancestorId
                     ? await db.Folders.FirstOrDefaultAsync(f => f.Id == ancestorId)
                     : null;
@@ -154,11 +175,17 @@ public class FolderRepository(ReportingDbContext db)
     public async Task<bool> DeleteAsync(int id)
     {
         var folder = await db.Folders.FirstOrDefaultAsync(f => f.Id == id);
-        if (folder is null) return false;
+        if (folder is null)
+        {
+            return false;
+        }
 
         var hasChildFolders = await db.Folders.AnyAsync(f => f.ParentFolderId == folder.Id);
         var hasReports = await db.Reports.AnyAsync(r => r.FolderId == folder.Id);
-        if (hasChildFolders || hasReports) throw new DataConflictException("Folder is not empty.");
+        if (hasChildFolders || hasReports)
+        {
+            throw new DataConflictException("Folder is not empty.");
+        }
 
         db.Folders.Remove(folder);
         await db.SaveChangesAsync();

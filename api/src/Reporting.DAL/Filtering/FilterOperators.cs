@@ -21,7 +21,10 @@ public static class FilterOperators
     public static async Task<IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>> LoadCatalogueAsync(
         ReportingDbContext db)
     {
-        if (_loadedCatalogue is { } cached) return cached;
+        if (_loadedCatalogue is { } cached)
+        {
+            return cached;
+        }
 
         var rows = await db.FilterOperatorDefinitions.AsNoTracking().ToListAsync();
         var catalogue = BuildCatalogue(rows);

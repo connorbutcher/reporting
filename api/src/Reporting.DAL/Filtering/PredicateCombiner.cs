@@ -12,7 +12,10 @@ internal static class PredicateCombiner
         IReadOnlyList<Expression<Func<DatasetRow, bool>>> parts,
         FilterJoin join)
     {
-        if (parts.Count == 0) return null;
+        if (parts.Count == 0)
+        {
+            return null;
+        }
 
         // Each lambda declares its own row parameter; rebind them onto the first's.
         var parameter = parts[0].Parameters[0];

@@ -31,11 +31,17 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
 
     private async Task<Snapshot> LoadAsync()
     {
-        if (snapshot is not null) return snapshot;
+        if (snapshot is not null)
+        {
+            return snapshot;
+        }
 
         var user = await currentUserAccessor.GetAsync();
         // An admin resolves to Manager everywhere, so there's nothing to load.
-        if (user.IsGlobalAdmin) return snapshot = Snapshot.ForAdmin(user);
+        if (user.IsGlobalAdmin)
+        {
+            return snapshot = Snapshot.ForAdmin(user);
+        }
 
         var folders = (await db.Folders
                 .Select(f => new { f.Id, f.ParentFolderId, f.InheritsPermissions })
@@ -111,16 +117,36 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
 
         public AccessLevel ResolveFolder(int folderId)
         {
-            if (user.IsGlobalAdmin) return AccessLevel.Manager;
-            if (!folders.ContainsKey(folderId)) return AccessLevel.None;
-            if (folderLevels.TryGetValue(folderId, out var cached)) return cached;
+            if (user.IsGlobalAdmin)
+            {
+                return AccessLevel.Manager;
+            }
+
+            if (!folders.ContainsKey(folderId))
+            {
+                return AccessLevel.None;
+            }
+
+            if (folderLevels.TryGetValue(folderId, out var cached))
+            {
+                return cached;
+            }
+
             return folderLevels[folderId] = AccessResolver.Resolve(user, FolderNode(folderId));
         }
 
         public AccessLevel ResolveReport(int reportId, int? folderId, bool inheritsPermissions)
         {
-            if (user.IsGlobalAdmin) return AccessLevel.Manager;
-            if (reportLevels.TryGetValue(reportId, out var cached)) return cached;
+            if (user.IsGlobalAdmin)
+            {
+                return AccessLevel.Manager;
+            }
+
+            if (reportLevels.TryGetValue(reportId, out var cached))
+            {
+                return cached;
+            }
+
             var parent = folderId is { } id && folders.ContainsKey(id) ? FolderNode(id) : RootNode();
             var node = new SecurableNode(inheritsPermissions, Grants(reportGrants, reportId), parent);
             return reportLevels[reportId] = AccessResolver.Resolve(user, node);
@@ -130,7 +156,10 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
 
         private SecurableNode FolderNode(int folderId)
         {
-            if (folderNodes.TryGetValue(folderId, out var existing)) return existing;
+            if (folderNodes.TryGetValue(folderId, out var existing))
+            {
+                return existing;
+            }
 
             // Walk up collecting the not-yet-built tail, stopping at a cached ancestor or the root.
             var pending = new List<int>();
@@ -140,7 +169,10 @@ public class PermissionService(ReportingDbContext db, ICurrentUserAccessor curre
             {
                 pending.Add(id);
                 current = folders[id].ParentFolderId;
-                if (++guard > 10_000) break; // defends against a corrupt parent cycle
+                if (++guard > 10_000)
+                {
+                    break; // defends against a corrupt parent cycle
+                }
             }
 
             var node = current is { } cachedId && folderNodes.TryGetValue(cachedId, out var cachedParent)

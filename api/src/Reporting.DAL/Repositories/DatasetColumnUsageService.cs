@@ -32,7 +32,10 @@ public class DatasetColumnUsageService(ReportingDbContext db)
     public async Task<DatasetColumnUsageDto?> GetAsync(int datasetId)
     {
         var source = await LoadAsync(datasetId);
-        if (source is null) return null;
+        if (source is null)
+        {
+            return null;
+        }
 
         var columnIds = source.ColumnTypes.Keys.ToHashSet();
         var uses = new Dictionary<Guid, List<ColumnUseDto>>();
@@ -41,7 +44,11 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         {
             foreach (var byColumn in ColumnReferenceScanner.Scan(widget.ConfigJson, columnIds, widget.Type).GroupBy(r => r.ColumnId))
             {
-                if (!uses.TryGetValue(byColumn.Key, out var list)) uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                if (!uses.TryGetValue(byColumn.Key, out var list))
+                {
+                    uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                }
+
                 list.Add(WidgetUse(widget, Roles(byColumn.Select(r => r.Role))));
             }
         }
@@ -50,7 +57,11 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         {
             foreach (var byColumn in ColumnReferenceScanner.Scan(filterJson, columnIds).GroupBy(r => r.ColumnId))
             {
-                if (!uses.TryGetValue(byColumn.Key, out var list)) uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                if (!uses.TryGetValue(byColumn.Key, out var list))
+                {
+                    uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                }
+
                 list.Add(FilterUse(Roles(byColumn.Select(_ => "Filter condition"))));
             }
         }
@@ -59,7 +70,11 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         {
             foreach (var byColumn in ColumnReferenceScanner.Scan(filtered.FilterJson, columnIds).GroupBy(r => r.ColumnId))
             {
-                if (!uses.TryGetValue(byColumn.Key, out var list)) uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                if (!uses.TryGetValue(byColumn.Key, out var list))
+                {
+                    uses[byColumn.Key] = list = new List<ColumnUseDto>();
+                }
+
                 list.Add(FilteredDatasetUse(filtered.Name, Roles(byColumn.Select(_ => "Filter condition"))));
             }
         }
@@ -79,10 +94,16 @@ public class DatasetColumnUsageService(ReportingDbContext db)
     public async Task<ColumnTypeImpactDto?> GetTypeChangeImpactAsync(int datasetId, Guid columnId, DatasetColumnType newType)
     {
         var source = await LoadAsync(datasetId);
-        if (source is null || !source.ColumnTypes.TryGetValue(columnId, out var oldType)) return null;
+        if (source is null || !source.ColumnTypes.TryGetValue(columnId, out var oldType))
+        {
+            return null;
+        }
 
         var impact = new ColumnTypeImpactDto { From = oldType, To = newType };
-        if (oldType == newType) return impact;
+        if (oldType == newType)
+        {
+            return impact;
+        }
 
         // An unpopulated catalogue table (a fresh test database) means "use the built-in defaults", not "no operators exist".
         var loaded = await FilterOperators.LoadCatalogueAsync(db);
@@ -102,17 +123,26 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         foreach (var widget in source.Widgets)
         {
             var breaks = Breaks(ColumnReferenceScanner.Scan(widget.ConfigJson, only, widget.Type));
-            if (breaks.Count > 0) impact.Breaks.Add(WidgetUse(widget, breaks));
+            if (breaks.Count > 0)
+            {
+                impact.Breaks.Add(WidgetUse(widget, breaks));
+            }
         }
         foreach (var filterJson in source.FilterJsons)
         {
             var breaks = Breaks(ColumnReferenceScanner.Scan(filterJson, only));
-            if (breaks.Count > 0) impact.Breaks.Add(FilterUse(breaks));
+            if (breaks.Count > 0)
+            {
+                impact.Breaks.Add(FilterUse(breaks));
+            }
         }
         foreach (var filtered in source.FilteredDatasets)
         {
             var breaks = Breaks(ColumnReferenceScanner.Scan(filtered.FilterJson, only));
-            if (breaks.Count > 0) impact.Breaks.Add(FilteredDatasetUse(filtered.Name, breaks));
+            if (breaks.Count > 0)
+            {
+                impact.Breaks.Add(FilteredDatasetUse(filtered.Name, breaks));
+            }
         }
         return impact;
     }
@@ -125,12 +155,20 @@ public class DatasetColumnUsageService(ReportingDbContext db)
         IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue)
     {
         if (reference.NeedsNumber && type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+        {
             yield return new Reason("needsNumber", $"{reference.Role} needs a number");
+        }
 
-        if (reference.Condition is not { } condition) yield break;
+        if (reference.Condition is not { } condition)
+        {
+            yield break;
+        }
 
         // An operator the stored condition names that isn't a known one isn't a type problem — leave it be.
-        if (!Enum.TryParse<FilterOperator>(condition.Operator, ignoreCase: true, out var op)) yield break;
+        if (!Enum.TryParse<FilterOperator>(condition.Operator, ignoreCase: true, out var op))
+        {
+            yield break;
+        }
 
         var supported = FilterOperators.Find(type, op, catalogue);
         if (supported is null)
@@ -157,7 +195,10 @@ public class DatasetColumnUsageService(ReportingDbContext db)
                 FilterOperandKind.Date => ("date", CellValues.TryParseDate(value, out _)),
                 _ => ("", true),
             };
-            if (!valid) yield return new Reason($"operand:{op}:{value}:{kind}", $"Filter condition value \"{value}\" isn't a {kind}");
+            if (!valid)
+            {
+                yield return new Reason($"operand:{op}:{value}:{kind}", $"Filter condition value \"{value}\" isn't a {kind}");
+            }
         }
     }
 
@@ -180,7 +221,10 @@ public class DatasetColumnUsageService(ReportingDbContext db)
             .Where(d => d.Id == datasetId)
             .Select(d => new { d.Id, d.ReportRevisionId, Columns = d.Columns.Select(c => new { c.RefId, c.Type }).ToList() })
             .FirstOrDefaultAsync();
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
 
         var widgets = await db.Widgets.AsNoTracking()
             .Where(w => w.Tab!.ReportRevisionId == dataset.ReportRevisionId)
@@ -245,7 +289,9 @@ public class DatasetColumnUsageService(ReportingDbContext db)
             foreach (var property in document.RootElement.EnumerateObject())
             {
                 if (string.Equals(property.Name, "title", StringComparison.OrdinalIgnoreCase))
+                {
                     return property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
+                }
             }
         }
         catch (Exception ex) when (ex is JsonException or InvalidOperationException) { }
@@ -255,7 +301,10 @@ public class DatasetColumnUsageService(ReportingDbContext db)
     /// <summary>The raw JSON of each page-level filter that applies to <paramref name="datasetId"/>.</summary>
     private static IEnumerable<string> ReportFiltersFor(string? filtersJson, int datasetId)
     {
-        if (string.IsNullOrWhiteSpace(filtersJson)) yield break;
+        if (string.IsNullOrWhiteSpace(filtersJson))
+        {
+            yield break;
+        }
 
         JsonDocument document;
         try { document = JsonDocument.Parse(filtersJson); }
@@ -263,10 +312,18 @@ public class DatasetColumnUsageService(ReportingDbContext db)
 
         using (document)
         {
-            if (document.RootElement.ValueKind != JsonValueKind.Array) yield break;
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                yield break;
+            }
+
             foreach (var entry in document.RootElement.EnumerateArray())
             {
-                if (entry.ValueKind != JsonValueKind.Object) continue;
+                if (entry.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
                 var forThisDataset = false;
                 string? filter = null;
                 foreach (var property in entry.EnumerateObject())
@@ -274,11 +331,18 @@ public class DatasetColumnUsageService(ReportingDbContext db)
                     if (string.Equals(property.Name, "datasetId", StringComparison.OrdinalIgnoreCase)
                         && property.Value.ValueKind == JsonValueKind.Number
                         && property.Value.TryGetInt32(out var id))
+                    {
                         forThisDataset = id == datasetId;
+                    }
                     else if (string.Equals(property.Name, "filter", StringComparison.OrdinalIgnoreCase))
+                    {
                         filter = property.Value.GetRawText();
+                    }
                 }
-                if (forThisDataset && filter is not null) yield return filter;
+                if (forThisDataset && filter is not null)
+                {
+                    yield return filter;
+                }
             }
         }
     }

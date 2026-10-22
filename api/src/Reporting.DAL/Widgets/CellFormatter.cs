@@ -54,7 +54,10 @@ public static class CellFormatter
     private static string FormatDate(DateTime value, DateColumnConfig? config)
     {
         var pattern = config?.DateFormat;
-        if (string.IsNullOrEmpty(pattern)) pattern = DefaultDateFormat;
+        if (string.IsNullOrEmpty(pattern))
+        {
+            pattern = DefaultDateFormat;
+        }
 
         try
         {

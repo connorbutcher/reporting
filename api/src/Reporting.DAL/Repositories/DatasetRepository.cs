@@ -21,7 +21,9 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     private static void EnsureNotFiltered(Dataset dataset)
     {
         if (dataset.Source?.Key == DatasetSourceKey.Filtered)
+        {
             throw new DataValidationException("A filtered dataset's columns and rows come from its base dataset and can't be edited directly.");
+        }
     }
 
     // --- authorization context (resolved by the controller against the owning report) --------
@@ -70,8 +72,15 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
-        if (dataset.Source!.Key != DatasetSourceKey.Filtered) return dataset.ToSchemaDto();
+        if (dataset is null)
+        {
+            return null;
+        }
+
+        if (dataset.Source!.Key != DatasetSourceKey.Filtered)
+        {
+            return dataset.ToSchemaDto();
+        }
 
         // A filtered dataset's own identity and source config show as requested, but its columns
         // are inherited from whatever it ultimately resolves to.
@@ -87,7 +96,11 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetQueryResultDto?> QueryAsync(int id, FilterGroupDto? filter)
     {
         var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null) return null;
+        if (resolved is null)
+        {
+            return null;
+        }
+
         var physical = resolved.Physical;
 
         // The client references columns by their RefId, so the translator is keyed that way and
@@ -121,7 +134,11 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetCountResultDto?> CountAsync(int id, FilterGroupDto? filter)
     {
         var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null) return null;
+        if (resolved is null)
+        {
+            return null;
+        }
+
         var physical = resolved.Physical;
 
         var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
@@ -149,7 +166,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     {
         var resolved = await resolver.ResolveAsync(id);
         var column = resolved?.Physical.Columns.FirstOrDefault(c => c.RefId == columnId);
-        if (column is null) return null;
+        if (column is null)
+        {
+            return null;
+        }
 
         // A column belongs to exactly one dataset, so every cell carrying its ColumnId is already
         // scoped to this dataset — no join back to the rows is needed. Filtering by ColumnId and the
@@ -159,7 +179,9 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Where(c => c.ColumnId == column.Id && c.StringValue != null && c.StringValue != "");
 
         if (!string.IsNullOrWhiteSpace(search))
+        {
             cells = cells.Where(c => c.StringValue!.Contains(search));
+        }
 
         return await cells
             .Select(c => c.StringValue!)
@@ -176,7 +198,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetColumnDto?> UpdateColumnConfigurationAsync(int id, Guid columnId, DatasetColumnConfig configuration)
     {
         var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null) return null;
+        if (column is null)
+        {
+            return null;
+        }
 
         var expected = DatasetColumnConfig.KindFor(column.Type);
         if (configuration.Kind != expected)
@@ -199,7 +224,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetSummaryDto?> CreateAsync(int revisionId, string name, int sourceId)
     {
         var source = await db.DatasetSources.FirstOrDefaultAsync(s => s.Id == sourceId);
-        if (source is null) return null;
+        if (source is null)
+        {
+            return null;
+        }
 
         var dataset = new Dataset { ReportRevisionId = revisionId, Name = name, Source = source };
         dataset.SetSourceConfig(DatasetSourceConfigs.Default(source.Key));
@@ -220,7 +248,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Columns)
             .Include(d => d.Rows).ThenInclude(r => r.Cells)
             .FirstOrDefaultAsync(d => d.Id == id);
-        if (source is null) return null;
+        if (source is null)
+        {
+            return null;
+        }
 
         var copy = new Dataset
         {
@@ -265,7 +296,11 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
         {
             foreach (var cell in sourceRow.Cells)
             {
-                if (!columnByOldId.TryGetValue(cell.ColumnId, out var newColumn)) continue;
+                if (!columnByOldId.TryGetValue(cell.ColumnId, out var newColumn))
+                {
+                    continue;
+                }
+
                 db.DatasetCells.Add(new DatasetCell
                 {
                     RowId = rowCopy.Id,
@@ -284,7 +319,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetSummaryDto?> RenameAsync(int id, string name)
     {
         var dataset = await db.Datasets.Include(d => d.Source).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
 
         dataset.Name = name;
         await db.SaveChangesAsync();
@@ -302,10 +340,16 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
 
         var source = await db.DatasetSources.FirstOrDefaultAsync(s => s.Id == sourceId);
-        if (source is null) throw new DataValidationException("Unknown dataset source.");
+        if (source is null)
+        {
+            throw new DataValidationException("Unknown dataset source.");
+        }
 
         dataset.Source = source;
         dataset.DatasetSourceId = source.Id;
@@ -324,7 +368,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
 
         if (config.SourceKey != dataset.Source!.Key)
         {
@@ -351,20 +398,31 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     /// </summary>
     private async Task ValidateFilteredConfigAsync(Dataset dataset, FilteredDatasetSourceConfig config)
     {
-        if (config.BaseDatasetId == 0) return; // not yet configured
+        if (config.BaseDatasetId == 0)
+        {
+            return; // not yet configured
+        }
 
         if (config.BaseDatasetId == dataset.Id)
+        {
             throw new DataValidationException("A filtered dataset can't filter itself.");
+        }
 
         var baseExists = await db.Datasets.AnyAsync(d => d.Id == config.BaseDatasetId && d.ReportRevisionId == dataset.ReportRevisionId);
         if (!baseExists)
+        {
             throw new DataValidationException("The base dataset doesn't exist in this report.");
+        }
 
         if (await resolver.WouldCreateCycleAsync(dataset.Id, config.BaseDatasetId))
+        {
             throw new DataValidationException("That base dataset already depends on this one.");
+        }
 
         if (config.Filter is not null && ContainsToleranceOperator(config.Filter))
+        {
             throw new DataValidationException("A filtered dataset's saved filter can't use a tolerance condition.");
+        }
     }
 
     private static bool ContainsToleranceOperator(FilterNodeDto node) => node switch
@@ -377,7 +435,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<bool> DeleteAsync(int id)
     {
         var dataset = await db.Datasets.FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return false;
+        if (dataset is null)
+        {
+            return false;
+        }
 
         // Columns and rows cascade; widgets pointing here are reported as an
         // issue in the builder rather than blocking the delete.
@@ -391,7 +452,11 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<DatasetColumnDto?> AddColumnAsync(int id, string name, DatasetColumnType type)
     {
         var dataset = await db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
+
         EnsureNotFiltered(dataset);
 
         var column = new DatasetColumn
@@ -418,11 +483,16 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     {
         var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
         var column = dataset?.Columns.FirstOrDefault(c => c.RefId == columnId);
-        if (dataset is null || column is null) return null;
+        if (dataset is null || column is null)
+        {
+            return null;
+        }
 
         var typeChanged = column.Type != type;
         if (typeChanged && column.IsComputed)
+        {
             throw new DataValidationException("A formula column's type comes from its formula; edit the formula to change it.");
+        }
 
         var oldName = column.Name;
         column.Name = name;
@@ -439,7 +509,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             // The typed fields were parsed under the old type, so they're now wrong;
             // re-derive them from the text each cell still carries.
             var cells = await db.DatasetCells.Where(c => c.ColumnId == column.Id).ToListAsync();
-            foreach (var cell in cells) CellValues.Apply(cell, cell.StringValue, type);
+            foreach (var cell in cells)
+            {
+                CellValues.Apply(cell, cell.StringValue, type);
+            }
         }
 
         await db.SaveChangesAsync();
@@ -455,7 +528,10 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     public async Task<bool> DeleteColumnAsync(int id, Guid columnId)
     {
         var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null) return false;
+        if (column is null)
+        {
+            return false;
+        }
 
         var formulaColumns = await db.DatasetColumns.Where(c => c.DatasetId == id && c.FormulaExpression != null).ToListAsync();
         var dependents = FormulaColumnRename.Dependents(formulaColumns, column);
@@ -482,13 +558,20 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null) return null;
+        if (dataset is null)
+        {
+            return null;
+        }
+
         EnsureNotFiltered(dataset);
 
         for (var i = 0; i < columnIds.Count; i++)
         {
             var column = dataset.Columns.FirstOrDefault(c => c.RefId == columnIds[i]);
-            if (column is not null) column.Order = i;
+            if (column is not null)
+            {
+                column.Order = i;
+            }
         }
 
         await db.SaveChangesAsync();

@@ -344,7 +344,10 @@ public class BarChartQueryTests : IDisposable
         var dataset = new Dataset { Name = "D", DatasetSourceId = 1, ReportRevisionId = 1 };
         var order = 0;
         foreach (var (refId, name, type) in columns)
+        {
             dataset.Columns.Add(new DatasetColumn { RefId = refId, Name = name, Type = type, Order = order++ });
+        }
+
         _db.Datasets.Add(dataset);
         _db.SaveChanges();
         return dataset;
@@ -355,7 +358,10 @@ public class BarChartQueryTests : IDisposable
         var row = new DatasetRow { RefId = Guid.NewGuid(), DatasetId = datasetId };
         row.Cells.Add(new DatasetCell { ColumnId = categoryCol, StringValue = category });
         foreach (var (col, value) in values)
+        {
             row.Cells.Add(new DatasetCell { ColumnId = col, NumberValue = value, StringValue = value.ToString() });
+        }
+
         _db.DatasetRows.Add(row);
     }
 

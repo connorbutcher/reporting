@@ -43,7 +43,10 @@ public class PivotQueryTests : SqliteDbTestBase
             row.Cells.Add(new DatasetCell { ColumnId = ids[0], StringValue = region });
             row.Cells.Add(new DatasetCell { ColumnId = ids[1], StringValue = product });
             if (sales is { } s)
+            {
                 row.Cells.Add(new DatasetCell { ColumnId = ids[2], NumberValue = s, StringValue = s.ToString(CultureInfo.InvariantCulture) });
+            }
+
             var date = DateTime.Parse(made, CultureInfo.InvariantCulture);
             row.Cells.Add(new DatasetCell { ColumnId = ids[3], DateValue = date, StringValue = date.ToString("o") });
             Db.DatasetRows.Add(row);

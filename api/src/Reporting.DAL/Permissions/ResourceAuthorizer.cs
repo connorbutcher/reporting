@@ -57,7 +57,11 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
     public async Task<ResourceAuthorization> AuthorizeReportAsync(Report report, AccessLevel required)
     {
         var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-        if (!ReportVisibility.IsVisibleAtLevel(report, level)) return ResourceAuthorization.NotFound;
+        if (!ReportVisibility.IsVisibleAtLevel(report, level))
+        {
+            return ResourceAuthorization.NotFound;
+        }
+
         return new ResourceAuthorization(level < required ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
@@ -69,9 +73,17 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
 
     public async Task<ResourceAuthorization> AuthorizeFolderAsync(int folderId, AccessLevel required)
     {
-        if (!await db.Folders.AnyAsync(f => f.Id == folderId)) return ResourceAuthorization.NotFound;
+        if (!await db.Folders.AnyAsync(f => f.Id == folderId))
+        {
+            return ResourceAuthorization.NotFound;
+        }
+
         var level = await permissions.LevelForFolderAsync(folderId);
-        if (level < AccessLevel.Viewer) return ResourceAuthorization.NotFound; // hidden
+        if (level < AccessLevel.Viewer)
+        {
+            return ResourceAuthorization.NotFound; // hidden
+        }
+
         return new ResourceAuthorization(level < required ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
@@ -80,7 +92,11 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
     {
         var level = folderId is { } id ? await permissions.LevelForFolderAsync(id) : await permissions.LevelForRootAsync();
         // A missing/invisible container is masked as 404; a visible one below Editor is 403.
-        if (folderId is not null && level < AccessLevel.Viewer) return ResourceAuthorization.NotFound;
+        if (folderId is not null && level < AccessLevel.Viewer)
+        {
+            return ResourceAuthorization.NotFound;
+        }
+
         return new ResourceAuthorization(level < AccessLevel.Editor ? AccessOutcome.Forbidden : AccessOutcome.Allowed, level);
     }
 
@@ -94,12 +110,27 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
     public async Task<ResourceAuthorization> AuthorizeDatasetAsync(int datasetId, AccessLevel required, bool mutation)
     {
         var owner = await datasets.GetOwnerAsync(datasetId);
-        if (owner is null) return ResourceAuthorization.NotFound;
+        if (owner is null)
+        {
+            return ResourceAuthorization.NotFound;
+        }
 
         var level = await permissions.LevelForReportAsync(owner.ReportId, owner.FolderId, owner.InheritsPermissions);
-        if (level < AccessLevel.Viewer) return ResourceAuthorization.NotFound;
-        if (level < required) return new ResourceAuthorization(AccessOutcome.Forbidden, level);
-        if (mutation && !owner.IsDraft) return new ResourceAuthorization(AccessOutcome.ReadOnly, level);
+        if (level < AccessLevel.Viewer)
+        {
+            return ResourceAuthorization.NotFound;
+        }
+
+        if (level < required)
+        {
+            return new ResourceAuthorization(AccessOutcome.Forbidden, level);
+        }
+
+        if (mutation && !owner.IsDraft)
+        {
+            return new ResourceAuthorization(AccessOutcome.ReadOnly, level);
+        }
+
         return new ResourceAuthorization(AccessOutcome.Allowed, level);
     }
 
@@ -117,9 +148,16 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
         foreach (var report in reports)
         {
             var level = await permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
-            if (!ReportVisibility.IsVisibleAtLevel(report, level)) continue;
+            if (!ReportVisibility.IsVisibleAtLevel(report, level))
+            {
+                continue;
+            }
+
             visible.Add(project(report, level));
-            if (take is { } t && visible.Count >= t) break;
+            if (take is { } t && visible.Count >= t)
+            {
+                break;
+            }
         }
         return visible;
     }

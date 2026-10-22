@@ -32,7 +32,10 @@ public static class ColumnReferenceScanner
     public static List<ColumnReference> Scan(string json, IReadOnlySet<Guid> columnIds, WidgetType? widgetType = null)
     {
         var found = new List<ColumnReference>();
-        if (columnIds.Count == 0 || string.IsNullOrWhiteSpace(json)) return found;
+        if (columnIds.Count == 0 || string.IsNullOrWhiteSpace(json))
+        {
+            return found;
+        }
 
         JsonDocument document;
         try { document = JsonDocument.Parse(json); }
@@ -66,7 +69,10 @@ public static class ColumnReferenceScanner
                 foreach (var property in element.EnumerateObject())
                 {
                     if (conditionColumn is not null && string.Equals(property.Name, "columnId", StringComparison.OrdinalIgnoreCase))
+                    {
                         continue;
+                    }
+
                     path.Add(property.Name);
                     Walk(property.Value, path, element, context, columnIds, found);
                     path.RemoveAt(path.Count - 1);
@@ -76,12 +82,18 @@ public static class ColumnReferenceScanner
             case JsonValueKind.Array:
                 // An array's items keep the array's own name in the path — `rowFields[]` is still `rowFields`.
                 foreach (var item in element.EnumerateArray())
+                {
                     Walk(item, path, owner, context, columnIds, found);
+                }
+
                 break;
 
             case JsonValueKind.String:
                 if (Guid.TryParse(element.GetString(), out var column) && columnIds.Contains(column))
+                {
                     found.Add(new ColumnReference(column, Describe(path), NeedsNumber(path, owner, context)));
+                }
+
                 break;
         }
     }
@@ -108,7 +120,9 @@ public static class ColumnReferenceScanner
 
         // Tolerance limits are read as numbers, wherever they're pointed from.
         if (names.Contains("tolerance") || names.Contains("tolerancebands"))
+        {
             return last is "mincolumnid" or "maxcolumnid" or "concessionlowercolumnid" or "concessionuppercolumnid";
+        }
 
         var barLike = context.WidgetType is WidgetType.BarChart or WidgetType.ComboChart;
         var counting = string.Equals(context.Aggregate, "count", StringComparison.OrdinalIgnoreCase);
@@ -140,7 +154,10 @@ public static class ColumnReferenceScanner
         var parent = names.Count > 1 ? names[^2] : "";
 
         // Conditions of any filter — a widget's own, a chart binding's, or a table's — read the same.
-        if (names.Contains("filter")) return "Filter condition";
+        if (names.Contains("filter"))
+        {
+            return "Filter condition";
+        }
 
         if (names.Contains("tolerance") || names.Contains("tolerancebands"))
         {
@@ -180,7 +197,11 @@ public static class ColumnReferenceScanner
     /// <summary>"someNewOption" → "Some new option".</summary>
     private static string Humanise(string name)
     {
-        if (name.Length == 0) return "Column";
+        if (name.Length == 0)
+        {
+            return "Column";
+        }
+
         var spaced = string.Concat(name.Select((c, i) => i > 0 && char.IsUpper(c) ? " " + char.ToLowerInvariant(c) : c.ToString()));
         return char.ToUpperInvariant(spaced[0]) + spaced[1..];
     }
@@ -188,8 +209,13 @@ public static class ColumnReferenceScanner
     private static string? StringProperty(JsonElement element, string name)
     {
         foreach (var property in element.EnumerateObject())
+        {
             if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
                 return property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
+            }
+        }
+
         return null;
     }
 
@@ -198,7 +224,11 @@ public static class ColumnReferenceScanner
         foreach (var property in element.EnumerateObject())
         {
             if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)
-                || property.Value.ValueKind != JsonValueKind.Array) continue;
+                || property.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
             return property.Value.EnumerateArray()
                 .Select(v => v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ToString())
                 .ToList();

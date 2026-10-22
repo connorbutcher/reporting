@@ -18,7 +18,11 @@ public static class FilterOperatorSeedData
         rows.AddRange(For(DatasetColumnType.Bool, BoolOperators()));
         rows.AddRange(For(DatasetColumnType.DateTime, DateOperators()));
 
-        for (var i = 0; i < rows.Count; i++) rows[i].Id = i + 1;
+        for (var i = 0; i < rows.Count; i++)
+        {
+            rows[i].Id = i + 1;
+        }
+
         return rows;
     }
 

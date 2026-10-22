@@ -31,7 +31,10 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
         var authorizer = context.HttpContext.RequestServices.GetRequiredService<ResourceAuthorizer>();
         var result = await AuthorizeAsync(authorizer, id);
         // The same outcome→status mapping the imperative actions use, so the two can't drift.
-        if (!result.Allowed) context.Result = AuthorizationResultExtensions.Map(result, Required);
+        if (!result.Allowed)
+        {
+            context.Result = AuthorizationResultExtensions.Map(result, Required);
+        }
     }
 
     protected abstract Task<ResourceAuthorization> AuthorizeAsync(ResourceAuthorizer authorizer, int id);
@@ -41,9 +44,16 @@ public abstract class ResourceAuthorizeAttribute(AccessLevel required, string ro
         var values = context.RouteData.Values;
         // The configured key (e.g. "reportId" on a nested route), falling back to a plain "id"
         // so the same attribute serves both {id:int} and {reportId:int}/{folderId:int} routes.
-        if (values.TryGetValue(RouteKey, out var raw) && int.TryParse(raw?.ToString(), out id)) return true;
-        if (RouteKey != "id" && values.TryGetValue("id", out var fallback) && int.TryParse(fallback?.ToString(), out id))
+        if (values.TryGetValue(RouteKey, out var raw) && int.TryParse(raw?.ToString(), out id))
+        {
             return true;
+        }
+
+        if (RouteKey != "id" && values.TryGetValue("id", out var fallback) && int.TryParse(fallback?.ToString(), out id))
+        {
+            return true;
+        }
+
         id = 0;
         return false;
     }

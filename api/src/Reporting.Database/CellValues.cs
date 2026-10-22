@@ -15,7 +15,10 @@ public static class CellValues
 
     public static bool TryParseBool(string? raw, out bool value)
     {
-        if (bool.TryParse(raw, out value)) return true;
+        if (bool.TryParse(raw, out value))
+        {
+            return true;
+        }
 
         // The datasets pane and seeder both write "True"/"False", but tolerate the
         // 1/0 and yes/no forms an import is likely to produce.
@@ -48,18 +51,33 @@ public static class CellValues
         cell.DateValue = null;
 
         // Blank stays untyped across the board — that is exactly what "is empty" tests.
-        if (string.IsNullOrWhiteSpace(raw)) return;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return;
+        }
 
         switch (type)
         {
             case DatasetColumnType.Int or DatasetColumnType.Double:
-                if (TryParseNumber(raw, out var number)) cell.NumberValue = number;
+                if (TryParseNumber(raw, out var number))
+                {
+                    cell.NumberValue = number;
+                }
+
                 break;
             case DatasetColumnType.Bool:
-                if (TryParseBool(raw, out var flag)) cell.BoolValue = flag;
+                if (TryParseBool(raw, out var flag))
+                {
+                    cell.BoolValue = flag;
+                }
+
                 break;
             case DatasetColumnType.DateTime:
-                if (TryParseDate(raw, out var date)) cell.DateValue = date;
+                if (TryParseDate(raw, out var date))
+                {
+                    cell.DateValue = date;
+                }
+
                 break;
         }
     }

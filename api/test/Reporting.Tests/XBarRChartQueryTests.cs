@@ -67,9 +67,21 @@ public class XBarRChartQueryTests : IDisposable
         var valueId = dataset.Columns[1].Id;
 
         // Three subgroups of n=5, each with range 8: means 14, 15, 13 → XBarBar=14, RBar=8.
-        foreach (var v in new[] { 10d, 12, 14, 16, 18 }) AddRow(dataset.Id, categoryId, "A", valueId, v);
-        foreach (var v in new[] { 11d, 13, 15, 17, 19 }) AddRow(dataset.Id, categoryId, "B", valueId, v);
-        foreach (var v in new[] { 9d, 11, 13, 15, 17 }) AddRow(dataset.Id, categoryId, "C", valueId, v);
+        foreach (var v in new[] { 10d, 12, 14, 16, 18 })
+        {
+            AddRow(dataset.Id, categoryId, "A", valueId, v);
+        }
+
+        foreach (var v in new[] { 11d, 13, 15, 17, 19 })
+        {
+            AddRow(dataset.Id, categoryId, "B", valueId, v);
+        }
+
+        foreach (var v in new[] { 9d, 11, 13, 15, 17 })
+        {
+            AddRow(dataset.Id, categoryId, "C", valueId, v);
+        }
+
         await _db.SaveChangesAsync();
 
         var result = await Repo().QueryForXBarRChartAsync(dataset.Id, new XBarRChartQueryDto
