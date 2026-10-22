@@ -158,18 +158,15 @@ public static class Mapping
     {
         var config = JsonSerializer.Deserialize<WidgetConfig>(configJson, ConfigJsonOptions)!;
 
-        int? Remap(int? id) => id is { } v && map.TryGetValue(v, out var mapped) ? mapped : id;
-        int Remap0(int id) => map.TryGetValue(id, out var mapped) ? mapped : id;
-
         switch (config)
         {
             case DataTableWidgetConfig table:
-                table.DatasetId = Remap(table.DatasetId);
+                table.DatasetId = RemapOptional(map, table.DatasetId);
                 foreach (var column in table.Columns)
                 {
                     if (column.Tolerance is { } tolerance)
                     {
-                        tolerance.SourceDatasetId = Remap0(tolerance.SourceDatasetId);
+                        tolerance.SourceDatasetId = RemapRequired(map, tolerance.SourceDatasetId);
                     }
                 }
 
@@ -177,29 +174,39 @@ public static class Mapping
             case ChartWidgetConfig chart:
                 foreach (var binding in chart.Bindings)
                 {
-                    binding.DatasetId = Remap(binding.DatasetId);
+                    binding.DatasetId = RemapOptional(map, binding.DatasetId);
                 }
 
                 foreach (var band in chart.ToleranceBands)
                 {
-                    band.SourceDatasetId = Remap0(band.SourceDatasetId);
+                    band.SourceDatasetId = RemapRequired(map, band.SourceDatasetId);
                 }
 
                 break;
             case PivotTableWidgetConfig pivot:
-                pivot.DatasetId = Remap(pivot.DatasetId);
+                pivot.DatasetId = RemapOptional(map, pivot.DatasetId);
                 break;
             case KpiWidgetConfig kpi:
-                kpi.DatasetId = Remap(kpi.DatasetId);
+                kpi.DatasetId = RemapOptional(map, kpi.DatasetId);
                 if (kpi.Tolerance is { } kpiTolerance)
                 {
-                    kpiTolerance.SourceDatasetId = Remap0(kpiTolerance.SourceDatasetId);
+                    kpiTolerance.SourceDatasetId = RemapRequired(map, kpiTolerance.SourceDatasetId);
                 }
 
                 break;
         }
 
         return JsonSerializer.Serialize(config, typeof(WidgetConfig), ConfigJsonOptions);
+    }
+
+    private static int? RemapOptional(IReadOnlyDictionary<int, int> map, int? id)
+    {
+        return id is { } v && map.TryGetValue(v, out var mapped) ? mapped : id;
+    }
+
+    private static int RemapRequired(IReadOnlyDictionary<int, int> map, int id)
+    {
+        return map.TryGetValue(id, out var mapped) ? mapped : id;
     }
 
     public static DatasetSourceDto ToDto(this DatasetSource source) => new()

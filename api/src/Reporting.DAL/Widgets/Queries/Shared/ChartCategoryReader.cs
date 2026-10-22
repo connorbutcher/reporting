@@ -103,8 +103,6 @@ public sealed class ChartCategoryReader(DatasetColumn column, DateGrouping? grou
     public FilterGroupDto? Drill(ChartCategory category)
     {
         var columnId = Column.RefId;
-        FilterConditionDto Condition(FilterOperator op, params string[] values) =>
-            new() { ColumnId = columnId, Operator = op, Values = values.ToList() };
 
         List<FilterNodeDto> conditions;
         if (category.IsOther)
@@ -113,28 +111,33 @@ public sealed class ChartCategoryReader(DatasetColumn column, DateGrouping? grou
         }
         if (category.IsBlank)
         {
-            conditions = [Condition(FilterOperator.IsEmpty)];
+            conditions = [Condition(columnId, FilterOperator.IsEmpty)];
         }
         else if (category.Date is { } date)
         {
             conditions = category.PeriodEnd is { } end
                 // Between on dates takes whole days, inclusive of the last one.
-                ? [Condition(FilterOperator.Between, Day(date), Day(end.AddDays(-1)))]
-                : [Condition(FilterOperator.GreaterThanOrEqual, Instant(date)), Condition(FilterOperator.LessThanOrEqual, Instant(date))];
+                ? [Condition(columnId, FilterOperator.Between, Day(date), Day(end.AddDays(-1)))]
+                : [Condition(columnId, FilterOperator.GreaterThanOrEqual, Instant(date)), Condition(columnId, FilterOperator.LessThanOrEqual, Instant(date))];
         }
         else if (category.Number is { } number)
         {
-            conditions = [Condition(FilterOperator.Equals, number.ToString("R", CultureInfo.InvariantCulture))];
+            conditions = [Condition(columnId, FilterOperator.Equals, number.ToString("R", CultureInfo.InvariantCulture))];
         }
         else if (Column.Type == DatasetColumnType.Bool)
         {
-            conditions = [Condition(category.Key == "True" ? FilterOperator.IsTrue : FilterOperator.IsFalse)];
+            conditions = [Condition(columnId, category.Key == "True" ? FilterOperator.IsTrue : FilterOperator.IsFalse)];
         }
         else
         {
-            conditions = [Condition(FilterOperator.Equals, category.Key)];
+            conditions = [Condition(columnId, FilterOperator.Equals, category.Key)];
         }
         return new FilterGroupDto { Join = FilterJoin.And, Children = conditions };
+    }
+
+    private static FilterConditionDto Condition(Guid columnId, FilterOperator op, params string[] values)
+    {
+        return new FilterConditionDto { ColumnId = columnId, Operator = op, Values = values.ToList() };
     }
 
     private static string Day(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

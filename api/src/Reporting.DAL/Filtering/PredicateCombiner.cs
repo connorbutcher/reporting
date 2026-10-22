@@ -27,10 +27,4 @@ internal static class PredicateCombiner
         }
         return Expression.Lambda<Func<DatasetRow, bool>>(body, parameter);
     }
-
-    private sealed class ParameterRebinder(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter(ParameterExpression node) =>
-            node == from ? to : base.VisitParameter(node);
-    }
 }

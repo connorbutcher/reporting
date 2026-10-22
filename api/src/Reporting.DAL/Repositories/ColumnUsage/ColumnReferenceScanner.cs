@@ -13,8 +13,6 @@ namespace Reporting.DAL.Repositories;
 /// </summary>
 public static class ColumnReferenceScanner
 {
-    private readonly record struct Context(WidgetType? WidgetType, string? Aggregate);
-
     public static List<ColumnReference> Scan(string json, IReadOnlySet<Guid> columnIds, WidgetType? widgetType = null)
     {
         var found = new List<ColumnReference>();
@@ -24,20 +22,27 @@ public static class ColumnReferenceScanner
         }
 
         JsonDocument document;
-        try { document = JsonDocument.Parse(json); }
-        catch (JsonException) { return found; } // Unreadable config can't reference anything we can name.
+        try
+        {
+            document = JsonDocument.Parse(json);
+        }
+        catch (JsonException)
+        {
+            // Unreadable config can't reference anything we can name.
+            return found;
+        }
 
         using (document)
         {
             var root = document.RootElement;
-            var context = new Context(widgetType, root.ValueKind == JsonValueKind.Object ? StringProperty(root, "aggregate") : null);
+            var context = new ScanContext(widgetType, root.ValueKind == JsonValueKind.Object ? StringProperty(root, "aggregate") : null);
             Walk(root, new List<string>(), null, context, columnIds, found);
         }
         return found;
     }
 
     private static void Walk(
-        JsonElement element, List<string> path, JsonElement? owner, Context context,
+        JsonElement element, List<string> path, JsonElement? owner, ScanContext context,
         IReadOnlySet<Guid> columnIds, List<ColumnReference> found)
     {
         switch (element.ValueKind)
@@ -98,7 +103,7 @@ public static class ColumnReferenceScanner
     /// measures need numbers unless it just counts rows, a box plot's value and a histogram's bins
     /// always do, whereas a scatter chart plots text or dates on its axes happily.
     /// </summary>
-    private static bool NeedsNumber(IReadOnlyList<string> path, JsonElement? owner, Context context)
+    private static bool NeedsNumber(IReadOnlyList<string> path, JsonElement? owner, ScanContext context)
     {
         var names = path.Select(p => p.ToLowerInvariant()).ToList();
         var last = names.Count > 0 ? names[^1] : "";

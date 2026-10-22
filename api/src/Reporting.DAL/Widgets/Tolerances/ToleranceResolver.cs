@@ -57,18 +57,12 @@ public class ToleranceResolver(ReportingDbContext db)
             .Select(c => new { c.RowId, c.ColumnId, c.NumberValue })
             .ToListAsync();
 
-        var byRowColumn = cells.ToDictionary(c => (c.RowId, c.ColumnId), c => c.NumberValue);
-
-        double? Value(int datasetId, Guid rowRef, Guid columnRef) =>
-            rowPkByRef.TryGetValue((datasetId, rowRef), out var rp)
-            && columnPkByRef.TryGetValue((datasetId, columnRef), out var cp)
-                ? byRowColumn.GetValueOrDefault((rp, cp))
-                : null;
+        var lookup = new SpecCellLookup(rowPkByRef, columnPkByRef, cells.ToDictionary(c => (c.RowId, c.ColumnId), c => c.NumberValue));
 
         foreach (var pointer in pointers)
         {
-            var min = Value(pointer.SourceDatasetId, pointer.SourceRowId, pointer.MinColumnId);
-            var max = Value(pointer.SourceDatasetId, pointer.SourceRowId, pointer.MaxColumnId);
+            var min = lookup.Value(pointer.SourceDatasetId, pointer.SourceRowId, pointer.MinColumnId);
+            var max = lookup.Value(pointer.SourceDatasetId, pointer.SourceRowId, pointer.MaxColumnId);
             if (min is null || max is null)
             {
                 result[pointer.Key] = null;
@@ -76,10 +70,10 @@ public class ToleranceResolver(ReportingDbContext db)
             }
 
             var concessionLower = pointer.ConcessionLowerColumnId is { } clId
-                ? Value(pointer.SourceDatasetId, pointer.SourceRowId, clId)
+                ? lookup.Value(pointer.SourceDatasetId, pointer.SourceRowId, clId)
                 : null;
             var concessionUpper = pointer.ConcessionUpperColumnId is { } cuId
-                ? Value(pointer.SourceDatasetId, pointer.SourceRowId, cuId)
+                ? lookup.Value(pointer.SourceDatasetId, pointer.SourceRowId, cuId)
                 : null;
 
             result[pointer.Key] = new ToleranceBounds(min.Value, max.Value, concessionLower, concessionUpper);
@@ -132,19 +126,17 @@ public class ToleranceResolver(ReportingDbContext db)
         var cells = await db.DatasetCells
             .Where(c => c.Row!.DatasetId == datasetId && columnPks.Contains(c.ColumnId))
             .OrderBy(c => c.RowId)
-            .Select(c => new { c.RowId, c.ColumnId, c.StringValue, c.NumberValue, c.DateValue })
+            .Select(c => new LimitCell(c.RowId, c.ColumnId, c.StringValue, c.NumberValue, c.DateValue))
             .ToListAsync();
 
         var byKey = new Dictionary<string, ToleranceBounds>(StringComparer.OrdinalIgnoreCase);
         foreach (var row in cells.GroupBy(c => c.RowId))
         {
-            double? Number(int? columnPk) =>
-                columnPk is { } pk ? row.FirstOrDefault(c => c.ColumnId == pk)?.NumberValue : null;
 
             var keyCell = row.FirstOrDefault(c => c.ColumnId == matchPk);
             var key = keyCell is null ? null : MatchKey(keyCell.StringValue, keyCell.NumberValue, keyCell.DateValue);
-            var min = Number(minPk);
-            var max = Number(maxPk);
+            var min = Number(row, minPk);
+            var max = Number(row, maxPk);
             // A limits row with no identifier, or without both bounds, can't be matched to anything.
             // Rows arrive in id order, so where several share an identifier the first one wins.
             if (key is null || min is null || max is null || byKey.ContainsKey(key))
@@ -152,10 +144,15 @@ public class ToleranceResolver(ReportingDbContext db)
                 continue;
             }
 
-            byKey[key] = new ToleranceBounds(min.Value, max.Value, Number(lowerPk), Number(upperPk));
+            byKey[key] = new ToleranceBounds(min.Value, max.Value, Number(row, lowerPk), Number(row, upperPk));
         }
 
         return new MatchedLimits(byKey);
+    }
+
+    private static double? Number(IEnumerable<LimitCell> row, int? columnPk)
+    {
+        return columnPk is { } pk ? row.FirstOrDefault(c => c.ColumnId == pk)?.NumberValue : null;
     }
 
     /// <summary>
