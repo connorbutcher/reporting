@@ -165,7 +165,7 @@ internal sealed class RevisionContentCopier(ReportingDbContext db)
     {
         foreach (var widget in target.Tabs.SelectMany(t => t.Widgets))
         {
-            widget.ConfigJson = Mapping.RemapConfigDatasetIds(widget.ConfigJson, datasetIdMap);
+            widget.ConfigJson = WidgetConfigRemapper.RemapDatasetIds(widget.ConfigJson, datasetIdMap);
         }
     }
 
@@ -198,7 +198,7 @@ internal sealed class RevisionContentCopier(ReportingDbContext db)
                 continue;
             }
 
-            if (Mapping.TryGetSourceConfig(copy.SourceConfigJson) is not FilteredDatasetSourceConfig config)
+            if (DatasetMapping.TryGetSourceConfig(copy.SourceConfigJson) is not FilteredDatasetSourceConfig config)
             {
                 continue;
             }

@@ -6,99 +6,51 @@ using Reporting.Database;
 namespace Reporting.DAL.Repositories;
 
 /// <summary>
-/// The admin-area directory operations for groups. Group management is independent of the
-/// <see cref="AppPermission.ManageUsers"/> permission (which governs only the Users section):
-/// access is scoped by whether the caller manages groups. A global admin sees and manages every
-/// group (and creates them); everyone else is a delegated manager — a user with a
-/// <see cref="UserGroupManager"/> row — who sees only the groups they manage and may edit their
-/// membership, name, managers, and deletion, but can't remove themselves as a manager. Creating a
-/// new group additionally requires the <see cref="AppPermission.CreateGroups"/> permission (which a
-/// global admin holds implicitly): the creator is made that group's manager automatically, unless
-/// they're a global admin, whose access is already implied. App permissions are never granted to a
-/// group (only to a user directly), so managing a group can't escalate anyone. Groups are addressed
-/// by their RefId; all child rows cascade on delete.
+/// Admin-area group management, independent of <see cref="AppPermission.ManageUsers"/>. A global admin
+/// manages every group; a delegated manager only the groups they manage, and can't remove themselves as
+/// a manager. Creating needs <see cref="AppPermission.CreateGroups"/>, and the creator becomes a manager.
+/// App permissions are never granted to a group, so managing one can't escalate anyone.
 /// </summary>
-public class UserGroupAdminService(
-    ReportingDbContext db,
-    ICurrentUserAccessor currentUserAccessor,
-    AppPermissionService appPermissions)
+public class UserGroupAdminService
 {
+    private readonly ReportingDbContext _db;
+    private readonly ICurrentUserAccessor _currentUserAccessor;
+    private readonly AppPermissionService _appPermissions;
+    private readonly GroupScopeLoader _scopes;
+    private readonly GroupMembership _membership;
+
+    public UserGroupAdminService(
+        ReportingDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        AppPermissionService appPermissions)
+    {
+        _db = db;
+        _currentUserAccessor = currentUserAccessor;
+        _appPermissions = appPermissions;
+        _scopes = new GroupScopeLoader(db, currentUserAccessor);
+        _membership = new GroupMembership(db);
+    }
+
     public async Task<List<AdminGroupDto>> ListAsync()
     {
-        var (full, scope) = await ScopeAsync();
-        if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
-        {
-            throw new AccessDeniedException("You don't have access to group administration.");
-        }
-
-        var query = full ? db.UserGroups : db.UserGroups.Where(g => scope.Contains(g.Id));
-        var groups = await query
-            .OrderBy(g => g.Name)
-            .Select(g => new { g.Id, g.RefId, g.Name, MemberCount = g.Members.Count })
-            .ToListAsync();
-
-        return groups
-            .Select(g => new AdminGroupDto
-            {
-                Id = g.RefId,
-                Name = g.Name,
-                MemberCount = g.MemberCount
-            })
-            .ToList();
+        var scope = await RequireAnyAccessAsync();
+        var query = scope.FullAdmin ? _db.UserGroups : _db.UserGroups.Where(g => scope.ManagedGroupIds.Contains(g.Id));
+        return await GroupDetailQuery.ListAsync(query);
     }
 
     public async Task<AdminGroupDetailDto?> GetAsync(Guid refId)
     {
-        var (full, scope) = await ScopeAsync();
-
-        var group = await db.UserGroups
-            .Where(g => g.RefId == refId)
-            .Select(g => new
-            {
-                g.Id,
-                g.RefId,
-                g.Name,
-                Members = g.Members
-                    .Select(m => new UserRefDto { Id = m.User!.RefId, DisplayName = m.User.DisplayName, Email = m.User.Email })
-                    .ToList(),
-                Managers = g.Managers
-                    .Select(m => new UserRefDto { Id = m.User!.RefId, DisplayName = m.User.DisplayName, Email = m.User.Email })
-                    .ToList()
-            })
-            .FirstOrDefaultAsync();
-        if (group is null)
-        {
-            return null;
-        }
-
-        if (!full && !scope.Contains(group.Id))
-        {
-            return null; // hidden from a delegate who can't manage it
-        }
-
-        return new AdminGroupDetailDto
-        {
-            Id = group.RefId,
-            Name = group.Name,
-            MemberCount = group.Members.Count,
-            Members = group.Members.OrderBy(m => m.DisplayName).ToList(),
-            Managers = group.Managers.OrderBy(m => m.DisplayName).ToList()
-        };
+        var scope = await _scopes.LoadAsync();
+        return await GroupDetailQuery.GetAsync(_db, refId, scope);
     }
 
     /// <summary>
-    /// Whether <paramref name="name"/> is free to use for a group, ignoring <paramref name="excludeId"/> (the
-    /// group being edited, if any). Checked against every group regardless of the caller's manage scope — a
-    /// delegated manager doesn't see every group's name, so the client can't reliably judge uniqueness on its
-    /// own — but still requires the caller to have some group-management access to call it at all.
+    /// Checked against every group regardless of scope, since a delegate can't see every name, but the
+    /// caller still needs some group-management access.
     /// </summary>
     public async Task<bool> NameAvailableAsync(string? name, Guid? excludeId)
     {
-        var (full, scope) = await ScopeAsync();
-        if (!full && scope.Count == 0 && !await CanCreateGroupsAsync())
-        {
-            throw new AccessDeniedException("You don't have access to group administration.");
-        }
+        await RequireAnyAccessAsync();
 
         var trimmed = (name ?? string.Empty).Trim();
         if (trimmed.Length == 0)
@@ -106,223 +58,125 @@ public class UserGroupAdminService(
             return true;
         }
 
-        return !await db.UserGroups.AnyAsync(g => g.Name == trimmed && (excludeId == null || g.RefId != excludeId));
+        return !await _db.UserGroups.AnyAsync(g => g.Name == trimmed && (excludeId == null || g.RefId != excludeId));
     }
 
     public async Task<AdminGroupDetailDto> CreateAsync(SaveGroupDto dto)
     {
-        // Creating groups needs the CreateGroups permission — held explicitly, or implicitly by a
-        // global admin (who holds every app permission; see AppPermissionService).
         if (!await CanCreateGroupsAsync())
         {
             throw new AccessDeniedException("You don't have permission to create groups.");
         }
 
-        var name = (dto.Name ?? string.Empty).Trim();
-        if (name.Length == 0)
-        {
-            throw new DataValidationException("A group name is required.");
-        }
-
-        if (await db.UserGroups.AnyAsync(g => g.Name == name))
-        {
-            throw new DataValidationException($"A group called \"{name}\" already exists.");
-        }
-
-        await RequireValidMembershipAsync(dto);
+        var name = await GroupNames.RequireAvailableAsync(_db, dto.Name, null);
+        await _membership.RequireValidAsync(dto);
 
         var group = new UserGroup { RefId = Guid.NewGuid(), Name = name };
-        db.UserGroups.Add(group);
-        await db.SaveChangesAsync();
+        _db.UserGroups.Add(group);
+        await _db.SaveChangesAsync();
 
-        // The creator manages what they made, unless they're a global admin — whose access to every
-        // group is already implied, and who RequireValidMembershipAsync refuses to add as one anyway.
-        var actor = await currentUserAccessor.GetAsync();
-        var memberIds = dto.MemberIds;
-        var managerIds = dto.ManagerIds;
-        if (!actor.IsGlobalAdmin)
-        {
-            if (!memberIds.Contains(actor.RefId))
-            {
-                memberIds = [.. memberIds, actor.RefId];
-            }
-
-            if (!managerIds.Contains(actor.RefId))
-            {
-                managerIds = [.. managerIds, actor.RefId];
-            }
-        }
-
-        await SetMembersAsync(group.Id, memberIds);
-        await SetManagersAsync(group.Id, managerIds);
-        await db.SaveChangesAsync();
+        var (memberIds, managerIds) = await WithCreatorAsync(dto);
+        await _membership.SetMembersAsync(group.Id, memberIds);
+        await _membership.SetManagersAsync(group.Id, managerIds);
+        await _db.SaveChangesAsync();
 
         return (await GetAsync(group.RefId))!;
     }
 
     public async Task<AdminGroupDetailDto?> UpdateAsync(Guid refId, SaveGroupDto dto)
     {
-        var (full, scope) = await ScopeAsync();
-
-        var group = await db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
-        if (group is null)
+        var scope = await _scopes.LoadAsync();
+        var group = await _db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
+        if (group is null || !scope.Manages(group.Id))
         {
             return null;
         }
 
-        if (!full && !scope.Contains(group.Id))
+        var name = await GroupNames.RequireAvailableAsync(_db, dto.Name, group.Id);
+        await _membership.RequireValidAsync(dto);
+        if (!scope.FullAdmin)
         {
-            return null; // hidden
-        }
-
-        var name = (dto.Name ?? string.Empty).Trim();
-        if (name.Length == 0)
-        {
-            throw new DataValidationException("A group name is required.");
-        }
-
-        if (await db.UserGroups.AnyAsync(g => g.Name == name && g.Id != group.Id))
-        {
-            throw new DataValidationException($"A group called \"{name}\" already exists.");
-        }
-
-        await RequireValidMembershipAsync(dto);
-
-        // A delegated manager can't drop themselves and lose access to the group mid-edit.
-        if (!full)
-        {
-            var actor = await currentUserAccessor.GetAsync();
-            if (!dto.ManagerIds.Contains(actor.RefId))
-            {
-                throw new DataValidationException("You can't remove yourself as a manager of this group.");
-            }
+            await RequireStaysManagerAsync(dto);
         }
 
         group.Name = name;
-        await SetMembersAsync(group.Id, dto.MemberIds);
-        await SetManagersAsync(group.Id, dto.ManagerIds);
-        await db.SaveChangesAsync();
+        await _membership.SetMembersAsync(group.Id, dto.MemberIds);
+        await _membership.SetManagersAsync(group.Id, dto.ManagerIds);
+        await _db.SaveChangesAsync();
 
         return await GetAsync(refId);
     }
 
+    /// <summary>Membership, manager and ACL-grant rows all cascade from the group.</summary>
     public async Task<bool> DeleteAsync(Guid refId)
     {
-        var (full, scope) = await ScopeAsync();
-
-        var group = await db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
-        if (group is null)
+        var scope = await _scopes.LoadAsync();
+        var group = await _db.UserGroups.FirstOrDefaultAsync(g => g.RefId == refId);
+        if (group is null || !scope.Manages(group.Id))
         {
             return false;
         }
 
-        if (!full && !scope.Contains(group.Id))
-        {
-            return false; // hidden
-        }
-
-        // Membership, manager, and ACL-grant rows all cascade from the group.
-        db.UserGroups.Remove(group);
-        await db.SaveChangesAsync();
+        _db.UserGroups.Remove(group);
+        await _db.SaveChangesAsync();
         return true;
     }
 
-    /// <summary>Whether the current user can reach the Groups section — a full admin, a delegate of at
-    /// least one group, or a holder of <see cref="AppPermission.CreateGroups"/> (who may manage none yet).</summary>
+    /// <summary>A holder of <see cref="AppPermission.CreateGroups"/> reaches the section even before managing any group.</summary>
     public async Task<bool> CurrentUserManagesAnyGroupAsync()
     {
-        var (full, scope) = await ScopeAsync();
-        return full || scope.Count > 0 || await CanCreateGroupsAsync();
+        var scope = await _scopes.LoadAsync();
+        return scope.ManagesAny || await CanCreateGroupsAsync();
     }
 
-    /// <summary>Whether the current user may create a new group — implied for a global admin via
-    /// <see cref="AppPermissionService"/>'s "holds everything" short-circuit, so no separate admin check is needed.</summary>
+    /// <summary>Implied for a global admin, who holds every app permission.</summary>
     private Task<bool> CanCreateGroupsAsync()
     {
-        return appPermissions.HasAsync(AppPermission.CreateGroups);
+        return _appPermissions.HasAsync(AppPermission.CreateGroups);
     }
 
-    // --- scope ------------------------------------------------------------
-
-    /// <summary>
-    /// The current user's group-management reach: a global admin manages every group; everyone else
-    /// manages only the groups they hold a manager row for. The <see cref="AppPermission.ManageUsers"/>
-    /// permission grants no group access — only global-admin status or a manager row does.
-    /// </summary>
-    private async Task<(bool FullAdmin, HashSet<int> ManagedGroupIds)> ScopeAsync()
+    private async Task<GroupScope> RequireAnyAccessAsync()
     {
-        var actor = await currentUserAccessor.GetAsync();
+        var scope = await _scopes.LoadAsync();
+        if (!scope.ManagesAny && !await CanCreateGroupsAsync())
+        {
+            throw new AccessDeniedException("You don't have access to group administration.");
+        }
+
+        return scope;
+    }
+
+    /// <summary>A delegated manager can't drop themselves and lose access mid-edit.</summary>
+    private async Task RequireStaysManagerAsync(SaveGroupDto dto)
+    {
+        var actor = await _currentUserAccessor.GetAsync();
+        if (!dto.ManagerIds.Contains(actor.RefId))
+        {
+            throw new DataValidationException("You can't remove yourself as a manager of this group.");
+        }
+    }
+
+    /// <summary>The creator manages what they made, unless they're a global admin, whose access is already implied.</summary>
+    private async Task<(List<Guid> MemberIds, List<Guid> ManagerIds)> WithCreatorAsync(SaveGroupDto dto)
+    {
+        var actor = await _currentUserAccessor.GetAsync();
+        var memberIds = dto.MemberIds;
+        var managerIds = dto.ManagerIds;
         if (actor.IsGlobalAdmin)
         {
-            return (true, new HashSet<int>());
+            return (memberIds, managerIds);
         }
 
-        var managed = await db.UserGroupManagers
-            .Where(m => m.UserId == actor.Id)
-            .Select(m => m.UserGroupId)
-            .ToListAsync();
-        return (false, managed.ToHashSet());
-    }
-
-    // --- helpers ----------------------------------------------------------
-
-    /// <summary>
-    /// Who a group may hold: managers must be members, and nobody may be a global admin. A global
-    /// admin already has full access to every group by that status alone, so a membership or a
-    /// delegation for one would record something that means nothing (and would outlive the flag if
-    /// it were ever lifted).
-    /// </summary>
-    private async Task RequireValidMembershipAsync(SaveGroupDto dto)
-    {
-        var people = dto.MemberIds.Concat(dto.ManagerIds).ToHashSet();
-        if (people.Count > 0 && await db.AppPermissionGrants.AnyAsync(g =>
-                g.Permission == AppPermission.GlobalAdmin && db.Users.Any(u => u.Id == g.UserId && people.Contains(u.RefId))))
+        if (!memberIds.Contains(actor.RefId))
         {
-            throw new DataValidationException(
-                "Global administrators already have full access to every group, so they can't be added as members or managers.");
+            memberIds = [.. memberIds, actor.RefId];
         }
 
-        var members = dto.MemberIds.ToHashSet();
-        if (!dto.ManagerIds.All(members.Contains))
+        if (!managerIds.Contains(actor.RefId))
         {
-            throw new DataValidationException("Managers must be members of the group.");
+            managerIds = [.. managerIds, actor.RefId];
         }
+
+        return (memberIds, managerIds);
     }
-
-    /// <summary>Resolves the given user RefIds to database ids and sets the group's members to exactly that set.</summary>
-    private async Task SetMembersAsync(int groupId, List<Guid> memberRefIds)
-    {
-        var wanted = memberRefIds.Count == 0
-            ? new List<int>()
-            : await db.Users.Where(u => memberRefIds.Contains(u.RefId)).Select(u => u.Id).ToListAsync();
-        var wantedSet = wanted.ToHashSet();
-
-        var current = await db.UserGroupMembers.Where(m => m.UserGroupId == groupId).ToListAsync();
-        var currentSet = current.Select(m => m.UserId).ToHashSet();
-
-        db.UserGroupMembers.RemoveRange(current.Where(m => !wantedSet.Contains(m.UserId)));
-        foreach (var userId in wantedSet.Where(id => !currentSet.Contains(id)))
-        {
-            db.UserGroupMembers.Add(new UserGroupMember { UserGroupId = groupId, UserId = userId });
-        }
-    }
-
-    /// <summary>Resolves the given user RefIds to database ids and sets the group's managers to exactly that set.</summary>
-    private async Task SetManagersAsync(int groupId, List<Guid> managerRefIds)
-    {
-        var wanted = managerRefIds.Count == 0
-            ? new List<int>()
-            : await db.Users.Where(u => managerRefIds.Contains(u.RefId)).Select(u => u.Id).ToListAsync();
-        var wantedSet = wanted.ToHashSet();
-
-        var current = await db.UserGroupManagers.Where(m => m.UserGroupId == groupId).ToListAsync();
-        var currentSet = current.Select(m => m.UserId).ToHashSet();
-
-        db.UserGroupManagers.RemoveRange(current.Where(m => !wantedSet.Contains(m.UserId)));
-        foreach (var userId in wantedSet.Where(id => !currentSet.Contains(id)))
-        {
-            db.UserGroupManagers.Add(new UserGroupManager { UserGroupId = groupId, UserId = userId });
-        }
-    }
-
 }

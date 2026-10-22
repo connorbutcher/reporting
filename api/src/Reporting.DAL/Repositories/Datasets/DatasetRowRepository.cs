@@ -9,16 +9,6 @@ namespace Reporting.DAL.Repositories;
 /// <summary>Row and cell CRUD for a dataset.</summary>
 public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationService formulas, DatasetResolver resolver)
 {
-    /// <summary>A filtered dataset has no rows of its own to add, edit or delete — they're
-    /// whatever its base's rows resolve to.</summary>
-    private static void EnsureNotFiltered(Dataset dataset)
-    {
-        if (dataset.Source?.Key == DatasetSourceKey.Filtered)
-        {
-            throw new DataValidationException("A filtered dataset's rows come from its base dataset and can't be edited directly.");
-        }
-    }
-
     public async Task<DatasetDataDto?> GetDataAsync(int id)
     {
         var resolved = await resolver.ResolveAsync(id);
@@ -44,7 +34,7 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
             .Include(r => r.Cells)
             .ToListAsync();
 
-        var data = Mapping.BuildDataDto(physical, rows);
+        var data = RowMapping.BuildDataDto(physical, rows);
         data.Id = resolved.Id;
         data.Name = resolved.Name;
         return data;
@@ -96,7 +86,7 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
             return null;
         }
 
-        EnsureNotFiltered(dataset);
+        DatasetGuards.EnsureNotFiltered(dataset, "A filtered dataset's rows come from its base dataset and can't be edited directly.");
 
         var row = new DatasetRow { RefId = Guid.NewGuid(), Dataset = dataset };
         ApplyValues(dataset, row, values);

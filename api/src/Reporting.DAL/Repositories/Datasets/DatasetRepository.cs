@@ -12,6 +12,8 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
 {
     private readonly DatasetCloner _cloner = new(db);
     private readonly FilteredDatasetValidator _filteredValidator = new(db, resolver);
+    private readonly DatasetRowQuery _rowQuery = new(db, resolver);
+    private readonly DatasetColumnEditor _columns = new(db, formulas);
 
     /// <summary>The owning report's permission context, or null if the dataset doesn't exist.</summary>
     public Task<DatasetOwner?> GetOwnerAsync(int datasetId)
@@ -76,95 +78,27 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
     /// Filtered in SQL. Throws <see cref="FilterException"/> for a filter that doesn't match the schema;
     /// null means the dataset wasn't found.
     /// </summary>
-    public async Task<DatasetQueryResultDto?> QueryAsync(int id, FilterGroupDto? filter)
+    public Task<DatasetQueryResultDto?> QueryAsync(int id, FilterGroupDto? filter)
     {
-        var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null)
-        {
-            return null;
-        }
-
-        var filtered = await FilterRowsAsync(resolved, filter);
-        var rows = await filtered.Matching.Include(r => r.Cells).ToListAsync();
-        var columnRefById = resolved.Physical.Columns.ToDictionary(c => c.Id, c => c.RefId);
-
-        return new DatasetQueryResultDto
-        {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Rows = rows.Select(r => r.ToDto(columnRefById)).ToList(),
-            TotalRowCount = await filtered.All.CountAsync(),
-            MatchedRowCount = rows.Count
-        };
+        return _rowQuery.QueryAsync(id, filter);
     }
 
-    /// <summary>Counted in SQL without loading rows, so the filter panel can run it on every edit. Same errors as <see cref="QueryAsync"/>.</summary>
-    public async Task<DatasetCountResultDto?> CountAsync(int id, FilterGroupDto? filter)
+    /// <summary>Counted in SQL without loading rows. Same errors as <see cref="QueryAsync"/>.</summary>
+    public Task<DatasetCountResultDto?> CountAsync(int id, FilterGroupDto? filter)
     {
-        var resolved = await resolver.ResolveAsync(id);
-        if (resolved is null)
-        {
-            return null;
-        }
-
-        var filtered = await FilterRowsAsync(resolved, filter);
-        return new DatasetCountResultDto
-        {
-            TotalRowCount = await filtered.All.CountAsync(),
-            MatchedRowCount = await filtered.Matching.CountAsync()
-        };
+        return _rowQuery.CountAsync(id, filter);
     }
 
-    /// <summary>
-    /// A column's distinct non-empty values for the filter value dropdowns, ordered and capped, optionally
-    /// narrowed by <paramref name="search"/>. Null when the column doesn't exist, empty when it has no values.
-    /// </summary>
-    public async Task<List<string>?> GetColumnValuesAsync(int id, Guid columnId, string? search, int limit)
+    /// <summary>Distinct non-empty values, ordered and capped. Null when the column doesn't exist.</summary>
+    public Task<List<string>?> GetColumnValuesAsync(int id, Guid columnId, string? search, int limit)
     {
-        var resolved = await resolver.ResolveAsync(id);
-        var column = resolved?.Physical.Columns.FirstOrDefault(c => c.RefId == columnId);
-        if (column is null)
-        {
-            return null;
-        }
-
-        // Cells by ColumnId need no join back to rows, and ride the filtered (ColumnId, StringValue)
-        // index as an ordered range scan that also satisfies DISTINCT and ORDER BY.
-        var cells = db.DatasetCells
-            .Where(c => c.ColumnId == column.Id && c.StringValue != null && c.StringValue != "");
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            cells = cells.Where(c => c.StringValue!.Contains(search));
-        }
-
-        return await cells
-            .Select(c => c.StringValue!)
-            .Distinct()
-            .OrderBy(v => v)
-            .Take(Math.Clamp(limit, 1, 500))
-            .ToListAsync();
+        return _rowQuery.ColumnValuesAsync(id, columnId, search, limit);
     }
 
     /// <summary>Throws <see cref="DataValidationException"/> when the config's kind doesn't match the column's type.</summary>
-    public async Task<DatasetColumnDto?> UpdateColumnConfigurationAsync(int id, Guid columnId, DatasetColumnConfig configuration)
+    public Task<DatasetColumnDto?> UpdateColumnConfigurationAsync(int id, Guid columnId, DatasetColumnConfig configuration)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null)
-        {
-            return null;
-        }
-
-        var expected = DatasetColumnConfig.KindFor(column.Type);
-        if (configuration.Kind != expected)
-        {
-            throw new DataValidationException(
-                $"Configuration of kind '{configuration.Kind}' doesn't match the column's type '{column.Type}' (expects '{expected}').");
-        }
-
-        column.SetConfig(configuration);
-        await db.SaveChangesAsync();
-        return column.ToDto();
+        return _columns.UpdateConfigurationAsync(id, columnId, configuration);
     }
 
     /// <summary>Uses the source's default configuration. Null for an unknown source.</summary>
@@ -271,156 +205,24 @@ public class DatasetRepository(ReportingDbContext db, FormulaCalculationService 
         return true;
     }
 
-    public async Task<DatasetColumnDto?> AddColumnAsync(int id, string name, DatasetColumnType type)
+    public Task<DatasetColumnDto?> AddColumnAsync(int id, string name, DatasetColumnType type)
     {
-        var dataset = await db.Datasets.Include(d => d.Source).Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
-        {
-            return null;
-        }
-
-        EnsureNotFiltered(dataset);
-
-        var column = new DatasetColumn
-        {
-            RefId = Guid.NewGuid(),
-            Name = name,
-            Type = type,
-            Order = dataset.Columns.Count == 0 ? 0 : dataset.Columns.Max(c => c.Order) + 1,
-        };
-
-        dataset.Columns.Add(column);
-        await db.SaveChangesAsync();
-
-        // A new column can be what a formula that was waiting on a missing column needs.
-        if (dataset.Columns.Any(c => c.FormulaError is not null))
-        {
-            await formulas.RecalculateAsync(dataset);
-        }
-
-        return column.ToDto();
+        return _columns.AddAsync(id, name, type);
     }
 
-    public async Task<DatasetColumnDto?> UpdateColumnAsync(int id, Guid columnId, string name, DatasetColumnType type)
+    public Task<DatasetColumnDto?> UpdateColumnAsync(int id, Guid columnId, string name, DatasetColumnType type)
     {
-        var dataset = await db.Datasets.Include(d => d.Columns).FirstOrDefaultAsync(d => d.Id == id);
-        var column = dataset?.Columns.FirstOrDefault(c => c.RefId == columnId);
-        if (dataset is null || column is null)
-        {
-            return null;
-        }
-
-        var typeChanged = column.Type != type;
-        if (typeChanged && column.IsComputed)
-        {
-            throw new DataValidationException("A formula column's type comes from its formula; edit the formula to change it.");
-        }
-
-        var oldName = column.Name;
-        column.Name = name;
-        column.Type = type;
-
-        // Formulas name columns, so a rename carries through to the formulas that read this one.
-        if (!string.Equals(oldName, name, StringComparison.Ordinal))
-        {
-            FormulaColumnRename.Apply(dataset.Columns, oldName, name);
-        }
-
-        if (typeChanged)
-        {
-            await ReparseCellsAsync(column.Id, type);
-        }
-
-        await db.SaveChangesAsync();
-
-        // Formulas that read this column see different values (or types) now.
-        if (typeChanged && dataset.Columns.Any(c => c.IsComputed))
-        {
-            await formulas.RecalculateAsync(dataset);
-        }
-        return column.ToDto();
+        return _columns.UpdateAsync(id, columnId, name, type);
     }
 
-    public async Task<bool> DeleteColumnAsync(int id, Guid columnId)
+    /// <summary>Throws <see cref="DataConflictException"/> while a formula still reads the column.</summary>
+    public Task<bool> DeleteColumnAsync(int id, Guid columnId)
     {
-        var column = await db.DatasetColumns.FirstOrDefaultAsync(c => c.RefId == columnId && c.Dataset!.Id == id);
-        if (column is null)
-        {
-            return false;
-        }
-
-        var formulaColumns = await db.DatasetColumns.Where(c => c.DatasetId == id && c.FormulaExpression != null).ToListAsync();
-        var dependents = FormulaColumnRename.Dependents(formulaColumns, column);
-        if (dependents.Count > 0)
-        {
-            throw new DataConflictException(
-                $"[{column.Name}] is read by the formula in {string.Join(", ", dependents.Select(d => $"[{d}]"))}. Change or remove that formula first.");
-        }
-
-        db.DatasetColumns.Remove(column);
-
-        // Cells reference the column without a FK, so they don't cascade.
-        var cells = await db.DatasetCells.Where(c => c.ColumnId == column.Id).ToListAsync();
-        db.DatasetCells.RemoveRange(cells);
-
-        await db.SaveChangesAsync();
-        return true;
+        return _columns.DeleteAsync(id, columnId);
     }
 
-    public async Task<DatasetSchemaDto?> ReorderColumnsAsync(int id, List<Guid> columnIds)
+    public Task<DatasetSchemaDto?> ReorderColumnsAsync(int id, List<Guid> columnIds)
     {
-        var dataset = await db.Datasets
-            .Include(d => d.Source)
-            .Include(d => d.Columns)
-            .FirstOrDefaultAsync(d => d.Id == id);
-        if (dataset is null)
-        {
-            return null;
-        }
-
-        EnsureNotFiltered(dataset);
-
-        for (var i = 0; i < columnIds.Count; i++)
-        {
-            var column = dataset.Columns.FirstOrDefault(c => c.RefId == columnIds[i]);
-            if (column is not null)
-            {
-                column.Order = i;
-            }
-        }
-
-        await db.SaveChangesAsync();
-        return dataset.ToSchemaDto();
-    }
-
-    /// <summary>Typed fields were parsed under the old type; re-derive them from each cell's text.</summary>
-    private async Task ReparseCellsAsync(int columnId, DatasetColumnType type)
-    {
-        var cells = await db.DatasetCells.Where(c => c.ColumnId == columnId).ToListAsync();
-        foreach (var cell in cells)
-        {
-            CellValues.Apply(cell, cell.StringValue, type);
-        }
-    }
-
-    /// <summary>Columns are referenced by RefId in filters and resolved to int ids for the cell comparison.</summary>
-    private async Task<FilteredRows> FilterRowsAsync(ResolvedDataset resolved, FilterGroupDto? filter)
-    {
-        var physical = resolved.Physical;
-        var columnsByRef = physical.Columns.ToDictionary(c => c.RefId);
-        var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
-        var baseRows = db.DatasetRows.Where(r => r.DatasetId == physical.Id);
-        var all = FilterTranslator.Apply(baseRows, resolved.MandatoryFilter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        var matching = FilterTranslator.Apply(all, filter, columnsByRef, operatorCatalogue: operatorCatalogue);
-        return new FilteredRows(all, matching);
-    }
-
-    /// <summary>A filtered dataset is a read-only view over its base, so it can't be edited directly.</summary>
-    private static void EnsureNotFiltered(Dataset dataset)
-    {
-        if (dataset.Source?.Key == DatasetSourceKey.Filtered)
-        {
-            throw new DataValidationException("A filtered dataset's columns and rows come from its base dataset and can't be edited directly.");
-        }
+        return _columns.ReorderAsync(id, columnIds);
     }
 }
