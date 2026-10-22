@@ -14,8 +14,8 @@ import { TreeNode } from 'primeng/api';
 import { TreeSelectModule } from 'primeng/treeselect';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
-import { Folder } from '../../../core/models/folder.model';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { Folder } from '../../../core/models/folder/folder.model';
 import { ReportSummary } from '../../../core/models/report';
 import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
 import { ROOT_KEY } from '../folder-tree.store';
@@ -87,7 +87,7 @@ export class CreateDialogComponent implements AfterViewInit {
               ? { parentFolderId: this.data.folderId }
               : { folderId: this.data.folderId }),
         } as Record<string, string | number>,
-        context: skipHttpErrorNotification(),
+        context: HttpErrorNotification.skip(),
       }),
       debounce: 400,
       onSuccess: (result, { value }) =>

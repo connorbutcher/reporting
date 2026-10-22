@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   ChartSeriesBinding,
-  DEFAULT_XBAR_R_CHART_CONFIG,
+  WidgetConfigDefaults,
   XBarRChartWidgetConfig,
 } from '../../../../../../core/models/report';
 import { XBarRChartQueryResult, XBarRSubgroup } from '../../../../../../core/models/widget-query';
@@ -20,7 +20,7 @@ const columns = [
 ] as DatasetColumn[];
 
 const config = (over: Partial<XBarRChartWidgetConfig> = {}): XBarRChartWidgetConfig => ({
-  ...DEFAULT_XBAR_R_CHART_CONFIG,
+  ...WidgetConfigDefaults.XBAR_R_CHART,
   type: 'xbarRChart',
   bindings: [
     {

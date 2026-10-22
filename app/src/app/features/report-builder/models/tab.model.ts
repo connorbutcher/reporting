@@ -1,20 +1,5 @@
 import { signal } from '@angular/core';
-import {
-  DEFAULT_BAR_CHART_CONFIG,
-  DEFAULT_COMBO_CHART_CONFIG,
-  DEFAULT_BOX_PLOT_CONFIG,
-  DEFAULT_HISTOGRAM_CONFIG,
-  DEFAULT_KPI_CONFIG,
-  DEFAULT_PIVOT_CONFIG,
-  DEFAULT_LINE_CHART_CONFIG,
-  DEFAULT_SCATTER_CHART_CONFIG,
-  DEFAULT_TABLE_CONFIG,
-  DEFAULT_TEXT_CONFIG,
-  DEFAULT_XBAR_R_CHART_CONFIG,
-  Tab,
-  Widget,
-  WidgetType,
-} from '../../../core/models/report';
+import { WidgetConfigDefaults, Tab, Widget, WidgetType } from '../../../core/models/report';
 import { GridLayout } from '../grid/grid-layout';
 import { EditorNode } from './editor-node';
 import { WidgetModel } from './widget.model';
@@ -227,64 +212,64 @@ export class TabModel extends EditorNode {
         return {
           ...base,
           type: 'dataTable',
-          config: { type: 'dataTable', ...DEFAULT_TABLE_CONFIG },
+          config: { type: 'dataTable', ...WidgetConfigDefaults.DATA_TABLE },
         };
       case 'pivotTable':
         return {
           ...base,
           type: 'pivotTable',
-          config: { type: 'pivotTable', ...DEFAULT_PIVOT_CONFIG },
+          config: { type: 'pivotTable', ...WidgetConfigDefaults.PIVOT_TABLE },
         };
       case 'scatterChart':
         return {
           ...base,
           type: 'scatterChart',
-          config: { type: 'scatterChart', ...DEFAULT_SCATTER_CHART_CONFIG },
+          config: { type: 'scatterChart', ...WidgetConfigDefaults.SCATTER_CHART },
         };
       case 'lineChart':
         return {
           ...base,
           type: 'lineChart',
-          config: { type: 'lineChart', ...DEFAULT_LINE_CHART_CONFIG },
+          config: { type: 'lineChart', ...WidgetConfigDefaults.LINE_CHART },
         };
       case 'barChart':
         return {
           ...base,
           type: 'barChart',
-          config: { type: 'barChart', ...DEFAULT_BAR_CHART_CONFIG },
+          config: { type: 'barChart', ...WidgetConfigDefaults.BAR_CHART },
         };
       case 'comboChart':
         return {
           ...base,
           type: 'comboChart',
-          config: { type: 'comboChart', ...DEFAULT_COMBO_CHART_CONFIG },
+          config: { type: 'comboChart', ...WidgetConfigDefaults.COMBO_CHART },
         };
       case 'boxPlot':
         return {
           ...base,
           type: 'boxPlot',
-          config: { type: 'boxPlot', ...DEFAULT_BOX_PLOT_CONFIG },
+          config: { type: 'boxPlot', ...WidgetConfigDefaults.BOX_PLOT },
         };
       case 'histogram':
         return {
           ...base,
           type: 'histogram',
-          config: { type: 'histogram', ...DEFAULT_HISTOGRAM_CONFIG },
+          config: { type: 'histogram', ...WidgetConfigDefaults.HISTOGRAM },
         };
       case 'xbarRChart':
         return {
           ...base,
           type: 'xbarRChart',
-          config: { type: 'xbarRChart', ...DEFAULT_XBAR_R_CHART_CONFIG },
+          config: { type: 'xbarRChart', ...WidgetConfigDefaults.XBAR_R_CHART },
         };
       case 'staticText':
         return {
           ...base,
           type: 'staticText',
-          config: { type: 'staticText', ...DEFAULT_TEXT_CONFIG },
+          config: { type: 'staticText', ...WidgetConfigDefaults.STATIC_TEXT },
         };
       case 'kpi':
-        return { ...base, type: 'kpi', config: { type: 'kpi', ...DEFAULT_KPI_CONFIG } };
+        return { ...base, type: 'kpi', config: { type: 'kpi', ...WidgetConfigDefaults.KPI } };
     }
   }
 

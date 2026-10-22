@@ -4,11 +4,10 @@ import {
   BarChartWidget,
   BarChartWidgetConfig,
   ChartSort,
-  DEFAULT_BAR_CHART_CONFIG,
-  DEFAULT_CHART_SORT,
+  WidgetConfigDefaults,
   DateGrouping,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
@@ -20,7 +19,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   public readonly aggregate = signal<Aggregate>('sum');
   public readonly stacked = signal(false);
   public readonly horizontal = signal(false);
-  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  public readonly sort = signal<ChartSort>(WidgetConfigDefaults.CHART_SORT);
   /** Buckets a date category by period; null groups by exact date. */
   public readonly categoryGrouping = signal<DateGrouping | null>(null);
   public readonly percentStacked = signal(false);
@@ -41,7 +40,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
     this.stacked.set(widget.config.stacked);
     this.horizontal.set(widget.config.horizontal);
     // Older charts default to natural order.
-    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.sort.set(widget.config.sort ?? WidgetConfigDefaults.CHART_SORT);
     this.categoryGrouping.set(widget.config.categoryGrouping ?? null);
     this.percentStacked.set(widget.config.percentStacked ?? false);
     this.showStackTotals.set(widget.config.showStackTotals ?? false);
@@ -54,7 +53,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   public override toDto(): BarChartWidget {
     const config: BarChartWidgetConfig = {
       type: 'barChart',
-      ...DEFAULT_BAR_CHART_CONFIG,
+      ...WidgetConfigDefaults.BAR_CHART,
       ...this.chartConfigBaseDto(),
       aggregate: this.aggregate(),
       stacked: this.stacked(),
@@ -68,7 +67,7 @@ export class BarChartWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('barChart').label;
+    return WidgetCatalog.descriptor('barChart').label;
   }
 
   // Every binding is checked, so a half-configured overlay (which the query skips) still warns.

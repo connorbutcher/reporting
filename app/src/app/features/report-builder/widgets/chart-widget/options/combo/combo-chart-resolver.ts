@@ -3,9 +3,7 @@ import {
   ChartSeriesBinding,
   ChartValueAxis,
   ComboChartWidgetConfig,
-  chartAxisIndex,
-  readChartAxes,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 import { CategoryZoom } from '../axes/category-zoom';
@@ -25,7 +23,7 @@ export class ComboChartResolver {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): ComboChart | null {
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     if (!categoryColumn) {
@@ -34,7 +32,7 @@ export class ComboChartResolver {
 
     const categories = data?.categories ?? [];
     const rawSeries = data?.series ?? [];
-    const axes = readChartAxes(config);
+    const axes = ChartConfigs.axes(config);
     const series = ComboChartResolver.comboSeries(rawSeries, bindings, axes, colors);
     const valueColumn = ComboChartResolver.primaryMeasure(config, series, primary, columns);
     const valueConfig = ChartFormat.numericConfig(valueColumn);
@@ -68,7 +66,7 @@ export class ComboChartResolver {
       const binding = result.bindingId ? bindingsById.get(result.bindingId) : undefined;
       return {
         result,
-        axisIndex: chartAxisIndex(axes, binding?.yAxisId ?? null),
+        axisIndex: ChartConfigs.axisIndex(axes, binding?.yAxisId ?? null),
         renderAs: binding?.renderAs ?? 'bar',
         color: seriesColors.get(result) ?? '',
         symbol: binding?.symbol ?? null,

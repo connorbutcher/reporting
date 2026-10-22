@@ -1,6 +1,6 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { ChartValueAxis, chartAxisDisplayName } from '../../../../../core/models/report';
+import { ChartValueAxis, ChartConfigs } from '../../../../../core/models/report';
 import {
   BarChartWidgetModel,
   BoxPlotWidgetModel,
@@ -52,7 +52,7 @@ export class PanelChartAxisListComponent {
   }
 
   public yLabel(axis: ChartValueAxis, index: number): string {
-    return chartAxisDisplayName(axis, index);
+    return ChartConfigs.axisDisplayName(axis, index);
   }
 
   public navigate(view: PanelView): void {

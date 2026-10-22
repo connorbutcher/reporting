@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, inject, output } from '@angular/core';
 import { Router } from '@angular/router';
-import { ReportOpenOption, ReportSummary, reportOpenOptions } from '../../../core/models/report';
+import { ReportOpenOption, ReportSummary, ReportOpening } from '../../../core/models/report';
 import { ContentRow, ReportRow, RowAction } from '../content-row';
 import { HomeStore } from '../home.store';
 
@@ -33,7 +33,7 @@ export class ContentsListComponent {
   }
 
   public openOptions(report: ReportSummary): ReportOpenOption[] {
-    return reportOpenOptions(report);
+    return ReportOpening.options(report);
   }
 
   /** Quiet version context for the meta line — published-vN is the normal state, so it lives here rather than in a pill. */

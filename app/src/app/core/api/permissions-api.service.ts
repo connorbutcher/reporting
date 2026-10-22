@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   AccessGrant,
   RemoveGrant,
@@ -22,13 +22,13 @@ export class PermissionsApiService {
 
   public setInheritance(kind: SecurableKind, id: number, dto: SetInheritance): Observable<void> {
     return this.http.put<void>(`${this.base(kind, id)}/inheritance`, dto, {
-      context: skipHttpErrorNotification(),
+      context: HttpErrorNotification.skip(),
     });
   }
 
   public upsertGrant(kind: SecurableKind, id: number, dto: SaveGrant): Observable<AccessGrant> {
     return this.http.put<AccessGrant>(`${this.base(kind, id)}`, dto, {
-      context: skipHttpErrorNotification(),
+      context: HttpErrorNotification.skip(),
     });
   }
 
@@ -36,7 +36,7 @@ export class PermissionsApiService {
     // The grant is keyed by its subject, so the subject travels in the request body.
     return this.http.delete<void>(`${this.base(kind, id)}`, {
       body: dto,
-      context: skipHttpErrorNotification(),
+      context: HttpErrorNotification.skip(),
     });
   }
 

@@ -7,7 +7,7 @@ import {
   ChartSymbol,
   ChartToleranceBand,
   LineDashStyle,
-  bandedChartColumns,
+  ChartConfigs,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
@@ -122,7 +122,7 @@ export class ChartBindingModel extends EditorNode {
       tolerantColumns: computed(
         () =>
           new Set(
-            bandedChartColumns(toleranceBands(), {
+            ChartConfigs.bandedColumns(toleranceBands(), {
               xColumnId: this.xColumnId(),
               yColumnId: this.yColumnId(),
             }),

@@ -1,7 +1,7 @@
 import {
   ChartSeriesBinding,
   ChartValueAxis,
-  chartAxisIndex,
+  ChartConfigs,
 } from '../../../../../../core/models/report';
 import { ChartSeriesResult } from '../../../../../../core/models/widget-query';
 import { SeriesStyle } from './types/series-style';
@@ -38,7 +38,7 @@ export class PointSeriesBindings {
   ): number[] {
     const bindingsById = new Map(bindings.map((b) => [b.id, b]));
     return series.map((s) =>
-      chartAxisIndex(
+      ChartConfigs.axisIndex(
         axes,
         (s.bindingId ? bindingsById.get(s.bindingId) : undefined)?.yAxisId ?? null,
       ),

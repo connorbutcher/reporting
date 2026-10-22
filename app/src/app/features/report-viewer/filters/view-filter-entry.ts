@@ -1,5 +1,5 @@
 import { Signal, computed } from '@angular/core';
-import { FilterGroup, filterKey } from '../../../core/models/filter';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
 import { WidgetType } from '../../../core/models/report';
 import { FilterGroupModel } from '../../report-builder/models/filter';
 
@@ -55,13 +55,13 @@ type EntryInit = Pick<ViewFilterEntry, 'key' | 'datasetId' | 'group' | 'publishe
 
 export function createViewFilterEntry<T extends object>(init: EntryInit & T): ViewFilterEntry & T {
   const { group } = init;
-  const publishedKey = filterKey(init.published);
+  const publishedKey = FilterTrees.key(init.published);
   return {
     ...init,
-    changed: computed(() => filterKey(group.toDto()) !== publishedKey),
+    changed: computed(() => FilterTrees.key(group.toDto()) !== publishedKey),
     override: computed(() => {
       const finished = group.toCompleteDto();
-      return filterKey(finished) === publishedKey ? undefined : finished;
+      return FilterTrees.key(finished) === publishedKey ? undefined : finished;
     }),
     summary: computed(() => describeConditions(group.count(), group.enabledCount())),
   };

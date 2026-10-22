@@ -12,7 +12,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
-import { FilterGroup, combineFilters } from '../../../../core/models/filter';
+import { FilterGroup, FilterTrees } from '../../../../core/models/filter';
 import { FormatRule, PivotTableWidgetConfig } from '../../../../core/models/report';
 import { PivotQueryResult, PivotRow } from '../../../../core/models/widget-query';
 import { Csv } from '../csv';
@@ -429,7 +429,7 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
       data: {
         datasetId,
         title,
-        filter: combineFilters(this.effectiveFilter(), row.drill, columnKey?.drill ?? null),
+        filter: FilterTrees.combine(this.effectiveFilter(), row.drill, columnKey?.drill ?? null),
       },
       ariaLabelledBy: 'drill-through-title',
     });

@@ -1,7 +1,7 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
-  DEFAULT_PIVOT_CONFIG,
+  WidgetConfigDefaults,
   DateGrouping,
   PivotAggregate,
   PivotFieldGrouping,
@@ -204,7 +204,7 @@ export class PivotTableWidgetModel extends WidgetModel {
   public override toDto(): PivotTableWidget {
     const config: PivotTableWidgetConfig = {
       type: 'pivotTable',
-      ...DEFAULT_PIVOT_CONFIG,
+      ...WidgetConfigDefaults.PIVOT_TABLE,
       ...this.baseConfigDto(),
       datasetId: this.datasetId(),
       rowFields: [...this.rowFields()],

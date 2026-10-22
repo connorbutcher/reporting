@@ -3,7 +3,7 @@ import { TreeNode } from 'primeng/api';
 import { TreeNodeExpandEvent } from 'primeng/tree';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Folder } from '../../core/models/folder.model';
+import { Folder } from '../../core/models/folder/folder.model';
 
 /** Key used for the synthetic root node, since folder ids are never this string. */
 export const ROOT_KEY = '__root__';

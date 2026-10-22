@@ -4,7 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { InputTextModule } from 'primeng/inputtext';
 import { WidgetType } from '../../../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../../../core/models/widget-catalog/widget-catalog';
 import {
   ChartWidgetModel,
   KpiWidgetModel,
@@ -75,7 +75,7 @@ export class PanelWidgetDetailComponent {
   private readonly commands = inject(WidgetCommands);
 
   public defaultTitle(type: WidgetType): string {
-    return widgetTypeDescriptor(type).label;
+    return WidgetCatalog.descriptor(type).label;
   }
 
   public duplicateSelection(): void {

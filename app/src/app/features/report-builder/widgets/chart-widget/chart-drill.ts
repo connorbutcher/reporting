@@ -1,5 +1,5 @@
-import { FilterCondition, FilterGroup, combineFilters } from '../../../../core/models/filter';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
+import { FilterCondition, FilterGroup, FilterTrees } from '../../../../core/models/filter';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -29,7 +29,7 @@ export class ChartDrill {
     const context: ChartDrillContext = {
       index,
       seriesName: click.seriesName,
-      bindings: readChartBindings(config),
+      bindings: ChartConfigs.bindings(config),
       bindingFilters,
     };
 
@@ -64,7 +64,7 @@ export class ChartDrill {
     return {
       datasetId: binding.datasetId,
       path: ChartDrill.path(bar.categories[index], series.label),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, binding.id),
         category,
         series.drill ?? null,
@@ -87,7 +87,7 @@ export class ChartDrill {
     return {
       datasetId: primary.datasetId,
       path: ChartDrill.path(box.categories[index], series?.label ?? ''),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, primary.id),
         category,
         series?.drill ?? null,
@@ -111,7 +111,7 @@ export class ChartDrill {
     return {
       datasetId: binding.datasetId,
       path: ChartDrill.path(bin.label, series.label),
-      filter: combineFilters(
+      filter: FilterTrees.combine(
         ChartDrill.bindingFilter(bindingFilters, binding.id),
         ChartDrill.binRange(columnId, bin.lower, bin.upper, last),
         series.drill ?? null,
@@ -131,7 +131,7 @@ export class ChartDrill {
     return {
       datasetId: primary.datasetId,
       path: [control.categories[index]],
-      filter: combineFilters(ChartDrill.bindingFilter(bindingFilters, primary.id), category),
+      filter: FilterTrees.combine(ChartDrill.bindingFilter(bindingFilters, primary.id), category),
     };
   }
 

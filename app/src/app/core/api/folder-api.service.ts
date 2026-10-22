@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Folder } from '../models/folder.model';
+import { Folder } from '../models/folder/folder.model';
 
 @Service()
 export class FolderApiService {

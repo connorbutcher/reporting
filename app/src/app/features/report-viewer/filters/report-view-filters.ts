@@ -1,6 +1,6 @@
 import { Signal, computed } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
-import { FilterGroup, OperatorCatalogue, filterKey } from '../../../core/models/filter';
+import { FilterGroup, OperatorCatalogue, FilterTrees } from '../../../core/models/filter';
 import { ReportRevisionContent } from '../../../core/models/report';
 import { collectViewFilterEntries } from './view-filter-entries';
 import { PageFilterEntry, ViewFilterEntry, WidgetFilterEntry } from './view-filter-entry';
@@ -92,7 +92,7 @@ export class ReportViewFilters {
   public apply(overrides: ViewFilterOverrides): void {
     for (const entry of this.allEntries) {
       const target = Object.hasOwn(overrides, entry.key) ? overrides[entry.key] : entry.published;
-      if (filterKey(target) !== filterKey(entry.group.toDto())) {
+      if (FilterTrees.key(target) !== FilterTrees.key(entry.group.toDto())) {
         entry.group.replaceWith(target);
       }
     }

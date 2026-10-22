@@ -1,11 +1,11 @@
 import { Signal, computed, signal } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
 import {
-  DEFAULT_TABLE_CONFIG,
+  WidgetConfigDefaults,
   DataTableWidget,
   DataTableWidgetConfig,
   SortDirection,
-  hasFixedLimits,
+  ToleranceConfigs,
 } from '../../../core/models/report';
 import { EditorNode } from './editor-node';
 import { FilterGroupModel } from './filter';
@@ -64,7 +64,7 @@ export class DataTableWidgetModel extends WidgetModel {
         () =>
           new Set(
             this.columns()
-              .filter((c) => hasFixedLimits(c.tolerance()))
+              .filter((c) => ToleranceConfigs.hasFixedLimits(c.tolerance()))
               .map((c) => c.columnId),
           ),
       ),
@@ -158,7 +158,7 @@ export class DataTableWidgetModel extends WidgetModel {
   public override toDto(): DataTableWidget {
     const config: DataTableWidgetConfig = {
       type: 'dataTable',
-      ...DEFAULT_TABLE_CONFIG,
+      ...WidgetConfigDefaults.DATA_TABLE,
       ...this.baseConfigDto(),
       ...this.appearance.toDto(),
       datasetId: this.datasetId(),

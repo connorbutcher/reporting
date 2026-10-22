@@ -10,7 +10,7 @@ import {
   ChartAxis,
   LineDashStyle,
   LineDirection,
-  chartAxisDisplayName,
+  ChartConfigs,
 } from '../../../../../core/models/report';
 import { XBarRChartWidgetModel } from '../../../models/widget.model';
 import { ReportSession } from '../../../state/report-session';
@@ -95,7 +95,7 @@ export class PanelChartGuideLineComponent {
     const axes = chart.yAxes();
     const numeric = axes.filter((a) => this.axisIsNumeric(a.id));
     return (numeric.length ? numeric : axes).map((axis) => ({
-      label: chartAxisDisplayName(axis, axes.indexOf(axis)),
+      label: ChartConfigs.axisDisplayName(axis, axes.indexOf(axis)),
       value: axis.id,
     }));
   });

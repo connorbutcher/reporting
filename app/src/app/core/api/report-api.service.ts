@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   ReportRevisionContent,
   ReportSearchResult,
@@ -9,7 +9,8 @@ import {
   ReportSummary,
   ReportVersionSummary,
 } from '../models/report';
-import { CreateWidgetComment, WidgetComment } from '../models/widget-comment.model';
+import { CreateWidgetComment } from '../models/widget-comment/create-widget-comment.model';
+import { WidgetComment } from '../models/widget-comment/widget-comment.model';
 
 @Service()
 export class ReportApiService {
@@ -25,7 +26,7 @@ export class ReportApiService {
   search(query: string): Observable<ReportSearchResult[]> {
     return this.http.get<ReportSearchResult[]>('/api/reports/search', {
       params: { q: query },
-      context: skipHttpErrorNotification(),
+      context: HttpErrorNotification.skip(),
     });
   }
 
@@ -51,7 +52,7 @@ export class ReportApiService {
     return this.http.post<void>(
       `/api/reports/${id}/view`,
       {},
-      { context: skipHttpErrorNotification() },
+      { context: HttpErrorNotification.skip() },
     );
   }
 

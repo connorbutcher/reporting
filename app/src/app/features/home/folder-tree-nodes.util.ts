@@ -1,5 +1,5 @@
 import { TreeNode } from 'primeng/api';
-import { Folder } from '../../core/models/folder.model';
+import { Folder } from '../../core/models/folder/folder.model';
 
 /**
  * Recursively builds a folder's `TreeNode` children from a parent-id lookup (see

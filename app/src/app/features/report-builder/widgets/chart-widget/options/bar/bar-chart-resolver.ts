@@ -2,8 +2,7 @@ import { DatasetColumn } from '../../../../../../core/models/dataset';
 import {
   BarChartWidgetConfig,
   ChartSeriesBinding,
-  readChartAxes,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../../core/models/report';
 import { BarChartQueryResult, BarSeriesResult } from '../../../../../../core/models/widget-query';
 import { CategoryZoom } from '../axes/category-zoom';
@@ -24,7 +23,7 @@ export class BarChartResolver {
     colors: Map<string, string>,
   ): BarChart | null {
     // The first bound binding names the category axis; later bindings overlay their own bars.
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     const primary = bindings.find((b) => b.datasetId) ?? bindings[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     if (!categoryColumn) {
@@ -48,7 +47,7 @@ export class BarChartResolver {
       valueColumn,
       valueConfig,
       seriesConfigs: BarValueFormats.bySeries(config.aggregate, series, columns, valueConfig),
-      valueAxisConfig: readChartAxes(config)[0],
+      valueAxisConfig: ChartConfigs.axes(config)[0],
       horizontal: config.horizontal,
       percent,
       stacked,

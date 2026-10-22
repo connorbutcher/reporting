@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, Dialog } from '@angular/cdk/dialog';
 import { Observable, map, of } from 'rxjs';
 import { PermissionsApiService } from '../../../core/api/permissions-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import {
   AccessGrant,
   AccessLevel,
@@ -141,16 +141,16 @@ export class PermissionsDialogStore {
 
   private readonly permissionsResource = httpResource<Permissions>(() => ({
     url: this.api.base(this.data.kind, this.data.id),
-    context: skipHttpErrorNotification(),
+    context: HttpErrorNotification.skip(),
   }));
 
   // Loaded once alongside the permissions; not reloaded on mutation.
   private readonly usersResource = httpResource<UserSummary[]>(
-    () => ({ url: '/api/users', context: skipHttpErrorNotification() }),
+    () => ({ url: '/api/users', context: HttpErrorNotification.skip() }),
     { defaultValue: [] },
   );
   private readonly groupsResource = httpResource<UserGroupSummary[]>(
-    () => ({ url: '/api/user-groups', context: skipHttpErrorNotification() }),
+    () => ({ url: '/api/user-groups', context: HttpErrorNotification.skip() }),
     { defaultValue: [] },
   );
 

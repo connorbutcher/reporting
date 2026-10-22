@@ -4,8 +4,8 @@ import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { FilterApiService } from '../../../core/api/filter-api.service';
 import { DatasetSchema } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
-import { ReportRevisionContent, readChartBindings } from '../../../core/models/report';
-import { isChartWidget } from '../../../core/models/widget-catalog';
+import { ReportRevisionContent, ChartConfigs } from '../../../core/models/report';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 
 /** The dataset schemas and operator catalogue the filter panel needs to describe columns. */
 @Injectable()
@@ -48,8 +48,8 @@ function filterableDatasetIds(content: ReportRevisionContent): Set<number> {
       if (widget.config.datasetId) {
         ids.add(widget.config.datasetId);
       }
-    } else if (isChartWidget(widget)) {
-      for (const binding of readChartBindings(widget.config)) {
+    } else if (WidgetCatalog.isChartWidget(widget)) {
+      for (const binding of ChartConfigs.bindings(widget.config)) {
         if (binding.datasetId) {
           ids.add(binding.datasetId);
         }

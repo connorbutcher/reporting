@@ -9,8 +9,8 @@ import {
   ChartValueAxis,
   ChartWidget,
   ChartWidgetConfigBase,
-  EMPTY_CHART_BINDING,
-  readChartAxes,
+  WidgetConfigDefaults,
+  ChartConfigs,
 } from '../../../core/models/report';
 import { ChartBindingModel } from './chart-binding.model';
 import { EditorNode } from './editor-node';
@@ -64,7 +64,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     this.xAxisLabel.set(config.xAxisLabel);
     this.yAxisLabel.set(config.yAxisLabel);
     // Folds an older single yAxisLabel into one primary axis.
-    this.yAxes.set(readChartAxes(config));
+    this.yAxes.set(ChartConfigs.axes(config));
     this.xAxisMin.set(config.xAxisMin ?? null);
     this.xAxisMax.set(config.xAxisMax ?? null);
     this.xLogScale.set(config.xLogScale ?? false);
@@ -87,7 +87,7 @@ export abstract class ChartWidgetModel extends WidgetModel {
     // A fresh chart seeds one empty binding to bind.
     const seeded = config.bindings?.length
       ? config.bindings
-      : [{ id: crypto.randomUUID(), ...EMPTY_CHART_BINDING }];
+      : [{ id: crypto.randomUUID(), ...WidgetConfigDefaults.EMPTY_CHART_BINDING }];
     this.bindings.set(
       seeded.map((b) => new ChartBindingModel(b, sources, this.id, this.toleranceBands)),
     );
@@ -100,7 +100,10 @@ export abstract class ChartWidgetModel extends WidgetModel {
 
   /** Appends an unbound series and returns its id. */
   public addBinding(): string {
-    const dto: ChartSeriesBinding = { id: crypto.randomUUID(), ...EMPTY_CHART_BINDING };
+    const dto: ChartSeriesBinding = {
+      id: crypto.randomUUID(),
+      ...WidgetConfigDefaults.EMPTY_CHART_BINDING,
+    };
     const model = new ChartBindingModel(dto, this.sources, this.id, this.toleranceBands);
     this.bindings.update((bindings) => [...bindings, model]);
     return model.id;

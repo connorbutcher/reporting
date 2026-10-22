@@ -7,8 +7,7 @@ import {
   OpenableReport,
   ReportSearchResult,
   ReportSummary,
-  defaultOpenOption,
-  reportOpenOptions,
+  ReportOpening,
 } from '../../core/models/report';
 import { ContentRow } from './content-row';
 import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';
@@ -71,7 +70,7 @@ export class HomeStore {
     const openItems: MenuItem[] =
       row.kind === 'folder'
         ? [{ label: 'Open', icon: 'pi pi-folder-open', command: () => this.selectFolder(row.id) }]
-        : reportOpenOptions(row.report).map((option) => ({
+        : ReportOpening.options(row.report).map((option) => ({
             label: option.label,
             icon: option.icon,
             command: () => this.router.navigate(option.route),
@@ -170,7 +169,7 @@ export class HomeStore {
    * exist, lives in the context menu and the strip cards.
    */
   public openReport(report: OpenableReport): void {
-    const option = defaultOpenOption(report);
+    const option = ReportOpening.defaultOption(report);
     if (option) {
       this.router.navigate(option.route);
     }

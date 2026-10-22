@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   AdminGroup,
   AdminGroupDetail,
@@ -23,7 +23,7 @@ export class AdminApiService {
 
   // The admin screens render access/not-found failures inline (a load-error banner, a per-field
   // message), so they opt out of the global toast to avoid doubling up on their own messaging.
-  private readonly options = { context: skipHttpErrorNotification() };
+  private readonly options = { context: HttpErrorNotification.skip() };
 
   /** The full people directory (ungated), for member/manager pickers. */
   public directory(): Observable<DirectoryUser[]> {

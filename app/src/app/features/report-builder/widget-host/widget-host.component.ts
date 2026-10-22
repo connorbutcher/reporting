@@ -1,8 +1,8 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, inject, input, output } from '@angular/core';
-import { FilterGroup, combineFilters } from '../../../core/models/filter';
-import { SortDirection, widgetFragment } from '../../../core/models/report';
-import { isExportableWidgetType } from '../../../core/models/widget-catalog';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
+import { SortDirection, WidgetFragment } from '../../../core/models/report';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { GridPreview } from '../grid/grid-preview';
 import {
@@ -68,10 +68,10 @@ export class WidgetHostComponent {
   );
 
   public readonly gridRow = computed(() => `${this.widget().y() + 1} / span ${this.widget().h()}`);
-  public readonly fragment = computed(() => widgetFragment(this.widget().id));
+  public readonly fragment = computed(() => WidgetFragment.forWidget(this.widget().id));
   public readonly title = computed(() => this.widget().label());
   public readonly showTitle = computed(() => this.widget().showTitle());
-  public readonly exportable = computed(() => isExportableWidgetType(this.widget().type));
+  public readonly exportable = computed(() => WidgetCatalog.isExportableType(this.widget().type));
 
   /** Reflects live edits. */
   public readonly widgetDto = computed(() => this.widget().toDto());
@@ -110,7 +110,7 @@ export class WidgetHostComponent {
     for (const binding of chart.bindings()) {
       const own = binding.filter.toQueryDto();
       const report = this.reportFilterFor(binding.datasetId());
-      filters[binding.id] = combineFilters(report, own);
+      filters[binding.id] = FilterTrees.combine(report, own);
     }
     return filters;
   });

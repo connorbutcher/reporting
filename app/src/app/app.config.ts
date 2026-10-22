@@ -5,7 +5,7 @@ import { provideRouter } from '@angular/router';
 import { provideEchartsCore } from 'ngx-echarts';
 import { MessageService } from 'primeng/api';
 import { providePrimeNG } from 'primeng/config';
-import { httpErrorNotificationInterceptor } from './core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from './core/http/http-error-notification.interceptor';
 import { routes } from './app.routes';
 import { ReportingPreset } from './theme';
 
@@ -13,7 +13,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withFetch(), withInterceptors([httpErrorNotificationInterceptor])),
+    provideHttpClient(withFetch(), withInterceptors([HttpErrorNotification.intercept])),
     providePrimeNG({
       theme: {
         preset: ReportingPreset,

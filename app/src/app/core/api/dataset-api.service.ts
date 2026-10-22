@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../http/http-error-notification.interceptor';
 import {
   ColumnTypeImpact,
   DatasetColumn,
@@ -228,7 +228,7 @@ export class DatasetApiService {
       `/api/datasets/${datasetId}/columns/${columnId}/type-impact`,
       {
         params: new HttpParams().set('type', type),
-        context: skipHttpErrorNotification(),
+        context: HttpErrorNotification.skip(),
       },
     );
   }

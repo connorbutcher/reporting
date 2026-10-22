@@ -8,7 +8,7 @@ import {
   ChartSort,
   ChartSortBy,
   DateGrouping,
-  DEFAULT_CHART_SORT,
+  WidgetConfigDefaults,
   SortAggregate,
 } from '../../../../../core/models/report';
 
@@ -61,7 +61,7 @@ export class PanelChartSortComponent {
     { label: 'Year', value: 'year' },
   ];
 
-  public readonly resolved = computed(() => this.sort() ?? DEFAULT_CHART_SORT);
+  public readonly resolved = computed(() => this.sort() ?? WidgetConfigDefaults.CHART_SORT);
 
   public readonly byOptions = computed<{ label: string; value: ChartSortBy }[]>(() => [
     { label: this.defaultLabel(), value: 'default' },

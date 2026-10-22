@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { form, required, validateHttp } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 
 export type RenameDialogData = {
   kind: 'folder' | 'report';
@@ -51,7 +51,7 @@ export class RenameDialogComponent implements AfterViewInit {
               ? { parentFolderId: this.data.folderId }
               : { folderId: this.data.folderId }),
         } as Record<string, string | number>,
-        context: skipHttpErrorNotification(),
+        context: HttpErrorNotification.skip(),
       }),
       debounce: 400,
       onSuccess: (result, { value }) =>

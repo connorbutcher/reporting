@@ -1,5 +1,5 @@
 import { DatasetColumn } from '../../../../core/models/dataset';
-import { ChartWidgetConfig, readChartBindings } from '../../../../core/models/report';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -44,7 +44,7 @@ export class ChartExport {
     }
 
     // Date axes carry epoch millis.
-    const primary = readChartBindings(config).find((b) => b.datasetId);
+    const primary = ChartConfigs.bindings(config).find((b) => b.datasetId);
     const x = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const y = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     return ChartExport.pointTable(data as ChartQueryResult, x, y);

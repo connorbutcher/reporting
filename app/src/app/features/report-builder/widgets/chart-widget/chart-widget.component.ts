@@ -5,13 +5,9 @@ import type { ECElementEvent } from 'echarts/core';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterGroup } from '../../../../core/models/filter';
-import {
-  ChartWidgetConfig,
-  barValueColumnIds,
-  readChartBindings,
-} from '../../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../../core/models/widget-catalog';
-import { WidgetComment } from '../../../../core/models/widget-comment.model';
+import { ChartWidgetConfig, ChartConfigs } from '../../../../core/models/report';
+import { WidgetCatalog } from '../../../../core/models/widget-catalog/widget-catalog';
+import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
 import {
   BarChartQueryResult,
   BoxPlotQueryResult,
@@ -69,7 +65,9 @@ export class ChartWidgetComponent extends DataWidgetBase {
   public readonly bindingFilters = input<Record<string, FilterGroup | null> | null>(null);
   /** Set by the outlet only in the viewer; keys comment anchors. */
   public readonly widgetId = input<string | null>(null);
-  public readonly placeholderIcon = computed(() => widgetTypeDescriptor(this.config().type).icon);
+  public readonly placeholderIcon = computed(
+    () => WidgetCatalog.descriptor(this.config().type).icon,
+  );
 
   /** A point chart, in the viewer, with an id. */
   public readonly canAnchorComments = computed(
@@ -222,7 +220,7 @@ export class ChartWidgetComponent extends DataWidgetBase {
 
   /** The first bound binding's dataset names the axes, so an unconfigured earlier binding doesn't block rendering. */
   private readonly datasetId = computed(
-    () => readChartBindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
+    () => ChartConfigs.bindings(this.config()).find((b) => b.datasetId)?.datasetId ?? null,
   );
 
   private readonly queryKey = computed(() => ChartQueryKey.of(this.config()));
@@ -253,14 +251,14 @@ export class ChartWidgetComponent extends DataWidgetBase {
   /** Read from the config, so a loading schema doesn't look unconfigured. */
   private readonly configured = computed(() => {
     const config = this.config();
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     if (config.type === 'barChart' || config.type === 'comboChart') {
       // One bound binding with a category (and a measure, unless counting) is enough.
       return bindings.some(
         (b) =>
           b.datasetId &&
           b.xColumnId &&
-          (config.aggregate === 'count' || barValueColumnIds(b).length > 0),
+          (config.aggregate === 'count' || ChartConfigs.barValueColumnIds(b).length > 0),
       );
     }
     if (config.type === 'boxPlot' || config.type === 'xbarRChart') {

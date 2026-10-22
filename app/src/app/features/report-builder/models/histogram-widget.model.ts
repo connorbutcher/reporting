@@ -1,12 +1,12 @@
 import { signal } from '@angular/core';
 import {
-  DEFAULT_HISTOGRAM_CONFIG,
+  WidgetConfigDefaults,
   HistogramBinMode,
   HistogramNormalize,
   HistogramWidget,
   HistogramWidgetConfig,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
@@ -46,7 +46,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
   public override toDto(): HistogramWidget {
     const config: HistogramWidgetConfig = {
       type: 'histogram',
-      ...DEFAULT_HISTOGRAM_CONFIG,
+      ...WidgetConfigDefaults.HISTOGRAM,
       ...this.chartConfigBaseDto(),
       binMode: this.binMode(),
       binCount: this.binCount(),
@@ -62,7 +62,7 @@ export class HistogramWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('histogram').label;
+    return WidgetCatalog.descriptor('histogram').label;
   }
 
   // Checks every binding itself, since the base check requires a yColumnId a histogram doesn't have.

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { describe, expect, it } from 'vitest';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { hasFixedLimits } from '../../../core/models/report';
+import { ToleranceConfigs } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ToleranceSourcePicker } from './tolerance-source-picker';
 
@@ -89,11 +89,11 @@ describe('ToleranceSourcePicker per-row matching', () => {
 
 describe('hasFixedLimits', () => {
   it('is true only for a fixed-row tolerance — the filter operators need a single band', () => {
-    expect(hasFixedLimits({ ...limits, sourceRowId: 'r1' })).toBe(true);
-    expect(hasFixedLimits({ ...limits, match: { columnId: 'a', sourceColumnId: 'b' } })).toBe(
-      false,
-    );
-    expect(hasFixedLimits(null)).toBe(false);
-    expect(hasFixedLimits(undefined)).toBe(false);
+    expect(ToleranceConfigs.hasFixedLimits({ ...limits, sourceRowId: 'r1' })).toBe(true);
+    expect(
+      ToleranceConfigs.hasFixedLimits({ ...limits, match: { columnId: 'a', sourceColumnId: 'b' } }),
+    ).toBe(false);
+    expect(ToleranceConfigs.hasFixedLimits(null)).toBe(false);
+    expect(ToleranceConfigs.hasFixedLimits(undefined)).toBe(false);
   });
 });

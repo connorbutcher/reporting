@@ -2,8 +2,8 @@ import { Signal, computed, signal } from '@angular/core';
 import {
   ReportRevisionContent,
   Tab,
-  bandedChartColumns,
-  hasFixedLimits,
+  ChartConfigs,
+  ToleranceConfigs,
 } from '../../../core/models/report';
 import { FilterGroup, ReportFilter } from '../../../core/models/filter';
 import { EditorNode } from './editor-node';
@@ -272,7 +272,7 @@ export class ReportModel extends EditorNode {
             continue;
           }
           for (const column of widget.columns()) {
-            if (hasFixedLimits(column.tolerance())) {
+            if (ToleranceConfigs.hasFixedLimits(column.tolerance())) {
               columns.add(column.columnId);
             }
           }
@@ -282,7 +282,7 @@ export class ReportModel extends EditorNode {
             if (binding.datasetId() !== datasetId) {
               continue;
             }
-            for (const id of bandedChartColumns(bands, {
+            for (const id of ChartConfigs.bandedColumns(bands, {
               xColumnId: binding.xColumnId(),
               yColumnId: binding.yColumnId(),
             })) {

@@ -4,7 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetSource, DatasetSummary } from '../../../core/models/dataset';
 import { DatasetAutosave } from './dataset-autosave';
@@ -43,7 +43,7 @@ export class DatasetCollection {
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
     () =>
       this.reportId() !== null
-        ? { url: `/api/reports/${this.reportId()}/datasets`, context: skipHttpErrorNotification() }
+        ? { url: `/api/reports/${this.reportId()}/datasets`, context: HttpErrorNotification.skip() }
         : undefined,
     { defaultValue: [] },
   );

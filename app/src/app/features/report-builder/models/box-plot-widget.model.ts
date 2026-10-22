@@ -4,11 +4,10 @@ import {
   BoxPlotWidgetConfig,
   BoxWhisker,
   ChartSort,
-  DEFAULT_BOX_PLOT_CONFIG,
-  DEFAULT_CHART_SORT,
+  WidgetConfigDefaults,
   DateGrouping,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { ValidationIssue } from './validation-issue';
 import { ChartWidgetModel } from './chart-widget.model';
 import { ModelSources } from './sources/model-sources';
@@ -21,7 +20,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   public readonly whisker = signal<BoxWhisker>('tukey');
   /** Multiplies the IQR for `tukey`, the standard deviation for `stdDev`. */
   public readonly whiskerFactor = signal(1.5);
-  public readonly sort = signal<ChartSort>(DEFAULT_CHART_SORT);
+  public readonly sort = signal<ChartSort>(WidgetConfigDefaults.CHART_SORT);
   public readonly showMean = signal(false);
   public readonly showSampleSize = signal(false);
   public readonly showPoints = signal(false);
@@ -36,7 +35,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
     this.whisker.set(widget.config.whisker);
     // Older charts default to the box-plot defaults.
     this.whiskerFactor.set(widget.config.whiskerFactor ?? 1.5);
-    this.sort.set(widget.config.sort ?? DEFAULT_CHART_SORT);
+    this.sort.set(widget.config.sort ?? WidgetConfigDefaults.CHART_SORT);
     this.showMean.set(widget.config.showMean ?? false);
     this.showSampleSize.set(widget.config.showSampleSize ?? false);
     this.showPoints.set(widget.config.showPoints ?? false);
@@ -48,7 +47,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   public override toDto(): BoxPlotWidget {
     const config: BoxPlotWidgetConfig = {
       type: 'boxPlot',
-      ...DEFAULT_BOX_PLOT_CONFIG,
+      ...WidgetConfigDefaults.BOX_PLOT,
       ...this.chartConfigBaseDto(),
       whisker: this.whisker(),
       whiskerFactor: this.whiskerFactor(),
@@ -64,7 +63,7 @@ export class BoxPlotWidgetModel extends ChartWidgetModel {
   }
 
   public override defaultTitle(): string {
-    return widgetTypeDescriptor('boxPlot').label;
+    return WidgetCatalog.descriptor('boxPlot').label;
   }
 
   public override ownIssues(): ValidationIssue[] {

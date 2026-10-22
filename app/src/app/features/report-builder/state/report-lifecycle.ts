@@ -2,7 +2,7 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReportApiService } from '../../../core/api/report-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { ReportRevisionContent } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportModel } from '../models/report.model';
@@ -35,7 +35,7 @@ export class ReportLifecycle {
   private readonly draftResource = httpResource<ReportRevisionContent>(() => {
     const id = this.session.reportId();
     return id !== null
-      ? { url: `/api/reports/${id}/draft`, context: skipHttpErrorNotification() }
+      ? { url: `/api/reports/${id}/draft`, context: HttpErrorNotification.skip() }
       : undefined;
   });
 

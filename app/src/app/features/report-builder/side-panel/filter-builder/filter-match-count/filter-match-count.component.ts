@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, input, linkedSignal } from '@angular/core';
 import { DatasetApiService } from '../../../../../core/api/dataset-api.service';
-import { DatasetCountResult, FilterGroup, combineFilters } from '../../../../../core/models/filter';
+import { DatasetCountResult, FilterGroup, FilterTrees } from '../../../../../core/models/filter';
 import { FilterGroupModel } from '../../../models/filter';
 import { LiveMatchCount } from '../live-match-count';
 import { MatchState } from '../match-state';
@@ -26,7 +26,10 @@ export class FilterMatchCountComponent {
       if (!group.ready() || datasetId === null) {
         return null;
       }
-      return { datasetId, filter: combineFilters(this.additionalFilter(), group.toQueryDto()) };
+      return {
+        datasetId,
+        filter: FilterTrees.combine(this.additionalFilter(), group.toQueryDto()),
+      };
     }),
     inject(DatasetApiService),
   );

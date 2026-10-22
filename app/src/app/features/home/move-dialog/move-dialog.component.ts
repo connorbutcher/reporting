@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { TreeNode } from 'primeng/api';
 import { TreeModule, TreeNodeSelectEvent } from 'primeng/tree';
-import { Folder } from '../../../core/models/folder.model';
+import { Folder } from '../../../core/models/folder/folder.model';
 import { buildFolderTreeNodes } from '../folder-tree-nodes.util';
 import { ROOT_KEY } from '../folder-tree.store';
 import { groupByParent } from '../group-by-parent.util';

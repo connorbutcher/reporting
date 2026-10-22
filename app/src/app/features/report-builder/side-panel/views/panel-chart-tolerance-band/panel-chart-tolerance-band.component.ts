@@ -4,7 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { ChartAxis, chartAxisDisplayName } from '../../../../../core/models/report';
+import { ChartAxis, ChartConfigs } from '../../../../../core/models/report';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { ToleranceSourcePicker } from '../../../state/tolerance-source-picker';
@@ -78,7 +78,7 @@ export class PanelChartToleranceBandComponent {
     const axes = chart.yAxes();
     const numeric = axes.filter((a) => this.axisIsNumeric(a.id));
     return (numeric.length ? numeric : axes).map((axis) => ({
-      label: chartAxisDisplayName(axis, axes.indexOf(axis)),
+      label: ChartConfigs.axisDisplayName(axis, axes.indexOf(axis)),
       value: axis.id,
     }));
   });

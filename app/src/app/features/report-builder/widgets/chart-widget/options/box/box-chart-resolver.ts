@@ -1,9 +1,5 @@
 import { DatasetColumn } from '../../../../../../core/models/dataset';
-import {
-  BoxPlotWidgetConfig,
-  readChartAxes,
-  readChartBindings,
-} from '../../../../../../core/models/report';
+import { BoxPlotWidgetConfig, ChartConfigs } from '../../../../../../core/models/report';
 import { BoxPlotQueryResult } from '../../../../../../core/models/widget-query';
 import { CategoryZoom } from '../axes/category-zoom';
 import { SeriesColors } from '../colors/series-colors';
@@ -21,7 +17,7 @@ export class BoxChartResolver {
     columns: DatasetColumn[],
     colors: Map<string, string>,
   ): BoxChart | null {
-    const primary = readChartBindings(config)[0];
+    const primary = ChartConfigs.bindings(config)[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     if (!categoryColumn || !valueColumn) {
@@ -40,7 +36,7 @@ export class BoxChartResolver {
       valueConfig: ChartFormat.numericConfig(valueColumn),
       categories,
       series,
-      valueAxisConfig: readChartAxes(config)[0],
+      valueAxisConfig: ChartConfigs.axes(config)[0],
       horizontal: config.horizontal,
       showPoints: config.showPoints ?? false,
       showLegend: series.length > 1 && config.showLegend,

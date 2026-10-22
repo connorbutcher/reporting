@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { widgetFragment } from '../../../core/models/report';
+import { WidgetFragment } from '../../../core/models/report';
 import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { ValidationIssue } from '../models/validation-issue';
 import { PanelView } from '../side-panel/panel-view';
@@ -84,7 +84,10 @@ export class PanelNavigation {
     if (issue.widgetId) {
       this.selection.set([issue.widgetId]);
       const tabId = this.session.model()?.tabOf(issue.widgetId)?.id;
-      this.fragments.navigate(widgetFragment(issue.widgetId), tabId ? { tab: tabId } : undefined);
+      this.fragments.navigate(
+        WidgetFragment.forWidget(issue.widgetId),
+        tabId ? { tab: tabId } : undefined,
+      );
     }
     this.navigate(issue.view);
   }

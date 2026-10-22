@@ -4,7 +4,7 @@ import {
   FilterCondition,
   FilterOperator,
   OperatorDescriptor,
-  TOLERANCE_OPERATORS,
+  FilterOperators,
 } from '../../../../core/models/filter';
 import { EditorNode } from '../editor-node';
 import { ValidationIssue } from '../validation-issue';
@@ -64,7 +64,7 @@ export class FilterConditionModel extends EditorNode {
     this.enabled()
       ? ConditionProblems.find({
           columnMissing: this.columnMissing(),
-          toleranceMissing: TOLERANCE_OPERATORS.has(this.operator()) && !this.isTolerant(),
+          toleranceMissing: FilterOperators.TOLERANCE.has(this.operator()) && !this.isTolerant(),
           complete: this.isComplete(),
           columnName: this.schemaColumn()?.name ?? null,
           operatorLabel: this.descriptor()?.label ?? this.operator(),

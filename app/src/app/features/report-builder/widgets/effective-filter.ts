@@ -1,4 +1,4 @@
-import { FilterGroup, combineFilters } from '../../../core/models/filter';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
 
 export class EffectiveFilter {
   /**
@@ -11,6 +11,9 @@ export class EffectiveFilter {
     widgetFilter: FilterGroup | null | undefined,
     configFilter: FilterGroup | null,
   ): FilterGroup | null {
-    return combineFilters(reportFilter, widgetFilter === undefined ? configFilter : widgetFilter);
+    return FilterTrees.combine(
+      reportFilter,
+      widgetFilter === undefined ? configFilter : widgetFilter,
+    );
   }
 }

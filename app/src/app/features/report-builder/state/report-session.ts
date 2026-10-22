@@ -5,13 +5,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { DatasetSummary } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
-import {
-  ReportRevisionContent,
-  WidgetType,
-  widgetIdFromFragment,
-} from '../../../core/models/report';
+import { ReportRevisionContent, WidgetType, WidgetFragment } from '../../../core/models/report';
 import { FilterApiService } from '../../../core/api/filter-api.service';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetSchemaCacheService } from '../../../core/services/dataset-schema-cache.service';
 import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { ReportModel } from '../models/report.model';
@@ -137,7 +133,7 @@ export class ReportSession {
   private readonly datasetsResource = httpResource<DatasetSummary[]>(
     () =>
       this.reportId() !== null
-        ? { url: `/api/reports/${this.reportId()}/datasets`, context: skipHttpErrorNotification() }
+        ? { url: `/api/reports/${this.reportId()}/datasets`, context: HttpErrorNotification.skip() }
         : undefined,
     { defaultValue: [] },
   );
@@ -170,7 +166,7 @@ export class ReportSession {
         }
         const valid = param && tabs.some((t) => t.id === param) ? param : null;
         if (valid === null) {
-          const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
+          const targetWidgetId = WidgetFragment.widgetId(this.fragments.fragment());
           const targetTab = targetWidgetId ? model.tabOf(targetWidgetId) : null;
           this.goToTab(targetTab?.id ?? tabs[0].id, true);
         } else if (model.activeTabId() !== valid) {

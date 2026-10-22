@@ -1,7 +1,8 @@
 import { Component, ElementRef, Signal, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { DirectoryUser } from '../../../../core/models/admin';
-import { WidgetComment, WidgetCommentAuthor } from '../../../../core/models/widget-comment.model';
+import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
+import { WidgetCommentAuthor } from '../../../../core/models/widget-comment/widget-comment-author.model';
 import { ReportViewerStore } from '../../report-viewer.store';
 import { ReportComments } from '../report-comments';
 

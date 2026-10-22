@@ -5,11 +5,11 @@ import {
   ReportRevisionContent,
   Tab,
   Widget,
-  readChartBindings,
-  widgetFragment,
+  ChartConfigs,
+  WidgetFragment,
 } from '../../../core/models/report';
-import { isChartWidget, isExportableWidgetType } from '../../../core/models/widget-catalog';
-import { FilterGroup, combineFilters, countConditions } from '../../../core/models/filter';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
+import { FilterGroup, FilterTrees } from '../../../core/models/filter';
 import { ScrollToFragmentDirective } from '../../../shared/directives/scroll-to-fragment.directive';
 import { WidgetExportActionsComponent } from '../../report-builder/widgets/widget-export-actions/widget-export-actions.component';
 import { WidgetFullscreenDialogComponent } from '../../report-builder/widgets/widget-fullscreen-dialog/widget-fullscreen-dialog.component';
@@ -81,11 +81,11 @@ export class ReadonlyReportGridComponent {
 
   /** The fragment a link can name to jump straight to this widget. */
   protected fragmentFor(widget: Widget): string {
-    return widgetFragment(widget.id);
+    return WidgetFragment.forWidget(widget.id);
   }
 
   protected isExportable(widget: Widget): boolean {
-    return isExportableWidgetType(widget.type);
+    return WidgetCatalog.isExportableType(widget.type);
   }
 
   /** Opens this widget at near-fullscreen size, fed the same per-widget filters its outlet already gets. */
@@ -108,7 +108,10 @@ export class ReadonlyReportGridComponent {
     if (widget.type === 'dataTable' || widget.type === 'pivotTable' || widget.type === 'kpi') {
       return !!widget.config.datasetId;
     }
-    return isChartWidget(widget) && readChartBindings(widget.config).some((b) => !!b.datasetId);
+    return (
+      WidgetCatalog.isChartWidget(widget) &&
+      ChartConfigs.bindings(widget.config).some((b) => !!b.datasetId)
+    );
   }
 
   /** This widget's comment count, for its header button's badge. */
@@ -118,14 +121,16 @@ export class ReadonlyReportGridComponent {
 
   /** Conditions across this widget's own filters — what the button badge shows. */
   protected conditionCount(widget: Widget): number {
-    if (isChartWidget(widget)) {
-      return readChartBindings(widget.config).reduce(
+    if (WidgetCatalog.isChartWidget(widget)) {
+      return ChartConfigs.bindings(widget.config).reduce(
         (n, b) =>
-          b.datasetId ? n + countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter)) : n,
+          b.datasetId
+            ? n + FilterTrees.countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter))
+            : n,
         0,
       );
     }
-    return countConditions(this.widgetFilterFor(widget));
+    return FilterTrees.countConditions(this.widgetFilterFor(widget));
   }
 
   /** So a published report narrows a table's rows exactly as it did in the builder. */
@@ -155,17 +160,17 @@ export class ReadonlyReportGridComponent {
   private readonly chartBindingFilters = computed(() => {
     const map = new Map<string, Record<string, FilterGroup | null>>();
     for (const widget of this.tab().widgets) {
-      if (!isChartWidget(widget)) {
+      if (!WidgetCatalog.isChartWidget(widget)) {
         continue;
       }
       const filters: Record<string, FilterGroup | null> = {};
-      for (const binding of readChartBindings(widget.config)) {
+      for (const binding of ChartConfigs.bindings(widget.config)) {
         if (!binding.datasetId) {
           continue;
         }
         const report = this.reportFilterForDataset(binding.datasetId);
         const own = this.bindingOwnFilter(widget.id, binding.id, binding.filter);
-        filters[binding.id] = combineFilters(report, own);
+        filters[binding.id] = FilterTrees.combine(report, own);
       }
       map.set(widget.id, filters);
     }

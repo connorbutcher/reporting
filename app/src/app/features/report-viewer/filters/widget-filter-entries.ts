@@ -2,11 +2,10 @@ import { Signal, computed, signal } from '@angular/core';
 import {
   ChartWidget,
   DataTableWidget,
-  bandedChartColumns,
-  hasFixedLimits,
-  readChartBindings,
+  ChartConfigs,
+  ToleranceConfigs,
 } from '../../../core/models/report';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import {
   ViewFilterWidget,
   WidgetFilterEntry,
@@ -20,7 +19,7 @@ function describeWidget(
   tabName: string,
   sourceLabel: Signal<string>,
 ): ViewFilterWidget {
-  const descriptor = widgetTypeDescriptor(widget.type);
+  const descriptor = WidgetCatalog.descriptor(widget.type);
   return {
     id: widget.id,
     title: widget.config.title?.trim() || descriptor.label,
@@ -45,7 +44,7 @@ export function buildTableEntry(
   const schema = ctx.schemaFor(datasetId);
   const placed = new Set(widget.config.columns.map((c) => c.columnId));
   const banded = widget.config.columns
-    .filter((c) => hasFixedLimits(c.tolerance))
+    .filter((c) => ToleranceConfigs.hasFixedLimits(c.tolerance))
     .map((c) => c.columnId);
   ctx.addTolerant(datasetId, banded);
 
@@ -71,12 +70,12 @@ export function buildChartEntries(
   tabName: string,
   ctx: EntryContext,
 ): WidgetFilterEntry[] {
-  return readChartBindings(widget.config)
+  return ChartConfigs.bindings(widget.config)
     .filter((binding) => binding.datasetId)
     .map((binding) => {
       const datasetId = binding.datasetId!;
       const schema = ctx.schemaFor(datasetId);
-      const banded = bandedChartColumns(widget.config.toleranceBands ?? [], binding);
+      const banded = ChartConfigs.bandedColumns(widget.config.toleranceBands ?? [], binding);
       ctx.addTolerant(datasetId, banded);
 
       return createViewFilterEntry({

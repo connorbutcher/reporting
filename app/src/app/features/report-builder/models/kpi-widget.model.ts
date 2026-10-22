@@ -2,7 +2,7 @@ import { Signal, computed, signal } from '@angular/core';
 import { DatasetColumn, DatasetSchema } from '../../../core/models/dataset';
 import {
   Aggregate,
-  DEFAULT_KPI_CONFIG,
+  WidgetConfigDefaults,
   KpiComparisonMode,
   KpiDirection,
   KpiToleranceStatusMode,
@@ -178,7 +178,7 @@ export class KpiWidgetModel extends WidgetModel {
   public override toDto(): KpiWidget {
     const config: KpiWidgetConfig = {
       type: 'kpi',
-      ...DEFAULT_KPI_CONFIG,
+      ...WidgetConfigDefaults.KPI,
       ...this.baseConfigDto(),
       datasetId: this.datasetId(),
       valueSource: this.valueSource(),

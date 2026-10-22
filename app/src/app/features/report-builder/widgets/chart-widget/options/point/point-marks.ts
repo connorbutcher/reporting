@@ -1,5 +1,5 @@
 import type { LineSeriesOption } from 'echarts/charts';
-import { ChartGuideLine, chartAxisIndex } from '../../../../../../core/models/report';
+import { ChartGuideLine, ChartConfigs } from '../../../../../../core/models/report';
 import { ResolvedToleranceBand } from '../../../../../../core/models/widget-query';
 import { GuideLineMarks } from '../marks/guide-line-marks';
 import { GuideLineOutline } from '../marks/guide-line-outline';
@@ -72,11 +72,11 @@ export class PointMarks {
       return 0;
     }
     const yAxisIds = new Map(chart.config.toleranceBands.map((b) => [b.id, b.yAxisId ?? null]));
-    return chartAxisIndex(chart.axes, yAxisIds.get(band.id) ?? null);
+    return ChartConfigs.axisIndex(chart.axes, yAxisIds.get(band.id) ?? null);
   }
 
   private static lineAxis(chart: PointChart, line: ChartGuideLine): number {
-    return line.axis === 'x' ? 0 : chartAxisIndex(chart.axes, line.yAxisId ?? null);
+    return line.axis === 'x' ? 0 : ChartConfigs.axisIndex(chart.axes, line.yAxisId ?? null);
   }
 
   private static axisKeyOf(item: { axis: 'x' | 'y' }): AxisKey {

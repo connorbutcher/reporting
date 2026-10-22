@@ -8,7 +8,7 @@ import {
   DatasetColumnType,
   DatasetColumnUsage as DatasetColumnUsageResponse,
 } from '../../../core/models/dataset';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetCollection } from './dataset-collection';
 
 /**
@@ -26,7 +26,7 @@ export class DatasetColumnUsage {
   private readonly resource = httpResource<DatasetColumnUsageResponse>(() => {
     const id = this.collection.selectedId();
     return id
-      ? { url: `/api/datasets/${id}/column-usage`, context: skipHttpErrorNotification() }
+      ? { url: `/api/datasets/${id}/column-usage`, context: HttpErrorNotification.skip() }
       : undefined;
   });
 

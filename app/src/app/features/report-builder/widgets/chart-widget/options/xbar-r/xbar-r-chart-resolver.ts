@@ -2,8 +2,7 @@ import { DatasetColumn, NumericColumnConfig } from '../../../../../../core/model
 import {
   ControlChartMode,
   XBarRChartWidgetConfig,
-  readChartAxes,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../../core/models/report';
 import { XBarRChartQueryResult } from '../../../../../../core/models/widget-query';
 import { CategoryZoom } from '../axes/category-zoom';
@@ -20,7 +19,7 @@ export class XBarRChartResolver {
     data: XBarRChartQueryResult | null,
     columns: DatasetColumn[],
   ): XBarRChart | null {
-    const primary = readChartBindings(config)[0];
+    const primary = ChartConfigs.bindings(config)[0];
     const categoryColumn = ChartColumns.byId(columns, primary?.xColumnId ?? null);
     const valueColumn = ChartColumns.byId(columns, primary?.yColumnId ?? null);
     if (!categoryColumn || !valueColumn) {
@@ -44,7 +43,7 @@ export class XBarRChartResolver {
       attribute,
       valueConfig,
       formatMean: XBarRChartResolver.meanFormat(mode, valueConfig),
-      meanAxisConfig: readChartAxes(config)[0],
+      meanAxisConfig: ChartConfigs.axes(config)[0],
       highlight: config.highlightOutOfControl ?? true,
       zoom: CategoryZoom.enabled(config.zoom, categories.length),
     };

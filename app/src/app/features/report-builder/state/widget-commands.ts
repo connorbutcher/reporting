@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { WidgetType, widgetFragment } from '../../../core/models/report';
+import { WidgetType, WidgetFragment } from '../../../core/models/report';
 import { UrlFragmentService } from '../../../core/services/url-fragment.service';
 import { GridLayout } from '../grid/grid-layout';
 import { WidgetModel } from '../models/widget.model';
@@ -23,7 +23,7 @@ export class WidgetCommands {
     this.selection.select(widget.id);
     this.navigation.navigate({ kind: 'widget', widgetId: widget.id });
     // Scroll the canvas to the new widget.
-    this.fragments.navigate(widgetFragment(widget.id));
+    this.fragments.navigate(WidgetFragment.forWidget(widget.id));
   }
 
   public removeWidget(widgetId: string): void {

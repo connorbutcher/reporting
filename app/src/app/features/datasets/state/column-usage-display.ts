@@ -1,5 +1,5 @@
 import { ColumnUse } from '../../../core/models/dataset';
-import { widgetTypeDescriptor } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 
 /** How one use reads in the columns panel and in the delete confirmation. */
 export type ColumnUseLine = {
@@ -21,7 +21,7 @@ export function describeUse(use: ColumnUse): ColumnUseLine {
     return { widgetId: null, name: 'Report filter', where: '', roles, icon: 'pi pi-filter' };
   }
 
-  const descriptor = widgetTypeDescriptor(use.widgetType);
+  const descriptor = WidgetCatalog.descriptor(use.widgetType);
   return {
     widgetId: use.widgetId,
     name: use.widgetTitle?.trim() || `Untitled ${descriptor.label.toLowerCase()}`,

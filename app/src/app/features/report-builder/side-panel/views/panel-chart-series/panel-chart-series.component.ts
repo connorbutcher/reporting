@@ -3,11 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { CheckboxModule } from 'primeng/checkbox';
 import { SelectModule } from 'primeng/select';
-import {
-  ChartSymbol,
-  LineDashStyle,
-  chartAxisDisplayName,
-} from '../../../../../core/models/report';
+import { ChartSymbol, LineDashStyle, ChartConfigs } from '../../../../../core/models/report';
 import { ChartSeriesRenderAs } from '../../../../../core/models/report';
 import { ChartBindingModel } from '../../../models/chart-binding.model';
 import {
@@ -110,7 +106,7 @@ export class PanelChartSeriesComponent {
 
   public readonly axisOptions = computed(() =>
     (this.chart()?.yAxes() ?? []).map((axis, i) => ({
-      label: chartAxisDisplayName(axis, i),
+      label: ChartConfigs.axisDisplayName(axis, i),
       value: axis.id,
     })),
   );

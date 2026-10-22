@@ -3,7 +3,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Observable, defer, filter, finalize, forkJoin, map, switchMap, tap } from 'rxjs';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
-import { Folder } from '../../core/models/folder.model';
+import { Folder } from '../../core/models/folder/folder.model';
 import { ReportSummary } from '../../core/models/report';
 import {
   ConfirmDialogComponent,

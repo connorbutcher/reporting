@@ -2,7 +2,7 @@ import { Signal, computed, signal } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
 import { OperatorCatalogue } from '../../../core/models/filter';
 import { ReportRevisionContent, Widget } from '../../../core/models/report';
-import { isChartWidget } from '../../../core/models/widget-catalog';
+import { WidgetCatalog } from '../../../core/models/widget-catalog/widget-catalog';
 import { PageFilterEntry, WidgetFilterEntry, createViewFilterEntry } from './view-filter-entry';
 import { EntryContext, buildViewFilterGroup } from './view-filter-group';
 import { buildChartEntries, buildTableEntry } from './widget-filter-entries';
@@ -66,7 +66,7 @@ function widgetFilterEntries(
     const entry = buildTableEntry(widget, tabName, ctx);
     return entry ? [entry] : [];
   }
-  return isChartWidget(widget) ? buildChartEntries(widget, tabName, ctx) : [];
+  return WidgetCatalog.isChartWidget(widget) ? buildChartEntries(widget, tabName, ctx) : [];
 }
 
 function buildPageEntry(

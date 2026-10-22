@@ -1,4 +1,4 @@
-import { Folder } from '../../core/models/folder.model';
+import { Folder } from '../../core/models/folder/folder.model';
 import { AccessLevel } from '../../core/models/permission';
 import { ReportSummary } from '../../core/models/report';
 

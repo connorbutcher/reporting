@@ -2,11 +2,9 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, Signal, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ReportApiService } from '../../../core/api/report-api.service';
 import { DirectoryUser } from '../../../core/models/admin';
-import {
-  PendingCommentAnchor,
-  WidgetComment,
-  WidgetCommentAuthor,
-} from '../../../core/models/widget-comment.model';
+import { PendingCommentAnchor } from '../../../core/models/widget-comment/pending-comment-anchor.model';
+import { WidgetComment } from '../../../core/models/widget-comment/widget-comment.model';
+import { WidgetCommentAuthor } from '../../../core/models/widget-comment/widget-comment-author.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportViewerStore } from '../report-viewer.store';
 

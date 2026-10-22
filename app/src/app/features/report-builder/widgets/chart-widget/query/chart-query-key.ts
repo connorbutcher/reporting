@@ -1,7 +1,7 @@
 import {
   ChartSeriesBinding,
   ChartWidgetConfig,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../core/models/report';
 
 /**
@@ -12,7 +12,7 @@ export class ChartQueryKey {
   public static of(config: ChartWidgetConfig): string {
     const grouping = config.type === 'barChart' || config.type === 'comboChart';
     return JSON.stringify({
-      bindings: readChartBindings(config).map((b) => ChartQueryKey.binding(b)),
+      bindings: ChartConfigs.bindings(config).map((b) => ChartQueryKey.binding(b)),
       trend: config.showTrendLine ?? false,
       aggregate: grouping ? config.aggregate : null,
       barSort: grouping ? config.sort : null,

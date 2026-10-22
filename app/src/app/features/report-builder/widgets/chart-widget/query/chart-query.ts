@@ -13,9 +13,7 @@ import {
   LineChartWidgetConfig,
   ScatterChartWidgetConfig,
   XBarRChartWidgetConfig,
-  barValueColumnIds,
-  histogramValueColumnIds,
-  readChartBindings,
+  ChartConfigs,
 } from '../../../../../core/models/report';
 import {
   BarChartQueryResult,
@@ -55,7 +53,7 @@ export class ChartQuery {
     | HistogramQueryResult
     | XBarRChartQueryResult
   > | null {
-    const bindings = readChartBindings(config);
+    const bindings = ChartConfigs.bindings(config);
     const tooltipColumns = ChartQuery.namedTooltipColumns(config.tooltipColumns, columns);
 
     switch (config.type) {
@@ -87,7 +85,7 @@ export class ChartQuery {
         if (!binding.datasetId || !binding.xColumnId) {
           return null;
         }
-        const valueColumnIds = barValueColumnIds(binding);
+        const valueColumnIds = ChartConfigs.barValueColumnIds(binding);
         if (needsValue && valueColumnIds.length === 0) {
           return null;
         }
@@ -259,7 +257,7 @@ export class ChartQuery {
         api
           .queryHistogram(b.datasetId!, {
             filter: bindingFilters?.[b.id] ?? null,
-            valueColumnIds: histogramValueColumnIds(b),
+            valueColumnIds: ChartConfigs.histogramValueColumnIds(b),
             seriesColumnId: b.seriesColumnId,
             binMode: config.binMode,
             binCount: config.binCount,

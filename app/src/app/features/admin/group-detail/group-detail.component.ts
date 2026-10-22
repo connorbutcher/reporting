@@ -9,7 +9,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { AdminApiService } from '../../../core/api/admin-api.service';
 import { DirectoryUser, GroupNameAvailable, SaveGroup } from '../../../core/models/admin';
-import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
+import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { CurrentUserService } from '../../../core/services/current-user.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
@@ -101,7 +101,7 @@ export class GroupDetailComponent {
           name: value().trim(),
           ...(this.refId ? { excludeId: this.refId } : {}),
         } as Record<string, string>,
-        context: skipHttpErrorNotification(),
+        context: HttpErrorNotification.skip(),
       }),
       debounce: 400,
       onSuccess: (result, { value }) =>

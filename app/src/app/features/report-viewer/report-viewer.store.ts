@@ -8,7 +8,7 @@ import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
-  widgetIdFromFragment,
+  WidgetFragment,
 } from '../../core/models/report';
 import { NotificationService } from '../../core/services/notification.service';
 import { UrlFragmentService } from '../../core/services/url-fragment.service';
@@ -127,7 +127,7 @@ export class ReportViewerStore {
         if (!tabs.length || this.activeTabId() !== null) {
           return;
         }
-        const targetWidgetId = widgetIdFromFragment(this.fragments.fragment());
+        const targetWidgetId = WidgetFragment.widgetId(this.fragments.fragment());
         const targetTab = targetWidgetId
           ? tabs.find((t) => t.widgets.some((w) => w.id === targetWidgetId))
           : null;

@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
 import { FilterApiService } from '../../../../core/api/filter-api.service';
-import { DEFAULT_PIVOT_CONFIG, PivotTableWidgetConfig } from '../../../../core/models/report';
+import { WidgetConfigDefaults, PivotTableWidgetConfig } from '../../../../core/models/report';
 import { PivotQueryRequest, PivotQueryResult } from '../../../../core/models/widget-query';
 import { PivotTableWidgetComponent } from './pivot-table-widget.component';
 
@@ -24,7 +24,7 @@ const result: PivotQueryResult = {
 };
 
 const config = (over: Partial<PivotTableWidgetConfig> = {}): PivotTableWidgetConfig => ({
-  ...DEFAULT_PIVOT_CONFIG,
+  ...WidgetConfigDefaults.PIVOT_TABLE,
   type: 'pivotTable',
   datasetId: 1,
   rowFields: ['region'],

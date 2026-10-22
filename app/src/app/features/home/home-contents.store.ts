@@ -5,7 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { FolderApiService } from '../../core/api/folder-api.service';
 import { ReportApiService } from '../../core/api/report-api.service';
 import { NotificationService } from '../../core/services/notification.service';
-import { Folder } from '../../core/models/folder.model';
+import { Folder } from '../../core/models/folder/folder.model';
 import { ReportSummary } from '../../core/models/report';
 import { FolderRow, ReportRow, folderToRow, reportToRow } from './content-row';
 import { ROOT_KEY, FolderTreeStore } from './folder-tree.store';

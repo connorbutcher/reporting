@@ -9,7 +9,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { Select, SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ColumnTypeImpact, DatasetColumn, DatasetColumnType } from '../../../core/models/dataset';
-import { widgetFragment } from '../../../core/models/report';
+import { WidgetFragment } from '../../../core/models/report';
 import {
   ConfirmDialogComponent,
   ConfirmDialogData,
@@ -122,7 +122,7 @@ export class DatasetColumnsPanelComponent {
 
   /** The URL fragment that takes the builder straight to a widget. */
   protected fragmentFor(widgetId: string): string {
-    return widgetFragment(widgetId);
+    return WidgetFragment.forWidget(widgetId);
   }
 
   protected typeIcon(type: DatasetColumnType): string {
