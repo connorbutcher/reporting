@@ -7,17 +7,12 @@ using Reporting.Database;
 namespace Reporting.DAL.Widgets;
 
 /// <summary>
-/// Rows shaped for a scatter/line chart widget: filtered, grouped into series by the series
-/// column's value, paired with resolved tolerance bounds and pre-formatted tooltip lines — the
-/// client only builds the ECharts option.
+/// Rows shaped for a scatter or line chart: filtered, grouped into series, paired with resolved tolerance
+/// bounds and pre-formatted tooltip lines, so the client only builds the ECharts option.
 /// </summary>
 public class ChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands, DatasetResolver resolver)
 {
-    /// <summary>
-    /// Ceiling on points returned for one scatter/line query. Past this the payload and the
-    /// client-side render stop being worth it; the response flags that it was capped so the
-    /// widget can say so. The client thins what it draws (LTTB / large-scatter mode) on top.
-    /// </summary>
+    /// <summary>Past this the payload isn't worth rendering; the response says it was capped and the client thins further.</summary>
     private const int MaxChartPoints = 20_000;
 
     public async Task<ChartQueryResultDto?> QueryForChartAsync(int id, ChartQueryDto dto)
@@ -28,12 +23,9 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
             return null;
         }
         var dataset = resolved.Physical;
-
-        // Keyed by RefId (the client's reference); resolved to int ids for cell comparisons below.
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
 
-        // Resolve the tolerance bands up front: their bounds draw the reference lines below, and
-        // a tolerance filter operator reuses the band on the filtered column's axis.
+        // The bands draw reference lines, and a tolerance filter reuses the band on the filtered column's axis.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(dto.ToleranceBands, bounds, dto.XColumnId, dto.YColumnId);
         var operatorCatalogue = await FilterOperators.LoadCatalogueAsync(db);
@@ -42,420 +34,93 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
         var matching = FilterTranslator.Apply(all, dto.Filter, columnsByRef, toleranceByColumn, operatorCatalogue);
         var (totalRowCount, matchedRowCount) = await RowCounts.CountRowsAsync(all, matching);
 
-        // Resolve the axis columns; a missing column yields a sentinel id that matches no cell,
-        // so the chart is simply empty (as before). An axis value is a string for a text column,
-        // a timestamp (epoch millis) for a date column, and a number otherwise.
-        var xColumn = columnsByRef.GetValueOrDefault(dto.XColumnId);
-        var yColumn = columnsByRef.GetValueOrDefault(dto.YColumnId);
-        var xId = xColumn?.Id ?? 0;
-        var yId = yColumn?.Id ?? 0;
-
-        // A trend line needs two real numbers to fit — a text axis (category) has none.
-        var xNumeric = xColumn?.Type is DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime;
-        var yNumeric = yColumn?.Type is DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime;
-
-        var seriesColumn = dto.SeriesColumnId is { } seriesId ? columnsByRef.GetValueOrDefault(seriesId) : null;
         var sort = dto.Sort ?? new ChartSort();
-
-        // An aggregated chart reduces every row sharing an X (per series) to one point, in SQL.
-        if (dto.Aggregate is { } aggregate && xColumn is not null)
+        var columns = PointColumns.Resolve(dto, sort, columnsByRef, dataset.Columns);
+        var result = new ChartQueryResultDto
         {
-            var aggregated = await AggregatePointsAsync(matching, xColumn, yColumn, seriesColumn, aggregate, dto.XGrouping);
-            var capped = aggregated.Count > MaxChartPoints;
-            return new ChartQueryResultDto
-            {
-                Id = resolved.Id,
-                Name = resolved.Name,
-                Series = aggregated
-                    .GroupBy(point => point.Series)
-                    .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select(group =>
-                    {
-                        var points = group.Select(point => (point.Point, (IComparable?)(IComparable)point.Point.X)).ToList();
-                        return new ChartSeriesDto
-                        {
-                            Label = SeriesLabels.Format(seriesColumn, group.Key),
-                            Points = OrderPoints(points, sort.Descending).Take(MaxChartPoints).ToList(),
-                            TrendLine = dto.ShowTrendLine && xNumeric ? ComputeTrendLine(points.Select(entry => entry.Point)) : null
-                        };
-                    })
-                    .ToList(),
-                ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-                TotalRowCount = totalRowCount,
-                MatchedRowCount = matchedRowCount,
-                TotalPoints = aggregated.Count,
-                Truncated = capped
-            };
-        }
+            Id = resolved.Id,
+            Name = resolved.Name,
+            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount,
+        };
 
-        // Points need a real value on each axis; anything missing either is dropped. Narrowed per
-        // axis kind so the predicate stays EF-translatable rather than branching per row.
-        var plottable = RequireAxisValue(matching, xId, xColumn?.Type);
-        plottable = RequireAxisValue(plottable, yId, yColumn?.Type);
-
-        // Bubble sizing needs a real number; a text/date/bool column is ignored rather than erroring,
-        // the same way a stale/mistyped column id would be.
-        var sizeColumn = dto.SizeColumnId is { } sizeId ? columnsByRef.GetValueOrDefault(sizeId) : null;
-        if (sizeColumn?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
+        if (dto.Aggregate is { } aggregate && columns.X is { } xColumn)
         {
-            sizeColumn = null;
+            await ApplyAggregatedAsync(result, dto, matching, columns, xColumn, aggregate, sort);
         }
-        var tooltipColumns = dto.TooltipColumns
-            .Select(tooltipColumn => (Setting: tooltipColumn, Column: BarChartQueryService.ResolveTooltipColumn(tooltipColumn, columnsByRef, dataset.Columns)))
-            .Where(p => p.Column is not null)
+        else
+        {
+            await ApplyRowPointsAsync(result, dto, matching, columns, sort);
+        }
+        return result;
+    }
+
+    /// <summary>Every row sharing an X (per series) reduced to one point, in SQL.</summary>
+    private static async Task ApplyAggregatedAsync(
+        ChartQueryResultDto result, ChartQueryDto dto, IQueryable<DatasetRow> matching, PointColumns columns,
+        DatasetColumn xColumn, Aggregate aggregate, ChartSort sort)
+    {
+        var aggregated = await PointAggregation.AggregateAsync(matching, xColumn, columns.Y, columns.Series, aggregate, dto.XGrouping);
+        var trend = dto.ShowTrendLine && PointAxes.IsNumeric(xColumn.Type);
+        result.Series = aggregated
+            .GroupBy(point => point.Series)
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group => AggregatedSeries(group.Key, group.ToList(), columns.Series, sort, trend))
             .ToList();
+        result.TotalPoints = aggregated.Count;
+        result.Truncated = aggregated.Count > MaxChartPoints;
+    }
 
-        // A column sort can name any column in the dataset — not necessarily one plotted — so
-        // it's resolved and pulled alongside the axes rather than assumed to already be loaded.
-        var sortColumn = sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColumnRef
-            ? columnsByRef.GetValueOrDefault(sortColumnRef)
-            : null;
+    private static ChartSeriesDto AggregatedSeries(
+        string series, List<AggregatedPoint> group, DatasetColumn? seriesColumn, ChartSort sort, bool trend)
+    {
+        var points = group.Select(point => (point.Point, (IComparable?)(IComparable)point.Point.X)).ToList();
+        return new ChartSeriesDto
+        {
+            Label = SeriesLabels.Format(seriesColumn, series),
+            Points = PointAxes.Order(points, sort.Descending).Take(MaxChartPoints).ToList(),
+            TrendLine = trend ? TrendLines.Compute(points.Select(entry => entry.Point)) : null
+        };
+    }
 
-        // Only the cells the chart actually reads are loaded per row — the axes, the series key,
-        // any tooltip columns, and the sort column — via a filtered include, rather than pulling
-        // every cell in the row across the wire.
-        var neededIds = new HashSet<int> { xId, yId };
-        if (seriesColumn is not null)
-        {
-            neededIds.Add(seriesColumn.Id);
-        }
-        if (sizeColumn is not null)
-        {
-            neededIds.Add(sizeColumn.Id);
-        }
-        if (sortColumn is not null)
-        {
-            neededIds.Add(sortColumn.Id);
-        }
-        foreach (var (_, column) in tooltipColumns)
-        {
-            neededIds.Add(column!.Id);
-        }
+    /// <summary>
+    /// One point per row with a value on both axes. Past the cap the rows are thinned evenly along X rather
+    /// than cut off after the first stored.
+    /// </summary>
+    private static async Task ApplyRowPointsAsync(
+        ChartQueryResultDto result, ChartQueryDto dto, IQueryable<DatasetRow> matching, PointColumns columns, ChartSort sort)
+    {
+        var plottable = PointAxes.RequireValue(matching, columns.XId, columns.X?.Type);
+        plottable = PointAxes.RequireValue(plottable, columns.YId, columns.Y?.Type);
 
-        // Cap the rows pulled back: a runaway dataset shouldn't ship hundreds of
-        // thousands of points the browser then chokes on. Count first so the client
-        // can report how much was left off. Past the cap the rows are thinned evenly across
-        // the X range — so a time series keeps its whole span, latest data included —
-        // rather than cut off after the first rows stored.
         var total = await plottable.CountAsync();
         var sampled = total > MaxChartPoints;
         var selected = plottable;
         if (sampled)
         {
-            var ids = await EvenSampleIdsAsync(plottable, xId, xColumn?.Type, MaxChartPoints);
+            var ids = await PointSampling.EvenIdsAsync(plottable, columns.XId, columns.X?.Type, MaxChartPoints);
             selected = plottable.Where(r => ids.Contains(r.Id));
         }
+
+        var neededIds = columns.NeededIds();
         var rows = await selected
             .OrderBy(r => r.Id)
             .Take(MaxChartPoints)
             .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
-            // Read-only: these rows/cells are projected to points below and discarded, never saved.
             .AsNoTracking()
             .ToListAsync();
 
-        var groups = BuildPointGroups(rows, xId, yId, xColumn?.Type, yColumn?.Type, seriesColumn, sizeColumn, sortColumn, tooltipColumns);
-
-        return new ChartQueryResultDto
+        // A trend line needs numbers on both axes.
+        var trend = dto.ShowTrendLine && PointAxes.IsNumeric(columns.X?.Type) && PointAxes.IsNumeric(columns.Y?.Type);
+        result.Series = PointGroups.Build(rows, columns).Select(group => new ChartSeriesDto
         {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Series = groups.Select(group => new ChartSeriesDto
-            {
-                Label = group.Key,
-                Points = OrderPoints(group.Value, sort.Descending),
-                TrendLine = dto.ShowTrendLine && xNumeric && yNumeric
-                    ? ComputeTrendLine(group.Value.Select(entry => entry.Point))
-                    : null
-            }).ToList(),
-            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount,
-            TotalPoints = total,
-            Truncated = sampled,
-            Sampled = sampled
-        };
-    }
-
-    /// <summary>
-    /// The ids of <paramref name="count"/> rows spread evenly along the X axis: every row's id and X
-    /// value is read (two scalars a row), ordered by X, and every k-th kept — first and last included.
-    /// </summary>
-    private static async Task<List<int>> EvenSampleIdsAsync(IQueryable<DatasetRow> rows, int xId, DatasetColumnType? xType, int count)
-    {
-        var keyed = await rows
-            .Select(r => new
-            {
-                r.Id,
-                X = r.Cells.Where(c => c.ColumnId == xId).Select(c => new { c.StringValue, c.NumberValue, c.DateValue }).FirstOrDefault()
-            })
-            .ToListAsync();
-
-        var ordered = xType switch
-        {
-            DatasetColumnType.String => keyed.OrderBy(r => r.X?.StringValue, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            DatasetColumnType.DateTime => keyed.OrderBy(r => r.X?.DateValue).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            _ => keyed.OrderBy(r => r.X?.NumberValue).ThenBy(r => r.Id).Select(r => r.Id).ToList()
-        };
-        if (ordered.Count <= count)
-        {
-            return ordered;
-        }
-
-        var step = (double)(ordered.Count - 1) / (count - 1);
-        return Enumerable.Range(0, count).Select(i => ordered[(int)Math.Round(i * step)]).Distinct().ToList();
-    }
-
-    /// <summary>One aggregated point and the series it belongs to.</summary>
-    private sealed record AggregatedPoint(string Series, ChartPointDto Point);
-
-    /// <summary>
-    /// Every row sharing an X value (a date bucketed by <paramref name="grouping"/>) reduced to one
-    /// point per series — a SQL GROUP BY on X's typed value, merged in memory into periods. Count needs
-    /// no Y; every other aggregate reduces only rows carrying a numeric Y.
-    /// </summary>
-    private static async Task<List<AggregatedPoint>> AggregatePointsAsync(
-        IQueryable<DatasetRow> matching,
-        DatasetColumn xColumn,
-        DatasetColumn? yColumn,
-        DatasetColumn? seriesColumn,
-        Aggregate aggregate,
-        DateGrouping? grouping)
-    {
-        var xId = xColumn.Id;
-        var yId = yColumn?.Id ?? 0;
-        var seriesId = seriesColumn?.Id ?? 0;
-        var rows = RequireAxisValue(matching, xId, xColumn.Type);
-        if (aggregate != Aggregate.Count)
-        {
-            rows = rows.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
-        }
-
-        var textual = xColumn.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
-        var groups = await rows
-            .Select(r => new BarProjection
-            {
-                Text = textual ? (r.Cells.Where(c => c.ColumnId == xId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-                Number = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.NumberValue).FirstOrDefault(),
-                Date = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.DateValue).FirstOrDefault(),
-                Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-                Value = r.Cells.Where(c => c.ColumnId == yId).Select(c => c.NumberValue).FirstOrDefault()
-            })
-            .GroupBy(item => new { item.Text, item.Number, item.Date, item.Series })
-            .Select(g => new BarGroup
-            {
-                Text = g.Key.Text,
-                Number = g.Key.Number,
-                Date = g.Key.Date,
-                Series = g.Key.Series,
-                Count = g.Count(),
-                Sum = g.Sum(item => item.Value),
-                Min = g.Min(item => item.Value),
-                Max = g.Max(item => item.Value)
-            })
-            .ToListAsync();
-
-        var reader = new ChartCategoryReader(xColumn, grouping);
-        var merged = new Dictionary<(string Key, string Series), (ChartCategory Category, BarStats Stats)>();
-        foreach (var group in groups)
-        {
-            var category = reader.Read(group.Text, group.Number, group.Date);
-            if (category.IsBlank)
-            {
-                continue;
-            }
-            var key = (category.Key, group.Series);
-            var stats = BarStats.From(group);
-            merged[key] = merged.TryGetValue(key, out var existing) ? (category, existing.Stats.Merge(stats)) : (category, stats);
-        }
-
-        return merged
-            .Where(entry => entry.Value.Stats.Value(aggregate) is not null)
-            .Select(entry =>
-            {
-                var (category, stats) = entry.Value;
-                object x = category.Date is { } date ? (date - DateTime.UnixEpoch).TotalMilliseconds
-                    : category.Number is { } number ? number
-                    : category.Key;
-                var rowCount = stats.Count == 1 ? "1 row" : $"{stats.Count:N0} rows";
-                return new AggregatedPoint(entry.Key.Series, new ChartPointDto
-                {
-                    X = x,
-                    Y = stats.Value(aggregate)!.Value,
-                    TooltipLines = [rowCount]
-                });
-            })
-            .ToList();
-    }
-
-    /// <summary>
-    /// Builds one point per row, keyed by series label. Each point carries its pre-formatted
-    /// tooltip lines, its optional bubble size, and the sort key the caller later orders it by.
-    /// </summary>
-    private static Dictionary<string, List<(ChartPointDto Point, IComparable? SortKey)>> BuildPointGroups(
-        List<DatasetRow> rows,
-        int xId,
-        int yId,
-        DatasetColumnType? xType,
-        DatasetColumnType? yType,
-        DatasetColumn? seriesColumn,
-        DatasetColumn? sizeColumn,
-        DatasetColumn? sortColumn,
-        List<(ChartTooltipColumn Setting, DatasetColumn? Column)> tooltipColumns)
-    {
-        var groups = new Dictionary<string, List<(ChartPointDto Point, IComparable? SortKey)>>();
-        foreach (var row in rows)
-        {
-            var xCell = row.Cells.First(c => c.ColumnId == xId);
-            var yCell = row.Cells.First(c => c.ColumnId == yId);
-            object x = AxisValue(xCell, xType);
-            object y = AxisValue(yCell, yType);
-
-            var seriesKey = "";
-            if (seriesColumn is not null)
-            {
-                var raw = row.Cells.FirstOrDefault(c => c.ColumnId == seriesColumn.Id)?.StringValue?.Trim();
-                seriesKey = string.IsNullOrEmpty(raw) ? "(blank)" : raw;
-            }
-
-            var tooltipLines = BuildTooltipLines(row, tooltipColumns);
-
-            // The default sort key is the point's own X — a line then draws left-to-right instead
-            // of zig-zagging (harmless for scatter); a text X sorts alphabetically. A column sort
-            // reads that column's own cell instead, tolerating a row with no value for it.
-            IComparable? sortKey = sortColumn is not null
-                ? SortValue(row.Cells.FirstOrDefault(c => c.ColumnId == sortColumn.Id), sortColumn.Type)
-                : (IComparable)x;
-
-            var size = sizeColumn is not null
-                ? row.Cells.FirstOrDefault(c => c.ColumnId == sizeColumn.Id)?.NumberValue
-                : null;
-
-            var point = new ChartPointDto { X = x, Y = y, Size = size, TooltipLines = tooltipLines };
-            if (groups.TryGetValue(seriesKey, out var points))
-            {
-                points.Add((point, sortKey));
-            }
-            else
-            {
-                groups[seriesKey] = [(point, sortKey)];
-            }
-        }
-        return groups;
-    }
-
-    /// <summary>One row's pre-formatted tooltip lines — each bound column's value with its configured prefix/suffix, blanks skipped.</summary>
-    private static List<string> BuildTooltipLines(DatasetRow row, List<(ChartTooltipColumn Setting, DatasetColumn? Column)> tooltipColumns)
-    {
-        var tooltipLines = new List<string>();
-        foreach (var (setting, column) in tooltipColumns)
-        {
-            var cell = row.Cells.FirstOrDefault(c => c.ColumnId == column!.Id);
-            if (cell is null)
-            {
-                continue;
-            }
-
-            var value = CellFormatter.Format(cell, column!.Type, column.GetConfig());
-            if (string.IsNullOrEmpty(value))
-            {
-                continue;
-            }
-
-            tooltipLines.Add($"{setting.Prefix}{value}{setting.Suffix}");
-        }
-        return tooltipLines;
-    }
-
-    /// <summary>Rows with no value for the sort column sink to the end regardless of direction.</summary>
-    private static List<ChartPointDto> OrderPoints(List<(ChartPointDto Point, IComparable? SortKey)> points, bool descending)
-    {
-        var ordered = points.OrderBy(entry => entry.SortKey is null ? 1 : 0);
-        return (descending
-                ? ordered.ThenByDescending(entry => entry.SortKey)
-                : ordered.ThenBy(entry => entry.SortKey))
-            .Select(entry => entry.Point)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Narrows to rows that carry a plottable value for the axis column — a string for a text
-    /// axis, a date for a date axis, a number otherwise — kept as an expression EF can translate.
-    /// </summary>
-    private static IQueryable<DatasetRow> RequireAxisValue(IQueryable<DatasetRow> rows, int columnId, DatasetColumnType? type) => type switch
-    {
-        DatasetColumnType.String => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.StringValue != null)),
-        DatasetColumnType.DateTime => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.DateValue != null)),
-        _ => rows.Where(r => r.Cells.Any(c => c.ColumnId == columnId && c.NumberValue != null))
-    };
-
-    /// <summary>
-    /// The axis coordinate for a cell: the trimmed string for a text axis, epoch milliseconds for
-    /// a date axis (which the client plots on an echarts time axis), else the raw number.
-    /// </summary>
-    private static object AxisValue(DatasetCell cell, DatasetColumnType? type) => type switch
-    {
-        DatasetColumnType.String => cell.StringValue!.Trim(),
-        DatasetColumnType.DateTime => (cell.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds,
-        _ => cell.NumberValue!.Value
-    };
-
-    /// <summary>
-    /// A row's value for a point chart's sort column — typed like an axis value, but (unlike one)
-    /// tolerating a missing cell, since a sort column isn't required to be bound on every row. A
-    /// missing value reads as null, which the caller sinks to the end of the draw order.
-    /// </summary>
-    private static IComparable? SortValue(DatasetCell? cell, DatasetColumnType? type)
-    {
-        if (cell is null)
-        {
-            return null;
-        }
-
-        return type switch
-        {
-            DatasetColumnType.String => cell.StringValue?.Trim(),
-            DatasetColumnType.DateTime => cell.DateValue is { } date ? date : null,
-            DatasetColumnType.Bool => cell.BoolValue is { } flag ? flag : null,
-            _ => cell.NumberValue is { } number ? number : null
-        };
-    }
-
-    /// <summary>
-    /// A series' ordinary-least-squares trend line, or null when there's nothing to fit — fewer
-    /// than two points, or every point sharing the same X (an undefined slope). The endpoints are
-    /// the fitted line's Y at the series' own X extremes, ready for the client to draw a segment
-    /// through; <see cref="TrendLineDto.RSquared"/> says how well it actually fits.
-    /// </summary>
-    private static TrendLineDto? ComputeTrendLine(IEnumerable<ChartPointDto> points)
-    {
-        var pairs = points.Select(point => ((double)point.X, (double)point.Y)).ToList();
-        if (pairs.Count < 2)
-        {
-            return null;
-        }
-
-        var xMean = pairs.Average(pair => pair.Item1);
-        var yMean = pairs.Average(pair => pair.Item2);
-        var ssXY = pairs.Sum(pair => (pair.Item1 - xMean) * (pair.Item2 - yMean));
-        var ssXX = pairs.Sum(pair => (pair.Item1 - xMean) * (pair.Item1 - xMean));
-        if (ssXX == 0)
-        {
-            return null;
-        }
-
-        var slope = ssXY / ssXX;
-        var intercept = yMean - slope * xMean;
-        var ssYY = pairs.Sum(pair => (pair.Item2 - yMean) * (pair.Item2 - yMean));
-        // Every Y identical too: the (horizontal) line fits perfectly.
-        var rSquared = ssYY == 0 ? 1d : (ssXY * ssXY) / (ssXX * ssYY);
-
-        var xMin = pairs.Min(pair => pair.Item1);
-        var xMax = pairs.Max(pair => pair.Item1);
-        return new TrendLineDto
-        {
-            X1 = xMin, Y1 = slope * xMin + intercept,
-            X2 = xMax, Y2 = slope * xMax + intercept,
-            Slope = slope, Intercept = intercept, RSquared = rSquared
-        };
+            Label = group.Key,
+            Points = PointAxes.Order(group.Value, sort.Descending),
+            TrendLine = trend ? TrendLines.Compute(group.Value.Select(entry => entry.Point)) : null
+        }).ToList();
+        result.TotalPoints = total;
+        result.Truncated = sampled;
+        result.Sampled = sampled;
     }
 }
