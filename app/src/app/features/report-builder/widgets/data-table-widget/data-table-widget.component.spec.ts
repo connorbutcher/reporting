@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Scroller } from 'primeng/scroller';
+import { Table } from 'primeng/table';
 import { of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
@@ -61,10 +63,13 @@ describe('DataTableWidgetComponent', () => {
   let queryTable: ReturnType<typeof vi.fn>;
   let exportTable: ReturnType<typeof vi.fn>;
   let warn: ReturnType<typeof vi.fn>;
+  let scrollTo: ReturnType<typeof vi.spyOn>;
   const matched = 1000;
 
   beforeEach(() => {
     vi.useFakeTimers();
+    // jsdom has no Element.scrollTo for PrimeNG's scroller to call.
+    scrollTo = vi.spyOn(Table.prototype, 'scrollTo').mockImplementation(() => undefined);
     queryTable = vi.fn((_id: number, request: TableQueryRequest) => of(page(request, matched)));
     exportTable = vi.fn((_id: number, request: TableQueryRequest) =>
       of(page({ ...request, take: 0 }, matched)),
@@ -92,7 +97,10 @@ describe('DataTableWidgetComponent', () => {
     });
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   async function render(over: Partial<DataTableWidgetConfig> = {}): Promise<Internals> {
     fixture = TestBed.createComponent(DataTableWidgetComponent);
@@ -172,6 +180,85 @@ describe('DataTableWidgetComponent', () => {
     await vi.advanceTimersByTimeAsync(400);
 
     expect(lastRequest().search).toBe('bolt');
+  });
+
+  it('queries once when it first loads', async () => {
+    await render();
+
+    expect(queryTable).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the scroll position while scrolled-in windows land', async () => {
+    const init = vi.spyOn(Scroller.prototype, 'init');
+    const table = await render();
+    await vi.advanceTimersByTimeAsync(50);
+    init.mockClear();
+
+    table.onLazyLoad({ first: DataTableWidgetComponent.SCROLL_WINDOW, last: 260 });
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(table.rows()[DataTableWidgetComponent.SCROLL_WINDOW]?.id).toBe(
+      `r${DataTableWidgetComponent.SCROLL_WINDOW}`,
+    );
+    expect(init).not.toHaveBeenCalled();
+  });
+
+  it('refills the windows on screen when the data reloads', async () => {
+    const table = await render();
+    await vi.advanceTimersByTimeAsync(50);
+    const viewport = fixture.nativeElement.querySelector('.p-virtualscroller') as HTMLElement;
+    Object.defineProperty(viewport, 'scrollTop', { value: 39 * 450, configurable: true });
+    Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
+    queryTable.mockClear();
+
+    fixture.componentRef.setInput('datasetVersion', 1);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(50);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(queryTable.mock.calls.map(([, r]) => (r as TableQueryRequest).skip)).toEqual([
+      0,
+      2 * DataTableWidgetComponent.SCROLL_WINDOW,
+    ]);
+    expect(table.rows()[450]?.id).toBe('r450');
+  });
+
+  it('keeps scrolled-in rows when only a display setting changes', async () => {
+    const table = await render();
+    table.onLazyLoad({ first: DataTableWidgetComponent.SCROLL_WINDOW, last: 260 });
+    await vi.advanceTimersByTimeAsync(0);
+    queryTable.mockClear();
+
+    fixture.componentRef.setInput(
+      'config',
+      config({
+        title: 'Parts',
+        columns: [
+          { columnId: 'name', header: 'Part', width: 200 },
+          { columnId: 'cost', total: 'sum' },
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(queryTable).not.toHaveBeenCalled();
+    expect(table.rows()[DataTableWidgetComponent.SCROLL_WINDOW]?.id).toBe(
+      `r${DataTableWidgetComponent.SCROLL_WINDOW}`,
+    );
+  });
+
+  it('starts back at the top when the search changes', async () => {
+    const table = await render({ showSearch: true });
+    scrollTo.mockClear();
+
+    table.searchText.set('bolt');
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
 
   it('exports every matched row with raw values and the totals row', async () => {

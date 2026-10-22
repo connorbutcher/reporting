@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Scroller } from 'primeng/scroller';
 import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { firstValueFrom } from 'rxjs';
 import { DatasetApiService } from '../../../../core/api/dataset-api.service';
@@ -42,6 +43,7 @@ import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 import { DisplayColumn } from './display-column';
+import { TableQueryKey } from './table-query-key';
 import { ColumnTypes } from '../../models/column-types';
 import { Plural } from '../../../../shared/text/plural';
 
@@ -247,6 +249,14 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     this.config().showSearch ? this.searchText().trim() : '',
   );
 
+  /** Changes only when the server would return different rows. */
+  private readonly queryKey = computed(() =>
+    TableQueryKey.of(this.config(), this.effectiveFilter(), this.searchTerm()),
+  );
+
+  /** The query the rows on screen came from; null until the first one is seen. */
+  private shownQueryKey: string | null = null;
+
   private readonly columnStats = computed(() => this.source.result()?.columnStats ?? {});
 
   /** A scrolling table gives rows room for two lines when some column wraps. */
@@ -278,33 +288,28 @@ export class DataTableWidgetComponent extends DataWidgetBase {
       if (!this.datasetId()) {
         return;
       }
-      this.effectiveFilter();
-      this.searchTerm();
-      this.config().columns;
-      this.config().rowsPerPage;
-      this.config().paginator;
+      const key = this.queryKey();
 
-      untracked(() => {
-        this.source.loading.set(true);
-        this.source.error.set(false);
-        this.first.set(0);
-        this.source.reloadDebounced();
-      });
+      untracked(() => this.onQueryChange(key));
     });
 
     // PrimeNG's virtual scroller measures its viewport once on mount, often while the flex
     // container is still zero-height, and a lazy table won't remeasure when rows land.
-    // Re-run its size calc once fresh rows have rendered.
+    // Re-run its size calc once a fresh result has rendered. Only on a full result: re-running it
+    // as each scrolled window lands empties the viewport for a frame and snaps it to the top.
     effect(() => {
-      const hasRows = this.rows().length > 0;
+      const hasResult = !!this.source.result();
       const settled = !this.loading();
       const scroller = this.table()?.scroller();
-      if (!hasRows || !settled || !scroller) {
+      if (!hasResult || !settled || !scroller) {
         return;
       }
 
       untracked(() => {
-        requestAnimationFrame(() => scroller.init());
+        requestAnimationFrame(() => {
+          scroller.init();
+          this.loadVisibleWindows(scroller);
+        });
       });
     });
   }
@@ -513,6 +518,40 @@ export class DataTableWidgetComponent extends DataWidgetBase {
 
   public get error() {
     return this.source.error;
+  }
+
+  /**
+   * The first run is covered by the dataset load. Later changes start the reader back at the top,
+   * since the rows they had scrolled to may no longer exist.
+   */
+  private onQueryChange(key: string): void {
+    const previous = this.shownQueryKey;
+    this.shownQueryKey = key;
+    if (previous === null || previous === key) {
+      return;
+    }
+
+    this.source.loading.set(true);
+    this.source.error.set(false);
+    this.first.set(0);
+    if (!this.config().paginator) {
+      this.table()?.scrollTo({ top: 0 });
+    }
+    this.source.reloadDebounced();
+  }
+
+  /** A reload clears the scrolled-in windows, so refill the ones the reader is looking at. */
+  private loadVisibleWindows(scroller: Scroller): void {
+    const viewport = scroller.getElementRef()?.nativeElement as HTMLElement | undefined;
+    if (!viewport || this.config().paginator) {
+      return;
+    }
+
+    const rowHeight = this.rowHeight();
+    this.loadWindows(
+      Math.floor(viewport.scrollTop / rowHeight),
+      Math.ceil((viewport.scrollTop + viewport.clientHeight) / rowHeight),
+    );
   }
 
   private loadWindows(from: number, to: number): void {
