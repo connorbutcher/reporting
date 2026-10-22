@@ -16,26 +16,38 @@ public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor cu
 {
     private HashSet<AppPermission>? cached;
 
-    public async Task<bool> HasAsync(AppPermission permission) =>
-        (await LoadAsync()).Contains(permission);
+    public async Task<bool> HasAsync(AppPermission permission)
+    {
+        return (await LoadAsync()).Contains(permission);
+    }
 
     /// <summary>Throws <see cref="AccessDeniedException"/> (→ 403) naming the permission when the current user lacks it.</summary>
     public async Task RequireAsync(AppPermission permission)
     {
         if (!await HasAsync(permission))
+        {
             throw new AccessDeniedException($"This action requires {permission.Describe()}.");
+        }
     }
 
-    public async Task<IReadOnlyCollection<AppPermission>> ForCurrentUserAsync() =>
-        (await LoadAsync()).ToList();
+    public async Task<IReadOnlyCollection<AppPermission>> ForCurrentUserAsync()
+    {
+        return (await LoadAsync()).ToList();
+    }
 
     private async Task<HashSet<AppPermission>> LoadAsync()
     {
-        if (cached is not null) return cached;
+        if (cached is not null)
+        {
+            return cached;
+        }
 
         var user = await currentUserAccessor.GetAsync();
         // A global admin holds every app permission, so there's nothing to load.
-        if (user.IsGlobalAdmin) return cached = new HashSet<AppPermission>(Enum.GetValues<AppPermission>());
+        if (user.IsGlobalAdmin)
+        {
+            return cached = new HashSet<AppPermission>(Enum.GetValues<AppPermission>());
+        }
 
         var permissions = await db.AppPermissionGrants
             .Where(g => g.UserId == user.Id)

@@ -72,8 +72,9 @@ public static class CellPivot
     /// A slot's values as the cell they came from, for code that reads cells (formatting, tolerance
     /// matching); null when the row had no cell there. Not tracked, never saved.
     /// </summary>
-    public static DatasetCell? Cell(int columnId, string? text, double? number, DateTime? date) =>
-        text is null && number is null && date is null
+    public static DatasetCell? Cell(int columnId, string? text, double? number, DateTime? date)
+    {
+        return text is null && number is null && date is null
             ? null
             : new DatasetCell
             {
@@ -83,4 +84,5 @@ public static class CellPivot
                 DateValue = date,
                 BoolValue = CellValues.TryParseBool(text, out var flag) ? flag : null
             };
+    }
 }

@@ -7,10 +7,8 @@ using Reporting.Database;
 namespace Reporting.DAL.Formulas;
 
 /// <summary>
-/// The service that runs formula columns. It builds a <see cref="FormulaPlan"/> from a dataset's columns and the
-/// function catalogue in the database, and writes each computed value into its cell like any typed value — so
-/// filters, charts, tolerances and pivots see an ordinary column and need no knowledge of formulas.
-/// Calculation is synchronous, inside the request that changed the data.
+/// Runs formula columns, writing each computed value into its cell like any typed value, so everything
+/// downstream sees an ordinary column. Runs synchronously inside the request that changed the data.
 /// </summary>
 public class FormulaCalculationService(ReportingDbContext db, FormulaFunctionCatalogueLoader catalogueLoader)
 {
@@ -38,10 +36,7 @@ public class FormulaCalculationService(ReportingDbContext db, FormulaFunctionCat
         return await _previews.BuildAsync(dataset, expression, type, sampleSize, catalogue);
     }
 
-    /// <summary>
-    /// Fills a row's computed cells from its other cells. Called after a row's typed values change and before
-    /// the caller saves; <paramref name="row"/> must have its cells loaded.
-    /// </summary>
+    /// <summary>Before the caller saves. <paramref name="row"/> must have its cells loaded.</summary>
     public async Task ApplyToRowAsync(Dataset dataset, DatasetRow row)
     {
         if (!HasComputedColumns(dataset))
@@ -54,10 +49,8 @@ public class FormulaCalculationService(ReportingDbContext db, FormulaFunctionCat
     }
 
     /// <summary>
-    /// Re-checks every computed column of a dataset and recomputes every row. Records each column's
-    /// <see cref="DatasetColumn.FormulaError"/> (clearing it when healthy) and empties the cells of columns that
-    /// can't run. Run after anything that can change a formula's meaning: a column added, retyped or removed,
-    /// a formula edited, or the function catalogue changed. <paramref name="dataset"/> must have its columns loaded.
+    /// Records each column's <see cref="DatasetColumn.FormulaError"/> and empties columns that can't run.
+    /// Run after anything that can change a formula's meaning. <paramref name="dataset"/> must have its columns loaded.
     /// </summary>
     public async Task RecalculateAsync(Dataset dataset)
     {
@@ -117,10 +110,7 @@ public class FormulaCalculationService(ReportingDbContext db, FormulaFunctionCat
         }
     }
 
-    /// <summary>
-    /// Recomputes every row in batches, walking the rows by id (not by offset, which would rescan the table
-    /// for each batch) and letting go of each batch once saved so a large dataset doesn't pile up in memory.
-    /// </summary>
+    /// <summary>Batches walk by id rather than offset, and each is released once saved.</summary>
     private async Task RecomputeRowsAsync(int datasetId, FormulaPlan plan)
     {
         var lastId = 0;

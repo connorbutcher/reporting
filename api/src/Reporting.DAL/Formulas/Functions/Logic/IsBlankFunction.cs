@@ -1,6 +1,4 @@
-﻿using static Reporting.DAL.Formulas.Functions.FormulaArgs;
-
-namespace Reporting.DAL.Formulas.Functions.Logic;
+﻿namespace Reporting.DAL.Formulas.Functions.Logic;
 
 /// <summary>Whether a value is blank.</summary>
 public sealed class IsBlankFunction : IFormulaFunctionImplementation

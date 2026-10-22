@@ -13,8 +13,10 @@ internal sealed record TranslationContext(
     IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? OperatorCatalogue)
 {
     /// <exception cref="FilterException">The column isn't part of the dataset.</exception>
-    public DatasetColumn Column(Guid columnId) =>
-        ColumnsById.TryGetValue(columnId, out var column)
+    public DatasetColumn Column(Guid columnId)
+    {
+        return ColumnsById.TryGetValue(columnId, out var column)
             ? column
             : throw new FilterException($"Column {columnId} is not part of this dataset.");
+    }
 }

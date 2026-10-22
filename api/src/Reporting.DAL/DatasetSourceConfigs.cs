@@ -6,12 +6,15 @@ namespace Reporting.DAL;
 public static class DatasetSourceConfigs
 {
     /// <summary>The blank configuration a dataset gets when first pointed at <paramref name="key"/>.</summary>
-    public static DatasetSourceConfig Default(DatasetSourceKey key) => key switch
+    public static DatasetSourceConfig Default(DatasetSourceKey key)
     {
-        DatasetSourceKey.Assembly => new AssemblyDatasetSourceConfig(),
-        DatasetSourceKey.Disassembly => new DisassemblyDatasetSourceConfig(),
-        DatasetSourceKey.Specification => new SpecificationDatasetSourceConfig(),
-        DatasetSourceKey.Filtered => new FilteredDatasetSourceConfig(),
-        _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown dataset source.")
-    };
+        return key switch
+        {
+            DatasetSourceKey.Assembly => new AssemblyDatasetSourceConfig(),
+            DatasetSourceKey.Disassembly => new DisassemblyDatasetSourceConfig(),
+            DatasetSourceKey.Specification => new SpecificationDatasetSourceConfig(),
+            DatasetSourceKey.Filtered => new FilteredDatasetSourceConfig(),
+            _ => throw new ArgumentOutOfRangeException(nameof(key), key, "Unknown dataset source.")
+        };
+    }
 }

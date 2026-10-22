@@ -4,15 +4,6 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Identity;
 
-/// <summary>Plain immutable snapshot of the current user, built once per request.</summary>
-public sealed record CurrentUser(
-    int Id,
-    Guid RefId,
-    string DisplayName,
-    string Email,
-    bool IsGlobalAdmin,
-    IReadOnlyCollection<int> GroupIds) : ICurrentUser;
-
 /// <summary>
 /// Stand-in accessor used until authentication is wired up: it always resolves to the
 /// seeded default user (a global admin, so existing flows keep working). Real auth
@@ -25,7 +16,10 @@ public class DevCurrentUserAccessor(ReportingDbContext db) : ICurrentUserAccesso
 
     public async Task<ICurrentUser> GetAsync()
     {
-        if (cached is not null) return cached;
+        if (cached is not null)
+        {
+            return cached;
+        }
 
         var user = await db.Users
             .Where(u => u.RefId == WellKnownIds.DefaultUser)

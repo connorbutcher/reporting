@@ -87,20 +87,10 @@ public sealed class FormulaPlan
         }
 
         var computed = new Dictionary<DatasetColumn, FormulaOutcome>(_runnable.Length, ReferenceEqualityComparer.Instance);
-
-        object? ReadColumn(DatasetColumn column)
-        {
-            if (column.IsComputed)
-            {
-                return computed.TryGetValue(column, out var outcome) ? outcome.Value : null;
-            }
-
-            return FormulaCellReader.Read(cells.GetValueOrDefault(column.Id), column.Type);
-        }
-
+        var reader = new FormulaRowReader(cells, computed);
         foreach (var planned in _runnable)
         {
-            computed[planned.Column] = EvaluateColumn(planned, ReadColumn);
+            computed[planned.Column] = EvaluateColumn(planned, reader.Read);
         }
 
         return computed;

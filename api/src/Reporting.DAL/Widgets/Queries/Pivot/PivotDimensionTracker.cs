@@ -66,13 +66,11 @@ public sealed class PivotDimensionTracker
     public List<FilterConditionDto>? Conditions(PivotField field)
     {
         var columnId = field.Column.RefId;
-        FilterConditionDto Condition(FilterOperator op, params string[] values) =>
-            new() { ColumnId = columnId, Operator = op, Values = values.ToList() };
 
         if (_sawBlank)
         {
             // A group mixing blanks with values (a value that formats to nothing) can't be selected as one.
-            return _sawValue ? null : [Condition(FilterOperator.IsEmpty)];
+            return _sawValue ? null : [Condition(columnId, FilterOperator.IsEmpty)];
         }
         if (!_sawValue)
         {
@@ -82,33 +80,49 @@ public sealed class PivotDimensionTracker
         if (_periodStart is { } start && _periodEnd is { } end)
         {
             // Between on dates takes whole days, inclusive of the last one.
-            return [Condition(FilterOperator.Between, Day(start), Day(end.AddDays(-1)))];
+            return [Condition(columnId, FilterOperator.Between, Day(start), Day(end.AddDays(-1)))];
         }
 
         switch (field.Column.Type)
         {
             case DatasetColumnType.Int or DatasetColumnType.Double when _minNumber is { } lo && _maxNumber is { } hi:
                 return lo == hi
-                    ? [Condition(FilterOperator.Equals, Number(lo))]
-                    : [Condition(FilterOperator.Between, Number(lo), Number(hi))];
+                    ? [Condition(columnId, FilterOperator.Equals, Number(lo))]
+                    : [Condition(columnId, FilterOperator.Between, Number(lo), Number(hi))];
             case DatasetColumnType.DateTime when _minDate is { } from && _maxDate is { } to:
-                return [Condition(FilterOperator.GreaterThanOrEqual, Instant(from)), Condition(FilterOperator.LessThanOrEqual, Instant(to))];
+                return [Condition(columnId, FilterOperator.GreaterThanOrEqual, Instant(from)), Condition(columnId, FilterOperator.LessThanOrEqual, Instant(to))];
             case DatasetColumnType.Bool when _bool is { } flag && !_mixedBool:
-                return [Condition(flag ? FilterOperator.IsTrue : FilterOperator.IsFalse)];
+                return [Condition(columnId, flag ? FilterOperator.IsTrue : FilterOperator.IsFalse)];
             case DatasetColumnType.String:
                 if (_texts is null || _texts.Count > MaxDistinctTexts)
                 {
                     return null;
                 }
                 return _texts.Count == 1
-                    ? [Condition(FilterOperator.Equals, _texts.First())]
-                    : [Condition(FilterOperator.In, _texts.Order(StringComparer.Ordinal).ToArray())];
+                    ? [Condition(columnId, FilterOperator.Equals, _texts.First())]
+                    : [Condition(columnId, FilterOperator.In, _texts.Order(StringComparer.Ordinal).ToArray())];
             default:
                 return null;
         }
     }
 
-    private static string Number(double value) => value.ToString("R", CultureInfo.InvariantCulture);
-    private static string Day(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-    private static string Instant(DateTime value) => value.ToString("o", CultureInfo.InvariantCulture);
+    private static FilterConditionDto Condition(Guid columnId, FilterOperator op, params string[] values)
+    {
+        return new FilterConditionDto { ColumnId = columnId, Operator = op, Values = values.ToList() };
+    }
+
+    private static string Number(double value)
+    {
+        return value.ToString("R", CultureInfo.InvariantCulture);
+    }
+
+    private static string Day(DateTime value)
+    {
+        return value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+
+    private static string Instant(DateTime value)
+    {
+        return value.ToString("o", CultureInfo.InvariantCulture);
+    }
 }

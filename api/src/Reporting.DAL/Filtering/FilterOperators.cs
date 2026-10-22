@@ -21,7 +21,10 @@ public static class FilterOperators
     public static async Task<IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>> LoadCatalogueAsync(
         ReportingDbContext db)
     {
-        if (_loadedCatalogue is { } cached) return cached;
+        if (_loadedCatalogue is { } cached)
+        {
+            return cached;
+        }
 
         var rows = await db.FilterOperatorDefinitions.AsNoTracking().ToListAsync();
         var catalogue = BuildCatalogue(rows);
@@ -30,40 +33,51 @@ public static class FilterOperators
     }
 
     public static IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> BuildCatalogue(
-        IEnumerable<FilterOperatorDefinition> rows) =>
-        rows
+        IEnumerable<FilterOperatorDefinition> rows)
+    {
+        return rows
             .OrderBy(r => r.SortOrder)
             .GroupBy(r => r.ColumnType)
             .ToDictionary(
                 g => g.Key,
                 g => (IReadOnlyList<FilterOperatorDto>)g.Select(ToDto).ToList());
+    }
 
-    private static FilterOperatorDto ToDto(FilterOperatorDefinition d) => new()
+    private static FilterOperatorDto ToDto(FilterOperatorDefinition d)
     {
-        Value = d.Operator,
-        Label = d.Label,
-        OperandCount = d.OperandCount,
-        OperandKind = d.OperandKind
-    };
+        return new()
+        {
+            Value = d.Operator,
+            Label = d.Label,
+            OperandCount = d.OperandCount,
+            OperandKind = d.OperandKind
+        };
+    }
 
     public static IReadOnlyList<FilterOperatorDto> For(
         DatasetColumnType type,
-        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null) =>
-        (catalogue ?? DefaultCatalogue).TryGetValue(type, out var ops) ? ops : [];
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null)
+    {
+        return (catalogue ?? DefaultCatalogue).TryGetValue(type, out var ops) ? ops : [];
+    }
 
     public static FilterOperatorDto? Find(
         DatasetColumnType type,
         FilterOperator op,
-        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null) =>
-        For(type, catalogue).FirstOrDefault(o => o.Value == op);
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? catalogue = null)
+    {
+        return For(type, catalogue).FirstOrDefault(o => o.Value == op);
+    }
 
     public static List<FilterOperatorsForTypeDto> ToCatalogueDto(
-        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> catalogue) =>
-        Enum.GetValues<DatasetColumnType>()
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>> catalogue)
+    {
+        return Enum.GetValues<DatasetColumnType>()
             .Select(type => new FilterOperatorsForTypeDto
             {
                 Type = type,
                 Operators = catalogue.TryGetValue(type, out var ops) ? ops.ToList() : []
             })
             .ToList();
+    }
 }

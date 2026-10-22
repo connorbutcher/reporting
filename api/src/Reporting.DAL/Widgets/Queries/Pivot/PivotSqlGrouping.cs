@@ -17,9 +17,11 @@ public static class PivotSqlGrouping
     /// <summary>The field columns ride in slots 0…, the measure column in the last slot.</summary>
     private const int MeasureSlot = CellPivot.MaxColumns - 1;
 
-    public static bool CanReduce(IReadOnlyList<PivotMeasurePlan> measures, int fieldColumnCount) =>
-        fieldColumnCount <= MeasureSlot
+    public static bool CanReduce(IReadOnlyList<PivotMeasurePlan> measures, int fieldColumnCount)
+    {
+        return fieldColumnCount <= MeasureSlot
         && measures.All(m => m.Aggregate is not (PivotAggregate.Median or PivotAggregate.CountDistinct));
+    }
 
     /// <summary>
     /// The pivot's groups: each one's field cells (keyed by column id, absent when blank), its row
@@ -128,15 +130,18 @@ public static class PivotSqlGrouping
         return cells;
     }
 
-    private static (string? Text, double? Number, DateTime? Date) Slot(PivotedRow row, int slot) => slot switch
+    private static (string? Text, double? Number, DateTime? Date) Slot(PivotedRow row, int slot)
     {
-        0 => (row.T0, row.N0, row.D0),
-        1 => (row.T1, row.N1, row.D1),
-        2 => (row.T2, row.N2, row.D2),
-        3 => (row.T3, row.N3, row.D3),
-        4 => (row.T4, row.N4, row.D4),
-        5 => (row.T5, row.N5, row.D5),
-        6 => (row.T6, row.N6, row.D6),
-        _ => (row.T7, row.N7, row.D7)
-    };
+        return slot switch
+        {
+            0 => (row.T0, row.N0, row.D0),
+            1 => (row.T1, row.N1, row.D1),
+            2 => (row.T2, row.N2, row.D2),
+            3 => (row.T3, row.N3, row.D3),
+            4 => (row.T4, row.N4, row.D4),
+            5 => (row.T5, row.N5, row.D5),
+            6 => (row.T6, row.N6, row.D6),
+            _ => (row.T7, row.N7, row.D7)
+        };
+    }
 }

@@ -48,5 +48,8 @@ public sealed class PivotMeasureAcc(bool keepValues, bool keepDistinct)
         }
     }
 
-    public void AddDistinct(string key) => Distinct?.Add(key);
+    public void AddDistinct(string key)
+    {
+        Distinct?.Add(key);
+    }
 }

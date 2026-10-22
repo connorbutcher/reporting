@@ -46,10 +46,13 @@ internal static class ConditionTranslator
         };
     }
 
-    private static Expression<Func<DatasetRow, bool>> Bool(int id, FilterOperator op) => op switch
+    private static Expression<Func<DatasetRow, bool>> Bool(int id, FilterOperator op)
     {
-        FilterOperator.IsTrue => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == true),
-        FilterOperator.IsFalse => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == false),
-        _ => throw new FilterException($"Operator '{op}' is not supported on true/false columns.")
-    };
+        return op switch
+        {
+            FilterOperator.IsTrue => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == true),
+            FilterOperator.IsFalse => r => r.Cells.Any(c => c.ColumnId == id && c.BoolValue == false),
+            _ => throw new FilterException($"Operator '{op}' is not supported on true/false columns.")
+        };
+    }
 }

@@ -12,7 +12,10 @@ internal static class PredicateCombiner
         IReadOnlyList<Expression<Func<DatasetRow, bool>>> parts,
         FilterJoin join)
     {
-        if (parts.Count == 0) return null;
+        if (parts.Count == 0)
+        {
+            return null;
+        }
 
         // Each lambda declares its own row parameter; rebind them onto the first's.
         var parameter = parts[0].Parameters[0];
@@ -23,11 +26,5 @@ internal static class PredicateCombiner
             body = join == FilterJoin.Or ? Expression.OrElse(body, rebound) : Expression.AndAlso(body, rebound);
         }
         return Expression.Lambda<Func<DatasetRow, bool>>(body, parameter);
-    }
-
-    private sealed class ParameterRebinder(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
-    {
-        protected override Expression VisitParameter(ParameterExpression node) =>
-            node == from ? to : base.VisitParameter(node);
     }
 }
