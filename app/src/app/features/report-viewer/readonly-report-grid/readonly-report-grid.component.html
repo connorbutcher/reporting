@@ -18,6 +18,8 @@
           <span class="title">{{ widget.config.showTitle ? widget.config.title : '' }}</span>
           @if (isExportable(widget)) {
             <app-widget-export-actions
+              [viewable]="outlet.exporter()?.canViewData() ?? false"
+              (viewData)="outlet.exporter()?.openDataView()"
               (screenshot)="outlet.exporter()?.downloadScreenshot()"
               (exportCsv)="outlet.exporter()?.downloadCsv()"
               (expand)="openFullscreen(widget)"

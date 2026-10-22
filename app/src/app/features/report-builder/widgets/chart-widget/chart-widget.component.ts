@@ -24,6 +24,8 @@ import { ChartSkeletonComponent } from '../chart-skeleton/chart-skeleton.compone
 import { ChartSkeletonShape } from '../chart-skeleton/chart-skeleton-shape';
 import { DrillThroughDialogComponent } from '../drill-through-dialog/drill-through-dialog.component';
 import { DrillThroughDialogData } from '../drill-through-dialog/drill-through-dialog-data';
+import { WidgetDataDialogComponent } from '../widget-data-dialog/widget-data-dialog.component';
+import { WidgetDataDialogData } from '../widget-data-dialog/widget-data-dialog-data';
 import { ChartDrill } from './chart-drill';
 import { ChartZoomMemory } from './chart-zoom';
 import { ChartZoomRange } from './models/chart-zoom-range';
@@ -31,6 +33,7 @@ import { BoxOption } from './options/box/box-option';
 import { ChartCountBar } from './chart-count-bar';
 import { ChartCountBarContent } from './models/chart-count-bar-content';
 import { ChartExport } from './chart-export';
+import { ChartDataView } from './chart-data-view';
 import { BarOption } from './options/bar/bar-option';
 import { ComboOption } from './options/combo/combo-option';
 import { ECOption } from './options/types/ec-option';
@@ -93,28 +96,6 @@ export class ChartWidgetComponent extends DataWidgetBase {
       described,
       untracked(() => this.zoomRange),
     );
-  });
-
-  public readonly showData = signal(false);
-
-  /** Capped so a large point chart stays responsive. */
-  public readonly dataTable = computed(() => {
-    if (!this.showData()) {
-      return null;
-    }
-    const data = this.source.result();
-    if (!data) {
-      return null;
-    }
-    const [header = [], ...rows] = ChartExport.table(this.config(), data, this.source.columns());
-    const limit = 500;
-    return {
-      header,
-      rows: rows
-        .slice(0, limit)
-        .map((row) => row.map((cell) => ChartWidgetComponent.dataCellText(cell))),
-      hidden: Math.max(0, rows.length - limit),
-    };
   });
 
   public readonly canDrill = computed(() => !this.isPointChart() && this.source.result() !== null);
@@ -341,16 +322,6 @@ export class ChartWidgetComponent extends DataWidgetBase {
     return [x, y].map((n) => (Number.isInteger(n) ? String(n) : n.toFixed(1))).join(', ');
   }
 
-  private static dataCellText(cell: string | number | boolean): string {
-    if (typeof cell === 'number') {
-      return cell.toLocaleString('en-US', { maximumFractionDigits: 6 });
-    }
-    if (typeof cell === 'boolean') {
-      return cell ? 'Yes' : 'No';
-    }
-    return cell;
-  }
-
   public retry(): void {
     this.source.error.set(false);
     this.source.loading.set(true);
@@ -369,14 +340,6 @@ export class ChartWidgetComponent extends DataWidgetBase {
     }
     this.zoomRange = range;
     ChartZoomMemory.write(this.zoomKey(), range);
-  }
-
-  public toggleData(): void {
-    this.showData.update((on) => !on);
-    // The canvas is recreated when the chart comes back.
-    if (this.showData()) {
-      this.chartInstance = null;
-    }
   }
 
   public toggleAnchorMode(): void {
@@ -440,6 +403,25 @@ export class ChartWidgetComponent extends DataWidgetBase {
       backgroundColor: '#fff',
     });
     this.downloadUrl(url, `${this.exportName()}.png`);
+  }
+
+  public override canViewData(): boolean {
+    return this.view() === 'ready' && this.chartOption() !== null;
+  }
+
+  public override openDataView(): void {
+    const data = this.source.result();
+    if (!data) {
+      return;
+    }
+    this.dialog.open<void, WidgetDataDialogData>(WidgetDataDialogComponent, {
+      data: {
+        title: this.exportName(),
+        table: ChartDataView.build(this.config(), data, this.source.columns()),
+        downloadCsv: () => void this.downloadCsv(),
+      },
+      ariaLabelledBy: 'widget-data-title',
+    });
   }
 
   public exportCsv(): string | null {

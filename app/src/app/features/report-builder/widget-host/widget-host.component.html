@@ -29,6 +29,8 @@
         <app-widget-export-actions
           class="export"
           (pointerdown)="$event.stopPropagation()"
+          [viewable]="outlet.exporter()?.canViewData() ?? false"
+          (viewData)="outlet.exporter()?.openDataView()"
           (screenshot)="outlet.exporter()?.downloadScreenshot()"
           (exportCsv)="outlet.exporter()?.downloadCsv()"
           (expand)="openFullscreen()"

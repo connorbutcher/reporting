@@ -14,7 +14,7 @@ import { ControlChartNaming } from './options/xbar-r/control-chart-naming';
 import { AnyChartResult } from './models/any-chart-result';
 import { ChartTable } from './models/chart-table';
 
-/** The rows behind a chart, for CSV export and the "View data" table. */
+/** The rows behind a chart, for CSV export and the "View data" dialog. */
 export class ChartExport {
   public static csv(
     config: ChartWidgetConfig,

@@ -3,6 +3,8 @@
     <span class="title">{{ data.title() }}</span>
     <app-widget-export-actions
       [expandable]="false"
+      [viewable]="outlet.exporter()?.canViewData() ?? false"
+      (viewData)="outlet.exporter()?.openDataView()"
       (screenshot)="outlet.exporter()?.downloadScreenshot()"
       (exportCsv)="outlet.exporter()?.downloadCsv()"
     />

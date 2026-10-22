@@ -1,0 +1,43 @@
+<div class="widget-data">
+  <header class="header">
+    <span class="title" id="widget-data-title">{{ data.title }} data</span>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="Download data (CSV)"
+      title="Download data (CSV)"
+      (click)="data.downloadCsv()"
+    >
+      <i class="pi pi-download" aria-hidden="true"></i>
+    </button>
+    <button type="button" class="icon-button" aria-label="Close" title="Close" (click)="close()">
+      <i class="pi pi-times" aria-hidden="true"></i>
+    </button>
+  </header>
+  @if (data.table.hidden > 0) {
+    <p class="note">
+      Showing the first {{ data.table.rows.length }} of
+      {{ data.table.rows.length + data.table.hidden }} rows. Download the CSV for all of them.
+    </p>
+  }
+  <div class="body" tabindex="0" role="region" aria-labelledby="widget-data-title">
+    <table>
+      <thead>
+        <tr>
+          @for (cell of data.table.header; track $index) {
+            <th scope="col">{{ cell }}</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of data.table.rows; track $index) {
+          <tr>
+            @for (cell of row; track $index) {
+              <td>{{ cell }}</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
