@@ -13,7 +13,7 @@ internal static class HistogramTooltips
     {
         foreach (var setting in dto.TooltipColumns)
         {
-            var column = BarChartQueryService.ResolveTooltipColumn(setting, columnsByRef, allColumns);
+            var column = TooltipColumns.Resolve(setting, columnsByRef, allColumns);
             if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
             {
                 continue;

@@ -36,7 +36,7 @@ internal sealed record PointColumns(
             : null;
 
         var tooltipColumns = dto.TooltipColumns
-            .Select(tooltipColumn => (Setting: tooltipColumn, Column: BarChartQueryService.ResolveTooltipColumn(tooltipColumn, columnsByRef, allColumns)))
+            .Select(tooltipColumn => (Setting: tooltipColumn, Column: TooltipColumns.Resolve(tooltipColumn, columnsByRef, allColumns)))
             .Where(p => p.Column is not null)
             .ToList();
 

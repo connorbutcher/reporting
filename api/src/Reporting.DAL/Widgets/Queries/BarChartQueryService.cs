@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
 using Reporting.DAL.Repositories;
@@ -7,13 +6,9 @@ using Reporting.Database;
 namespace Reporting.DAL.Widgets;
 
 /// <summary>
-/// Rows shaped for a bar chart: filtered, then grouped by the category column
-/// and reduced to one value per category (per series) by the chosen aggregate.
-/// Unlike scatter/line this returns categories plus a value-per-category array
-/// for each series, already aligned so the client can drop them straight onto a
-/// category axis. The grouping runs as a single SQL GROUP BY on the category's typed
-/// value, so only one row per distinct value/series comes back; those are then merged
-/// in memory into date periods and, for a Top N sort, an "Other" category.
+/// Rows grouped by the category column and reduced per category (per series) by the chosen aggregate,
+/// returned as categories plus an aligned value array per series. The grouping is one SQL GROUP BY on the
+/// category's typed value, merged in memory into date periods and, for a Top N sort, an "Other" category.
 /// </summary>
 public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands toleranceBands, DatasetResolver resolver)
 {
@@ -27,20 +22,10 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         var dataset = resolved.Physical;
 
         var empty = new BarChartQueryResultDto { Id = resolved.Id, Name = resolved.Name };
-
         var columnsByRef = dataset.Columns.ToDictionary(c => c.RefId);
+        var valueColumnIds = ValueColumnIds(dto);
 
-        var isCount = dto.Aggregate == Aggregate.Count;
-
-        // The measures to plot, in request order — several become several series per category,
-        // grouped or stacked. The deprecated single ValueColumnId folds in when the list is empty.
-        var valueColumnIds = dto.ValueColumnIds.Count > 0
-            ? dto.ValueColumnIds
-            : (dto.ValueColumnId is { } single ? new List<Guid> { single } : new List<Guid>());
-
-        // Bands sit on the value (Y) axis; a tolerance filter reuses the band on that axis to
-        // narrow rows by the measure column before they're aggregated into bars. With several
-        // measures the first stands in — a per-measure tolerance filter isn't expressible here.
+        // Bands sit on the value axis; with several measures the first stands in for a tolerance filter.
         var bounds = await toleranceBands.ResolveAsync(dto.ToleranceBands);
         var toleranceByColumn = ChartToleranceBands.ByAxisColumn(
             dto.ToleranceBands, bounds, dto.CategoryColumnId, valueColumnIds.FirstOrDefault());
@@ -52,8 +37,6 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         empty.TotalRowCount = totalRowCount;
         empty.MatchedRowCount = matchedRowCount;
 
-        // A missing category (nothing bound yet) yields an empty chart, the same graceful
-        // no-op scatter/line give when their axes aren't set.
         var categoryColumn = columnsByRef.GetValueOrDefault(dto.CategoryColumnId);
         if (categoryColumn is null)
         {
@@ -61,93 +44,142 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         }
         var reader = new ChartCategoryReader(categoryColumn, dto.CategoryGrouping);
 
-        // Count needs no measure — it reduces to one implicit series (null column). Every other
-        // aggregate reduces each bound value column into its own series; unknown ids drop out.
-        var measures = isCount
-            ? new List<DatasetColumn?> { null }
-            : valueColumnIds
-                .Select(valueColumnId => columnsByRef.GetValueOrDefault(valueColumnId))
-                .Where(c => c is not null)
-                .ToList();
+        var measures = Measures(dto, valueColumnIds, columnsByRef);
         if (measures.Count == 0)
         {
             return empty;
         }
 
-        // A sentinel id matches no cell, so with no series column every row falls into one
-        // group whose key is "" — the single unlabelled series the client expects.
+        // With no series column, id 0 matches no cell, so every row falls in the one unlabelled series "".
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
 
-        // Every category seen, keyed by its typed key, and each measure's stats per (category, series).
         var categories = new Dictionary<string, ChartCategory>();
-        var perMeasure = new List<(DatasetColumn? Column, Dictionary<(string Category, string Series), BarStats> Stats)>();
+        var perMeasure = new List<BarMeasureStats>();
         foreach (var measure in measures)
         {
-            var stats = await AggregateAsync(matching, reader, categories, measure is null, seriesId, measure?.Id ?? 0);
-            perMeasure.Add((measure, stats));
+            var stats = await BarAggregation.AggregateAsync(matching, reader, categories, measure is null, seriesId, measure?.Id ?? 0);
+            perMeasure.Add(new BarMeasureStats(measure, stats));
         }
 
-        var naturalOrder = reader.NaturalOrder(categories.Values).Select(c => c.Key).ToList();
-
-        // A column sort re-ranks by a chosen column's aggregate (possibly a column that isn't even
-        // plotted); an unresolvable column — a stale reference — falls back to the natural order
-        // rather than blanking the chart. Either way `Descending` can still reverse the result.
         var sort = dto.Sort ?? new ChartSort();
-        List<string> orderedKeys;
+        var orderedKeys = await OrderCategoriesAsync(matching, reader, categories, sort, columnsByRef);
+        var tooltipStats = await TooltipStatsAsync(matching, reader, categories, seriesId, dto, columnsByRef, dataset.Columns);
+        orderedKeys = ApplyTopN(orderedKeys, sort, categories, perMeasure, tooltipStats);
+
+        return new BarChartQueryResultDto
+        {
+            Id = resolved.Id,
+            Name = resolved.Name,
+            Categories = orderedKeys.Select(key => reader.Label(categories[key])).ToList(),
+            CategoryDetails = orderedKeys.Select(key => reader.Detail(categories[key])).ToList(),
+            Series = Series(perMeasure, orderedKeys, tooltipStats, seriesColumn, dto.Aggregate),
+            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
+            TotalRowCount = totalRowCount,
+            MatchedRowCount = matchedRowCount
+        };
+    }
+
+    /// <summary>In request order; the deprecated single ValueColumnId folds in when the list is empty.</summary>
+    private static List<Guid> ValueColumnIds(BarChartQueryDto dto)
+    {
+        if (dto.ValueColumnIds.Count > 0)
+        {
+            return dto.ValueColumnIds;
+        }
+        return dto.ValueColumnId is { } single ? new List<Guid> { single } : new List<Guid>();
+    }
+
+    /// <summary>Count reduces one implicit series (a null column); every other aggregate one series per known column.</summary>
+    private static List<DatasetColumn?> Measures(BarChartQueryDto dto, List<Guid> valueColumnIds, Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        if (dto.Aggregate == Aggregate.Count)
+        {
+            return new List<DatasetColumn?> { null };
+        }
+        return valueColumnIds
+            .Select(valueColumnId => columnsByRef.GetValueOrDefault(valueColumnId))
+            .Where(c => c is not null)
+            .ToList();
+    }
+
+    /// <summary>
+    /// A column sort ranks by any column's aggregate, plotted or not; a stale column falls back to the natural
+    /// order. Either way Descending can reverse it.
+    /// </summary>
+    private static async Task<List<string>> OrderCategoriesAsync(
+        IQueryable<DatasetRow> matching, ChartCategoryReader reader, Dictionary<string, ChartCategory> categories,
+        ChartSort sort, Dictionary<Guid, DatasetColumn> columnsByRef)
+    {
+        var naturalOrder = reader.NaturalOrder(categories.Values).Select(c => c.Key).ToList();
         if (sort.By == ChartSortBy.Column && sort.ColumnId is { } sortColumnRef
             && columnsByRef.GetValueOrDefault(sortColumnRef) is { } sortColumn)
         {
             var metrics = await CategorySorting.CategorySortMetricsAsync(matching, reader, sortColumn, sort.Aggregate);
-            orderedKeys = CategorySorting.OrderByMetric(naturalOrder, metrics, sort.Descending);
+            return CategorySorting.OrderByMetric(naturalOrder, metrics, sort.Descending);
         }
-        else
-        {
-            orderedKeys = sort.Descending ? Enumerable.Reverse(naturalOrder).ToList() : naturalOrder;
-        }
+        return sort.Descending ? Enumerable.Reverse(naturalOrder).ToList() : naturalOrder;
+    }
 
-        // Tooltip columns reduce the same way as the bars, keyed by (category, series).
-        var tooltipStats = new List<(ChartTooltipColumn Setting, DatasetColumn Column, Dictionary<(string Category, string Series), BarStats> Stats)>();
+    private static async Task<List<BarTooltipStats>> TooltipStatsAsync(
+        IQueryable<DatasetRow> matching, ChartCategoryReader reader, Dictionary<string, ChartCategory> categories, int seriesId,
+        BarChartQueryDto dto, Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> allColumns)
+    {
+        var tooltipStats = new List<BarTooltipStats>();
         foreach (var setting in dto.TooltipColumns)
         {
-            var column = ResolveTooltipColumn(setting, columnsByRef, dataset.Columns);
+            var column = TooltipColumns.Resolve(setting, columnsByRef, allColumns);
             if (column?.Type is not (DatasetColumnType.Int or DatasetColumnType.Double))
             {
                 continue;
             }
-            tooltipStats.Add((setting, column, await AggregateAsync(matching, reader, categories, false, seriesId, column.Id)));
+            var stats = await BarAggregation.AggregateAsync(matching, reader, categories, false, seriesId, column.Id);
+            tooltipStats.Add(new BarTooltipStats(setting, column, stats));
         }
+        return tooltipStats;
+    }
 
-        // Top N keeps the first N in the chosen order; "Other" merges the rest into one category.
-        if (sort.Limit is > 0 and var limit && orderedKeys.Count > limit)
+    /// <summary>Keeps the first N in order; with ShowOther the rest merge into one "Other" category.</summary>
+    private static List<string> ApplyTopN(
+        List<string> orderedKeys, ChartSort sort, Dictionary<string, ChartCategory> categories,
+        List<BarMeasureStats> perMeasure, List<BarTooltipStats> tooltipStats)
+    {
+        if (sort.Limit is not (> 0 and var limit) || orderedKeys.Count <= limit)
         {
-            var rest = orderedKeys.Skip(limit).ToHashSet();
-            orderedKeys = orderedKeys.Take(limit).ToList();
-            if (sort.ShowOther)
-            {
-                foreach (var (_, stats) in perMeasure)
-                {
-                    MergeIntoOther(stats, rest);
-                }
-                foreach (var (_, _, stats) in tooltipStats)
-                {
-                    MergeIntoOther(stats, rest);
-                }
-                categories[ChartCategory.OtherKey] = ChartCategory.Other;
-                orderedKeys.Add(ChartCategory.OtherKey);
-            }
+            return orderedKeys;
         }
 
+        var rest = orderedKeys.Skip(limit).ToHashSet();
+        var kept = orderedKeys.Take(limit).ToList();
+        if (sort.ShowOther)
+        {
+            foreach (var measure in perMeasure)
+            {
+                BarAggregation.MergeIntoOther(measure.Stats, rest);
+            }
+            foreach (var tooltip in tooltipStats)
+            {
+                BarAggregation.MergeIntoOther(tooltip.Stats, rest);
+            }
+            categories[ChartCategory.OtherKey] = ChartCategory.Other;
+            kept.Add(ChartCategory.OtherKey);
+        }
+        return kept;
+    }
+
+    /// <summary>One series per measure and split key, measure-major so a measure's split series sit together.</summary>
+    private static List<BarSeriesDto> Series(
+        List<BarMeasureStats> perMeasure, List<string> orderedKeys, List<BarTooltipStats> tooltipStats,
+        DatasetColumn? seriesColumn, Aggregate aggregate)
+    {
         var seriesKeys = perMeasure
             .SelectMany(m => m.Stats.Keys.Select(k => k.Series))
             .Distinct()
             .OrderBy(series => series, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var tooltipAggregate = aggregate == Aggregate.Count ? Aggregate.Sum : aggregate;
 
-        // One series per (measure × split key), measure-major so a measure's split series sit together.
-        var aggregate = dto.Aggregate;
-        var tooltipAggregate = isCount ? Aggregate.Sum : aggregate;
-        var series = perMeasure
+        return perMeasure
             .SelectMany(measure => seriesKeys
                 .Where(seriesKey => measure.Stats.Keys.Any(k => k.Series == seriesKey))
                 .Select(seriesKey => new BarSeriesDto
@@ -164,118 +196,8 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
                         .ToList(),
                     TooltipLines = tooltipStats.Count == 0
                         ? new List<List<string>>()
-                        : orderedKeys.Select(key => TooltipLines(tooltipStats, key, seriesKey, tooltipAggregate)).ToList()
+                        : orderedKeys.Select(key => BarTooltips.Lines(tooltipStats, key, seriesKey, tooltipAggregate)).ToList()
                 }))
             .ToList();
-
-        return new BarChartQueryResultDto
-        {
-            Id = resolved.Id,
-            Name = resolved.Name,
-            Categories = orderedKeys.Select(key => reader.Label(categories[key])).ToList(),
-            CategoryDetails = orderedKeys.Select(key => reader.Detail(categories[key])).ToList(),
-            Series = series,
-            ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds),
-            TotalRowCount = totalRowCount,
-            MatchedRowCount = matchedRowCount
-        };
     }
-
-    /// <summary>
-    /// Reduces one numeric column (or, for Count, every row) into stats per (category, series) — a
-    /// single SQL GROUP BY on the category's typed value, merged in memory into the reader's categories
-    /// (so a date period collects every day in it). Every category met is recorded in
-    /// <paramref name="categories"/>. Only rows carrying a number feed a non-count measure, so a
-    /// category with none simply doesn't appear for it.
-    /// </summary>
-    internal static async Task<Dictionary<(string Category, string Series), BarStats>> AggregateAsync(
-        IQueryable<DatasetRow> matching,
-        ChartCategoryReader reader,
-        Dictionary<string, ChartCategory> categories,
-        bool countRows,
-        int seriesId,
-        int valueId)
-    {
-        var rowsQuery = countRows
-            ? matching
-            : matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-
-        var categoryId = reader.Column.Id;
-        // Only a text column groups on its text; numbers and dates group on their typed value, so the
-        // same value written two ways ("5" and "5.0") is one category.
-        var textual = reader.Column.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
-
-        var projected = rowsQuery.Select(r => new BarProjection
-        {
-            Text = textual ? (r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-            Number = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.NumberValue).FirstOrDefault(),
-            Date = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.DateValue).FirstOrDefault(),
-            Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-            Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
-        });
-
-        var groups = await projected
-            .GroupBy(item => new { item.Text, item.Number, item.Date, item.Series })
-            .Select(g => new BarGroup
-            {
-                Text = g.Key.Text,
-                Number = g.Key.Number,
-                Date = g.Key.Date,
-                Series = g.Key.Series,
-                Count = g.Count(),
-                Sum = g.Sum(item => item.Value),
-                Min = g.Min(item => item.Value),
-                Max = g.Max(item => item.Value)
-            })
-            .ToListAsync();
-
-        var stats = new Dictionary<(string, string), BarStats>();
-        foreach (var group in groups)
-        {
-            var category = reader.Read(group.Text, group.Number, group.Date);
-            categories.TryAdd(category.Key, category);
-            var key = (category.Key, group.Series);
-            var groupStats = BarStats.From(group);
-            stats[key] = stats.TryGetValue(key, out var existing) ? existing.Merge(groupStats) : groupStats;
-        }
-        return stats;
-    }
-
-    /// <summary>Folds every category in <paramref name="rest"/> into the "Other" category, per series.</summary>
-    private static void MergeIntoOther(Dictionary<(string Category, string Series), BarStats> stats, HashSet<string> rest)
-    {
-        foreach (var key in stats.Keys.Where(k => rest.Contains(k.Category)).ToList())
-        {
-            var otherKey = (ChartCategory.OtherKey, key.Series);
-            stats[otherKey] = stats.TryGetValue(otherKey, out var other) ? other.Merge(stats[key]) : stats[key];
-            stats.Remove(key);
-        }
-    }
-
-    /// <summary>One bar's tooltip lines — each tooltip column's reduced value with its prefix/suffix, blanks skipped.</summary>
-    internal static List<string> TooltipLines(
-        List<(ChartTooltipColumn Setting, DatasetColumn Column, Dictionary<(string Category, string Series), BarStats> Stats)> tooltipStats,
-        string category,
-        string series,
-        Aggregate aggregate)
-    {
-        var lines = new List<string>();
-        foreach (var (setting, column, stats) in tooltipStats)
-        {
-            if (stats.TryGetValue((category, series), out var s) && s.Value(aggregate) is { } value)
-            {
-                var formatted = CellFormatter.Number(value, column.GetConfig() as NumericColumnConfig);
-                lines.Add($"{setting.Prefix}{formatted}{setting.Suffix}");
-            }
-        }
-        return lines;
-    }
-
-    /// <summary>A tooltip column by id, else — when it was picked from another dataset's schema — by its name here.</summary>
-    internal static DatasetColumn? ResolveTooltipColumn(
-        ChartTooltipColumn setting, Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> columns) =>
-        columnsByRef.GetValueOrDefault(setting.ColumnId)
-        ?? (string.IsNullOrWhiteSpace(setting.ColumnName)
-            ? null
-            : columns.FirstOrDefault(c => string.Equals(c.Name, setting.ColumnName, StringComparison.OrdinalIgnoreCase)));
 }
