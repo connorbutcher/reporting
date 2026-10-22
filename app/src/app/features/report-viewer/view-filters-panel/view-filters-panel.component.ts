@@ -1,17 +1,13 @@
 import { Component, computed, input, model, output, signal } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { PageFilterEntry } from '../filters/view-filter-entry';
+import { PageFilterRowComponent } from './page-filter-row/page-filter-row.component';
+import { WidgetFilterRowComponent } from './widget-filter-row/widget-filter-row.component';
+import { SharedLinkBannerComponent } from './shared-link-banner/shared-link-banner.component';
 import { ReportViewFilters } from '../filters/report-view-filters';
 import { SharedLinkState } from '../filters/shared-link-state';
+import { TabWidgets } from './tab-widgets';
 import { ViewWidgetFilters } from '../filters/view-widget-filters';
-import { PageFilterRowComponent } from './page-filter-row/page-filter-row.component';
-import { SharedLinkBannerComponent } from './shared-link-banner/shared-link-banner.component';
-import { WidgetFilterRowComponent } from './widget-filter-row/widget-filter-row.component';
-
-type TabWidgets = {
-  readonly tabName: string;
-  readonly items: readonly ViewWidgetFilters[];
-};
+import { PageFilterEntry } from '../filters/page-filter-entry';
 
 /** The viewer's filter panel: the page filters, then each widget's, grouped by tab. */
 @Component({

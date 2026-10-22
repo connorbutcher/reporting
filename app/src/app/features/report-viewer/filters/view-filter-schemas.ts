@@ -27,9 +27,27 @@ export class ViewFilterSchemas {
       .subscribe((catalogue) => this.operators.set(catalogue));
   }
 
+  private static filterableDatasetIds(content: ReportRevisionContent): Set<number> {
+    const ids = new Set<number>();
+    for (const widget of content.tabs.flatMap((tab) => tab.widgets)) {
+      if (widget.type === 'dataTable') {
+        if (widget.config.datasetId) {
+          ids.add(widget.config.datasetId);
+        }
+      } else if (WidgetCatalog.isChartWidget(widget)) {
+        for (const binding of ChartConfigs.bindings(widget.config)) {
+          if (binding.datasetId) {
+            ids.add(binding.datasetId);
+          }
+        }
+      }
+    }
+    return ids;
+  }
+
   /** Fetches the schema of each dataset a version's filterable widgets use, once each. */
   public load(content: ReportRevisionContent): void {
-    for (const datasetId of filterableDatasetIds(content)) {
+    for (const datasetId of ViewFilterSchemas.filterableDatasetIds(content)) {
       if (this.requested.has(datasetId)) {
         continue;
       }
@@ -39,22 +57,4 @@ export class ViewFilterSchemas {
       });
     }
   }
-}
-
-function filterableDatasetIds(content: ReportRevisionContent): Set<number> {
-  const ids = new Set<number>();
-  for (const widget of content.tabs.flatMap((tab) => tab.widgets)) {
-    if (widget.type === 'dataTable') {
-      if (widget.config.datasetId) {
-        ids.add(widget.config.datasetId);
-      }
-    } else if (WidgetCatalog.isChartWidget(widget)) {
-      for (const binding of ChartConfigs.bindings(widget.config)) {
-        if (binding.datasetId) {
-          ids.add(binding.datasetId);
-        }
-      }
-    }
-  }
-  return ids;
 }

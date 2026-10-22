@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
-import { ReportViewerStore, AsideTab } from '../report-viewer.store';
+import { ReportViewerStore } from '../report-viewer.store';
+import { AsideTab } from '../aside-tab';
 import { CommentsPanelComponent } from '../comments/comments-panel/comments-panel.component';
 import { ReportComments } from '../comments/report-comments';
 import { ViewFilterSession } from '../filters/view-filter-session';

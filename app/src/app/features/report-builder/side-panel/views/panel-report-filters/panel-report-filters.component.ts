@@ -3,6 +3,7 @@ import { ReportSession } from '../../../state/report-session';
 import { FilterBuilderComponent } from '../../filter-builder/filter-builder.component';
 import { PanelFilterReuseComponent } from '../panel-filter-reuse/panel-filter-reuse.component';
 import { DatasetChip } from './dataset-chip';
+import { Plural } from '../../../../../shared/text/plural';
 
 /** Report-level filters, one per dataset, applied to every widget on that dataset. */
 @Component({
@@ -33,8 +34,7 @@ export class PanelReportFiltersComponent {
     return this.datasetIds().map((id) => {
       const name = datasets.find((d) => d.id === id)?.name ?? 'Dataset';
       const count = model?.reportFilter(id)?.group.count() ?? 0;
-      const conditions =
-        count === 0 ? 'no conditions' : `${count} condition${count > 1 ? 's' : ''}`;
+      const conditions = count === 0 ? 'no conditions' : Plural.count(count, 'condition');
       return { id, name, count, label: `${name}, ${conditions}` };
     });
   });

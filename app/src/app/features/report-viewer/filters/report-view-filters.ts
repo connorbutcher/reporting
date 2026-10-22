@@ -2,10 +2,13 @@ import { Signal, computed } from '@angular/core';
 import { DatasetSchema } from '../../../core/models/dataset';
 import { FilterGroup, OperatorCatalogue, FilterTrees } from '../../../core/models/filter';
 import { ReportRevisionContent } from '../../../core/models/report';
-import { collectViewFilterEntries } from './view-filter-entries';
-import { PageFilterEntry, ViewFilterEntry, WidgetFilterEntry } from './view-filter-entry';
+import { ViewFilterEntryCollector } from './view-filter-entry-collector';
+import { PageFilterEntry } from './page-filter-entry';
+import { ViewFilterEntry } from './view-filter-entry';
+import { WidgetFilterEntry } from './widget-filter-entry';
 import { ViewFilterOverrides } from './view-filter-overrides';
-import { ViewWidgetFilters, groupWidgetEntries } from './view-widget-filters';
+import { ViewWidgetFilters } from './view-widget-filters';
+import { ViewWidgetFilterGroups } from './view-widget-filter-groups';
 
 /**
  * The filters a reader applies to a published report, layered over the author's. Each is an editable
@@ -61,16 +64,26 @@ export class ReportViewFilters {
     catalogue: Signal<OperatorCatalogue | null>,
     overrides: ViewFilterOverrides = {},
   ) {
-    const { pageEntries, widgetEntries } = collectViewFilterEntries(content, schemas, catalogue);
+    const { pageEntries, widgetEntries } = ViewFilterEntryCollector.collect(
+      content,
+      schemas,
+      catalogue,
+    );
     this.pageEntries = pageEntries;
     this.widgetEntries = widgetEntries;
-    this.widgetItems = groupWidgetEntries(widgetEntries);
+    this.widgetItems = ViewWidgetFilterGroups.group(widgetEntries);
     this.allEntries = [...pageEntries, ...widgetEntries];
     this.keys = new Set(this.allEntries.map((e) => e.key));
-    this.pageFilters = queryFilters(pageEntries);
-    this.widgetFilters = queryFilters(widgetEntries);
+    this.pageFilters = ReportViewFilters.queryFilters(pageEntries);
+    this.widgetFilters = ReportViewFilters.queryFilters(widgetEntries);
 
     this.apply(overrides);
+  }
+
+  private static queryFilters(
+    entries: readonly ViewFilterEntry[],
+  ): Map<string, Signal<FilterGroup | null>> {
+    return new Map(entries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
   }
 
   public reset(): void {
@@ -102,10 +115,4 @@ export class ReportViewFilters {
   public pageFilterFor(entry: ViewFilterEntry): FilterGroup | null {
     return this.pageFilters.get(String(entry.datasetId))?.() ?? null;
   }
-}
-
-function queryFilters(
-  entries: readonly ViewFilterEntry[],
-): Map<string, Signal<FilterGroup | null>> {
-  return new Map(entries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
 }

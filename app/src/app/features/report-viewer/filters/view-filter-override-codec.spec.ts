@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FilterGroup } from '../../../core/models/filter';
-import {
-  ViewFilterOverrides,
-  decodeViewFilterOverrides,
-  encodeViewFilterOverrides,
-} from './view-filter-overrides';
+import { ViewFilterOverrides } from './view-filter-overrides';
+import { ViewFilterOverrideCodec } from './view-filter-override-codec';
 
 const equals = (columnId: string, ...values: string[]): FilterGroup['children'][number] => ({
   kind: 'condition',
@@ -18,7 +15,7 @@ function group(join: 'and' | 'or', ...children: FilterGroup['children']): Filter
 }
 
 function roundTrip(overrides: ViewFilterOverrides): ViewFilterOverrides | null {
-  return decodeViewFilterOverrides(encodeViewFilterOverrides(overrides));
+  return ViewFilterOverrideCodec.decode(ViewFilterOverrideCodec.encode(overrides));
 }
 
 function encodeRaw(value: unknown): string {
@@ -27,12 +24,12 @@ function encodeRaw(value: unknown): string {
 
 describe('view filter overrides codec', () => {
   it('writes no param when there are no overrides', () => {
-    expect(encodeViewFilterOverrides({})).toBeNull();
+    expect(ViewFilterOverrideCodec.encode({})).toBeNull();
   });
 
   it('reads an absent param as no overrides', () => {
-    expect(decodeViewFilterOverrides(null)).toEqual({});
-    expect(decodeViewFilterOverrides('')).toEqual({});
+    expect(ViewFilterOverrideCodec.decode(null)).toEqual({});
+    expect(ViewFilterOverrideCodec.decode('')).toEqual({});
   });
 
   it('round-trips a group, keeping the join and operands', () => {
@@ -68,13 +65,13 @@ describe('view filter overrides codec', () => {
   });
 
   it('produces only URL-safe characters', () => {
-    const encoded = encodeViewFilterOverrides({ w1: group('and', equals('a', '???>>>~~~')) });
+    const encoded = ViewFilterOverrideCodec.encode({ w1: group('and', equals('a', '???>>>~~~')) });
     expect(encoded).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 
   it('is smaller than the raw DTO JSON', () => {
     const overrides = { w1: group('and', equals('status', 'Open'), equals('site', 'A')) };
-    expect(encodeViewFilterOverrides(overrides)!.length).toBeLessThan(
+    expect(ViewFilterOverrideCodec.encode(overrides)!.length).toBeLessThan(
       btoa(JSON.stringify(overrides)).length,
     );
   });
@@ -98,7 +95,7 @@ describe('view filter overrides codec', () => {
 
     for (const [name, raw] of Object.entries(malformed)) {
       it(`is rejected as a whole: ${name}`, () => {
-        expect(decodeViewFilterOverrides(raw)).toBeNull();
+        expect(ViewFilterOverrideCodec.decode(raw)).toBeNull();
       });
     }
 
@@ -107,12 +104,12 @@ describe('view filter overrides codec', () => {
       for (let i = 0; i < 20; i++) {
         nested = { j: 'a', c: [nested] };
       }
-      expect(decodeViewFilterOverrides(encodeRaw({ w1: nested }))).toBeNull();
+      expect(ViewFilterOverrideCodec.decode(encodeRaw({ w1: nested }))).toBeNull();
     });
 
     it('rejects the whole param when only one entry is bad', () => {
       const raw = encodeRaw({ w1: { j: 'a', c: [] }, w2: 'oops' });
-      expect(decodeViewFilterOverrides(raw)).toBeNull();
+      expect(ViewFilterOverrideCodec.decode(raw)).toBeNull();
     });
   });
 });

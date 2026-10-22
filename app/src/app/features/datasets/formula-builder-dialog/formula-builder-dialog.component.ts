@@ -21,6 +21,7 @@ import { FormulaInteraction } from './store/formula-interaction';
 import { FormulaLoader } from './store/formula-loader';
 import { FormulaSaver } from './store/formula-saver';
 import { FormulaSelection } from './store/formula-selection';
+import { Plural } from '../../../shared/text/plural';
 
 /**
  * Builds a formula column: lay out columns, values, functions and bare operator symbols in a row — and inside
@@ -117,7 +118,7 @@ export class FormulaBuilderDialogComponent {
       return { tone: 'idle', text: 'Empty' };
     }
     if (issues > 0) {
-      return { tone: 'bad', text: `${issues} problem${issues === 1 ? '' : 's'}` };
+      return { tone: 'bad', text: Plural.count(issues, 'problem') };
     }
     if (!this.store.serialized().complete) {
       return { tone: 'idle', text: 'Unfinished' };

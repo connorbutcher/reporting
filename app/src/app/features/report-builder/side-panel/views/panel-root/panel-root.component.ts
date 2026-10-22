@@ -2,6 +2,8 @@ import { Component, computed, inject } from '@angular/core';
 import { ReportSession } from '../../../state/report-session';
 import { PanelNavigation } from '../../../state/panel-navigation';
 import { PanelView } from '../../panel-view';
+import { Plural } from '../../../../../shared/text/plural';
+import { IssueSummary } from '../../../../../shared/text/issue-summary';
 
 @Component({
   selector: 'app-panel-root',
@@ -19,24 +21,13 @@ export class PanelRootComponent {
     if (count === 0) {
       return 'Applied per dataset to every widget on this report';
     }
-    return `${count} condition${count > 1 ? 's' : ''} across ${filters.filter((f) => f.group.count() > 0).length} dataset(s)`;
+    return `${Plural.count(count, 'condition')} across ${filters.filter((f) => f.group.count() > 0).length} dataset(s)`;
   });
 
   public readonly issueSummary = computed(() => {
     const errors = this.session.errors().length;
     const warnings = this.session.warnings().length;
-    if (!errors && !warnings) {
-      return 'No problems found';
-    }
-
-    const parts: string[] = [];
-    if (errors) {
-      parts.push(`${errors} error${errors > 1 ? 's' : ''}`);
-    }
-    if (warnings) {
-      parts.push(`${warnings} warning${warnings > 1 ? 's' : ''}`);
-    }
-    return parts.join(' · ');
+    return IssueSummary.both(errors, warnings) || 'No problems found';
   });
 
   private readonly session = inject(ReportSession);

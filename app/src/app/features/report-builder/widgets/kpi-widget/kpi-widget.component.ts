@@ -14,6 +14,7 @@ import { WidgetDataSource } from '../widget-data-source';
 import { DataWidgetBase } from '../data-widget-base';
 import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.component';
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
+import { Plural } from '../../../../shared/text/plural';
 
 /**
  * A headline number from a dataset (an aggregate, or rows failing a tolerance band), with optional
@@ -105,7 +106,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
         : `Based on first ${matched.toLocaleString()} rows (more exist)`;
     }
     const filtered = matched !== total;
-    const rowsText = `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
+    const rowsText = `${matched.toLocaleString()} ${Plural.of(matched, 'row')}`;
     return filtered ? `${matched.toLocaleString()} of ${total.toLocaleString()} rows` : rowsText;
   });
 
@@ -173,7 +174,7 @@ export class KpiWidgetComponent extends DataWidgetBase {
       case 'fixedTarget':
         return 'target';
       case 'previousPeriod':
-        return `previous ${config.periodDays} day${config.periodDays === 1 ? '' : 's'}`;
+        return `previous ${Plural.count(config.periodDays, 'day')}`;
       default:
         return '';
     }

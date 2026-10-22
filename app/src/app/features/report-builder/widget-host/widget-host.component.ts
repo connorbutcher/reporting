@@ -23,6 +23,7 @@ import { WidgetOutletDirective } from '../widgets/widget-outlet.directive';
 import { WidgetOutputHandler } from '../widgets/widget-output-handler';
 import { WidgetDragDirective } from './widget-drag.directive';
 import { WidgetResizeDirective } from './widget-resize.directive';
+import { Plural } from '../../../shared/text/plural';
 
 @Component({
   selector: 'app-widget-host',
@@ -60,7 +61,7 @@ export class WidgetHostComponent {
 
   public readonly issueLabel = computed(() => {
     const count = this.issues().length;
-    return `${count} issue${count === 1 ? '' : 's'} on this widget — click to review`;
+    return `${Plural.count(count, 'issue')} on this widget — click to review`;
   });
 
   public readonly gridColumn = computed(

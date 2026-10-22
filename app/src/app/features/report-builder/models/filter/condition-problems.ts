@@ -2,6 +2,7 @@ import { ValidationIssue } from '../validation-issue';
 import { FilterContext } from './filter-context';
 import { ConditionProblem } from './condition-problem';
 import { ConditionFacts } from './condition-facts';
+import { Plural } from '../../../../shared/text/plural';
 
 /** Finds what's wrong with a filter condition and words it for the row cue and the Issues panel. */
 export class ConditionProblems {
@@ -74,7 +75,7 @@ export class ConditionProblems {
           id: issueId,
           severity: 'error',
           title: `Filter on "${problem.columnName ?? 'a column'}" is missing a value`,
-          detail: `"${problem.operatorLabel}" needs ${problem.needed} value${problem.needed > 1 ? 's' : ''}.`,
+          detail: `"${problem.operatorLabel}" needs ${Plural.count(problem.needed, 'value')}.`,
           ...where,
         };
     }

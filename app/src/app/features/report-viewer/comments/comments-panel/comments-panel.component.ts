@@ -1,42 +1,11 @@
 import { Component, ElementRef, Signal, computed, inject, signal, viewChild } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { DirectoryUser } from '../../../../core/models/admin';
-import { WidgetComment } from '../../../../core/models/widget-comment/widget-comment.model';
-import { WidgetCommentAuthor } from '../../../../core/models/widget-comment/widget-comment-author.model';
-import { ReportViewerStore } from '../../report-viewer.store';
 import { ReportComments } from '../report-comments';
-
-/** One run of a comment's body: plain text, or an `@name` mention rendered as a chip. */
-type CommentPart = {
-  text: string;
-  isMention: boolean;
-};
-
-/** A thread comment with its body pre-split for rendering and its chart anchor, when it has one, pre-resolved. */
-type DisplayComment = WidgetComment & {
-  parts: CommentPart[];
-  anchor: { x: number; y: number; yAxisIndex?: number; label: string } | null;
-  /** Whether this comment's own anchor is the one currently drawing attention — on the chart or the comment card alike. */
-  isHighlighted: boolean;
-};
-
-/** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Splits a comment body into plain-text and mention runs, for highlighting `@name` inline. */
-function commentParts(body: string, mentions: readonly WidgetCommentAuthor[]): CommentPart[] {
-  if (mentions.length === 0) {
-    return [{ text: body, isMention: false }];
-  }
-  const tags = new Set(mentions.map((m) => `@${m.displayName}`));
-  const pattern = new RegExp(`(${[...tags].map(escapeRegExp).join('|')})`, 'g');
-  return body
-    .split(pattern)
-    .filter((s) => s.length > 0)
-    .map((s) => ({ text: s, isMention: tags.has(s) }));
-}
+import { DisplayComment } from './display-comment';
+import { WidgetCommentAuthor } from '../../../../core/models/widget-comment/widget-comment-author.model';
+import { DirectoryUser } from '../../../../core/models/admin';
+import { ReportViewerStore } from '../../report-viewer.store';
+import { CommentPart } from './comment-part';
 
 /**
  * The aside's Comments tab: the focused widget's thread, a composer with `@`-mention autocomplete,
@@ -85,7 +54,7 @@ export class CommentsPanelComponent {
       const widgetId = this.widgetId();
       return this.comments.comments().map((c) => ({
         ...c,
-        parts: commentParts(c.body, c.mentions),
+        parts: CommentsPanelComponent.commentParts(c.body, c.mentions),
         anchor:
           c.anchorX != null && c.anchorY != null
             ? {
@@ -118,6 +87,34 @@ export class CommentsPanelComponent {
         )
         .slice(0, 6);
     });
+  }
+
+  /** Characters a regex would otherwise treat specially, escaped so a display name is matched literally. */
+  private static escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /** Splits a comment body into plain-text and mention runs, for highlighting `@name` inline. */
+  private static commentParts(
+    body: string,
+    mentions: readonly WidgetCommentAuthor[],
+  ): CommentPart[] {
+    if (mentions.length === 0) {
+      return [{ text: body, isMention: false }];
+    }
+    const tags = new Set(mentions.map((m) => `@${m.displayName}`));
+    const pattern = new RegExp(
+      `(${[...tags].map(CommentsPanelComponent.escapeRegExp).join('|')})`,
+      'g',
+    );
+    return body
+      .split(pattern)
+      .filter((s) => s.length > 0)
+      .map((s) => ({ text: s, isMention: tags.has(s) }));
+  }
+
+  private static formatNumber(value: number): string {
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
   }
 
   public onComposerInput(value: string): void {
@@ -184,10 +181,6 @@ export class CommentsPanelComponent {
   }
 
   private anchorLabel(x: number, y: number): string {
-    return `${formatNumber(x)}, ${formatNumber(y)}`;
+    return `${CommentsPanelComponent.formatNumber(x)}, ${CommentsPanelComponent.formatNumber(y)}`;
   }
-}
-
-function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

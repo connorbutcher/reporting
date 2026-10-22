@@ -1,8 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { SharedLinkState } from '../../filters/shared-link-state';
-
-const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many);
+import { Plural } from '../../../../shared/text/plural';
 
 /** Says the filters on screen came from a shared link, and offers the two ways out. */
 @Component({
@@ -43,7 +42,7 @@ export class SharedLinkBannerComponent {
     if (unmatched === 0) {
       return '';
     }
-    return `${unmatched} of ${total} ${plural(total, 'filter', 'filters')} in it ${plural(unmatched, "doesn't", "don't")} apply to this version and ${plural(unmatched, 'was', 'were')} left out.`;
+    return `${unmatched} of ${total} ${Plural.of(total, 'filter', 'filters')} in it ${Plural.of(unmatched, "doesn't", "don't")} apply to this version and ${Plural.of(unmatched, 'was', 'were')} left out.`;
   });
 
   public readonly missingText = computed(() => {
@@ -51,6 +50,6 @@ export class SharedLinkBannerComponent {
     if (n === 0) {
       return '';
     }
-    return `${n} ${plural(n, 'condition in it tests a column', 'conditions in it test columns')} that no longer ${plural(n, 'exists', 'exist')}, so ${plural(n, 'it was', 'they were')} left out.`;
+    return `${n} ${Plural.of(n, 'condition in it tests a column', 'conditions in it test columns')} that no longer ${Plural.of(n, 'exists', 'exist')}, so ${Plural.of(n, 'it was', 'they were')} left out.`;
   });
 }

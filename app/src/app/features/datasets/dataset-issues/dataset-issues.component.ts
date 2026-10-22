@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { Popover } from 'primeng/popover';
 import { DatasetsStore } from '../datasets.store';
+import { IssueSummary } from '../../../shared/text/issue-summary';
 
 /**
  * The selected dataset's validation state, as a compact toolbar chip — the
@@ -34,12 +35,6 @@ export class DatasetIssuesComponent {
     const issues = this.issues();
     const errors = issues.filter((i) => i.severity === 'error').length;
     const warnings = issues.length - errors;
-    if (errors) {
-      return `${errors} error${errors > 1 ? 's' : ''}`;
-    }
-    if (warnings) {
-      return `${warnings} warning${warnings > 1 ? 's' : ''}`;
-    }
-    return 'No issues';
+    return IssueSummary.headline(errors, warnings);
   });
 }

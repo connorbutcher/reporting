@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { FilterBuilderComponent } from '../../../report-builder/side-panel/filter-builder/filter-builder.component';
-import { PageFilterEntry } from '../../filters/view-filter-entry';
+import { PageFilterEntry } from '../../filters/page-filter-entry';
 import { FilterRowHeaderComponent } from '../filter-row-header/filter-row-header.component';
 
 /** A dataset's page-level filter. */

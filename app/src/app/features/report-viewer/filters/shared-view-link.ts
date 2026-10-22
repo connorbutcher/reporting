@@ -9,19 +9,11 @@ import { ReportSharedView } from '../../../core/models/report';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportViewerStore } from '../report-viewer.store';
 
-const VIEW_PARAM = 'view';
-
-function viewParam(): Signal<string | null> {
-  const route = inject(ActivatedRoute);
-  return toSignal(route.queryParamMap.pipe(map((params) => params.get(VIEW_PARAM))), {
-    initialValue: route.snapshot.queryParamMap.get(VIEW_PARAM),
-  });
-}
-
 /** A shared filter snapshot named by the URL's `?view=<short id>`, and turning the reader's filters into one. */
 @Injectable()
 export class SharedViewLink {
-  public readonly id = viewParam();
+  private static readonly VIEW_PARAM = 'view';
+  public readonly id = SharedViewLink.viewParam();
 
   /** Undefined until the snapshot for the current id arrives; null when it doesn't exist. */
   public readonly filters = computed(() =>
@@ -56,6 +48,15 @@ export class SharedViewLink {
 
   /** The id the filters on screen reflect. A different one in the URL came from outside (back/forward). */
   private applied: string | null = null;
+  private static viewParam(): Signal<string | null> {
+    const route = inject(ActivatedRoute);
+    return toSignal(
+      route.queryParamMap.pipe(map((params) => params.get(SharedViewLink.VIEW_PARAM))),
+      {
+        initialValue: route.snapshot.queryParamMap.get(SharedViewLink.VIEW_PARAM),
+      },
+    );
+  }
 
   public markApplied(id: string | null): void {
     this.applied = id;
@@ -73,7 +74,7 @@ export class SharedViewLink {
     }
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { [VIEW_PARAM]: null },
+      queryParams: { [SharedViewLink.VIEW_PARAM]: null },
       queryParamsHandling: 'merge',
       preserveFragment: true,
       replaceUrl: true,
@@ -108,7 +109,7 @@ export class SharedViewLink {
   private linkTo(viewId: string | null): string {
     const tree = this.router.createUrlTree([], {
       relativeTo: this.route,
-      queryParams: { [VIEW_PARAM]: viewId },
+      queryParams: { [SharedViewLink.VIEW_PARAM]: viewId },
       queryParamsHandling: 'merge',
     });
     return new URL(

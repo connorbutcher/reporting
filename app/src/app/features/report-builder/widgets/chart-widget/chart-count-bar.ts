@@ -5,6 +5,7 @@ import {
 } from '../../../../core/models/widget-query';
 import { ChartCountBarContent } from './models/chart-count-bar-content';
 import { AnyChartResult } from './models/any-chart-result';
+import { Plural } from '../../../../shared/text/plural';
 
 export class ChartCountBar {
   /**
@@ -31,7 +32,7 @@ export class ChartCountBar {
       label = `Showing ${matched.toLocaleString()} of ${total.toLocaleString()} rows`;
       icon = 'pi-filter';
     } else {
-      label = `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
+      label = `${matched.toLocaleString()} ${Plural.of(matched, 'row')}`;
     }
 
     const excluded = (result as HistogramQueryResult).excludedCount ?? 0;

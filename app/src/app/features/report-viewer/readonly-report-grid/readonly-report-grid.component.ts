@@ -17,10 +17,7 @@ import { WidgetFullscreenDialogData } from '../../report-builder/widgets/widget-
 import { WidgetOutletDirective } from '../../report-builder/widgets/widget-outlet.directive';
 import { WidgetOutputHandler } from '../../report-builder/widgets/widget-output-handler';
 import { ReportComments } from '../comments/report-comments';
-import { chartBindingKey } from '../filters/view-filter-entry';
-
-/** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
-const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
+import { ViewFilterEntryFactory } from '../filters/view-filter-entry-factory';
 
 /** Renders a report's widgets on the grid with no drag, resize, or selection chrome. */
 @Component({
@@ -30,6 +27,8 @@ const NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
   styleUrl: './readonly-report-grid.component.scss',
 })
 export class ReadonlyReportGridComponent {
+  /** Shared by every widget the viewer can't filter, so its outlet keeps the same (empty) handlers. */
+  private static readonly NO_OUTPUTS: Record<string, WidgetOutputHandler> = {};
   readonly content = input.required<ReportRevisionContent>();
 
   /** The tab whose grid and widgets are shown; report-level filters still come from {@link content}. */
@@ -41,7 +40,7 @@ export class ReadonlyReportGridComponent {
   /**
    * Session overrides from the viewer's filter panel. Page filters are keyed by
    * the stringified dataset id; widget filters by widget id for a table, and by
-   * {@link chartBindingKey} for each chart binding. Left unset, the grid falls
+   * {@link ViewFilterEntryFactory.chartBindingKey} for each chart binding. Left unset, the grid falls
    * back to what the version published — so it still renders correctly on its own.
    *
    * Each value is a signal, not a plain `FilterGroup`, so reading only the one a
@@ -69,7 +68,7 @@ export class ReadonlyReportGridComponent {
    */
   protected outputsFor(widget: Widget): Record<string, WidgetOutputHandler> {
     if (!this.canFilter(widget)) {
-      return NO_OUTPUTS;
+      return ReadonlyReportGridComponent.NO_OUTPUTS;
     }
     let outputs = this.widgetOutputs.get(widget.id);
     if (!outputs) {
@@ -188,7 +187,9 @@ export class ReadonlyReportGridComponent {
     bindingId: string,
     published: FilterGroup | null,
   ): FilterGroup | null {
-    const override = this.widgetFilters()?.get(chartBindingKey(widgetId, bindingId));
+    const override = this.widgetFilters()?.get(
+      ViewFilterEntryFactory.chartBindingKey(widgetId, bindingId),
+    );
     return override ? override() : published;
   }
 

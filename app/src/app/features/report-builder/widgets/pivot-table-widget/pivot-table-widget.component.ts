@@ -29,6 +29,7 @@ import { PivotValueColumn } from './models/pivot-value-column';
 import { PivotColumnBlock } from './models/pivot-column-block';
 import { PivotSort } from './models/pivot-sort';
 import { PivotDisplayRow } from './models/pivot-display-row';
+import { Plural } from '../../../../shared/text/plural';
 
 @Component({
   selector: 'app-pivot-table-widget',
@@ -172,11 +173,11 @@ export class PivotTableWidgetComponent extends DataWidgetBase {
     const total = data.totalRowCount;
     const groupsText = data.rowsTruncated
       ? `Showing the first ${groups.toLocaleString()} groups`
-      : `${groups.toLocaleString()} group${groups === 1 ? '' : 's'}`;
+      : `${groups.toLocaleString()} ${Plural.of(groups, 'group')}`;
     const rowsText =
       matched !== total
         ? `${matched.toLocaleString()} of ${total.toLocaleString()} rows`
-        : `${matched.toLocaleString()} row${matched === 1 ? '' : 's'}`;
+        : `${matched.toLocaleString()} ${Plural.of(matched, 'row')}`;
     const columnsText = data.columnsTruncated
       ? ` · first ${data.columnKeys?.length ?? 0} columns`
       : '';

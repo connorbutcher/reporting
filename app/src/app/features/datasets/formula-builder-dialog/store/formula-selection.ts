@@ -11,6 +11,7 @@ import { FormulaCatalogue } from './formula-catalogue';
 import { FormulaDocument } from './formula-document';
 import { FormulaInteraction } from './formula-interaction';
 import { SelectMode } from './select-mode';
+import { Plural } from '../../../../shared/text/plural';
 
 /** Which items are selected, and what can be done with them: wrap, unwrap, delete, copy and paste. */
 @Injectable()
@@ -156,7 +157,7 @@ export class FormulaSelection {
     this.clipboard.set(range.items);
     const count = range.items.length;
     this.interaction.hint.set(
-      `Copied ${count} item${count === 1 ? '' : 's'}. Paste puts a copy after the selection, or at the end of the row you last used.`,
+      `Copied ${Plural.count(count, 'item')}. Paste puts a copy after the selection, or at the end of the row you last used.`,
     );
   }
 

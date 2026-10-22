@@ -216,12 +216,7 @@ export class DatasetColumnsPanelComponent {
       };
     }
 
-    const widgets = impact.breaks.filter((b) => b.kind === 'widget').length;
-    const filter = impact.breaks.some((b) => b.kind === 'reportFilter');
-    const what = [
-      ...(widgets > 0 ? [`${widgets} widget${widgets === 1 ? '' : 's'}`] : []),
-      ...(filter ? ['the report filter'] : []),
-    ].join(' and ');
+    const what = ColumnUsageDisplay.where(impact.breaks);
 
     return {
       title: 'Change would break widgets',

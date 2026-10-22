@@ -1,6 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-
-type SaveTone = 'ok' | 'pending' | 'error';
+import { SaveTone } from './save-tone';
 
 /**
  * Ambient indicator for a draft's autosave state — passive feedback the user never

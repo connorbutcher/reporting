@@ -1,29 +1,16 @@
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { debounceTime, filter } from 'rxjs';
-import { ReportRevisionContent } from '../../../core/models/report';
-import { NotificationService } from '../../../core/services/notification.service';
-import { ReportViewerStore } from '../report-viewer.store';
-import { SavedViewFilters } from './saved-view-filters';
-import { SharedLinkState } from './shared-link-state';
-import { SharedViewLink } from './shared-view-link';
 import { ReportViewFilters } from './report-view-filters';
-import {
-  ViewFilterOverrides,
-  decodeViewFilterOverrides,
-  encodeViewFilterOverrides,
-} from './view-filter-overrides';
+import { SharedLinkState } from './shared-link-state';
+import { ReportViewerStore } from '../report-viewer.store';
 import { ViewFilterSchemas } from './view-filter-schemas';
-
-/** Long enough that typing a value isn't one save per key. */
-const SETTLE_MS = 300;
-
-type StartingState = {
-  readonly overrides: ViewFilterOverrides;
-  readonly fromLink: boolean;
-  /** The URL named a link but fetching it failed (not the same as it not existing). */
-  readonly lookupFailed: boolean;
-};
+import { SavedViewFilters } from './saved-view-filters';
+import { SharedViewLink } from './shared-view-link';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ViewFilterOverrideCodec } from './view-filter-override-codec';
+import { ReportRevisionContent } from '../../../core/models/report';
+import { StartingState } from './starting-state';
 
 /**
  * The reader's filters for the report on screen. They start from a shared link's (`?view=<id>`),
@@ -32,6 +19,8 @@ type StartingState = {
  */
 @Injectable()
 export class ViewFilterSession {
+  /** Long enough that typing a value isn't one save per key. */
+  private static readonly SETTLE_MS = 300;
   /** Null until they can be seeded. */
   public readonly viewFilters = signal<ReportViewFilters | null>(null);
 
@@ -60,7 +49,7 @@ export class ViewFilterSession {
    */
   private readonly encodedFilters = computed(() => {
     const filters = this.viewFilters();
-    return filters?.ready() ? encodeViewFilterOverrides(filters.snapshot()) : undefined;
+    return filters?.ready() ? ViewFilterOverrideCodec.encode(filters.snapshot()) : undefined;
   });
 
   private builtFor: ReportRevisionContent | null = null;
@@ -98,14 +87,14 @@ export class ViewFilterSession {
       return;
     }
     this.link.drop();
-    filters.apply(decodeViewFilterOverrides(this.saved.encoded() ?? null) ?? {});
-    this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+    filters.apply(ViewFilterOverrideCodec.decode(this.saved.encoded() ?? null) ?? {});
+    this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
     this.linkOrigin.set(null);
   }
 
   public copyLink(): Promise<void> {
     const filters = this.viewFilters();
-    return this.link.copy(filters ? encodeViewFilterOverrides(filters.snapshot()) : null);
+    return this.link.copy(filters ? ViewFilterOverrideCodec.encode(filters.snapshot()) : null);
   }
 
   /** A new version means fresh filters. Seeding waits for what they start from, so widgets don't load unfiltered and then reload. */
@@ -171,7 +160,7 @@ export class ViewFilterSession {
         return;
       }
       untracked(() => {
-        this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+        this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
       });
     });
   }
@@ -200,7 +189,7 @@ export class ViewFilterSession {
     toObservable(this.encodedFilters)
       .pipe(
         filter((encoded) => encoded !== undefined),
-        debounceTime(SETTLE_MS),
+        debounceTime(ViewFilterSession.SETTLE_MS),
         takeUntilDestroyed(),
       )
       .subscribe(() => {
@@ -215,7 +204,7 @@ export class ViewFilterSession {
     const lookupFailed = this.link.lookupFailed();
     if (this.link.id()) {
       const encoded = this.link.filters();
-      const overrides = encoded ? decodeViewFilterOverrides(encoded) : null;
+      const overrides = encoded ? ViewFilterOverrideCodec.decode(encoded) : null;
       if (overrides) {
         return { overrides, fromLink: true, lookupFailed: false };
       }
@@ -227,13 +216,13 @@ export class ViewFilterSession {
       );
     }
     // Saved filters that no longer decode are dropped quietly: the reader didn't just hand them over, unlike a link.
-    const overrides = decodeViewFilterOverrides(this.saved.encoded() ?? null) ?? {};
+    const overrides = ViewFilterOverrideCodec.decode(this.saved.encoded() ?? null) ?? {};
     return { overrides, fromLink: false, lookupFailed };
   }
 
   /** Records what was just applied as "not yet edited", and what the banner should say. */
   private settle(filters: ReportViewFilters, start: StartingState): void {
-    this.editBaseline = encodeViewFilterOverrides(filters.snapshot());
+    this.editBaseline = ViewFilterOverrideCodec.encode(filters.snapshot());
     if (start.fromLink) {
       this.link.markApplied(this.link.id());
       this.linkOrigin.set({

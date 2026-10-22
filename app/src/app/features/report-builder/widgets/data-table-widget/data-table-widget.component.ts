@@ -43,6 +43,7 @@ import { WidgetCountBarComponent } from '../widget-count-bar/widget-count-bar.co
 import { WidgetStatusComponent } from '../widget-status/widget-status.component';
 import { DisplayColumn } from './display-column';
 import { ColumnTypes } from '../../models/column-types';
+import { Plural } from '../../../../shared/text/plural';
 
 @Component({
   selector: 'app-data-table-widget',
@@ -130,7 +131,7 @@ export class DataTableWidgetComponent extends DataWidgetBase {
     if (this.isFiltered()) {
       return `Showing ${matched} of ${this.totalRowCount().toLocaleString()} rows`;
     }
-    return `${matched} row${this.matchedRowCount() === 1 ? '' : 's'}`;
+    return `${matched} ${Plural.of(this.matchedRowCount(), 'row')}`;
   });
 
   public readonly rowDetails = computed(() => this.config().rowDetails !== false);

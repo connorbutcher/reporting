@@ -1,27 +1,10 @@
-import { Signal, computed } from '@angular/core';
-import { FilterGroup, FilterTrees } from '../../../core/models/filter';
-import { WidgetType } from '../../../core/models/report';
+import { Signal } from '@angular/core';
 import { FilterGroupModel } from '../../report-builder/models/filter';
-
-/** Session-filter key for one chart binding. */
-export function chartBindingKey(widgetId: string, bindingId: string): string {
-  return `${widgetId}::${bindingId}`;
-}
-
-export function describeConditions(total: number, active: number): string {
-  if (total === 0) {
-    return 'No conditions';
-  }
-  // Some switched off: say how many actually narrow the data.
-  if (active < total) {
-    return `${active} of ${total} active`;
-  }
-  return `${total} condition${total > 1 ? 's' : ''}`;
-}
+import { FilterGroup } from '../../../core/models/filter';
 
 /** One editable filter in the viewer's panel. */
 export type ViewFilterEntry = {
-  /** A dataset id (page filter) or widget id (widget filter; chart bindings use {@link chartBindingKey}). */
+  /** A dataset id (page filter) or widget id (widget filter; chart bindings use {@link ViewFilterEntryFactory.chartBindingKey}). */
   readonly key: string;
   readonly datasetId: number;
   readonly group: FilterGroupModel;
@@ -32,37 +15,3 @@ export type ViewFilterEntry = {
   readonly override: Signal<FilterGroup | null | undefined>;
   readonly summary: Signal<string>;
 };
-
-export type PageFilterEntry = ViewFilterEntry & {
-  readonly label: Signal<string>;
-};
-
-export type ViewFilterWidget = {
-  readonly id: string;
-  readonly title: string;
-  readonly type: WidgetType;
-  readonly icon: string;
-  readonly tabName: string;
-  /** Tells this filter from the widget's others: the series label, else the dataset name. */
-  readonly sourceLabel: Signal<string>;
-};
-
-export type WidgetFilterEntry = ViewFilterEntry & {
-  readonly widget: ViewFilterWidget;
-};
-
-type EntryInit = Pick<ViewFilterEntry, 'key' | 'datasetId' | 'group' | 'published'>;
-
-export function createViewFilterEntry<T extends object>(init: EntryInit & T): ViewFilterEntry & T {
-  const { group } = init;
-  const publishedKey = FilterTrees.key(init.published);
-  return {
-    ...init,
-    changed: computed(() => FilterTrees.key(group.toDto()) !== publishedKey),
-    override: computed(() => {
-      const finished = group.toCompleteDto();
-      return FilterTrees.key(finished) === publishedKey ? undefined : finished;
-    }),
-    summary: computed(() => describeConditions(group.count(), group.enabledCount())),
-  };
-}

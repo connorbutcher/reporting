@@ -1,20 +1,18 @@
-import { httpResource } from '@angular/common/http';
 import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
 import { map } from 'rxjs';
 import { ReportApiService } from '../../core/api/report-api.service';
+import { NotificationService } from '../../core/services/notification.service';
+import { UrlFragmentService } from '../../core/services/url-fragment.service';
+import { AsideTab } from './aside-tab';
 import {
   ReportRevisionContent,
   ReportSummary,
   ReportVersionSummary,
   WidgetFragment,
 } from '../../core/models/report';
-import { NotificationService } from '../../core/services/notification.service';
-import { UrlFragmentService } from '../../core/services/url-fragment.service';
-
-/** Which secondary pane the aside is showing. */
-export type AsideTab = 'filters' | 'history' | 'comments';
 
 /**
  * The report viewer's state: which report, version and tab are showing, and navigating to another

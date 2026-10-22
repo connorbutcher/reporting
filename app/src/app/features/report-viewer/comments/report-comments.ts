@@ -1,20 +1,13 @@
-import { httpResource } from '@angular/common/http';
 import { Injectable, Signal, computed, inject, linkedSignal, signal } from '@angular/core';
-import { ReportApiService } from '../../../core/api/report-api.service';
+import { httpResource } from '@angular/common/http';
+import { WidgetComment } from '../../../core/models/widget-comment/widget-comment.model';
 import { DirectoryUser } from '../../../core/models/admin';
 import { PendingCommentAnchor } from '../../../core/models/widget-comment/pending-comment-anchor.model';
-import { WidgetComment } from '../../../core/models/widget-comment/widget-comment.model';
-import { WidgetCommentAuthor } from '../../../core/models/widget-comment/widget-comment-author.model';
-import { NotificationService } from '../../../core/services/notification.service';
+import { CommentAnchorTarget } from './comment-anchor-target';
 import { ReportViewerStore } from '../report-viewer.store';
-
-/** Where a comment on a chart is pinned, shared between the panel and the chart that owns the point. */
-export type CommentAnchorTarget = {
-  widgetId: string;
-  x: number;
-  y: number;
-  yAxisIndex?: number;
-};
+import { ReportApiService } from '../../../core/api/report-api.service';
+import { NotificationService } from '../../../core/services/notification.service';
+import { WidgetCommentAuthor } from '../../../core/models/widget-comment/widget-comment-author.model';
 
 /**
  * Comments engineers leave on a widget while viewing a report: the focused widget's thread, the whole
