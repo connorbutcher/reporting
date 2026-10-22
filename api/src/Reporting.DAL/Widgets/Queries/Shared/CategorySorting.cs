@@ -8,7 +8,7 @@ namespace Reporting.DAL.Widgets;
 public static class CategorySorting
 {
     /// <summary>Ceiling on the extra (category, value) scan run purely to rank categories.</summary>
-    private const int MaxCategorySortScanRows = 200_000;
+    private const int MaxCategorySortScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>
     /// Sorting by the bound measure reuses the values already in <paramref name="projected"/>; any other
@@ -53,25 +53,15 @@ public static class CategorySorting
     {
         var categoryId = reader.Column.Id;
         var sortColumnId = sortColumn.Id;
-        var scanned = await matching
-            .OrderBy(r => r.Id)
+        var scanned = await CellPivot.Of(matching, categoryId, sortColumnId)
+            .OrderBy(p => p.RowId)
             .Take(MaxCategorySortScanRows)
-            .Select(r => new
-            {
-                Category = r.Cells
-                    .Where(c => c.ColumnId == categoryId)
-                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
-                    .FirstOrDefault(),
-                Value = r.Cells
-                    .Where(c => c.ColumnId == sortColumnId)
-                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
-                    .FirstOrDefault()
-            })
+            .Select(p => new { p.T0, p.N0, p.D0, p.T1, p.N1, p.D1 })
             .ToListAsync();
 
         var keyed = scanned.Select(row => (
-            Key: reader.Read(row.Category?.StringValue, row.Category?.NumberValue, row.Category?.DateValue).Key,
-            row.Value));
+            Key: reader.Read(row.T0, row.N0, row.D0).Key,
+            Value: new { StringValue = row.T1, NumberValue = row.N1, DateValue = row.D1 }));
 
         var metrics = new Dictionary<string, IComparable>();
         foreach (var group in keyed.GroupBy(row => row.Key))
@@ -79,7 +69,7 @@ public static class CategorySorting
             if (sortColumn.Type == DatasetColumnType.String)
             {
                 var texts = group
-                    .Select(row => row.Value?.StringValue)
+                    .Select(row => row.Value.StringValue)
                     .Where(text => !string.IsNullOrWhiteSpace(text))
                     .Select(text => text!.Trim())
                     .ToList();
@@ -91,10 +81,10 @@ public static class CategorySorting
             }
 
             var values = sortColumn.Type == DatasetColumnType.DateTime
-                ? group.Where(row => row.Value?.DateValue is not null)
-                    .Select(row => (row.Value!.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds).ToList()
-                : group.Where(row => row.Value?.NumberValue is not null)
-                    .Select(row => row.Value!.NumberValue!.Value).ToList();
+                ? group.Where(row => row.Value.DateValue is not null)
+                    .Select(row => (row.Value.DateValue!.Value - DateTime.UnixEpoch).TotalMilliseconds).ToList()
+                : group.Where(row => row.Value.NumberValue is not null)
+                    .Select(row => row.Value.NumberValue!.Value).ToList();
             if (values.Count > 0)
             {
                 metrics[group.Key] = ReduceForSort(values, aggregate);

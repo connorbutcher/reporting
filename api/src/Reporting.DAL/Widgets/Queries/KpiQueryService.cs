@@ -153,13 +153,8 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
             return (null, false);
         }
 
-        var scanned = await rows
-            .OrderBy(r => r.Id)
-            .Take(KpiRowScan.MaxRows + 1)
-            .Select(r => r.Cells.FirstOrDefault(c => c.ColumnId == column.Id)!.NumberValue)
-            .ToListAsync();
-        var truncated = ScanCapping.TrimToScanCap(scanned, KpiRowScan.MaxRows);
-        return (KpiReducers.ReduceAggregate(scanned, dto.Aggregate), truncated);
+        var stats = await KpiSqlAggregates.ValuesAsync(rows, column.Id);
+        return (stats?.Value(dto.Aggregate), false);
     }
 
     private async Task<(double? Value, bool Truncated)> ComputeToleranceAsync(

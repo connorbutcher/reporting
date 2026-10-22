@@ -15,5 +15,10 @@ public class DatasetCellConfiguration : IEntityTypeConfiguration<DatasetCell>
         builder.HasIndex(c => new { c.ColumnId, c.NumberValue }).HasFilter("[NumberValue] IS NOT NULL");
         builder.HasIndex(c => new { c.ColumnId, c.DateValue }).HasFilter("[DateValue] IS NOT NULL");
         builder.HasIndex(c => new { c.ColumnId, c.StringValue }).HasFilter("[StringValue] IS NOT NULL");
+
+        // Widgets read a few columns across every row; keyed by column then row and carrying every value,
+        // this reads just those cells in row order without a lookup back into the table.
+        builder.HasIndex(c => new { c.ColumnId, c.RowId })
+            .IncludeProperties(c => new { c.StringValue, c.NumberValue, c.DateValue, c.BoolValue });
     }
 }

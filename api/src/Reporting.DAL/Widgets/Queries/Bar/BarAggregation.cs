@@ -15,10 +15,7 @@ internal static class BarAggregation
         IQueryable<DatasetRow> matching, ChartCategoryReader reader, Dictionary<string, ChartCategory> categories,
         bool countRows, int seriesId, int valueId)
     {
-        var rowsQuery = countRows
-            ? matching
-            : matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-        var groups = await GroupAsync(rowsQuery, reader.Column, seriesId, valueId);
+        var groups = await GroupAsync(matching, reader.Column, countRows, seriesId, valueId);
 
         var stats = new Dictionary<(string, string), BarStats>();
         foreach (var group in groups)
@@ -43,20 +40,28 @@ internal static class BarAggregation
         }
     }
 
-    /// <summary>Only a text column groups on its text, so "5" and "5.0" in a number column are one category.</summary>
-    private static Task<List<BarGroup>> GroupAsync(IQueryable<DatasetRow> rows, DatasetColumn categoryColumn, int seriesId, int valueId)
+    /// <summary>
+    /// The needed cells pivoted in one pass (<see cref="CellPivot"/>), then grouped in SQL. Only a text column
+    /// groups on its text, so "5" and "5.0" in a number column are one category.
+    /// </summary>
+    private static Task<List<BarGroup>> GroupAsync(
+        IQueryable<DatasetRow> matching, DatasetColumn categoryColumn, bool countRows, int seriesId, int valueId)
     {
-        var categoryId = categoryColumn.Id;
         var textual = categoryColumn.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
+        var pivoted = CellPivot.Of(matching, categoryColumn.Id, seriesId, valueId);
+        if (!countRows)
+        {
+            pivoted = pivoted.Where(p => p.N2 != null);
+        }
 
-        return rows
-            .Select(r => new BarProjection
+        return pivoted
+            .Select(p => new BarProjection
             {
-                Text = textual ? (r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-                Number = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.NumberValue).FirstOrDefault(),
-                Date = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.DateValue).FirstOrDefault(),
-                Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
+                Text = textual ? (p.T0 ?? "").Trim() : "",
+                Number = p.N0,
+                Date = p.D0,
+                Series = (p.T1 ?? "").Trim(),
+                Value = p.N2
             })
             .GroupBy(item => new { item.Text, item.Number, item.Date, item.Series })
             .Select(g => new BarGroup

@@ -3,21 +3,35 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>Groups scanned rows into the row tree, reducing each node as a whole and per column key in one pass.</summary>
+/// <summary>Files rows (or SQL groups of rows) into the row tree, reducing each node as a whole and per column key.</summary>
 internal sealed class PivotTree(List<PivotField> rowFields, List<PivotField> columnFields, List<PivotMeasurePlan> measures)
 {
     public PivotNode Root { get; } = new(null, 0, string.Empty, null, measures);
 
     public Dictionary<string, PivotColumnKey> ColumnKeys { get; } = new();
 
-    public void Add(DatasetRow row)
+    public void AddRow(Dictionary<int, DatasetCell> cells)
     {
-        var cells = row.Cells.ToDictionary(c => c.ColumnId);
         var inputs = measures.Select(m => MeasureInput(m, cells)).ToArray();
+        Place(cells, acc => acc.Add(inputs));
+    }
+
+    /// <summary>A group of <paramref name="rowCount"/> rows SQL already reduced, keyed by measure column id.</summary>
+    public void AddGroup(Dictionary<int, DatasetCell> cells, int rowCount, Dictionary<int, BarStats> stats)
+    {
+        var reduced = measures
+            .Select(m => m.Column is not null && stats.TryGetValue(m.Column.Id, out var s) ? s : (BarStats?)null)
+            .ToArray();
+        Place(cells, acc => acc.AddReduced(rowCount, reduced));
+    }
+
+    /// <summary>Under its column key, and down the row fields from the root, adding to every node on the way.</summary>
+    private void Place(Dictionary<int, DatasetCell> cells, Action<PivotCellAcc> add)
+    {
         var columnKey = columnFields.Count > 0 ? TrackColumnKey(cells) : null;
 
         var node = Root;
-        Accumulate(node, columnKey, inputs);
+        Accumulate(node, columnKey, add);
         for (var depth = 0; depth < rowFields.Count; depth++)
         {
             var field = rowFields[depth];
@@ -29,7 +43,7 @@ internal sealed class PivotTree(List<PivotField> rowFields, List<PivotField> col
                 node.Children[value.Display] = child;
             }
             child.Tracker.Add(cell, value);
-            Accumulate(child, columnKey, inputs);
+            Accumulate(child, columnKey, add);
             node = child;
         }
     }
@@ -52,9 +66,9 @@ internal sealed class PivotTree(List<PivotField> rowFields, List<PivotField> col
         return columnKey;
     }
 
-    private void Accumulate(PivotNode node, string? columnKey, PivotMeasureInput[] inputs)
+    private void Accumulate(PivotNode node, string? columnKey, Action<PivotCellAcc> add)
     {
-        node.Total.Add(inputs);
+        add(node.Total);
         if (columnKey is null)
         {
             return;
@@ -64,7 +78,7 @@ internal sealed class PivotTree(List<PivotField> rowFields, List<PivotField> col
             cell = new PivotCellAcc(measures);
             node.ByColumn[columnKey] = cell;
         }
-        cell.Add(inputs);
+        add(cell);
     }
 
     /// <summary>The row's number for a measure, or for a distinct count its trimmed text. Count reads only the tally.</summary>

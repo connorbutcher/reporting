@@ -28,21 +28,21 @@ internal static class PointAggregation
         var xId = xColumn.Id;
         var yId = yColumn?.Id ?? 0;
         var seriesId = seriesColumn?.Id ?? 0;
-        var rows = PointAxes.RequireValue(matching, xId, xColumn.Type);
+        var textual = !PointAxes.IsNumeric(xColumn.Type);
+        var pivoted = CellPivot.Of(PointAxes.RequireValue(matching, xId, xColumn.Type), xId, seriesId, yId);
         if (aggregate != Aggregate.Count)
         {
-            rows = rows.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
+            pivoted = pivoted.Where(p => p.N2 != null);
         }
 
-        var textual = !PointAxes.IsNumeric(xColumn.Type);
-        return rows
-            .Select(r => new BarProjection
+        return pivoted
+            .Select(p => new BarProjection
             {
-                Text = textual ? (r.Cells.Where(c => c.ColumnId == xId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-                Number = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.NumberValue).FirstOrDefault(),
-                Date = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.DateValue).FirstOrDefault(),
-                Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-                Value = r.Cells.Where(c => c.ColumnId == yId).Select(c => c.NumberValue).FirstOrDefault()
+                Text = textual ? (p.T0 ?? "").Trim() : "",
+                Number = p.N0,
+                Date = p.D0,
+                Series = (p.T1 ?? "").Trim(),
+                Value = p.N2
             })
             .GroupBy(item => new { item.Text, item.Number, item.Date, item.Series })
             .Select(g => new BarGroup

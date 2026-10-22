@@ -32,4 +32,17 @@ public sealed class PivotCellAcc
             }
         }
     }
+
+    /// <summary>Adds a group of <paramref name="rows"/> rows already reduced in SQL, with each measure's reduction (null for Count, which reads only the tally).</summary>
+    public void AddReduced(int rows, BarStats?[] measures)
+    {
+        RowCount += rows;
+        for (var i = 0; i < measures.Length; i++)
+        {
+            if (measures[i] is { } stats)
+            {
+                Measures[i].AddReduced(stats);
+            }
+        }
+    }
 }

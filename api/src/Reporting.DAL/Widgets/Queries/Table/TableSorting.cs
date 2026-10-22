@@ -7,7 +7,8 @@ internal static class TableSorting
 {
     /// <summary>
     /// By the sort column's typed value, with the row id as tiebreak: paging needs a total order, or tied rows
-    /// can repeat or vanish across pages.
+    /// can repeat or vanish across pages. The sort column's cells are joined once rather than looked up per
+    /// row, so a deep page stays cheap; a row with no cell sorts as null.
     /// </summary>
     public static IQueryable<DatasetRow> Apply(IQueryable<DatasetRow> query, DatasetColumn? sortColumn, SortDirection direction)
     {
@@ -15,26 +16,30 @@ internal static class TableSorting
         {
             return query.OrderBy(r => r.Id);
         }
-        return ByColumn(query, sortColumn, direction == SortDirection.Desc).ThenBy(r => r.Id);
+
+        var sortId = sortColumn.Id;
+        var joined = query.SelectMany(
+            r => r.Cells.Where(c => c.ColumnId == sortId).DefaultIfEmpty(),
+            (r, c) => new SortedRow { Row = r, Cell = c });
+        return ByColumn(joined, sortColumn.Type, direction == SortDirection.Desc).ThenBy(x => x.Row.Id).Select(x => x.Row);
     }
 
-    private static IOrderedQueryable<DatasetRow> ByColumn(IQueryable<DatasetRow> query, DatasetColumn sortColumn, bool desc)
+    private static IOrderedQueryable<SortedRow> ByColumn(IQueryable<SortedRow> joined, DatasetColumnType type, bool desc)
     {
-        var sortId = sortColumn.Id;
-        return sortColumn.Type switch
+        return type switch
         {
             DatasetColumnType.Int or DatasetColumnType.Double => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.NumberValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.NumberValue),
+                ? joined.OrderByDescending(x => x.Cell!.NumberValue)
+                : joined.OrderBy(x => x.Cell!.NumberValue),
             DatasetColumnType.DateTime => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.DateValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.DateValue),
+                ? joined.OrderByDescending(x => x.Cell!.DateValue)
+                : joined.OrderBy(x => x.Cell!.DateValue),
             DatasetColumnType.Bool => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.BoolValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.BoolValue),
+                ? joined.OrderByDescending(x => x.Cell!.BoolValue)
+                : joined.OrderBy(x => x.Cell!.BoolValue),
             _ => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.StringValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.StringValue)
+                ? joined.OrderByDescending(x => x.Cell!.StringValue)
+                : joined.OrderBy(x => x.Cell!.StringValue)
         };
     }
 }

@@ -88,6 +88,23 @@ public class TableQueryTests : SqliteDbTestBase
     }
 
     [Fact]
+    public async Task Rows_without_a_value_in_the_sort_column_still_page_in()
+    {
+        var dataset = Seed(("A", 3), ("B", null), ("C", 1), ("D", null), ("E", 2));
+
+        var page = await Repo().QueryForTableAsync(dataset.Id, new TableQueryDto
+        {
+            Columns = Columns(),
+            SortColumnId = _costRef,
+            Take = 10,
+        });
+
+        // No cost sorts as null — first ascending — with the row id breaking the tie.
+        Assert.Equal(["B", "D", "C", "E", "A"], page!.Rows.Select(r => r.Cells[_nameRef].DisplayValue!));
+        Assert.Equal(5, page.MatchedRowCount);
+    }
+
+    [Fact]
     public async Task Unsorted_rows_come_back_in_insertion_order()
     {
         var dataset = Seed(("A", 1), ("B", 2), ("C", 3));

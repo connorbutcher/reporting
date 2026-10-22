@@ -8,13 +8,13 @@ namespace Reporting.DAL.Widgets;
 
 /// <summary>
 /// Rows grouped by the row fields (nested left to right), optionally spread across the column fields, with
-/// each cell reduced per measure. Cells are EAV, so the needed ones are pulled back (capped) and grouped in
-/// memory into a <see cref="PivotNode"/> tree that yields detail rows, subtotals and totals in one pass.
+/// each cell reduced per measure into a <see cref="PivotNode"/> tree that yields detail rows, subtotals and
+/// totals in one pass. SQL groups the rows when every measure allows it; otherwise they're streamed, capped.
 /// </summary>
 public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
 {
-    /// <summary>Every row must be pulled to be grouped in memory, so a runaway dataset is capped and flagged.</summary>
-    public const int MaxPivotScanRows = 200_000;
+    /// <summary>A streamed pivot pulls every row, so a runaway dataset is capped and flagged.</summary>
+    public const int MaxPivotScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>Stops a high-cardinality dimension fanning out; totals still reduce every scanned row.</summary>
     public const int MaxPivotRows = 2_000;
@@ -70,25 +70,47 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
         return result;
     }
 
-    /// <summary>Pulls only the cells the pivot reads, capped.</summary>
     private static async Task<PivotTree> BuildTreeAsync(IQueryable<DatasetRow> matching, PivotPlan plan, PivotQueryResultDto result)
     {
-        var neededIds = plan.NeededColumnIds();
-        var rows = await matching
-            .OrderBy(r => r.Id)
-            .Take(MaxPivotScanRows)
-            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
-        result.ScannedRowCount = rows.Count;
-        result.ScanTruncated = result.MatchedRowCount > MaxPivotScanRows;
-
         var tree = new PivotTree(plan.RowFields, plan.ColumnFields, plan.Measures);
-        foreach (var row in rows)
+        var fieldColumnIds = plan.RowFields.Concat(plan.ColumnFields).Select(f => f.Column.Id).Distinct().ToList();
+        if (PivotSqlGrouping.CanReduce(plan.Measures, fieldColumnIds.Count))
         {
-            tree.Add(row);
+            await AddSqlGroupsAsync(tree, matching, plan, fieldColumnIds, result);
+        }
+        else
+        {
+            await AddStreamedRowsAsync(tree, matching, plan, result);
         }
         return tree;
+    }
+
+    /// <summary>One row per distinct combination of field values comes back already reduced, so nothing is capped.</summary>
+    private static async Task AddSqlGroupsAsync(
+        PivotTree tree, IQueryable<DatasetRow> matching, PivotPlan plan, List<int> fieldColumnIds, PivotQueryResultDto result)
+    {
+        var measureColumnIds = plan.Measures.Where(m => m.Column is not null).Select(m => m.Column!.Id).Distinct().ToList();
+        var groups = await PivotSqlGrouping.ReduceAsync(matching, fieldColumnIds, measureColumnIds);
+        foreach (var (cells, rowCount, stats) in groups)
+        {
+            result.ScannedRowCount += rowCount;
+            tree.AddGroup(cells, rowCount, stats);
+        }
+    }
+
+    /// <summary>
+    /// A median or distinct count needs every value. Each row is folded into the tree as it arrives and then
+    /// dropped, so memory holds the groups, not the rows.
+    /// </summary>
+    private static async Task AddStreamedRowsAsync(
+        PivotTree tree, IQueryable<DatasetRow> matching, PivotPlan plan, PivotQueryResultDto result)
+    {
+        result.ScanTruncated = result.MatchedRowCount > MaxPivotScanRows;
+        await foreach (var cells in RowCellStream.ReadAsync(matching, plan.NeededColumnIds(), MaxPivotScanRows))
+        {
+            result.ScannedRowCount++;
+            tree.AddRow(cells);
+        }
     }
 
     /// <summary>The column keys across the top in their fields' natural order, capped. Returns the shown keys.</summary>

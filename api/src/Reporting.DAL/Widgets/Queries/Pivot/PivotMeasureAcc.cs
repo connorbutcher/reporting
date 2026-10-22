@@ -29,6 +29,25 @@ public sealed class PivotMeasureAcc(bool keepValues, bool keepDistinct)
         Values?.Add(value);
     }
 
+    /// <summary>Adds a reduction SQL already made over a group of values (none when <paramref name="stats"/> counts none).</summary>
+    public void AddReduced(BarStats stats)
+    {
+        if (stats.Count == 0)
+        {
+            return;
+        }
+        Sum += stats.Sum ?? 0;
+        Count += stats.Count;
+        if (stats.Min is { } min && min < Min)
+        {
+            Min = min;
+        }
+        if (stats.Max is { } max && max > Max)
+        {
+            Max = max;
+        }
+    }
+
     public void AddDistinct(string key)
     {
         Distinct?.Add(key);

@@ -1,21 +1,20 @@
-using Microsoft.EntityFrameworkCore;
 using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>Every row must be pulled into memory to aggregate or classify it, so scans are capped.</summary>
+/// <summary>Tolerance classification and sparklines pull rows into memory, so those scans are capped.</summary>
 internal static class KpiRowScan
 {
-    public const int MaxRows = 200_000;
+    public const int MaxRows = ScanCapping.MaxScanRows;
 
-    public static async Task<(List<DatasetRow> Rows, bool Truncated)> LoadAsync(IQueryable<DatasetRow> rows, HashSet<int> columnIds)
+    /// <summary>In row order, each row carrying only the cells in <paramref name="columnIds"/>.</summary>
+    public static async Task<(List<DatasetRow> Rows, bool Truncated)> LoadAsync(IQueryable<DatasetRow> rows, ICollection<int> columnIds)
     {
-        var scanned = await rows
-            .OrderBy(r => r.Id)
-            .Take(MaxRows + 1)
-            .Include(r => r.Cells.Where(c => columnIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
+        var scanned = new List<DatasetRow>();
+        await foreach (var cells in RowCellStream.ReadAsync(rows, columnIds, MaxRows + 1))
+        {
+            scanned.Add(new DatasetRow { Cells = cells.Values.ToList() });
+        }
         var truncated = ScanCapping.TrimToScanCap(scanned, MaxRows);
         return (scanned, truncated);
     }

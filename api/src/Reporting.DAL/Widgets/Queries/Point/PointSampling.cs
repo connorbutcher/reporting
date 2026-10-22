@@ -12,19 +12,15 @@ internal static class PointSampling
     /// </summary>
     public static async Task<List<int>> EvenIdsAsync(IQueryable<DatasetRow> rows, int xId, DatasetColumnType? xType, int count)
     {
-        var keyed = await rows
-            .Select(r => new
-            {
-                r.Id,
-                X = r.Cells.Where(c => c.ColumnId == xId).Select(c => new { c.StringValue, c.NumberValue, c.DateValue }).FirstOrDefault()
-            })
+        var keyed = await CellPivot.Of(rows, xId)
+            .Select(p => new { Id = p.RowId, p.T0, p.N0, p.D0 })
             .ToListAsync();
 
         var ordered = xType switch
         {
-            DatasetColumnType.String => keyed.OrderBy(r => r.X?.StringValue, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            DatasetColumnType.DateTime => keyed.OrderBy(r => r.X?.DateValue).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            _ => keyed.OrderBy(r => r.X?.NumberValue).ThenBy(r => r.Id).Select(r => r.Id).ToList()
+            DatasetColumnType.String => keyed.OrderBy(r => r.T0, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
+            DatasetColumnType.DateTime => keyed.OrderBy(r => r.D0).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
+            _ => keyed.OrderBy(r => r.N0).ThenBy(r => r.Id).Select(r => r.Id).ToList()
         };
         if (ordered.Count <= count)
         {

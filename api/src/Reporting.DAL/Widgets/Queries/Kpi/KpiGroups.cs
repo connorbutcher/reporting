@@ -12,6 +12,11 @@ internal static class KpiGroups
     public static async Task<(List<KpiGroupResultDto> Groups, bool Truncated)> BuildAsync(
         KpiReduction reduction, IQueryable<DatasetRow> rows, DatasetColumn groupColumn)
     {
+        if (reduction.Dto.ValueSource == KpiValueSource.Aggregate)
+        {
+            return await KpiSqlAggregates.GroupsAsync(reduction.Dto, rows, groupColumn, reduction.ValueColumn);
+        }
+
         var (scanned, scanTruncated) = await KpiRowScan.LoadAsync(rows, reduction.NeededColumnIds(groupColumn.Id));
         var groups = GroupByLabel(scanned, groupColumn);
 
@@ -52,7 +57,7 @@ internal static class KpiGroups
     }
 
     /// <summary>Formatted like a pivot dimension, with blank shown as "(blank)".</summary>
-    private static string Label(DatasetCell? cell, DatasetColumn column)
+    public static string Label(DatasetCell? cell, DatasetColumn column)
     {
         var display = cell is null ? null : CellFormatter.Format(cell, column.Type, column.GetConfig());
         return string.IsNullOrEmpty(display) ? "(blank)" : display;
