@@ -1,16 +1,10 @@
 namespace Reporting.Database;
 
-/// <summary>
-/// The content of a report at one point in time. A report has at most one
-/// <see cref="RevisionKind.Draft"/> revision (its checked-out working copy)
-/// and zero or more immutable <see cref="RevisionKind.Published"/> revisions,
-/// numbered sequentially per report.
-/// </summary>
+/// <summary>A report has at most one draft and any number of immutable published versions.</summary>
 public class ReportRevision
 {
     public int Id { get; set; }
 
-    /// <summary>Stable external/reference id. A revision is a distinct version, so this is unique per revision.</summary>
     public Guid RefId { get; set; }
 
     public int ReportId { get; set; }
@@ -20,25 +14,14 @@ public class ReportRevision
     public DateTime CreatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
 
-    /// <summary>Rich-text (HTML) description of what changed, entered when publishing. Null for drafts.</summary>
+    /// <summary>HTML; null for drafts.</summary>
     public string? Notes { get; set; }
 
-    /// <summary>
-    /// JSON-serialized report-level filters: one entry per dataset, applied to every
-    /// widget bound to that dataset. Stored as a blob for the same reason widget
-    /// configs are — it deep-copies with the revision for free on checkout/publish.
-    /// </summary>
+    /// <summary>One entry per dataset. A blob so it deep-copies with the revision.</summary>
     public string FiltersJson { get; set; } = "[]";
 
-    /// <summary>
-    /// The tabs belonging to this revision. Each owns its own grid dimensions and widgets.
-    /// A revision always has at least one. Deep-copied with the revision on checkout/publish.
-    /// </summary>
+    /// <summary>Always at least one.</summary>
     public List<Tab> Tabs { get; set; } = new();
 
-    /// <summary>
-    /// The datasets belonging to this revision. Deep-copied with the revision on checkout/publish
-    /// (like <see cref="Widgets"/>), so editing a draft's data never touches an already-published version.
-    /// </summary>
     public List<Dataset> Datasets { get; set; } = new();
 }

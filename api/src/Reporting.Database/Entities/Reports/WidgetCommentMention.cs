@@ -1,6 +1,6 @@
 namespace Reporting.Database;
 
-/// <summary>A user named with `@` in a <see cref="WidgetComment"/>, so they can be looked up without reparsing the body.</summary>
+/// <summary>An @-mention, stored so it can be found without reparsing the body.</summary>
 public class WidgetCommentMention
 {
     public int Id { get; set; }
