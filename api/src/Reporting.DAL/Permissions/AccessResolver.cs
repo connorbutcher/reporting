@@ -45,11 +45,14 @@ public static class AccessResolver
         return best;
     }
 
-    private static bool Matches(GrantLine grant, ICurrentUser user) => grant.SubjectType switch
+    private static bool Matches(GrantLine grant, ICurrentUser user)
     {
-        GrantSubjectType.Everyone => true,
-        GrantSubjectType.User => grant.SubjectId == user.Id,
-        GrantSubjectType.Group => grant.SubjectId is { } id && user.GroupIds.Contains(id),
-        _ => false
-    };
+        return grant.SubjectType switch
+        {
+            GrantSubjectType.Everyone => true,
+            GrantSubjectType.User => grant.SubjectId == user.Id,
+            GrantSubjectType.Group => grant.SubjectId is { } id && user.GroupIds.Contains(id),
+            _ => false
+        };
+    }
 }

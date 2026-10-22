@@ -69,8 +69,10 @@ public class FolderRepository(ReportingDbContext db)
     }
 
     /// <summary>The current parent of a folder (null if it sits at the root), for deciding whether an update is a move. Assumes the folder exists.</summary>
-    public async Task<int?> GetParentFolderIdAsync(int id) =>
-        await db.Folders.Where(f => f.Id == id).Select(f => f.ParentFolderId).FirstOrDefaultAsync();
+    public async Task<int?> GetParentFolderIdAsync(int id)
+    {
+        return await db.Folders.Where(f => f.Id == id).Select(f => f.ParentFolderId).FirstOrDefaultAsync();
+    }
 
     /// <summary>
     /// Whether <paramref name="name"/> is free among <paramref name="parentId"/>'s direct child folders

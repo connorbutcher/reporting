@@ -237,7 +237,10 @@ public class UserGroupAdminService(
 
     /// <summary>Whether the current user may create a new group — implied for a global admin via
     /// <see cref="AppPermissionService"/>'s "holds everything" short-circuit, so no separate admin check is needed.</summary>
-    private Task<bool> CanCreateGroupsAsync() => appPermissions.HasAsync(AppPermission.CreateGroups);
+    private Task<bool> CanCreateGroupsAsync()
+    {
+        return appPermissions.HasAsync(AppPermission.CreateGroups);
+    }
 
     // --- scope ------------------------------------------------------------
 

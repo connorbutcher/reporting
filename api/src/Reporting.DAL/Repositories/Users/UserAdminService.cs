@@ -212,21 +212,31 @@ public partial class UserAdminService(
     }
 
     /// <summary>The ids of every user holding the given app permission directly, so a list resolves each user's flag in memory.</summary>
-    private async Task<HashSet<int>> UserIdsWithPermissionAsync(AppPermission permission) =>
-        (await db.AppPermissionGrants
+    private async Task<HashSet<int>> UserIdsWithPermissionAsync(AppPermission permission)
+    {
+        return (await db.AppPermissionGrants
             .Where(g => g.Permission == permission)
             .Select(g => g.UserId)
             .ToListAsync())
         .ToHashSet();
+    }
 
     /// <summary>Whether the given user holds the given app permission directly.</summary>
-    private Task<bool> HasDirectPermissionAsync(int userId, AppPermission permission) =>
-        db.AppPermissionGrants.AnyAsync(g => g.Permission == permission && g.UserId == userId);
+    private Task<bool> HasDirectPermissionAsync(int userId, AppPermission permission)
+    {
+        return db.AppPermissionGrants.AnyAsync(g => g.Permission == permission && g.UserId == userId);
+    }
 
     /// <summary>Whether the given user holds a ManageUsers grant.</summary>
-    private Task<bool> HasDirectManageUsersAsync(int userId) => HasDirectPermissionAsync(userId, AppPermission.ManageUsers);
+    private Task<bool> HasDirectManageUsersAsync(int userId)
+    {
+        return HasDirectPermissionAsync(userId, AppPermission.ManageUsers);
+    }
 
-    private static bool IsValidEmail(string email) => email.Length > 0 && EmailPattern().IsMatch(email);
+    private static bool IsValidEmail(string email)
+    {
+        return email.Length > 0 && EmailPattern().IsMatch(email);
+    }
 
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
     private static partial Regex EmailPattern();

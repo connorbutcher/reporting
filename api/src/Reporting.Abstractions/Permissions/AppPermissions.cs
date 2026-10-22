@@ -4,11 +4,14 @@ namespace Reporting.Abstractions;
 public static class AppPermissions
 {
     /// <summary>How a permission is named in an access-denied message, e.g. "the manage-users permission".</summary>
-    public static string Describe(this AppPermission permission) => permission switch
+    public static string Describe(this AppPermission permission)
     {
-        AppPermission.GlobalAdmin => "global administrator status",
-        AppPermission.ManageUsers => "the manage-users permission",
-        AppPermission.CreateGroups => "the create-groups permission",
-        _ => $"the {permission} permission"
-    };
+        return permission switch
+        {
+            AppPermission.GlobalAdmin => "global administrator status",
+            AppPermission.ManageUsers => "the manage-users permission",
+            AppPermission.CreateGroups => "the create-groups permission",
+            _ => $"the {permission} permission"
+        };
+    }
 }

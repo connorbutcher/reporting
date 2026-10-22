@@ -71,8 +71,13 @@ public class ReportSharedViewService(ReportingDbContext db, ICurrentUserAccessor
         return new ReportSharedViewDto { Id = viewId, Filters = filters };
     }
 
-    private Task<ReportSharedView?> FindByHashAsync(int reportId, string hash) =>
-        db.ReportSharedViews.AsNoTracking().FirstOrDefaultAsync(v => v.ReportId == reportId && v.FiltersHash == hash);
+    private Task<ReportSharedView?> FindByHashAsync(int reportId, string hash)
+    {
+        return db.ReportSharedViews.AsNoTracking().FirstOrDefaultAsync(v => v.ReportId == reportId && v.FiltersHash == hash);
+    }
 
-    private static ReportSharedViewDto ToDto(ReportSharedView view) => new() { Id = view.ShortId, Filters = view.Filters };
+    private static ReportSharedViewDto ToDto(ReportSharedView view)
+    {
+        return new() { Id = view.ShortId, Filters = view.Filters };
+    }
 }

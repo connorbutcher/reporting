@@ -49,6 +49,8 @@ internal static class TextConditionTranslator
     }
 
     /// <summary>Keeps LIKE wildcards typed by the user from acting as wildcards.</summary>
-    private static string Escape(string value) =>
-        value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+    private static string Escape(string value)
+    {
+        return value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+    }
 }

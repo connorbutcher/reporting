@@ -18,8 +18,10 @@ public static class FilterTranslator
         FilterNodeDto? node,
         IReadOnlyDictionary<Guid, DatasetColumn> columnsById,
         IReadOnlyDictionary<Guid, ToleranceBounds?>? toleranceByColumn = null,
-        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null) =>
-        node is null ? null : Translate(node, new TranslationContext(columnsById, toleranceByColumn, operatorCatalogue));
+        IReadOnlyDictionary<DatasetColumnType, IReadOnlyList<FilterOperatorDto>>? operatorCatalogue = null)
+    {
+        return node is null ? null : Translate(node, new TranslationContext(columnsById, toleranceByColumn, operatorCatalogue));
+    }
 
     /// <summary>Narrows <paramref name="rows"/> to the matches, or returns them as they are when there's no filter. Every query applies its filter through this.</summary>
     public static IQueryable<DatasetRow> Apply(
@@ -33,16 +35,19 @@ public static class FilterTranslator
         return predicate is null ? rows : rows.Where(predicate);
     }
 
-    private static Expression<Func<DatasetRow, bool>>? Translate(FilterNodeDto node, TranslationContext context) => node switch
+    private static Expression<Func<DatasetRow, bool>>? Translate(FilterNodeDto node, TranslationContext context)
     {
-        FilterGroupDto group => TranslateGroup(group, context),
-        // Disabled conditions stay in the tree but never narrow rows.
-        FilterConditionDto { Enabled: false } => null,
-        FilterConditionDto c when ToleranceConditionTranslator.IsTolerance(c.Operator) =>
-            ToleranceConditionTranslator.Translate(c, context),
-        FilterConditionDto condition => ConditionTranslator.Translate(condition, context),
-        _ => throw new FilterException("Unknown filter node.")
-    };
+        return node switch
+        {
+            FilterGroupDto group => TranslateGroup(group, context),
+            // Disabled conditions stay in the tree but never narrow rows.
+            FilterConditionDto { Enabled: false } => null,
+            FilterConditionDto c when ToleranceConditionTranslator.IsTolerance(c.Operator) =>
+                ToleranceConditionTranslator.Translate(c, context),
+            FilterConditionDto condition => ConditionTranslator.Translate(condition, context),
+            _ => throw new FilterException("Unknown filter node.")
+        };
+    }
 
     private static Expression<Func<DatasetRow, bool>>? TranslateGroup(FilterGroupDto group, TranslationContext context)
     {

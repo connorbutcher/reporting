@@ -14,11 +14,14 @@ public abstract class DatasetColumnConfig
     [JsonIgnore]
     public abstract DatasetColumnConfigKind Kind { get; }
 
-    public static DatasetColumnConfigKind KindFor(DatasetColumnType type) => type switch
+    public static DatasetColumnConfigKind KindFor(DatasetColumnType type)
     {
-        DatasetColumnType.Int or DatasetColumnType.Double => DatasetColumnConfigKind.Numeric,
-        DatasetColumnType.DateTime => DatasetColumnConfigKind.Date,
-        DatasetColumnType.Bool => DatasetColumnConfigKind.Bool,
-        _ => DatasetColumnConfigKind.Text
-    };
+        return type switch
+        {
+            DatasetColumnType.Int or DatasetColumnType.Double => DatasetColumnConfigKind.Numeric,
+            DatasetColumnType.DateTime => DatasetColumnConfigKind.Date,
+            DatasetColumnType.Bool => DatasetColumnConfigKind.Bool,
+            _ => DatasetColumnConfigKind.Text
+        };
+    }
 }

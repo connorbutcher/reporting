@@ -53,8 +53,10 @@ public class ReportViewStateService(ReportingDbContext db, ICurrentUserAccessor 
         await Rows(userId, reportId).ExecuteDeleteAsync();
     }
 
-    private IQueryable<ReportViewState> Rows(int userId, int reportId) =>
-        db.ReportViewStates.Where(s => s.UserId == userId && s.ReportId == reportId);
+    private IQueryable<ReportViewState> Rows(int userId, int reportId)
+    {
+        return db.ReportViewStates.Where(s => s.UserId == userId && s.ReportId == reportId);
+    }
 
     private Task<int> UpdateAsync(int userId, int reportId, string filters)
     {

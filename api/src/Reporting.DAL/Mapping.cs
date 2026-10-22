@@ -21,71 +21,89 @@ public static class Mapping
         }
     };
 
-    public static FolderDto ToDto(this Folder folder) => new()
+    public static FolderDto ToDto(this Folder folder)
     {
-        Id = folder.Id,
-        Name = folder.Name,
-        ParentFolderId = folder.ParentFolderId,
-        ModifiedAt = folder.UpdatedAt
-    };
+        return new()
+        {
+            Id = folder.Id,
+            Name = folder.Name,
+            ParentFolderId = folder.ParentFolderId,
+            ModifiedAt = folder.UpdatedAt
+        };
+    }
 
     /// <summary>
     /// Assumes <see cref="Report.Revisions"/> is loaded. <paramref name="level"/> is the calling user's
     /// effective access: it gates <see cref="ReportSummaryDto.HasDraft"/> so only an editor learns a draft
     /// exists. <paramref name="isFavorite"/> is whether the caller has starred the report.
     /// </summary>
-    public static ReportSummaryDto ToSummaryDto(this Report report, AccessLevel level, bool isFavorite) => new()
+    public static ReportSummaryDto ToSummaryDto(this Report report, AccessLevel level, bool isFavorite)
     {
-        Id = report.Id,
-        Number = report.Number,
-        Name = report.Name,
-        FolderId = report.FolderId,
-        HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
-        LatestVersionNumber = report.LatestPublishedVersionNumber(),
-        AccessLevel = level,
-        IsFavorite = isFavorite,
-        ModifiedAt = report.UpdatedAt
-    };
+        return new()
+        {
+            Id = report.Id,
+            Number = report.Number,
+            Name = report.Name,
+            FolderId = report.FolderId,
+            HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+            LatestVersionNumber = report.LatestPublishedVersionNumber(),
+            AccessLevel = level,
+            IsFavorite = isFavorite,
+            ModifiedAt = report.UpdatedAt
+        };
+    }
 
     /// <summary>Assumes <see cref="Report.Revisions"/> is loaded. See <see cref="ToSummaryDto"/> for the parameters.</summary>
-    public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath, AccessLevel level, bool isFavorite) => new()
+    public static ReportSearchResultDto ToSearchResultDto(this Report report, string folderPath, AccessLevel level, bool isFavorite)
     {
-        Id = report.Id,
-        Number = report.Number,
-        Name = report.Name,
-        HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
-        LatestVersionNumber = report.LatestPublishedVersionNumber(),
-        AccessLevel = level,
-        IsFavorite = isFavorite,
-        ModifiedAt = report.UpdatedAt,
-        FolderPath = folderPath
-    };
+        return new()
+        {
+            Id = report.Id,
+            Number = report.Number,
+            Name = report.Name,
+            HasDraft = level >= AccessLevel.Editor && report.Revisions.Any(r => r.Kind == RevisionKind.Draft),
+            LatestVersionNumber = report.LatestPublishedVersionNumber(),
+            AccessLevel = level,
+            IsFavorite = isFavorite,
+            ModifiedAt = report.UpdatedAt,
+            FolderPath = folderPath
+        };
+    }
 
     /// <summary>The highest published version number, or null if the report has never been published.</summary>
-    public static int? LatestPublishedVersionNumber(this Report report) => report.Revisions
-        .Where(r => r.Kind == RevisionKind.Published)
-        .Select(r => r.VersionNumber)
-        .DefaultIfEmpty(null)
-        .Max();
-
-    public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report) => new()
+    public static int? LatestPublishedVersionNumber(this Report report)
     {
-        ReportId = report.Id,
-        Name = report.Name,
-        Tabs = revision.Tabs.OrderBy(t => t.Order).Select(t => t.ToDto()).ToList(),
-        Notes = revision.Notes,
-        Filters = revision.GetFilters()
-    };
+        return report.Revisions
+            .Where(r => r.Kind == RevisionKind.Published)
+            .Select(r => r.VersionNumber)
+            .DefaultIfEmpty(null)
+            .Max();
+    }
 
-    public static TabDto ToDto(this Tab tab) => new()
+    public static ReportRevisionDto ToContentDto(this ReportRevision revision, Report report)
     {
-        Id = tab.RefId,
-        Name = tab.Name,
-        Order = tab.Order,
-        Columns = tab.Columns,
-        Rows = tab.Rows,
-        Widgets = tab.Widgets.Select(w => w.ToDto()).ToList()
-    };
+        return new()
+        {
+            ReportId = report.Id,
+            Name = report.Name,
+            Tabs = revision.Tabs.OrderBy(t => t.Order).Select(t => t.ToDto()).ToList(),
+            Notes = revision.Notes,
+            Filters = revision.GetFilters()
+        };
+    }
+
+    public static TabDto ToDto(this Tab tab)
+    {
+        return new()
+        {
+            Id = tab.RefId,
+            Name = tab.Name,
+            Order = tab.Order,
+            Columns = tab.Columns,
+            Rows = tab.Rows,
+            Widgets = tab.Widgets.Select(w => w.ToDto()).ToList()
+        };
+    }
 
     /// <summary>Applies a tab's own fields (not its widgets — the repository diffs those by RefId).</summary>
     public static void ApplyTo(this TabDto dto, Tab tab)
@@ -117,26 +135,34 @@ public static class Mapping
         }
     }
 
-    public static void SetFilters(this ReportRevision revision, List<ReportFilterDto> filters) =>
+    public static void SetFilters(this ReportRevision revision, List<ReportFilterDto> filters)
+    {
         revision.FiltersJson = JsonSerializer.Serialize(filters, ConfigJsonOptions);
+    }
 
-    public static ReportVersionSummaryDto ToVersionSummaryDto(this ReportRevision revision) => new()
+    public static ReportVersionSummaryDto ToVersionSummaryDto(this ReportRevision revision)
     {
-        VersionNumber = revision.VersionNumber!.Value,
-        PublishedAt = revision.PublishedAt!.Value,
-        Notes = revision.Notes
-    };
+        return new()
+        {
+            VersionNumber = revision.VersionNumber!.Value,
+            PublishedAt = revision.PublishedAt!.Value,
+            Notes = revision.Notes
+        };
+    }
 
-    public static WidgetDto ToDto(this Widget widget) => new()
+    public static WidgetDto ToDto(this Widget widget)
     {
-        Id = widget.RefId,
-        Type = widget.Type,
-        X = widget.X,
-        Y = widget.Y,
-        W = widget.W,
-        H = widget.H,
-        Config = JsonSerializer.Deserialize<WidgetConfig>(widget.ConfigJson, ConfigJsonOptions)!
-    };
+        return new()
+        {
+            Id = widget.RefId,
+            Type = widget.Type,
+            X = widget.X,
+            Y = widget.Y,
+            W = widget.W,
+            H = widget.H,
+            Config = JsonSerializer.Deserialize<WidgetConfig>(widget.ConfigJson, ConfigJsonOptions)!
+        };
+    }
 
     public static void ApplyTo(this WidgetDto dto, Widget widget)
     {
@@ -209,35 +235,44 @@ public static class Mapping
         return map.TryGetValue(id, out var mapped) ? mapped : id;
     }
 
-    public static DatasetSourceDto ToDto(this DatasetSource source) => new()
+    public static DatasetSourceDto ToDto(this DatasetSource source)
     {
-        Id = source.Id,
-        Key = source.Key,
-        Name = source.Name
-    };
+        return new()
+        {
+            Id = source.Id,
+            Key = source.Key,
+            Name = source.Name
+        };
+    }
 
     /// <summary>Assumes <see cref="Dataset.Source"/> is loaded.</summary>
-    public static DatasetSummaryDto ToSummaryDto(this Dataset dataset) => new()
+    public static DatasetSummaryDto ToSummaryDto(this Dataset dataset)
     {
-        Id = dataset.Id,
-        Name = dataset.Name,
-        Source = dataset.Source!.Key
-    };
+        return new()
+        {
+            Id = dataset.Id,
+            Name = dataset.Name,
+            Source = dataset.Source!.Key
+        };
+    }
 
     /// <summary>
     /// Assumes <see cref="Dataset.Source"/> and <see cref="Dataset.Columns"/> are loaded.
     /// <paramref name="columnsOverride"/> shows different columns than the dataset's own — for a
     /// filtered dataset, whose schema is inherited from whatever it resolves to.
     /// </summary>
-    public static DatasetSchemaDto ToSchemaDto(this Dataset dataset, IEnumerable<DatasetColumn>? columnsOverride = null) => new()
+    public static DatasetSchemaDto ToSchemaDto(this Dataset dataset, IEnumerable<DatasetColumn>? columnsOverride = null)
     {
-        Id = dataset.Id,
-        Name = dataset.Name,
-        SourceId = dataset.DatasetSourceId,
-        Source = dataset.Source!.Key,
-        SourceConfig = dataset.GetSourceConfig(),
-        Columns = (columnsOverride ?? dataset.Columns).OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
-    };
+        return new()
+        {
+            Id = dataset.Id,
+            Name = dataset.Name,
+            SourceId = dataset.DatasetSourceId,
+            Source = dataset.Source!.Key,
+            SourceConfig = dataset.GetSourceConfig(),
+            Columns = (columnsOverride ?? dataset.Columns).OrderBy(c => c.Order).Select(c => c.ToDto()).ToList()
+        };
+    }
 
     /// <summary>
     /// The dataset's source configuration, deserialized from its blob. A blank blob (a freshly
@@ -266,8 +301,10 @@ public static class Mapping
         return DatasetSourceConfigs.Default(dataset.Source!.Key);
     }
 
-    public static void SetSourceConfig(this Dataset dataset, DatasetSourceConfig config) =>
+    public static void SetSourceConfig(this Dataset dataset, DatasetSourceConfig config)
+    {
         dataset.SourceConfigJson = JsonSerializer.Serialize(config, typeof(DatasetSourceConfig), ConfigJsonOptions);
+    }
 
     /// <summary>
     /// Deserializes a dataset's source-config blob without needing <see cref="Dataset.Source"/>
@@ -287,16 +324,19 @@ public static class Mapping
         }
     }
 
-    public static DatasetColumnDto ToDto(this DatasetColumn column) => new()
+    public static DatasetColumnDto ToDto(this DatasetColumn column)
     {
-        Id = column.RefId,
-        Name = column.Name,
-        Type = column.Type,
-        Order = column.Order,
-        Formula = column.FormulaExpression,
-        FormulaError = column.FormulaError,
-        Configuration = column.GetConfig()
-    };
+        return new()
+        {
+            Id = column.RefId,
+            Name = column.Name,
+            Type = column.Type,
+            Order = column.Order,
+            Formula = column.FormulaExpression,
+            FormulaError = column.FormulaError,
+            Configuration = column.GetConfig()
+        };
+    }
 
     /// <summary>
     /// The column's typed display configuration, deserialized into the concrete shape its
@@ -328,11 +368,15 @@ public static class Mapping
         return DatasetColumnConfigs.Default(column.Type);
     }
 
-    public static void SetConfig(this DatasetColumn column, DatasetColumnConfig config) =>
+    public static void SetConfig(this DatasetColumn column, DatasetColumnConfig config)
+    {
         column.ConfigurationJson = JsonSerializer.Serialize(config, typeof(DatasetColumnConfig), ConfigJsonOptions);
+    }
 
-    public static DatasetDataDto ToDataDto(this Dataset dataset) =>
-        BuildDataDto(dataset, dataset.Rows);
+    public static DatasetDataDto ToDataDto(this Dataset dataset)
+    {
+        return BuildDataDto(dataset, dataset.Rows);
+    }
 
     /// <summary>The same shape as <see cref="ToDataDto"/> but over an already-narrowed row set.</summary>
     public static DatasetDataDto BuildDataDto(Dataset dataset, IEnumerable<DatasetRow> rows)
@@ -348,13 +392,16 @@ public static class Mapping
 
     /// <summary>Assumes <see cref="DatasetRow.Cells"/> is loaded. Cells are keyed by their column's
     /// stable RefId, resolved via <paramref name="columnRefById"/> (column int id → RefId).</summary>
-    public static DatasetRowDto ToDto(this DatasetRow row, IReadOnlyDictionary<int, Guid> columnRefById) => new()
+    public static DatasetRowDto ToDto(this DatasetRow row, IReadOnlyDictionary<int, Guid> columnRefById)
     {
-        Id = row.RefId,
-        // Cells with no text carry no information the client can use, and leaving
-        // them out keeps the payload identical to the old JSON-blob shape.
-        Values = row.Cells
-            .Where(c => c.StringValue is not null && columnRefById.ContainsKey(c.ColumnId))
-            .ToDictionary(c => columnRefById[c.ColumnId], c => c.StringValue!)
-    };
+        return new()
+        {
+            Id = row.RefId,
+            // Cells with no text carry no information the client can use, and leaving
+            // them out keeps the payload identical to the old JSON-blob shape.
+            Values = row.Cells
+                .Where(c => c.StringValue is not null && columnRefById.ContainsKey(c.ColumnId))
+                .ToDictionary(c => columnRefById[c.ColumnId], c => c.StringValue!)
+        };
+    }
 }

@@ -12,8 +12,10 @@ namespace Reporting.DAL.Filtering;
 /// </summary>
 internal static class ToleranceConditionTranslator
 {
-    public static bool IsTolerance(FilterOperator op) =>
-        op is FilterOperator.InTolerance or FilterOperator.NeedsConcession or FilterOperator.OutOfTolerance;
+    public static bool IsTolerance(FilterOperator op)
+    {
+        return op is FilterOperator.InTolerance or FilterOperator.NeedsConcession or FilterOperator.OutOfTolerance;
+    }
 
     /// <returns>Null when no banding is resolved for the column: the check can't be evaluated, so it narrows nothing rather than blanking the data.</returns>
     public static Expression<Func<DatasetRow, bool>>? Translate(FilterConditionDto condition, TranslationContext context)

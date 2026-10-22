@@ -58,11 +58,13 @@ public class DatasetResolver(ReportingDbContext db)
         return new ResolvedDataset(requested.Id, requested.Name, current, mandatory);
     }
 
-    private Task<Dataset?> LoadAsync(int id) =>
-        db.Datasets.AsNoTracking()
+    private Task<Dataset?> LoadAsync(int id)
+    {
+        return db.Datasets.AsNoTracking()
             .Include(d => d.Source)
             .Include(d => d.Columns)
             .FirstOrDefaultAsync(d => d.Id == id);
+    }
 
     /// <summary>
     /// Whether pointing <paramref name="datasetId"/> at <paramref name="candidateBaseId"/> would

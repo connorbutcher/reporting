@@ -16,8 +16,10 @@ public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor cu
 {
     private HashSet<AppPermission>? cached;
 
-    public async Task<bool> HasAsync(AppPermission permission) =>
-        (await LoadAsync()).Contains(permission);
+    public async Task<bool> HasAsync(AppPermission permission)
+    {
+        return (await LoadAsync()).Contains(permission);
+    }
 
     /// <summary>Throws <see cref="AccessDeniedException"/> (→ 403) naming the permission when the current user lacks it.</summary>
     public async Task RequireAsync(AppPermission permission)
@@ -28,8 +30,10 @@ public class AppPermissionService(ReportingDbContext db, ICurrentUserAccessor cu
         }
     }
 
-    public async Task<IReadOnlyCollection<AppPermission>> ForCurrentUserAsync() =>
-        (await LoadAsync()).ToList();
+    public async Task<IReadOnlyCollection<AppPermission>> ForCurrentUserAsync()
+    {
+        return (await LoadAsync()).ToList();
+    }
 
     private async Task<HashSet<AppPermission>> LoadAsync()
     {

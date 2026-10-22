@@ -26,12 +26,14 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
     }
 
     /// <summary>A report's comment count per widget, for the viewer's footer pills — one request rather than one per widget.</summary>
-    public async Task<Dictionary<Guid, int>> GetCountsAsync(int reportId) =>
-        await db.WidgetComments
+    public async Task<Dictionary<Guid, int>> GetCountsAsync(int reportId)
+    {
+        return await db.WidgetComments
             .Where(c => c.ReportId == reportId)
             .GroupBy(c => c.WidgetRefId)
             .Select(g => new { WidgetRefId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.WidgetRefId, g => g.Count);
+    }
 
     /// <exception cref="DataValidationException">An empty or oversized body (a 400).</exception>
     public async Task<WidgetCommentDto> CreateAsync(int reportId, Guid widgetRefId, CreateWidgetCommentDto dto)
@@ -77,8 +79,10 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
             .ExecuteDeleteAsync();
     }
 
-    private IQueryable<WidgetComment> Rows(int reportId, Guid widgetRefId) =>
-        db.WidgetComments.Where(c => c.ReportId == reportId && c.WidgetRefId == widgetRefId);
+    private IQueryable<WidgetComment> Rows(int reportId, Guid widgetRefId)
+    {
+        return db.WidgetComments.Where(c => c.ReportId == reportId && c.WidgetRefId == widgetRefId);
+    }
 
     /// <summary>Every author and mentioned user the given comments reference, by user id — no navigation property joins them, so this is a separate lookup.</summary>
     private async Task<Dictionary<int, WidgetCommentAuthorDto>> AuthorsByUserIdAsync(List<WidgetComment> comments)
@@ -91,8 +95,9 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
             .ToDictionaryAsync(u => u.Id, u => new WidgetCommentAuthorDto { Id = u.RefId, DisplayName = u.DisplayName });
     }
 
-    private static WidgetCommentDto ToDto(WidgetComment c, Dictionary<int, WidgetCommentAuthorDto> authors, int currentUserId) =>
-        new()
+    private static WidgetCommentDto ToDto(WidgetComment c, Dictionary<int, WidgetCommentAuthorDto> authors, int currentUserId)
+    {
+        return new()
         {
             Id = c.Id,
             Author = authors.GetValueOrDefault(c.AuthorUserId) ?? new WidgetCommentAuthorDto(),
@@ -106,4 +111,5 @@ public class WidgetCommentService(ReportingDbContext db, ICurrentUserAccessor cu
                 .Select(m => authors.GetValueOrDefault(m.UserId) ?? new WidgetCommentAuthorDto())
                 .ToList(),
         };
+    }
 }

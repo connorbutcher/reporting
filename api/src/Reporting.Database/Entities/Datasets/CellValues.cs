@@ -6,8 +6,10 @@ namespace Reporting.Database;
 /// <summary>Parses raw cell text. Filter operands use the same helpers so they can't disagree with stored data.</summary>
 public static class CellValues
 {
-    public static bool TryParseNumber(string? raw, out double value) =>
-        double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+    public static bool TryParseNumber(string? raw, out double value)
+    {
+        return double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+    }
 
     public static bool TryParseBool(string? raw, out bool value)
     {
@@ -30,12 +32,14 @@ public static class CellValues
         }
     }
 
-    public static bool TryParseDate(string? raw, out DateTime value) =>
-        DateTime.TryParse(
+    public static bool TryParseDate(string? raw, out DateTime value)
+    {
+        return DateTime.TryParse(
             raw,
             CultureInfo.InvariantCulture,
             DateTimeStyles.RoundtripKind | DateTimeStyles.AllowWhiteSpaces,
             out value);
+    }
 
     public static void Apply(DatasetCell cell, string? raw, DatasetColumnType type)
     {

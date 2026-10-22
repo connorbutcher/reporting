@@ -90,14 +90,17 @@ public sealed class ChartCategoryReader(DatasetColumn column, DateGrouping? grou
     }
 
     /// <summary>The client-facing detail for a category: its natural sort key and drill-through conditions.</summary>
-    public ChartCategoryDto Detail(ChartCategory category) => new()
+    public ChartCategoryDto Detail(ChartCategory category)
     {
-        SortNumber = category.Number ?? (category.Date is { } date ? (date - DateTime.UnixEpoch).TotalMilliseconds : null),
-        SortText = category.Number is null && category.Date is null && !category.IsBlank && !category.IsOther ? category.Key : null,
-        IsBlank = category.IsBlank,
-        IsOther = category.IsOther,
-        Drill = Drill(category)
-    };
+        return new()
+        {
+            SortNumber = category.Number ?? (category.Date is { } date ? (date - DateTime.UnixEpoch).TotalMilliseconds : null),
+            SortText = category.Number is null && category.Date is null && !category.IsBlank && !category.IsOther ? category.Key : null,
+            IsBlank = category.IsBlank,
+            IsOther = category.IsOther,
+            Drill = Drill(category)
+        };
+    }
 
     /// <summary>Conditions selecting exactly the rows in <paramref name="category"/>; null for "Other".</summary>
     public FilterGroupDto? Drill(ChartCategory category)
@@ -140,6 +143,12 @@ public sealed class ChartCategoryReader(DatasetColumn column, DateGrouping? grou
         return new FilterConditionDto { ColumnId = columnId, Operator = op, Values = values.ToList() };
     }
 
-    private static string Day(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-    private static string Instant(DateTime value) => value.ToString("o", CultureInfo.InvariantCulture);
+    private static string Day(DateTime value)
+    {
+        return value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    }
+    private static string Instant(DateTime value)
+    {
+        return value.ToString("o", CultureInfo.InvariantCulture);
+    }
 }

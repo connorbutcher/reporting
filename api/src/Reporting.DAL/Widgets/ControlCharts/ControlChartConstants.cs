@@ -81,7 +81,10 @@ internal static class ControlChartConstants
     ];
 
     /// <summary>The Xbar-S (A3, B3, B4) triple for a subgroup of size <paramref name="n"/>, clamped to 2..25 like <see cref="Lookup"/>.</summary>
-    public static (double A3, double B3, double B4) LookupS(int n) => STable[Math.Clamp(n, 2, 25) - 2];
+    public static (double A3, double B3, double B4) LookupS(int n)
+    {
+        return STable[Math.Clamp(n, 2, 25) - 2];
+    }
 
     /// <summary>
     /// Individuals–moving range constants: the X limits sit 2.66 average moving ranges (3 / d2 for

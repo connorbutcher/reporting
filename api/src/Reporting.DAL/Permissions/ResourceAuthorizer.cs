@@ -42,8 +42,10 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
     }
 
     /// <summary>The caller's effective level on a report, with no gating — for stamping onto a summary DTO after the action is authorized.</summary>
-    public Task<AccessLevel> LevelForReportAsync(Report report) =>
-        permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+    public Task<AccessLevel> LevelForReportAsync(Report report)
+    {
+        return permissions.LevelForReportAsync(report.Id, report.FolderId, report.InheritsPermissions);
+    }
 
     // --- folders ----------------------------------------------------------
 
@@ -139,6 +141,8 @@ public class ResourceAuthorizer(ReportingDbContext db, PermissionService permiss
     }
 
     /// <summary>Whether the caller can see a folder at all (≥ Viewer). The folder listings filter their DTOs through this.</summary>
-    public async Task<bool> CanSeeFolderAsync(int folderId) =>
-        await permissions.LevelForFolderAsync(folderId) >= AccessLevel.Viewer;
+    public async Task<bool> CanSeeFolderAsync(int folderId)
+    {
+        return await permissions.LevelForFolderAsync(folderId) >= AccessLevel.Viewer;
+    }
 }

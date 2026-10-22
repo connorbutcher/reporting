@@ -12,7 +12,9 @@ public static class ReportVisibility
     /// invisible to them, so they only learn a report exists once there's a published version to open.
     /// Assumes <see cref="Report.Revisions"/> is loaded.
     /// </summary>
-    public static bool IsVisibleAtLevel(Report report, AccessLevel level) =>
-        level >= AccessLevel.Viewer &&
+    public static bool IsVisibleAtLevel(Report report, AccessLevel level)
+    {
+        return level >= AccessLevel.Viewer &&
         (level >= AccessLevel.Editor || report.LatestPublishedVersionNumber() is not null);
+    }
 }

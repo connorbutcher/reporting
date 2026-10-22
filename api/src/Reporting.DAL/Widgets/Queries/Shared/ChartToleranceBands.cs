@@ -29,8 +29,10 @@ public class ChartToleranceBands(ToleranceResolver tolerance)
     /// <summary>Projects resolved band bounds into the client DTOs that draw the reference lines.</summary>
     public static List<ResolvedToleranceBandDto> Resolved(
         IReadOnlyList<ChartToleranceBand> bands,
-        IReadOnlyDictionary<string, ToleranceBounds?> bounds) =>
-        bands.Select(band => ResolvedBand(band, bounds)).ToList();
+        IReadOnlyDictionary<string, ToleranceBounds?> bounds)
+    {
+        return bands.Select(band => ResolvedBand(band, bounds)).ToList();
+    }
 
     /// <summary>One band's resolved DTO: its drawn bounds when resolution found some, else blank.</summary>
     private static ResolvedToleranceBandDto ResolvedBand(ChartToleranceBand band, IReadOnlyDictionary<string, ToleranceBounds?> bounds)

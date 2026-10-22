@@ -32,13 +32,16 @@ public sealed class PivotField(DatasetColumn column, DateGrouping? grouping)
     }
 
     /// <summary>A cell's typed ordering key: a number (date as ticks) for numeric/date columns, else the string.</summary>
-    private object? SortKey(DatasetCell? cell) => Column.Type switch
+    private object? SortKey(DatasetCell? cell)
     {
-        DatasetColumnType.Int or DatasetColumnType.Double => cell?.NumberValue,
-        DatasetColumnType.DateTime => cell?.DateValue?.Ticks,
-        DatasetColumnType.Bool => cell?.BoolValue,
-        _ => cell?.StringValue?.Trim(),
-    };
+        return Column.Type switch
+        {
+            DatasetColumnType.Int or DatasetColumnType.Double => cell?.NumberValue,
+            DatasetColumnType.DateTime => cell?.DateValue?.Ticks,
+            DatasetColumnType.Bool => cell?.BoolValue,
+            _ => cell?.StringValue?.Trim(),
+        };
+    }
 
     /// <summary>The period a date falls in: its first instant, the first instant after it, and its label.</summary>
     public static (DateTime Start, DateTime End, string Display) Period(DateTime date, DateGrouping grouping)

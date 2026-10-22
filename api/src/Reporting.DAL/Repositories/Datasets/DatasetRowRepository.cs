@@ -142,8 +142,10 @@ public class DatasetRowRepository(ReportingDbContext db, FormulaCalculationServi
         return true;
     }
 
-    private static IReadOnlyDictionary<int, Guid> ColumnRefMap(Dataset dataset) =>
-        dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+    private static IReadOnlyDictionary<int, Guid> ColumnRefMap(Dataset dataset)
+    {
+        return dataset.Columns.ToDictionary(c => c.Id, c => c.RefId);
+    }
 
     /// <summary>
     /// Rewrites a row's cells from the submitted values, parsing each against its

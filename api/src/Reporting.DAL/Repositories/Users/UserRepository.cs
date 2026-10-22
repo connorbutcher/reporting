@@ -7,8 +7,9 @@ namespace Reporting.DAL.Repositories;
 /// <summary>Read access to users and groups, for the permission editor's subject pickers.</summary>
 public class UserRepository(ReportingDbContext db)
 {
-    public async Task<List<UserDto>> GetUsersAsync() =>
-        await db.Users
+    public async Task<List<UserDto>> GetUsersAsync()
+    {
+        return await db.Users
             .OrderBy(u => u.DisplayName)
             .Select(u => new UserDto
             {
@@ -18,9 +19,11 @@ public class UserRepository(ReportingDbContext db)
                 IsGlobalAdmin = db.AppPermissionGrants.Any(g => g.UserId == u.Id && g.Permission == AppPermission.GlobalAdmin)
             })
             .ToListAsync();
+    }
 
-    public async Task<List<UserGroupDto>> GetGroupsAsync() =>
-        await db.UserGroups
+    public async Task<List<UserGroupDto>> GetGroupsAsync()
+    {
+        return await db.UserGroups
             .OrderBy(g => g.Name)
             .Select(g => new UserGroupDto
             {
@@ -29,4 +32,5 @@ public class UserRepository(ReportingDbContext db)
                 MemberCount = g.Members.Count
             })
             .ToListAsync();
+    }
 }

@@ -13,29 +13,38 @@ public static class CellFormatter
 {
     private const string DefaultDateFormat = "dd/MM/yyyy";
 
-    public static string? Format(DatasetCell cell, DatasetColumnType type, DatasetColumnConfig? configuration) => type switch
+    public static string? Format(DatasetCell cell, DatasetColumnType type, DatasetColumnConfig? configuration)
     {
-        DatasetColumnType.Int or DatasetColumnType.Double =>
-            cell.NumberValue is { } number ? FormatNumber(number, configuration as NumericColumnConfig) : null,
-        DatasetColumnType.DateTime =>
-            cell.DateValue is { } date ? FormatDate(date, configuration as DateColumnConfig) : null,
-        DatasetColumnType.Bool =>
-            cell.BoolValue is { } flag ? FormatBool(flag, configuration as BoolColumnConfig) : null,
-        _ => string.IsNullOrEmpty(cell.StringValue) ? null : cell.StringValue
-    };
+        return type switch
+        {
+            DatasetColumnType.Int or DatasetColumnType.Double =>
+                cell.NumberValue is { } number ? FormatNumber(number, configuration as NumericColumnConfig) : null,
+            DatasetColumnType.DateTime =>
+                cell.DateValue is { } date ? FormatDate(date, configuration as DateColumnConfig) : null,
+            DatasetColumnType.Bool =>
+                cell.BoolValue is { } flag ? FormatBool(flag, configuration as BoolColumnConfig) : null,
+            _ => string.IsNullOrEmpty(cell.StringValue) ? null : cell.StringValue
+        };
+    }
 
     /// <summary>
     /// Formats a raw numeric value with a column's numeric configuration — for values that never
     /// existed as a cell, such as a pivot's aggregated measures. Null config uses the numeric defaults.
     /// </summary>
-    public static string Number(double value, NumericColumnConfig? config) => FormatNumber(value, config);
+    public static string Number(double value, NumericColumnConfig? config)
+    {
+        return FormatNumber(value, config);
+    }
 
     /// <summary>
     /// Formats a raw date value with a column's date configuration — for values that never existed
     /// as a cell, such as a chart's grouping key (its grouping string is the cell's raw input text,
     /// not a display string — e.g. a date column's rows group by their ISO round-trip text).
     /// </summary>
-    public static string Date(DateTime value, DateColumnConfig? config) => FormatDate(value, config);
+    public static string Date(DateTime value, DateColumnConfig? config)
+    {
+        return FormatDate(value, config);
+    }
 
     private static string FormatNumber(double value, NumericColumnConfig? config)
     {
@@ -70,6 +79,8 @@ public static class CellFormatter
         }
     }
 
-    private static string FormatBool(bool value, BoolColumnConfig? config) =>
-        value ? (config?.TrueLabel ?? "Yes") : (config?.FalseLabel ?? "No");
+    private static string FormatBool(bool value, BoolColumnConfig? config)
+    {
+        return value ? (config?.TrueLabel ?? "Yes") : (config?.FalseLabel ?? "No");
+    }
 }

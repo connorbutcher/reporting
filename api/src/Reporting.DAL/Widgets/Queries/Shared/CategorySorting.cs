@@ -47,10 +47,12 @@ public static class CategorySorting
     }
 
     /// <summary>Reduces the already-pooled values for each category, when the sort column is the chart's own bound measure.</summary>
-    private static Dictionary<string, IComparable> PooledMetrics(List<GroupedValueProjection> projected, SortAggregate aggregate) =>
-        projected
+    private static Dictionary<string, IComparable> PooledMetrics(List<GroupedValueProjection> projected, SortAggregate aggregate)
+    {
+        return projected
             .GroupBy(p => p.Category)
             .ToDictionary(group => group.Key, group => ReduceForSort(group.Select(item => item.Value).ToList(), aggregate));
+    }
 
     /// <summary>
     /// Per-category metric for a column sort that isn't already pooled in memory for some other
@@ -147,12 +149,15 @@ public static class CategorySorting
     /// by: alphabetically first/last, or how many rows had one. Sum/Average/Median/Spread have no
     /// meaning for text and fall back to the alphabetically-first value.
     /// </summary>
-    private static IComparable ReduceTextForSort(List<string> values, SortAggregate aggregate) => aggregate switch
+    private static IComparable ReduceTextForSort(List<string> values, SortAggregate aggregate)
     {
-        SortAggregate.Count => (double)values.Count,
-        SortAggregate.Max => values.Max(StringComparer.OrdinalIgnoreCase)!,
-        _ => values.Min(StringComparer.OrdinalIgnoreCase)!
-    };
+        return aggregate switch
+        {
+            SortAggregate.Count => (double)values.Count,
+            SortAggregate.Max => values.Max(StringComparer.OrdinalIgnoreCase)!,
+            _ => values.Min(StringComparer.OrdinalIgnoreCase)!
+        };
+    }
 
     /// <summary>
     /// Re-orders a category list by a per-category metric, keeping <paramref name="naturalOrder"/>
