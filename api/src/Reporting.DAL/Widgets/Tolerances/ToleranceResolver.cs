@@ -26,9 +26,7 @@ public class ToleranceResolver(ReportingDbContext db)
             return result;
         }
 
-        // A source dataset scopes its own row/column RefIds: those RefIds are preserved across a
-        // revision's copies, so the same RefId exists in every version's copy of the dataset — the
-        // dataset PK is what pins resolution to this revision's copy.
+        // RefIds repeat in every revision's copy of a dataset; the dataset id pins this revision's copy.
         var datasetIds = pointers.Select(p => p.SourceDatasetId).Distinct().ToList();
         var rowRefs = pointers.Select(p => p.SourceRowId).Distinct().ToList();
         var columnRefs = pointers
@@ -38,26 +36,7 @@ public class ToleranceResolver(ReportingDbContext db)
             .Distinct()
             .ToList();
 
-        // Pointers address the spec row and columns by their RefIds within a dataset; cells store int
-        // ids, so resolve (datasetId, RefId) → int pk first and query cells by the int keys.
-        var rowPkByRef = await db.DatasetRows
-            .Where(r => datasetIds.Contains(r.DatasetId) && rowRefs.Contains(r.RefId))
-            .Select(r => new { r.Id, r.DatasetId, r.RefId })
-            .ToDictionaryAsync(r => (r.DatasetId, r.RefId), r => r.Id);
-        var columnPkByRef = await db.DatasetColumns
-            .Where(c => datasetIds.Contains(c.DatasetId) && columnRefs.Contains(c.RefId))
-            .Select(c => new { c.Id, c.DatasetId, c.RefId })
-            .ToDictionaryAsync(c => (c.DatasetId, c.RefId), c => c.Id);
-
-        var rowPks = rowPkByRef.Values.ToList();
-        var columnPks = columnPkByRef.Values.ToList();
-
-        var cells = await db.DatasetCells
-            .Where(c => rowPks.Contains(c.RowId) && columnPks.Contains(c.ColumnId))
-            .Select(c => new { c.RowId, c.ColumnId, c.NumberValue })
-            .ToListAsync();
-
-        var lookup = new SpecCellLookup(rowPkByRef, columnPkByRef, cells.ToDictionary(c => (c.RowId, c.ColumnId), c => c.NumberValue));
+        var lookup = await LoadLookupAsync(datasetIds, rowRefs, columnRefs);
 
         foreach (var pointer in pointers)
         {
@@ -100,6 +79,31 @@ public class ToleranceResolver(ReportingDbContext db)
                 spec.MaxColumnId, spec.ConcessionLowerColumnId, spec.ConcessionUpperColumnId);
         }
         return result;
+    }
+
+    /// <summary>
+    /// Pointers address the spec row and columns by RefId within a dataset; cells store int ids, so
+    /// (datasetId, RefId) resolves to the int key first and cells are queried by those.
+    /// </summary>
+    private async Task<SpecCellLookup> LoadLookupAsync(List<int> datasetIds, List<Guid> rowRefs, List<Guid> columnRefs)
+    {
+        var rowPkByRef = await db.DatasetRows
+            .Where(r => datasetIds.Contains(r.DatasetId) && rowRefs.Contains(r.RefId))
+            .Select(r => new { r.Id, r.DatasetId, r.RefId })
+            .ToDictionaryAsync(r => (r.DatasetId, r.RefId), r => r.Id);
+        var columnPkByRef = await db.DatasetColumns
+            .Where(c => datasetIds.Contains(c.DatasetId) && columnRefs.Contains(c.RefId))
+            .Select(c => new { c.Id, c.DatasetId, c.RefId })
+            .ToDictionaryAsync(c => (c.DatasetId, c.RefId), c => c.Id);
+
+        var rowPks = rowPkByRef.Values.ToList();
+        var columnPks = columnPkByRef.Values.ToList();
+        var cells = await db.DatasetCells
+            .Where(c => rowPks.Contains(c.RowId) && columnPks.Contains(c.ColumnId))
+            .Select(c => new { c.RowId, c.ColumnId, c.NumberValue })
+            .ToListAsync();
+
+        return new SpecCellLookup(rowPkByRef, columnPkByRef, cells.ToDictionary(c => (c.RowId, c.ColumnId), c => c.NumberValue));
     }
 
     private async Task<MatchedLimits> LoadMatchedAsync(
