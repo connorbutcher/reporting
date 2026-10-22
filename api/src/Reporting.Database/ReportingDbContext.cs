@@ -188,6 +188,13 @@ public class ReportingDbContext : DbContext
             .HasIndex(c => new { c.ColumnId, c.StringValue })
             .HasFilter("[StringValue] IS NOT NULL");
 
+        // Widgets read a handful of columns across every row (CellPivot, totals, sorting, aggregates):
+        // keyed by column then row, and carrying every value, this lets them read just those columns'
+        // cells in row order without a lookup back into the table for each one.
+        modelBuilder.Entity<DatasetCell>()
+            .HasIndex(c => new { c.ColumnId, c.RowId })
+            .IncludeProperties(c => new { c.StringValue, c.NumberValue, c.DateValue, c.BoolValue });
+
         // --- identity & permissions ---------------------------------------
 
         // Inheritance is the default, so existing folders/reports keep flowing access down

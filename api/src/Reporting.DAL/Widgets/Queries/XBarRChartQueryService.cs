@@ -20,7 +20,7 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
     /// Ceiling on rows scanned for one Xbar-R query. Like a box plot every value must be pulled to
     /// compute each subgroup's mean and range in memory, so a runaway dataset is capped here.
     /// </summary>
-    private const int MaxXBarRScanRows = 200_000;
+    private const int MaxXBarRScanRows = ScanCapping.MaxScanRows;
 
     public async Task<XBarRChartQueryResultDto?> QueryForXBarRChartAsync(int id, XBarRChartQueryDto dto)
     {
@@ -154,19 +154,11 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
         IQueryable<DatasetRow> matching, ChartCategoryReader reader, int valueId)
     {
         var categoryId = reader.Column.Id;
-        var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-
-        var scanned = await rowsQuery
-            .OrderBy(r => r.Id)
+        var scanned = await CellPivot.Of(matching, categoryId, valueId)
+            .Where(p => p.N1 != null)
+            .OrderBy(p => p.RowId)
             .Take(MaxXBarRScanRows + 1)
-            .Select(r => new
-            {
-                Category = r.Cells
-                    .Where(c => c.ColumnId == categoryId)
-                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
-                    .FirstOrDefault(),
-                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
-            })
+            .Select(p => new { p.T0, p.N0, p.D0, Value = p.N1 })
             .ToListAsync();
 
         var truncated = ScanCapping.TrimToScanCap(scanned, MaxXBarRScanRows);
@@ -174,7 +166,7 @@ public class XBarRChartQueryService(ReportingDbContext db, ChartToleranceBands t
         var projected = scanned
             .Select(r => new GroupedValueProjection
             {
-                CategoryValue = reader.Read(r.Category?.StringValue, r.Category?.NumberValue, r.Category?.DateValue),
+                CategoryValue = reader.Read(r.T0, r.N0, r.D0),
                 Value = r.Value ?? 0d
             })
             .ToList();

@@ -10,7 +10,7 @@ namespace Reporting.DAL.Widgets;
 /// <summary>
 /// Rows shaped for a pivot / aggregation table: filtered, then grouped by the row fields (nested left
 /// to right) and optionally spread across the column fields, with each cell reduced to one value per
-/// measure. Because the cells are an EAV table, the needed cells are pulled back (capped) and grouped
+/// measure. Because the cells are an EAV table, the needed cells are streamed back (capped) and grouped
 /// in memory into a tree of row groups (see <see cref="PivotNode"/>), which yields detail rows,
 /// subtotals, row totals and the grand total from one pass. Values come back already formatted.
 /// </summary>
@@ -20,7 +20,7 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
     /// Ceiling on rows scanned for one pivot query. Every row must be pulled to be grouped and
     /// reduced in memory, so a runaway dataset is capped here; the response flags that it happened.
     /// </summary>
-    public const int MaxPivotScanRows = 200_000;
+    public const int MaxPivotScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>Ceiling on the number of grouped rows a pivot returns, so a high-cardinality dimension
     /// can't fan out into an unbounded table. Totals still reduce every scanned row.</summary>
@@ -83,67 +83,39 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
         result.ColumnFields = columnFields.Select(Field).ToList();
         result.Measures = measures.Select(MeasureColumn).ToList();
 
-        // Pull only the cells the pivot reads, capped so a runaway dataset can't be dragged into memory wholesale.
-        var neededIds = new HashSet<int>(rowFields.Concat(columnFields).Select(f => f.Column.Id));
-        foreach (var measure in measures)
-        {
-            if (measure.Column is not null)
-            {
-                neededIds.Add(measure.Column.Id);
-            }
-        }
-
-        var rows = await matching
-            .OrderBy(r => r.Id)
-            .Take(MaxPivotScanRows)
-            .Include(r => r.Cells.Where(c => neededIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
-        result.ScannedRowCount = rows.Count;
-        result.ScanTruncated = result.MatchedRowCount > MaxPivotScanRows;
+        var fieldColumnIds = rowFields.Concat(columnFields).Select(f => f.Column.Id).Distinct().ToList();
+        var measureColumnIds = measures.Where(m => m.Column is not null).Select(m => m.Column!.Id).Distinct().ToList();
 
         var root = new PivotNode(null, 0, string.Empty, null, measures);
         var columnKeys = new Dictionary<string, PivotColumnKey>();
 
-        foreach (var row in rows)
+        if (PivotSqlGrouping.CanReduce(measures, fieldColumnIds.Count))
         {
-            var cells = row.Cells.ToDictionary(c => c.ColumnId);
-            var inputs = measures.Select(m => MeasureInput(m, cells)).ToArray();
-
-            // The column key: every column field's value, joined by a control character (never found in
-            // real cell text) so two combinations can't collide by their values running together.
-            string? columnKey = null;
-            if (columnFields.Count > 0)
+            // Every measure reduces in SQL: one row comes back per distinct combination of field
+            // values, already counted and summed, so every matched row counts and nothing is capped.
+            var groups = await PivotSqlGrouping.ReduceAsync(matching, fieldColumnIds, measureColumnIds);
+            foreach (var (cells, rowCount, stats) in groups)
             {
-                var keyCells = columnFields.Select(f => cells.GetValueOrDefault(f.Column.Id)).ToArray();
-                var values = columnFields.Select((f, i) => f.Read(keyCells[i])).ToArray();
-                columnKey = string.Join('\u0001', values.Select(v => v.Display));
-                if (!columnKeys.TryGetValue(columnKey, out var key))
-                {
-                    key = new PivotColumnKey(columnKey, values.Select(v => v.Display).ToArray(), values.Select(v => v.SortKey).ToArray());
-                    columnKeys[columnKey] = key;
-                }
-                for (var i = 0; i < values.Length; i++)
-                {
-                    key.Trackers[i].Add(keyCells[i], values[i]);
-                }
+                result.ScannedRowCount += rowCount;
+                var reduced = measures
+                    .Select(m => m.Column is not null && stats.TryGetValue(m.Column.Id, out var s) ? s : (BarStats?)null)
+                    .ToArray();
+                Place(root, columnKeys, cells, rowFields, columnFields, measures, acc => acc.AddReduced(rowCount, reduced));
             }
-
-            var node = root;
-            Accumulate(node, columnKey, inputs, measures);
-            for (var depth = 0; depth < rowFields.Count; depth++)
+        }
+        else
+        {
+            // A median or distinct count needs every value: pull only the cells the pivot reads,
+            // capped so a runaway dataset can't be dragged into memory wholesale. Streamed rather
+            // than buffered: each row is folded into the tree as it arrives and then dropped, so
+            // memory holds the groups, not the rows.
+            var neededIds = fieldColumnIds.Concat(measureColumnIds).ToHashSet();
+            result.ScanTruncated = result.MatchedRowCount > MaxPivotScanRows;
+            await foreach (var cells in RowCellStream.ReadAsync(matching, neededIds, MaxPivotScanRows))
             {
-                var field = rowFields[depth];
-                var cell = cells.GetValueOrDefault(field.Column.Id);
-                var value = field.Read(cell);
-                if (!node.Children.TryGetValue(value.Display, out var child))
-                {
-                    child = new PivotNode(node, depth + 1, value.Display, value.SortKey, measures);
-                    node.Children[value.Display] = child;
-                }
-                child.Tracker.Add(cell, value);
-                Accumulate(child, columnKey, inputs, measures);
-                node = child;
+                result.ScannedRowCount++;
+                var inputs = measures.Select(m => MeasureInput(m, cells)).ToArray();
+                Place(root, columnKeys, cells, rowFields, columnFields, measures, acc => acc.Add(inputs));
             }
         }
 
@@ -336,10 +308,60 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
         }
     }
 
-    /// <summary>Adds one row to a node, as a whole and within its column key.</summary>
-    private static void Accumulate(PivotNode node, string? columnKey, PivotMeasureInput[] inputs, List<PivotMeasurePlan> measures)
+    /// <summary>
+    /// Files one row (or one SQL group of rows) into the tree: under its column key, and down the row
+    /// fields from the root, adding it to every node on the way with <paramref name="add"/>.
+    /// </summary>
+    private static void Place(
+        PivotNode root,
+        Dictionary<string, PivotColumnKey> columnKeys,
+        Dictionary<int, DatasetCell> cells,
+        List<PivotField> rowFields,
+        List<PivotField> columnFields,
+        List<PivotMeasurePlan> measures,
+        Action<PivotCellAcc> add)
     {
-        node.Total.Add(inputs);
+        // The column key: every column field's value, joined by a control character (never found in
+        // real cell text) so two combinations can't collide by their values running together.
+        string? columnKey = null;
+        if (columnFields.Count > 0)
+        {
+            var keyCells = columnFields.Select(f => cells.GetValueOrDefault(f.Column.Id)).ToArray();
+            var values = columnFields.Select((f, i) => f.Read(keyCells[i])).ToArray();
+            columnKey = string.Join('\u0001', values.Select(v => v.Display));
+            if (!columnKeys.TryGetValue(columnKey, out var key))
+            {
+                key = new PivotColumnKey(columnKey, values.Select(v => v.Display).ToArray(), values.Select(v => v.SortKey).ToArray());
+                columnKeys[columnKey] = key;
+            }
+            for (var i = 0; i < values.Length; i++)
+            {
+                key.Trackers[i].Add(keyCells[i], values[i]);
+            }
+        }
+
+        var node = root;
+        Accumulate(node, columnKey, measures, add);
+        for (var depth = 0; depth < rowFields.Count; depth++)
+        {
+            var field = rowFields[depth];
+            var cell = cells.GetValueOrDefault(field.Column.Id);
+            var value = field.Read(cell);
+            if (!node.Children.TryGetValue(value.Display, out var child))
+            {
+                child = new PivotNode(node, depth + 1, value.Display, value.SortKey, measures);
+                node.Children[value.Display] = child;
+            }
+            child.Tracker.Add(cell, value);
+            Accumulate(child, columnKey, measures, add);
+            node = child;
+        }
+    }
+
+    /// <summary>Adds one row (or SQL group) to a node, as a whole and within its column key.</summary>
+    private static void Accumulate(PivotNode node, string? columnKey, List<PivotMeasurePlan> measures, Action<PivotCellAcc> add)
+    {
+        add(node.Total);
         if (columnKey is null)
         {
             return;
@@ -349,7 +371,7 @@ public class PivotQueryService(ReportingDbContext db, DatasetResolver resolver)
             cell = new PivotCellAcc(measures);
             node.ByColumn[columnKey] = cell;
         }
-        cell.Add(inputs);
+        add(cell);
     }
 
     /// <summary>One row's input to a measure: its number, and for a distinct count its trimmed text.</summary>

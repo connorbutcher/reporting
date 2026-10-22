@@ -182,8 +182,8 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
     }
 
     /// <summary>
-    /// Reduces one numeric column (or, for Count, every row) into stats per (category, series) — a
-    /// single SQL GROUP BY on the category's typed value, merged in memory into the reader's categories
+    /// Reduces one numeric column (or, for Count, every row) into stats per (category, series) — the
+    /// needed cells pivoted in one pass (<see cref="CellPivot"/>), then a single SQL GROUP BY on the category's typed value, merged in memory into the reader's categories
     /// (so a date period collects every day in it). Every category met is recorded in
     /// <paramref name="categories"/>. Only rows carrying a number feed a non-count measure, so a
     /// category with none simply doesn't appear for it.
@@ -196,22 +196,24 @@ public class BarChartQueryService(ReportingDbContext db, ChartToleranceBands tol
         int seriesId,
         int valueId)
     {
-        var rowsQuery = countRows
-            ? matching
-            : matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-
         var categoryId = reader.Column.Id;
         // Only a text column groups on its text; numbers and dates group on their typed value, so the
         // same value written two ways ("5" and "5.0") is one category.
         var textual = reader.Column.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
 
-        var projected = rowsQuery.Select(r => new BarProjection
+        var pivoted = CellPivot.Of(matching, categoryId, seriesId, valueId);
+        if (!countRows)
         {
-            Text = textual ? (r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-            Number = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.NumberValue).FirstOrDefault(),
-            Date = r.Cells.Where(c => c.ColumnId == categoryId).Select(c => c.DateValue).FirstOrDefault(),
-            Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-            Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
+            pivoted = pivoted.Where(p => p.N2 != null);
+        }
+
+        var projected = pivoted.Select(p => new BarProjection
+        {
+            Text = textual ? (p.T0 ?? "").Trim() : "",
+            Number = p.N0,
+            Date = p.D0,
+            Series = (p.T1 ?? "").Trim(),
+            Value = p.N2
         });
 
         var groups = await projected

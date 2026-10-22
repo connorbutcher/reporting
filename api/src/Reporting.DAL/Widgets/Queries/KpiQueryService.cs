@@ -14,16 +14,16 @@ namespace Reporting.DAL.Widgets;
 /// or the previous rolling period — in which case both figures are computed over their own date
 /// window rather than over the whole filtered set, so the comparison is apples-to-apples.
 ///
-/// Three further reductions share the same two pure reducers (<see cref="ReduceAggregate"/> /
-/// <see cref="ReduceTolerance"/>) the single-value path uses, just applied to a different slice of
-/// rows: a trailing sparkline history (one value per <see cref="KpiQueryDto.PeriodDays"/>-wide
-/// bucket), and a grouped reduction (one value per distinct value of a dimension column).
+/// Plain aggregates (count, sum, average, min, max) reduce in SQL over every matched row, both for the
+/// single value and per group of a grouped KPI. Tolerance classification and the trailing sparkline
+/// history (one value per <see cref="KpiQueryDto.PeriodDays"/>-wide bucket) pull the rows they need
+/// and share two pure reducers (<see cref="ReduceAggregate"/> / <see cref="ReduceTolerance"/>).
 /// </summary>
 public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance, DatasetResolver resolver)
 {
-    /// <summary>Ceiling on rows scanned to reduce one KPI value — every row must be pulled into memory
-    /// to aggregate or tolerance-classify it, same reasoning as <c>PivotQueryService</c>.</summary>
-    private const int MaxKpiScanRows = 200_000;
+    /// <summary>Ceiling on rows pulled into memory to tolerance-classify them or bucket them into a
+    /// sparkline. Plain aggregates reduce in SQL instead and aren't capped.</summary>
+    private const int MaxKpiScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>A resolved tolerance band, ready to classify rows against — resolved once per query
     /// (not once per bucket/group) since the pointer and its bounds don't vary across them.</summary>
@@ -131,14 +131,29 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
             return (null, false);
         }
 
-        var scanned = await rows
-            .OrderBy(r => r.Id)
-            .Take(MaxKpiScanRows + 1)
-            .Select(r => r.Cells.FirstOrDefault(c => c.ColumnId == column.Id)!.NumberValue)
-            .ToListAsync();
-        var truncated = ScanCapping.TrimToScanCap(scanned, MaxKpiScanRows);
+        var stats = await AggregateValuesAsync(rows, column.Id);
+        return (stats?.Value(dto.Aggregate), false);
+    }
 
-        return (ReduceAggregate(scanned, dto.Aggregate), truncated);
+    /// <summary>
+    /// Count, sum, minimum and maximum of a numeric column over <paramref name="rows"/>, reduced in SQL
+    /// over every row; null when no row has a number there (so the KPI shows no value, not zero).
+    /// </summary>
+    private static async Task<BarStats?> AggregateValuesAsync(IQueryable<DatasetRow> rows, int columnId)
+    {
+        var group = await rows
+            .SelectMany(r => r.Cells)
+            .Where(c => c.ColumnId == columnId && c.NumberValue != null)
+            .GroupBy(_ => 1)
+            .Select(g => new BarGroup
+            {
+                Count = g.Count(),
+                Sum = g.Sum(c => c.NumberValue),
+                Min = g.Min(c => c.NumberValue),
+                Max = g.Max(c => c.NumberValue)
+            })
+            .FirstOrDefaultAsync();
+        return group is null ? null : BarStats.From(group);
     }
 
     private async Task<(double? Value, bool Truncated)> ComputeToleranceAsync(
@@ -155,16 +170,26 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
             neededColumnIds.Add(ctx.MatchColumn.Id);
         }
 
-        var scanned = await rows
-            .OrderBy(r => r.Id)
-            .Take(MaxKpiScanRows + 1)
-            .Include(r => r.Cells.Where(c => neededColumnIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
+        var scanned = await ScanAsync(rows, neededColumnIds);
         var truncated = ScanCapping.TrimToScanCap(scanned, MaxKpiScanRows);
 
         var value = ReduceTolerance(scanned, ctx, dto.ToleranceStatusMode, dto.ShowAsPercent);
         return (value, truncated);
+    }
+
+    /// <summary>
+    /// The rows a tolerance or sparkline reduction classifies, in row order and capped one past
+    /// <see cref="MaxKpiScanRows"/> (so the caller can tell the cap was hit), each carrying only the
+    /// cells in <paramref name="columnIds"/>.
+    /// </summary>
+    private static async Task<List<DatasetRow>> ScanAsync(IQueryable<DatasetRow> rows, ICollection<int> columnIds)
+    {
+        var scanned = new List<DatasetRow>();
+        await foreach (var cells in RowCellStream.ReadAsync(rows, columnIds, MaxKpiScanRows + 1))
+        {
+            scanned.Add(new DatasetRow { Cells = cells.Values.ToList() });
+        }
+        return scanned;
     }
 
     /// <summary>Resolves a tolerance config's pointer once — reused across the single-value, history, and grouped paths.</summary>
@@ -299,12 +324,7 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
 
         var earliestStart = today.AddDays(-periods * dto.PeriodDays);
         var windowed = WithDateWindow(matching, dateColumn.Id, earliestStart, today.AddDays(1));
-        var scanned = await windowed
-            .OrderBy(r => r.Id)
-            .Take(MaxKpiScanRows + 1)
-            .Include(r => r.Cells.Where(c => neededColumnIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
+        var scanned = await ScanAsync(windowed, neededColumnIds);
         ScanCapping.TrimToScanCap(scanned, MaxKpiScanRows);
 
         // Bucket index 0 is the most recent period, counting up as it goes further back — the mirror
@@ -366,6 +386,11 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
                 ? columnsByRef.GetValueOrDefault(colRef)
                 : null;
 
+        if (dto.ValueSource == KpiValueSource.Aggregate)
+        {
+            return await ComputeAggregateGroupsAsync(dto, rows, groupColumn, valueColumn);
+        }
+
         var neededColumnIds = new HashSet<int> { groupColumn.Id };
         if (valueColumn is not null)
         {
@@ -380,12 +405,7 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
             }
         }
 
-        var scanned = await rows
-            .OrderBy(r => r.Id)
-            .Take(MaxKpiScanRows + 1)
-            .Include(r => r.Cells.Where(c => neededColumnIds.Contains(c.ColumnId)))
-            .AsNoTracking()
-            .ToListAsync();
+        var scanned = await ScanAsync(rows, neededColumnIds);
         var scanTruncated = ScanCapping.TrimToScanCap(scanned, MaxKpiScanRows);
 
         var groups = new Dictionary<string, List<DatasetRow>>();
@@ -417,6 +437,63 @@ public class KpiQueryService(ReportingDbContext db, ToleranceResolver tolerance,
         }).ToList();
 
         return (results, scanTruncated || groupsTruncated);
+    }
+
+    /// <summary>
+    /// A grouped plain aggregate, reduced in SQL over every matched row: one GROUP BY on the group
+    /// column's stored value, then groups whose values display the same (a number stored as "5" and
+    /// "5.0", say) merged under that label — the same tiles the in-memory reduction produced.
+    /// </summary>
+    private static async Task<(List<KpiGroupResultDto> Groups, bool Truncated)> ComputeAggregateGroupsAsync(
+        KpiQueryDto dto, IQueryable<DatasetRow> rows, DatasetColumn groupColumn, DatasetColumn? valueColumn)
+    {
+        var groupId = groupColumn.Id;
+        var grouped = await CellPivot.Of(rows, groupId, valueColumn?.Id ?? 0)
+            .GroupBy(p => new { p.T0, p.N0, p.D0 })
+            .Select(g => new
+            {
+                g.Key.T0,
+                g.Key.N0,
+                g.Key.D0,
+                Rows = g.Count(),
+                Stats = new BarGroup
+                {
+                    Count = g.Count(p => p.N1 != null),
+                    Sum = g.Sum(p => p.N1),
+                    Min = g.Min(p => p.N1),
+                    Max = g.Max(p => p.N1)
+                }
+            })
+            .ToListAsync();
+
+        var byLabel = new Dictionary<string, (int Rows, BarStats Stats)>();
+        foreach (var group in grouped)
+        {
+            var label = DimensionDisplay(CellPivot.Cell(groupId, group.T0, group.N0, group.D0), groupColumn);
+            var stats = BarStats.From(group.Stats);
+            byLabel[label] = byLabel.TryGetValue(label, out var existing)
+                ? (existing.Rows + group.Rows, existing.Stats.Merge(stats))
+                : (group.Rows, stats);
+        }
+
+        var maxGroups = Math.Clamp(dto.MaxGroups, 1, 200);
+        var ordered = byLabel.OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase).ToList();
+
+        var results = ordered.Take(maxGroups).Select(entry =>
+        {
+            var value = dto.Aggregate == Aggregate.Count ? entry.Value.Rows
+                : valueColumn is null || entry.Value.Stats.Count == 0 ? null
+                : entry.Value.Stats.Value(dto.Aggregate);
+            return new KpiGroupResultDto
+            {
+                Label = entry.Key,
+                Value = value,
+                DisplayValue = Format(value, dto),
+                Status = ClassifyStatus(value, dto),
+            };
+        }).ToList();
+
+        return (results, ordered.Count > maxGroups);
     }
 
     /// <summary>One bucket's (one period's, or one group's) value — the same reduction the single-value path uses, applied to an already-materialized row slice.</summary>

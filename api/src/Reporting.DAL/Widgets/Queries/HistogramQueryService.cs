@@ -21,7 +21,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     /// to be binned, so a runaway dataset is capped here — far past any sample size where the shape
     /// of the distribution would meaningfully shift.
     /// </summary>
-    private const int MaxHistogramScanRows = 200_000;
+    private const int MaxHistogramScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>Ceiling on the number of bins a histogram can produce, so a tiny bin width (or a
     /// huge range) can't fan out into an unbounded axis.</summary>
@@ -207,16 +207,11 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     private static async Task<(List<(string Series, double Value)> Projected, bool Truncated, int ScannedCount)> ScanAndProjectAsync(
         IQueryable<DatasetRow> matching, int seriesId, int valueId)
     {
-        var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-
-        var scanned = await rowsQuery
-            .OrderBy(r => r.Id)
+        var scanned = await CellPivot.Of(matching, seriesId, valueId)
+            .Where(p => p.N1 != null)
+            .OrderBy(p => p.RowId)
             .Take(MaxHistogramScanRows + 1)
-            .Select(r => new
-            {
-                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
-                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
-            })
+            .Select(p => new { Series = p.T0, Value = p.N1 })
             .ToListAsync();
 
         var truncated = ScanCapping.TrimToScanCap(scanned, MaxHistogramScanRows);
@@ -235,17 +230,11 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     private static async Task<Dictionary<string, (double Sum, int Count)[]>> BinAveragesAsync(
         IQueryable<DatasetRow> matching, int seriesId, int valueId, int tooltipId, List<double> edges, int binCount, (double Min, double Max)? range)
     {
-        var scanned = await matching
-            .Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null)
-                && r.Cells.Any(c => c.ColumnId == tooltipId && c.NumberValue != null))
-            .OrderBy(r => r.Id)
+        var scanned = await CellPivot.Of(matching, seriesId, valueId, tooltipId)
+            .Where(p => p.N1 != null && p.N2 != null)
+            .OrderBy(p => p.RowId)
             .Take(MaxHistogramScanRows)
-            .Select(r => new
-            {
-                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
-                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault(),
-                Tooltip = r.Cells.Where(c => c.ColumnId == tooltipId).Select(c => c.NumberValue).FirstOrDefault()
-            })
+            .Select(p => new { Series = p.T0, Value = p.N1, Tooltip = p.N2 })
             .ToListAsync();
 
         var averages = new Dictionary<string, (double Sum, int Count)[]>();

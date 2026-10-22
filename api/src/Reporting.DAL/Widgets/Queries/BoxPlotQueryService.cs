@@ -22,7 +22,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
     /// but every value must be pulled to compute the quartiles in memory, so a runaway dataset is
     /// capped here. Far past any group size where the summary would meaningfully shift.
     /// </summary>
-    private const int MaxBoxPlotScanRows = 200_000;
+    private const int MaxBoxPlotScanRows = ScanCapping.MaxScanRows;
 
     /// <summary>Ceiling on raw values returned per box for the jittered overlay — a shape-preserving
     /// sample, not every point, so a large group doesn't bloat the payload.</summary>
@@ -139,9 +139,8 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
     }
 
     /// <summary>
-    /// Pulls only the cells each box needs — the category cell (its three typed forms fetched
-    /// together in one subquery, not three), the series key, and the measure — then pivots them
-    /// in memory. Capped so a runaway dataset can't be pulled wholesale into memory; the summary
+    /// Pulls only the cells each box needs — the category cell's three typed forms, the series key,
+    /// and the measure — pivoted into one row each in a single pass (<see cref="CellPivot"/>). Capped so a runaway dataset can't be pulled wholesale into memory; the summary
     /// of a very large group is unaffected in practice. A read-only projection to scalars, so none
     /// of it is change-tracked. The value is never null here: the caller already required a
     /// numeric measure on every row.
@@ -152,20 +151,11 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         // Only rows carrying a numeric measure can feed a box; a category with none simply
         // doesn't appear, matching bar's non-count behaviour.
         var categoryId = reader.Column.Id;
-        var rowsQuery = matching.Where(r => r.Cells.Any(c => c.ColumnId == valueId && c.NumberValue != null));
-
-        var scanned = await rowsQuery
-            .OrderBy(r => r.Id)
+        var scanned = await CellPivot.Of(matching, categoryId, seriesId, valueId)
+            .Where(p => p.N2 != null)
+            .OrderBy(p => p.RowId)
             .Take(MaxBoxPlotScanRows + 1)
-            .Select(r => new
-            {
-                Category = r.Cells
-                    .Where(c => c.ColumnId == categoryId)
-                    .Select(c => new { c.StringValue, c.NumberValue, c.DateValue })
-                    .FirstOrDefault(),
-                Series = r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault(),
-                Value = r.Cells.Where(c => c.ColumnId == valueId).Select(c => c.NumberValue).FirstOrDefault()
-            })
+            .Select(p => new { p.T0, p.N0, p.D0, Series = p.T1, Value = p.N2 })
             .ToListAsync();
 
         var truncated = ScanCapping.TrimToScanCap(scanned, MaxBoxPlotScanRows);
@@ -173,7 +163,7 @@ public class BoxPlotQueryService(ReportingDbContext db, ChartToleranceBands tole
         var projected = scanned
             .Select(r => new GroupedValueProjection
             {
-                CategoryValue = reader.Read(r.Category?.StringValue, r.Category?.NumberValue, r.Category?.DateValue),
+                CategoryValue = reader.Read(r.T0, r.N0, r.D0),
                 Series = (r.Series ?? "").Trim(),
                 Value = r.Value ?? 0d
             })

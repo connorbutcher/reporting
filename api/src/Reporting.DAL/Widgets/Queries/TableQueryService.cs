@@ -316,9 +316,11 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
     }
 
     /// <summary>
-    /// Orders by the sort column's typed value, correlated per row the same way filters are, with the
-    /// row id as the tiebreak. Paging needs a total order: without one the database may return tied
-    /// (or, unsorted, all) rows in a different order per query, repeating or skipping rows across pages.
+    /// Orders by the sort column's typed value, with the row id as the tiebreak. Paging needs a total
+    /// order: without one the database may return tied (or, unsorted, all) rows in a different order
+    /// per query, repeating or skipping rows across pages. The sort column's cells are joined to their
+    /// rows once rather than looked up per row, so a deep page of a large dataset stays cheap; a row
+    /// with no cell in the column sorts as null, as before.
     /// </summary>
     private static IQueryable<DatasetRow> ApplySort(
         IQueryable<DatasetRow> query,
@@ -329,31 +331,28 @@ public class TableQueryService(ReportingDbContext db, ToleranceResolver toleranc
         {
             return query.OrderBy(r => r.Id);
         }
-        return SortByColumn(query, sortColumn, direction).ThenBy(r => r.Id);
-    }
 
-    private static IOrderedQueryable<DatasetRow> SortByColumn(
-        IQueryable<DatasetRow> query,
-        DatasetColumn sortColumn,
-        SortDirection direction)
-    {
-        var desc = direction == SortDirection.Desc;
         var sortId = sortColumn.Id;
+        var joined = query.SelectMany(
+            r => r.Cells.Where(c => c.ColumnId == sortId).DefaultIfEmpty(),
+            (r, c) => new SortedRow { Row = r, Cell = c });
+        var desc = direction == SortDirection.Desc;
 
-        return sortColumn.Type switch
+        var ordered = sortColumn.Type switch
         {
             DatasetColumnType.Int or DatasetColumnType.Double => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.NumberValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.NumberValue),
+                ? joined.OrderByDescending(x => x.Cell!.NumberValue)
+                : joined.OrderBy(x => x.Cell!.NumberValue),
             DatasetColumnType.DateTime => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.DateValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.DateValue),
+                ? joined.OrderByDescending(x => x.Cell!.DateValue)
+                : joined.OrderBy(x => x.Cell!.DateValue),
             DatasetColumnType.Bool => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.BoolValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.BoolValue),
+                ? joined.OrderByDescending(x => x.Cell!.BoolValue)
+                : joined.OrderBy(x => x.Cell!.BoolValue),
             _ => desc
-                ? query.OrderByDescending(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.StringValue)
-                : query.OrderBy(r => r.Cells.FirstOrDefault(c => c.ColumnId == sortId)!.StringValue)
+                ? joined.OrderByDescending(x => x.Cell!.StringValue)
+                : joined.OrderBy(x => x.Cell!.StringValue)
         };
+        return ordered.ThenBy(x => x.Row.Id).Select(x => x.Row);
     }
 }

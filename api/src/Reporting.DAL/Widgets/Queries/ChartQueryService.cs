@@ -182,19 +182,15 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
     /// </summary>
     private static async Task<List<int>> EvenSampleIdsAsync(IQueryable<DatasetRow> rows, int xId, DatasetColumnType? xType, int count)
     {
-        var keyed = await rows
-            .Select(r => new
-            {
-                r.Id,
-                X = r.Cells.Where(c => c.ColumnId == xId).Select(c => new { c.StringValue, c.NumberValue, c.DateValue }).FirstOrDefault()
-            })
+        var keyed = await CellPivot.Of(rows, xId)
+            .Select(p => new { Id = p.RowId, p.T0, p.N0, p.D0 })
             .ToListAsync();
 
         var ordered = xType switch
         {
-            DatasetColumnType.String => keyed.OrderBy(r => r.X?.StringValue, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            DatasetColumnType.DateTime => keyed.OrderBy(r => r.X?.DateValue).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
-            _ => keyed.OrderBy(r => r.X?.NumberValue).ThenBy(r => r.Id).Select(r => r.Id).ToList()
+            DatasetColumnType.String => keyed.OrderBy(r => r.T0, StringComparer.OrdinalIgnoreCase).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
+            DatasetColumnType.DateTime => keyed.OrderBy(r => r.D0).ThenBy(r => r.Id).Select(r => r.Id).ToList(),
+            _ => keyed.OrderBy(r => r.N0).ThenBy(r => r.Id).Select(r => r.Id).ToList()
         };
         if (ordered.Count <= count)
         {
@@ -224,21 +220,21 @@ public class ChartQueryService(ReportingDbContext db, ChartToleranceBands tolera
         var xId = xColumn.Id;
         var yId = yColumn?.Id ?? 0;
         var seriesId = seriesColumn?.Id ?? 0;
-        var rows = RequireAxisValue(matching, xId, xColumn.Type);
+        var textual = xColumn.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
+        var pivoted = CellPivot.Of(RequireAxisValue(matching, xId, xColumn.Type), xId, seriesId, yId);
         if (aggregate != Aggregate.Count)
         {
-            rows = rows.Where(r => r.Cells.Any(c => c.ColumnId == yId && c.NumberValue != null));
+            pivoted = pivoted.Where(p => p.N2 != null);
         }
 
-        var textual = xColumn.Type is not (DatasetColumnType.Int or DatasetColumnType.Double or DatasetColumnType.DateTime);
-        var groups = await rows
-            .Select(r => new BarProjection
+        var groups = await pivoted
+            .Select(p => new BarProjection
             {
-                Text = textual ? (r.Cells.Where(c => c.ColumnId == xId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim() : "",
-                Number = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.NumberValue).FirstOrDefault(),
-                Date = r.Cells.Where(c => c.ColumnId == xId).Select(c => c.DateValue).FirstOrDefault(),
-                Series = (r.Cells.Where(c => c.ColumnId == seriesId).Select(c => c.StringValue).FirstOrDefault() ?? "").Trim(),
-                Value = r.Cells.Where(c => c.ColumnId == yId).Select(c => c.NumberValue).FirstOrDefault()
+                Text = textual ? (p.T0 ?? "").Trim() : "",
+                Number = p.N0,
+                Date = p.D0,
+                Series = (p.T1 ?? "").Trim(),
+                Value = p.N2
             })
             .GroupBy(item => new { item.Text, item.Number, item.Date, item.Series })
             .Select(g => new BarGroup
