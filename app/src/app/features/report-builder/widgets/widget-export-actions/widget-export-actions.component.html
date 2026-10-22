@@ -1,3 +1,8 @@
+@if (viewable()) {
+  <button type="button" aria-label="View data" title="View data" (click)="viewData.emit()">
+    <i class="pi pi-table" aria-hidden="true"></i>
+  </button>
+}
 <button
   type="button"
   aria-label="Download screenshot (PNG)"

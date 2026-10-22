@@ -50,45 +50,6 @@
     }
   }
 
-  // The "View data" table: the chart's plotted values, scrollable within the widget.
-  .data-table {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    padding: 40px 8px 8px;
-    font-size: 0.75rem;
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-
-    caption {
-      text-align: left;
-      font-weight: 600;
-      padding-bottom: 6px;
-    }
-
-    .data-note {
-      font-weight: 400;
-      color: #64748b;
-    }
-
-    th,
-    td {
-      padding: 3px 8px;
-      border-bottom: 1px solid var(--app-card-border, #e2e8f0);
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      background: #fff;
-    }
-  }
-
   // A translucent veil with a spinner over the existing chart while it reloads,
   // so a filter tweak refines the plot in place instead of blanking it.
   .reload-veil {

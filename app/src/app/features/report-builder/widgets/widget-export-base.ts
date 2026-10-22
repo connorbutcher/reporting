@@ -2,7 +2,7 @@ import { Directive, ElementRef, inject } from '@angular/core';
 import { toPng } from 'html-to-image';
 
 /**
- * The screenshot and CSV export contract for widgets. Screenshots rasterize the host element by
+ * The screenshot, CSV export and "View data" contract for widgets. Screenshots rasterize the host element by
  * default; charts override {@link downloadScreenshot} to use their canvas.
  */
 @Directive()
@@ -14,6 +14,16 @@ export abstract class WidgetExportBase {
 
   /** CSV for the widget's data, or null when there's nothing yet. May fetch rows not on screen. */
   public abstract exportCsv(): string | null | Promise<string | null>;
+
+  /** Whether {@link openDataView} has values to show. Only charts offer it. */
+  public canViewData(): boolean {
+    return false;
+  }
+
+  /** Shows the widget's values in a dialog; a no-op unless {@link canViewData}. */
+  public openDataView(): void {
+    return;
+  }
 
   public async downloadCsv(): Promise<void> {
     const csv = await this.exportCsv();
