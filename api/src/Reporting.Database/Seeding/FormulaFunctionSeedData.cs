@@ -3,12 +3,9 @@ using Reporting.Database.FormulaSeed;
 namespace Reporting.Database;
 
 /// <summary>
-/// The default function catalogue: every function a formula can call, with its signature and blank handling.
-/// It seeds the FormulaFunctionDefinitions/FormulaFunctionParameters tables, and the DAL builds the same
-/// rows in memory when there's no database, so the two can't drift. Each function's <c>ImplementationKey</c>
-/// (its name, here) must have a matching implementation registered on the server. The functions are listed
-/// by category, in the order that gives each its id; functions added later go after them all (see
-/// <see cref="AddedFunctionSpecs"/>) so existing ids never change.
+/// The functions a formula can call. Seeds the tables and backs the DAL's in-memory catalogue. Each name must
+/// have a server implementation, and list order gives the ids, so new functions go in
+/// <see cref="AddedFunctionSpecs"/>.
 /// </summary>
 public static class FormulaFunctionSeedData
 {

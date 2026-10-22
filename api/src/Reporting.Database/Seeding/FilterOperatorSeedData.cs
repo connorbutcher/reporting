@@ -3,9 +3,8 @@ using Reporting.Abstractions;
 namespace Reporting.Database;
 
 /// <summary>
-/// The default operator catalogue: which operators each column type offers, with labels and operand
-/// shapes. The one definition of it: it seeds the FilterOperatorDefinitions table, and the DAL builds
-/// the same rows in memory when there's no database, so the two can't drift.
+/// The operators each column type offers. Seeds the table and backs the DAL's in-memory catalogue, so the two
+/// can't drift.
 /// </summary>
 public static class FilterOperatorSeedData
 {
@@ -51,7 +50,7 @@ public static class FilterOperatorSeedData
         Op(FilterOperator.IsNotEmpty, "is not empty", 0, FilterOperandKind.None)
     ];
 
-    /// <summary>Only offerable on a numeric column with banding (the client hides them otherwise). No operand: the bounds come from the banding at query time.</summary>
+    /// <summary>Only for a banded numeric column; no operand, the bounds come from the banding at query time.</summary>
     private static IEnumerable<FilterOperatorDefinition> Tolerance() =>
     [
         Op(FilterOperator.InTolerance, "is in tolerance", 0, FilterOperandKind.None),
