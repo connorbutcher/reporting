@@ -4,10 +4,6 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DatasetsStore } from '../../datasets.store';
 
-/**
- * Configuration editor for an assembly-sourced dataset: the source-system type it draws from and
- * the phases to include. Self-contained — the source panel swaps it in when the source is assembly.
- */
 @Component({
   selector: 'app-assembly-source-config',
   imports: [FormsModule, ButtonModule, InputTextModule],
@@ -15,18 +11,18 @@ import { DatasetsStore } from '../../datasets.store';
   styleUrl: './assembly-source-config.component.scss',
 })
 export class AssemblySourceConfigComponent {
-  private readonly store = inject(DatasetsStore);
-
-  protected readonly newPhaseId = signal('');
+  public readonly newPhaseId = signal('');
 
   /** The config narrowed to assembly; null only during a brief source transition. */
-  protected readonly config = computed(() => {
+  public readonly config = computed(() => {
     const config = this.store.sourceConfig();
     return config && config.source === 'assembly' ? config : null;
   });
 
+  private readonly store = inject(DatasetsStore);
+
   /** Commits the type id, treating a blank field as "not chosen". */
-  protected setTypeId(value: string): void {
+  public setTypeId(value: string): void {
     const config = this.config();
     if (!config) {
       return;
@@ -37,7 +33,7 @@ export class AssemblySourceConfigComponent {
   }
 
   /** Adds a whole-number phase id, ignoring blanks, non-integers and duplicates. */
-  protected addPhase(): void {
+  public addPhase(): void {
     const config = this.config();
     const raw = this.newPhaseId().trim();
     this.newPhaseId.set('');
@@ -51,7 +47,7 @@ export class AssemblySourceConfigComponent {
     this.store.updateSourceConfig({ ...config, phaseIds: [...config.phaseIds, id] });
   }
 
-  protected removePhase(id: number): void {
+  public removePhase(id: number): void {
     const config = this.config();
     if (!config) {
       return;

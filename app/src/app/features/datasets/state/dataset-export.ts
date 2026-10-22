@@ -1,34 +1,34 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { computed, inject, Injectable, Signal, signal } from '@angular/core';
 import { DatasetApiService } from '../../../core/api/dataset-api.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { DatasetCollection } from './dataset-collection';
 import { DatasetSchemaState } from './dataset-schema-state';
 
-/**
- * Exports the selected dataset as a CSV of its raw stored values. The editor grid
- * only holds the row windows it has scrolled through, so this fetches the whole
- * dataset from the server, builds the file, and hands it to the browser to save.
- *
- * Pulled out of the rows panel so the component stays presentational: it owns the
- * server call, the {@link exporting} progress flag, and the success/failure toast,
- * rather than the component reaching for the API itself.
- */
 @Injectable()
 export class DatasetExport {
-  private readonly api = inject(DatasetApiService);
-  private readonly collection = inject(DatasetCollection);
-  private readonly schema = inject(DatasetSchemaState);
-  private readonly notify = inject(NotificationService);
-
-  private readonly _exporting = signal(false);
   /** True while the whole dataset is being fetched and packaged, for the button's spinner. */
-  readonly exporting = this._exporting.asReadonly();
+  public readonly exporting: Signal<boolean>;
+
   /** Nothing to export until the dataset has at least one column and is selected. */
-  readonly canExport = computed(
+  public readonly canExport = computed(
     () => this.schema.columns().length > 0 && this.collection.selectedId() != null,
   );
 
-  exportCsv(): void {
+  private readonly api = inject(DatasetApiService);
+
+  private readonly collection = inject(DatasetCollection);
+
+  private readonly schema = inject(DatasetSchemaState);
+
+  private readonly notify = inject(NotificationService);
+
+  private readonly _exporting = signal(false);
+
+  constructor() {
+    this.exporting = this._exporting.asReadonly();
+  }
+
+  public exportCsv(): void {
     const id = this.collection.selectedId();
     const columns = this.schema.columns();
     if (id == null || columns.length === 0 || this._exporting()) {

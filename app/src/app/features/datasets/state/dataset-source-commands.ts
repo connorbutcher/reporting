@@ -22,7 +22,7 @@ export class DatasetSourceCommands {
   private readonly notify = inject(NotificationService);
 
   /** Repoints the selected dataset at a different source; its config resets server-side. */
-  setSource(sourceId: number): void {
+  public setSource(sourceId: number): void {
     const id = this.collection.selectedId();
     if (!id || !sourceId || sourceId === this.schema.sourceId()) {
       return;
@@ -46,7 +46,7 @@ export class DatasetSourceCommands {
   }
 
   /** Replaces the selected dataset's source config, showing the edit immediately. */
-  updateSourceConfig(config: DatasetSourceConfig): void {
+  public updateSourceConfig(config: DatasetSourceConfig): void {
     const id = this.collection.selectedId();
     if (!id) {
       return;

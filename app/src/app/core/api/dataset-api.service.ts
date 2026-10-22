@@ -40,20 +40,20 @@ export class DatasetApiService {
   private readonly http = inject(HttpClient);
 
   /** The fixed set of source systems a dataset can draw from. */
-  listSources(): Observable<DatasetSource[]> {
+  public listSources(): Observable<DatasetSource[]> {
     return this.http.get<DatasetSource[]>('/api/dataset-sources');
   }
 
   /** The datasets owned by a report's checked-out draft revision. */
-  listForReport(reportId: number): Observable<DatasetSummary[]> {
+  public listForReport(reportId: number): Observable<DatasetSummary[]> {
     return this.http.get<DatasetSummary[]>(`/api/reports/${reportId}/datasets`);
   }
 
-  getSchema(id: number): Observable<DatasetSchema> {
+  public getSchema(id: number): Observable<DatasetSchema> {
     return this.http.get<DatasetSchema>(`/api/datasets/${id}/schema`);
   }
 
-  getData(id: number): Observable<DatasetData> {
+  public getData(id: number): Observable<DatasetData> {
     return this.http.get<DatasetData>(`/api/datasets/${id}/data`);
   }
 
@@ -62,7 +62,7 @@ export class DatasetApiService {
    * `count` rows from `first`, plus the total row count. Keeps a large dataset
    * from loading into the editor all at once.
    */
-  getRowWindow(id: number, first: number, count: number): Observable<DatasetRowWindow> {
+  public getRowWindow(id: number, first: number, count: number): Observable<DatasetRowWindow> {
     return this.http.get<DatasetRowWindow>(
       `/api/datasets/${id}/rows?first=${first}&count=${count}`,
     );
@@ -72,7 +72,7 @@ export class DatasetApiService {
    * Rows matching a filter. Filtering runs in SQL, so a widget never pulls rows
    * it isn't going to show.
    */
-  query(id: number, filter: FilterGroup | null): Observable<DatasetQueryResult> {
+  public query(id: number, filter: FilterGroup | null): Observable<DatasetQueryResult> {
     return this.http.post<DatasetQueryResult>(`/api/datasets/${id}/query`, { filter });
   }
 
@@ -81,7 +81,7 @@ export class DatasetApiService {
    * the rows. Counted in SQL, so the filter panel's live "matches N of M" readout can run
    * on each edit without pulling whole datasets.
    */
-  countMatches(id: number, filter: FilterGroup | null): Observable<DatasetCountResult> {
+  public countMatches(id: number, filter: FilterGroup | null): Observable<DatasetCountResult> {
     return this.http.post<DatasetCountResult>(`/api/datasets/${id}/count`, { filter });
   }
 
@@ -89,12 +89,12 @@ export class DatasetApiService {
    * A page of rows shaped for a table widget: filtered, sorted, and paged
    * server-side, with each cell already formatted and tolerance-classified.
    */
-  queryTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
+  public queryTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
     return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-query`, request);
   }
 
   /** Every matched row for a table widget (up to the server's export cap), for a CSV of the whole table. */
-  exportTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
+  public exportTable(id: number, request: TableQueryRequest): Observable<TableQueryResult> {
     return this.http.post<TableQueryResult>(`/api/datasets/${id}/table-export`, request);
   }
 
@@ -102,7 +102,7 @@ export class DatasetApiService {
    * Rows shaped for a chart widget: filtered, grouped into series, and paired
    * with resolved tolerance bounds and pre-formatted tooltip lines.
    */
-  queryChart(id: number, request: ChartQueryRequest): Observable<ChartQueryResult> {
+  public queryChart(id: number, request: ChartQueryRequest): Observable<ChartQueryResult> {
     return this.http.post<ChartQueryResult>(`/api/datasets/${id}/chart-query`, request);
   }
 
@@ -110,7 +110,7 @@ export class DatasetApiService {
    * Rows shaped for a bar chart: filtered, grouped by the category column, and
    * reduced to one value per category (per series) by the chosen aggregate.
    */
-  queryBarChart(id: number, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
+  public queryBarChart(id: number, request: BarChartQueryRequest): Observable<BarChartQueryResult> {
     return this.http.post<BarChartQueryResult>(`/api/datasets/${id}/bar-chart-query`, request);
   }
 
@@ -118,7 +118,7 @@ export class DatasetApiService {
    * Rows shaped for a box-and-whisker chart: filtered, grouped by the category column, and
    * each group's measure values reduced to a five-number summary with outliers.
    */
-  queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
+  public queryBoxPlot(id: number, request: BoxPlotQueryRequest): Observable<BoxPlotQueryResult> {
     return this.http.post<BoxPlotQueryResult>(`/api/datasets/${id}/box-plot-query`, request);
   }
 
@@ -127,7 +127,10 @@ export class DatasetApiService {
    * subgroup's measure values reduced to a mean and a range against control limits derived from
    * the data.
    */
-  queryXBarRChart(id: number, request: XBarRChartQueryRequest): Observable<XBarRChartQueryResult> {
+  public queryXBarRChart(
+    id: number,
+    request: XBarRChartQueryRequest,
+  ): Observable<XBarRChartQueryResult> {
     return this.http.post<XBarRChartQueryResult>(`/api/datasets/${id}/xbar-r-chart-query`, request);
   }
 
@@ -135,7 +138,10 @@ export class DatasetApiService {
    * Values shaped for a histogram: filtered, then the chosen numeric column's values binned into
    * equal ranges with each bin's frequency returned as a bar height.
    */
-  queryHistogram(id: number, request: HistogramQueryRequest): Observable<HistogramQueryResult> {
+  public queryHistogram(
+    id: number,
+    request: HistogramQueryRequest,
+  ): Observable<HistogramQueryResult> {
     return this.http.post<HistogramQueryResult>(`/api/datasets/${id}/histogram-query`, request);
   }
 
@@ -143,7 +149,7 @@ export class DatasetApiService {
    * Rows shaped for a pivot / aggregation table: filtered, grouped by the row-dimension columns,
    * and each group reduced to one value per measure by that measure's aggregate.
    */
-  queryPivot(id: number, request: PivotQueryRequest): Observable<PivotQueryResult> {
+  public queryPivot(id: number, request: PivotQueryRequest): Observable<PivotQueryResult> {
     return this.http.post<PivotQueryResult>(`/api/datasets/${id}/pivot-query`, request);
   }
 
@@ -151,7 +157,7 @@ export class DatasetApiService {
    * A single headline number reduced from the dataset: a plain aggregate, or the count/percent of
    * rows failing a tolerance band, optionally compared against a fixed target or the previous period.
    */
-  queryKpi(id: number, request: KpiQueryRequest): Observable<KpiQueryResult> {
+  public queryKpi(id: number, request: KpiQueryRequest): Observable<KpiQueryResult> {
     return this.http.post<KpiQueryResult>(`/api/datasets/${id}/kpi-query`, request);
   }
 
@@ -160,7 +166,7 @@ export class DatasetApiService {
    * like "shift" offers its real day/night values rather than free text. Ordered and capped;
    * `search` narrows to matching values for type-ahead on higher-cardinality columns.
    */
-  columnValues(datasetId: number, columnId: string, search?: string): Observable<string[]> {
+  public columnValues(datasetId: number, columnId: string, search?: string): Observable<string[]> {
     let params = new HttpParams();
     if (search) {
       params = params.set('search', search);
@@ -170,7 +176,7 @@ export class DatasetApiService {
     });
   }
 
-  updateColumnConfiguration(
+  public updateColumnConfiguration(
     datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,
@@ -184,34 +190,38 @@ export class DatasetApiService {
   // --- dataset management ---------------------------------------------------
 
   /** Creates a dataset on a report's draft revision, drawing from the given source. */
-  create(reportId: number, name: string, sourceId: number): Observable<DatasetSummary> {
+  public create(reportId: number, name: string, sourceId: number): Observable<DatasetSummary> {
     return this.http.post<DatasetSummary>(`/api/reports/${reportId}/datasets`, { name, sourceId });
   }
 
-  rename(id: number, name: string): Observable<DatasetSummary> {
+  public rename(id: number, name: string): Observable<DatasetSummary> {
     return this.http.put<DatasetSummary>(`/api/datasets/${id}`, { name });
   }
 
   /** Deep-copies a dataset (columns, rows and data) within its report's draft, under a new name. */
-  clone(id: number, name: string): Observable<DatasetSummary> {
+  public clone(id: number, name: string): Observable<DatasetSummary> {
     return this.http.post<DatasetSummary>(`/api/datasets/${id}/clone`, { name });
   }
 
   /** Repoints a dataset at a different source; its config resets to that source's default. */
-  setSource(id: number, sourceId: number): Observable<DatasetSchema> {
+  public setSource(id: number, sourceId: number): Observable<DatasetSchema> {
     return this.http.put<DatasetSchema>(`/api/datasets/${id}/source`, { sourceId });
   }
 
   /** Replaces a dataset's source configuration; the config's source must match the dataset's. */
-  updateSourceConfig(id: number, config: DatasetSourceConfig): Observable<DatasetSchema> {
+  public updateSourceConfig(id: number, config: DatasetSourceConfig): Observable<DatasetSchema> {
     return this.http.put<DatasetSchema>(`/api/datasets/${id}/source-config`, config);
   }
 
-  remove(id: number): Observable<void> {
+  public remove(id: number): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${id}`);
   }
 
-  addColumn(datasetId: number, name: string, type: DatasetColumnType): Observable<DatasetColumn> {
+  public addColumn(
+    datasetId: number,
+    name: string,
+    type: DatasetColumnType,
+  ): Observable<DatasetColumn> {
     return this.http.post<DatasetColumn>(`/api/datasets/${datasetId}/columns`, { name, type });
   }
 
@@ -219,7 +229,7 @@ export class DatasetApiService {
    * What changing a column to `type` would newly break in the report — advisory, so a failure is left
    * to the caller to describe rather than raised as a toast.
    */
-  columnTypeImpact(
+  public columnTypeImpact(
     datasetId: number,
     columnId: string,
     type: DatasetColumnType,
@@ -233,7 +243,7 @@ export class DatasetApiService {
     );
   }
 
-  updateColumn(
+  public updateColumn(
     datasetId: number,
     columnId: string,
     name: string,
@@ -245,19 +255,19 @@ export class DatasetApiService {
     });
   }
 
-  removeColumn(datasetId: number, columnId: string): Observable<void> {
+  public removeColumn(datasetId: number, columnId: string): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${datasetId}/columns/${columnId}`);
   }
 
-  reorderColumns(datasetId: number, columnIds: string[]): Observable<DatasetSchema> {
+  public reorderColumns(datasetId: number, columnIds: string[]): Observable<DatasetSchema> {
     return this.http.put<DatasetSchema>(`/api/datasets/${datasetId}/columns/order`, { columnIds });
   }
 
-  addRow(datasetId: number, values: Record<string, string>): Observable<DatasetRow> {
+  public addRow(datasetId: number, values: Record<string, string>): Observable<DatasetRow> {
     return this.http.post<DatasetRow>(`/api/datasets/${datasetId}/rows`, { values });
   }
 
-  updateRow(
+  public updateRow(
     datasetId: number,
     rowId: string,
     values: Record<string, string>,
@@ -265,7 +275,7 @@ export class DatasetApiService {
     return this.http.put<DatasetRow>(`/api/datasets/${datasetId}/rows/${rowId}`, { values });
   }
 
-  removeRow(datasetId: number, rowId: string): Observable<void> {
+  public removeRow(datasetId: number, rowId: string): Observable<void> {
     return this.http.delete<void>(`/api/datasets/${datasetId}/rows/${rowId}`);
   }
 }

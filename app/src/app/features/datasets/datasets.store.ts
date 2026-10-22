@@ -19,187 +19,249 @@ import { DatasetSchemaState } from './state/dataset-schema-state';
 import { DatasetSourceCommands } from './state/dataset-source-commands';
 import { DatasetValidation } from './state/dataset-validation';
 
-/**
- * State and CRUD for the datasets screen. Datasets belong to a report's draft
- * revision, so the store is scoped to a report id (set by the page from the
- * route). Provided at the page so the list sidebar and the editor share one
- * instance, keeping every mutation in one place while the components stay
- * presentational.
- *
- * This is a thin facade: the work is split across focused, component-provided
- * collaborator services — {@link DatasetAutosave} (save status),
- * {@link DatasetCollection} (list, selection, dataset lifecycle),
- * {@link DatasetSchemaState} (the selected dataset's editable schema and rows),
- * and the {@link DatasetColumnCommands} / {@link DatasetRowCommands} /
- * {@link DatasetSourceCommands} command services. The store re-exposes their
- * signals and methods verbatim so every consumer still injects only
- * {@link DatasetsStore}. The collaborators are provided alongside it on the page
- * (see the page's `providers`) and injected here — never `new`'d — so each is a
- * first-class service Angular constructs and can inject its own dependencies.
- */
 @Injectable()
 export class DatasetsStore {
   private readonly autosave = inject(DatasetAutosave);
+
   private readonly collection = inject(DatasetCollection);
+
   private readonly schema = inject(DatasetSchemaState);
+
   private readonly rowWindow = inject(DatasetRowWindow);
+
   private readonly columnCommands = inject(DatasetColumnCommands);
+
   private readonly rowCommands = inject(DatasetRowCommands);
+
   private readonly sourceCommands = inject(DatasetSourceCommands);
+
   private readonly export = inject(DatasetExport);
+
   private readonly validation = inject(DatasetValidation);
+
   private readonly columnUsage = inject(DatasetColumnUsage);
 
-  // --- list & selection (DatasetCollection) ---------------------------------
-  readonly sources = this.collection.sources;
-  readonly datasets = this.collection.datasets;
-  readonly datasetsLoading = this.collection.datasetsLoading;
-  readonly listError = this.collection.listError;
-  readonly selectedId = this.collection.selectedId;
-  readonly selected = this.collection.selected;
-
-  // --- validation (DatasetValidation) ---------------------------------------
-  /** Dataset ids that share a name with another, for the list's invalid markers. */
-  readonly nameConflictIds = this.validation.nameConflictIds;
-  /** The selected dataset's validation problems, for the editor's issues banner. */
-  readonly datasetIssues = this.validation.selectedIssues;
-
-  // --- selected dataset's schema (DatasetSchemaState) ------------------------
-  readonly columns = this.schema.columns;
-  readonly source = this.schema.source;
-  readonly sourceId = this.schema.sourceId;
-  readonly sourceConfig = this.schema.sourceConfig;
-  /** True when the selected dataset is a filtered view over another — its columns/rows are read-only. */
-  readonly isFiltered = this.schema.isFiltered;
-  readonly schemaLoading = this.schema.schemaLoading;
-  readonly error = this.schema.error;
-
-  // --- where the columns are used in the report (DatasetColumnUsage) ---------
-  /** True once the selected dataset's column usage has loaded. */
-  readonly columnUsageKnown = this.columnUsage.known;
-  /** True when the column usage couldn't be loaded, so a delete can't say what it would break. */
-  readonly columnUsageFailed = this.columnUsage.failed;
-
   /** Every widget/filter use of a column in the report's draft, in tab and widget order. */
-  columnUses(columnId: string): readonly ColumnUse[] {
+  public columnUses(columnId: string): readonly ColumnUse[] {
     return this.columnUsage.usesOf(columnId);
   }
 
   /** What giving a column another type would newly break, or null with no dataset selected. */
-  columnTypeImpact(columnId: string, type: DatasetColumnType): Observable<ColumnTypeImpact> | null {
+  public columnTypeImpact(
+    columnId: string,
+    type: DatasetColumnType,
+  ): Observable<ColumnTypeImpact> | null {
     return this.columnUsage.typeChangeImpact(columnId, type);
   }
 
-  // --- selected dataset's rows, lazily windowed (DatasetRowWindow) -----------
-  /** The sparse row array bound to the grid's lazy virtual scroll; loaded windows are filled in. */
-  readonly rows = this.rowWindow.rows;
-  /** The dataset's full row count, for the grid's scrollbar. */
-  readonly rowsTotal = this.rowWindow.total;
-  /** True while a row window is loading, for the grid's loading overlay. */
-  readonly rowsLoading = this.rowWindow.loading;
-  /** True once the first window has loaded, so the grid can mount with a known total. */
-  readonly rowsReady = this.rowWindow.ready;
-  /** A row index the grid should scroll into view (e.g. a newly added row); null when none. */
-  readonly rowScrollTo = this.rowWindow.scrollTo;
-
-  // --- save status (DatasetAutosave) ----------------------------------------
-  readonly saving = this.autosave.saving;
-  readonly saveFailed = this.autosave.saveFailed;
-
   // --- dataset lifecycle (DatasetCollection) --------------------------------
-  setReport(reportId: number): void {
+  public setReport(reportId: number): void {
     this.collection.setReport(reportId);
   }
 
-  select(id: number): void {
+  public select(id: number): void {
     this.collection.select(id);
   }
 
-  createDataset(name: string, sourceId: number): void {
+  public createDataset(name: string, sourceId: number): void {
     this.collection.createDataset(name, sourceId);
   }
 
-  renameDataset(name: string): void {
+  public renameDataset(name: string): void {
     this.collection.renameDataset(name);
   }
 
   /** True when another dataset already uses this name — for the toolbar to reject a rename. */
-  datasetNameTaken(name: string): boolean {
+  public datasetNameTaken(name: string): boolean {
     return this.collection.datasetNameTaken(name);
   }
 
-  cloneDataset(): void {
+  public cloneDataset(): void {
     this.collection.cloneDataset();
   }
 
-  deleteDataset(): void {
+  public deleteDataset(): void {
     this.collection.deleteDataset();
   }
 
   // --- source (DatasetSourceCommands) ---------------------------------------
-  setSource(sourceId: number): void {
+  public setSource(sourceId: number): void {
     this.sourceCommands.setSource(sourceId);
   }
 
-  updateSourceConfig(config: DatasetSourceConfig): void {
+  public updateSourceConfig(config: DatasetSourceConfig): void {
     this.sourceCommands.updateSourceConfig(config);
   }
 
   // --- columns (DatasetColumnCommands) --------------------------------------
-  addColumn(name: string, type: DatasetColumnType): void {
+  public addColumn(name: string, type: DatasetColumnType): void {
     this.columnCommands.addColumn(name, type);
   }
 
-  renameColumn(column: DatasetColumn, name: string): void {
+  public renameColumn(column: DatasetColumn, name: string): void {
     this.columnCommands.renameColumn(column, name);
   }
 
-  retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
+  public retypeColumn(column: DatasetColumn, type: DatasetColumnType): void {
     this.columnCommands.retypeColumn(column, type);
   }
 
   /** Takes on a formula column the builder dialog saved. */
-  applyFormulaColumnSaved(column: DatasetColumn): void {
+  public applyFormulaColumnSaved(column: DatasetColumn): void {
     this.columnCommands.applyFormulaColumnSaved(column);
   }
 
-  deleteColumn(column: DatasetColumn): void {
+  public deleteColumn(column: DatasetColumn): void {
     this.columnCommands.deleteColumn(column);
   }
 
-  moveColumn(index: number, offset: number): void {
+  public moveColumn(index: number, offset: number): void {
     this.columnCommands.moveColumn(index, offset);
   }
 
   // --- rows (DatasetRowWindow + DatasetRowCommands) -------------------------
   /** Loads the row window the grid is scrolled to; driven by the table's lazy-load event. */
-  loadRows(first: number, count: number): void {
+  public loadRows(first: number, count: number): void {
     this.rowWindow.load(first, count);
   }
 
   /** Clears the pending scroll-to request once the grid has honoured it. */
-  clearRowScroll(): void {
+  public clearRowScroll(): void {
     this.rowWindow.scrollTo.set(null);
   }
 
-  addRow(): void {
+  public addRow(): void {
     this.rowCommands.addRow();
   }
 
-  setCell(row: DatasetRow, columnId: string, value: string): void {
+  public setCell(row: DatasetRow, columnId: string, value: string): void {
     this.rowCommands.setCell(row, columnId, value);
   }
 
-  deleteRow(row: DatasetRow): void {
+  public deleteRow(row: DatasetRow): void {
     this.rowCommands.deleteRow(row);
+  }
+
+  /** Downloads the selected dataset as a CSV of its raw stored values. */
+  public exportCsv(): void {
+    this.export.exportCsv();
+  }
+
+  // --- list & selection (DatasetCollection) ---------------------------------
+  public get sources() {
+    return this.collection.sources;
+  }
+
+  public get datasets() {
+    return this.collection.datasets;
+  }
+
+  public get datasetsLoading() {
+    return this.collection.datasetsLoading;
+  }
+
+  public get listError() {
+    return this.collection.listError;
+  }
+
+  public get selectedId() {
+    return this.collection.selectedId;
+  }
+
+  public get selected() {
+    return this.collection.selected;
+  }
+
+  // --- validation (DatasetValidation) ---------------------------------------
+  /** Dataset ids that share a name with another, for the list's invalid markers. */
+  public get nameConflictIds() {
+    return this.validation.nameConflictIds;
+  }
+
+  /** The selected dataset's validation problems, for the editor's issues banner. */
+  public get datasetIssues() {
+    return this.validation.selectedIssues;
+  }
+
+  // --- selected dataset's schema (DatasetSchemaState) ------------------------
+  public get columns() {
+    return this.schema.columns;
+  }
+
+  public get source() {
+    return this.schema.source;
+  }
+
+  public get sourceId() {
+    return this.schema.sourceId;
+  }
+
+  public get sourceConfig() {
+    return this.schema.sourceConfig;
+  }
+
+  /** True when the selected dataset is a filtered view over another — its columns/rows are read-only. */
+  public get isFiltered() {
+    return this.schema.isFiltered;
+  }
+
+  public get schemaLoading() {
+    return this.schema.schemaLoading;
+  }
+
+  public get error() {
+    return this.schema.error;
+  }
+
+  // --- where the columns are used in the report (DatasetColumnUsage) ---------
+  /** True once the selected dataset's column usage has loaded. */
+  public get columnUsageKnown() {
+    return this.columnUsage.known;
+  }
+
+  /** True when the column usage couldn't be loaded, so a delete can't say what it would break. */
+  public get columnUsageFailed() {
+    return this.columnUsage.failed;
+  }
+
+  // --- selected dataset's rows, lazily windowed (DatasetRowWindow) -----------
+  /** The sparse row array bound to the grid's lazy virtual scroll; loaded windows are filled in. */
+  public get rows() {
+    return this.rowWindow.rows;
+  }
+
+  /** The dataset's full row count, for the grid's scrollbar. */
+  public get rowsTotal() {
+    return this.rowWindow.total;
+  }
+
+  /** True while a row window is loading, for the grid's loading overlay. */
+  public get rowsLoading() {
+    return this.rowWindow.loading;
+  }
+
+  /** True once the first window has loaded, so the grid can mount with a known total. */
+  public get rowsReady() {
+    return this.rowWindow.ready;
+  }
+
+  /** A row index the grid should scroll into view (e.g. a newly added row); null when none. */
+  public get rowScrollTo() {
+    return this.rowWindow.scrollTo;
+  }
+
+  // --- save status (DatasetAutosave) ----------------------------------------
+  public get saving() {
+    return this.autosave.saving;
+  }
+
+  public get saveFailed() {
+    return this.autosave.saveFailed;
   }
 
   // --- export (DatasetExport) -----------------------------------------------
   /** True while the whole dataset is being fetched and packaged for download. */
-  readonly exporting = this.export.exporting;
-
-  /** Downloads the selected dataset as a CSV of its raw stored values. */
-  exportCsv(): void {
-    this.export.exportCsv();
+  public get exporting() {
+    return this.export.exporting;
   }
 }

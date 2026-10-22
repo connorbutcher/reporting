@@ -11,16 +11,16 @@ import {
 import { HttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
 import { DatasetCollection } from './dataset-collection';
 
-/**
- * Where the selected dataset's columns are used across its report's draft — the widgets and page
- * filters that removing a column would leave broken. Refetched whenever the selection changes.
- *
- * A failure is not surfaced as a toast: the answer is advisory, so the columns panel simply says it
- * couldn't check, and deleting stays possible (with that caveat in its confirmation).
- */
 @Injectable()
 export class DatasetColumnUsage {
+  /** True once the selected dataset's usage has loaded, so an empty answer means "unused", not "not asked yet". */
+  public readonly known = computed(() => this.resource.hasValue());
+
+  /** True when the usage couldn't be loaded. */
+  public readonly failed = computed(() => !!this.resource.error());
+
   private readonly collection = inject(DatasetCollection);
+
   private readonly api = inject(DatasetApiService);
 
   private readonly resource = httpResource<DatasetColumnUsageResponse>(() => {
@@ -39,12 +39,6 @@ export class DatasetColumnUsage {
         ]),
       ),
   );
-
-  /** True once the selected dataset's usage has loaded, so an empty answer means "unused", not "not asked yet". */
-  public readonly known = computed(() => this.resource.hasValue());
-
-  /** True when the usage couldn't be loaded. */
-  public readonly failed = computed(() => !!this.resource.error());
 
   /**
    * What changing a column's type would newly break in the report; null when no dataset is selected.

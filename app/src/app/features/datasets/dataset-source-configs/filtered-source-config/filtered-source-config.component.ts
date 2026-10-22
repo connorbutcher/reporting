@@ -1,5 +1,5 @@
 import { httpResource } from '@angular/common/http';
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, Signal, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, skip } from 'rxjs';
@@ -11,12 +11,6 @@ import { FilterContext, FilterGroupModel } from '../../../report-builder/models/
 import { FilterBuilderComponent } from '../../../report-builder/side-panel/filter-builder/filter-builder.component';
 import { DatasetsStore } from '../../datasets.store';
 
-/**
- * Configuration editor for a filtered dataset: which dataset it draws rows from, and the filter
- * applied to it — built with the same filter builder a report's own filters use, scoped to the
- * chosen base dataset's schema rather than a report/widget. Edits save a short debounce after the
- * last change, the same way a burst of typing settles into one request for the live match count.
- */
 @Component({
   selector: 'app-filtered-source-config',
   imports: [FormsModule, SelectModule, FilterBuilderComponent],
@@ -24,18 +18,20 @@ import { DatasetsStore } from '../../datasets.store';
   styleUrl: './filtered-source-config.component.scss',
 })
 export class FilteredSourceConfigComponent {
-  private readonly store = inject(DatasetsStore);
-
   /** The config narrowed to filtered; null only during a brief source transition. */
-  protected readonly config = computed(() => {
+  public readonly config = computed(() => {
     const config = this.store.sourceConfig();
     return config && config.source === 'filtered' ? config : null;
   });
 
   /** Other datasets on this report it could filter — never itself. */
-  protected readonly baseOptions = computed(() =>
+  public readonly baseOptions = computed(() =>
     this.store.datasets().filter((d) => d.id !== this.store.selectedId()),
   );
+
+  public readonly filterGroup: Signal<FilterGroupModel | null>;
+
+  private readonly store = inject(DatasetsStore);
 
   private readonly baseDatasetId = computed(() => this.config()?.baseDatasetId ?? null);
 
@@ -44,10 +40,10 @@ export class FilteredSourceConfigComponent {
   private readonly baseSchemaResource = httpResource<DatasetSchema>(() =>
     this.baseDatasetId() ? `/api/datasets/${this.baseDatasetId()}/schema` : undefined,
   );
+
   private readonly baseSchema = computed(() =>
     this.baseSchemaResource.hasValue() ? this.baseSchemaResource.value() : null,
   );
-  protected readonly baseSchemaLoading = this.baseSchemaResource.isLoading;
 
   private readonly catalogue = signal<OperatorCatalogue | null>(null);
 
@@ -62,9 +58,9 @@ export class FilteredSourceConfigComponent {
   // the debounced save below persists them. Built in an effect, not a computed: the model's
   // constructor writes to its own signals, which a computed forbids (NG0600).
   private readonly filterGroupSignal = signal<FilterGroupModel | null>(null);
-  protected readonly filterGroup = this.filterGroupSignal.asReadonly();
 
   constructor() {
+    this.filterGroup = this.filterGroupSignal.asReadonly();
     inject(FilterApiService)
       .operators()
       .pipe(takeUntilDestroyed())
@@ -100,11 +96,15 @@ export class FilteredSourceConfigComponent {
   }
 
   /** Repoints the filter at a different base dataset. The filter resets — it named the old base's columns. */
-  protected setBaseDataset(baseDatasetId: number): void {
+  public setBaseDataset(baseDatasetId: number): void {
     const config = this.config();
     if (!config || baseDatasetId === config.baseDatasetId) {
       return;
     }
     this.store.updateSourceConfig({ ...config, baseDatasetId, filter: null });
+  }
+
+  public get baseSchemaLoading() {
+    return this.baseSchemaResource.isLoading;
   }
 }

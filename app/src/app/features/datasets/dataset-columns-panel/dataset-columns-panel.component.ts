@@ -1,8 +1,8 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, Signal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
-import { FormField, form, required, validate } from '@angular/forms/signals';
+import { FieldTree, form, FormField, required, validate } from '@angular/forms/signals';
 import { Dialog } from '@angular/cdk/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -17,10 +17,6 @@ import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula
 import { FormulaBuilderData } from '../formula-builder-dialog/store/formula-builder-data';
 import { ColumnUsageDisplay } from '../state/column-usage-display';
 
-/**
- * The selected dataset's column schema: list, reorder, rename, retype and add. A column that
- * widgets in the report depend on says so, and lists them; deleting one spells out what it would break.
- */
 @Component({
   selector: 'app-dataset-columns-panel',
   imports: [
@@ -52,39 +48,22 @@ export class DatasetColumnsPanelComponent {
     bool: 'pi pi-check-square',
     dateTime: 'pi pi-calendar',
   };
-  private readonly store = inject(DatasetsStore);
-  private readonly dialog = inject(Dialog);
-  private readonly route = inject(ActivatedRoute);
 
   /** The report this dataset belongs to, for the links back to the widgets that use a column. */
-  protected readonly reportId = Number(this.route.snapshot.paramMap.get('reportId'));
+  public readonly reportId: number;
 
-  protected readonly columns = this.store.columns;
-  protected readonly loading = this.store.schemaLoading;
-  protected readonly columnTypes = DatasetColumnsPanelComponent.COLUMN_TYPES;
-  /** A filtered dataset's columns are inherited from its base — no add/rename/retype/reorder/delete. */
-  protected readonly isFiltered = this.store.isFiltered;
+  public readonly loading: Signal<boolean>;
 
-  // The add-a-column row is a signal form: a required, unique name plus a type.
-  // The duplicate check runs as a live validator (reading the current columns),
-  // so a clashing name disables Add and shows a message as it's typed.
-  private readonly draft = signal<{ name: string; type: DatasetColumnType }>({
-    name: '',
-    type: 'string',
-  });
-  protected readonly addForm = form(this.draft, (path) => {
-    required(path.name, { message: 'A column name is required.' });
-    validate(path.name, ({ value }) => {
-      const name = value().trim();
-      if (name && this.nameTaken(name, null)) {
-        return { kind: 'duplicate', message: `A column named "${name}" already exists.` };
-      }
-      return null;
-    });
-  });
+  public readonly columnTypes = DatasetColumnsPanelComponent.COLUMN_TYPES;
+
+  public readonly addForm: FieldTree<
+    { name: string; type: DatasetColumnType },
+    string | number,
+    'writable'
+  >;
 
   /** The duplicate-name message for the add row, shown as it's typed (never the plain "required"). */
-  protected readonly addNameError = computed(
+  public readonly addNameError = computed(
     () =>
       this.addForm
         .name()
@@ -93,7 +72,7 @@ export class DatasetColumnsPanelComponent {
   );
 
   /** How each column is used in the report, by column id — empty for a column nothing uses. */
-  protected readonly usageLines = computed(
+  public readonly usageLines = computed(
     () =>
       new Map(
         this.columns().map((c) => [
@@ -104,16 +83,45 @@ export class DatasetColumnsPanelComponent {
   );
 
   /** The columns whose usage list is open. */
-  protected readonly expanded = signal<ReadonlySet<string>>(new Set());
+  public readonly expanded = signal<ReadonlySet<string>>(new Set());
 
   /** A message shown under the add row when a column rename is rejected as a duplicate. */
-  protected readonly renameError = signal<string | null>(null);
+  public readonly renameError = signal<string | null>(null);
 
-  protected usageSummary(column: DatasetColumn): string {
+  private readonly store = inject(DatasetsStore);
+
+  private readonly dialog = inject(Dialog);
+
+  private readonly route = inject(ActivatedRoute);
+
+  // The add-a-column row is a signal form: a required, unique name plus a type.
+  // The duplicate check runs as a live validator (reading the current columns),
+  // so a clashing name disables Add and shows a message as it's typed.
+  private readonly draft = signal<{ name: string; type: DatasetColumnType }>({
+    name: '',
+    type: 'string',
+  });
+
+  constructor() {
+    this.reportId = Number(this.route.snapshot.paramMap.get('reportId'));
+    this.loading = this.store.schemaLoading;
+    this.addForm = form(this.draft, (path) => {
+      required(path.name, { message: 'A column name is required.' });
+      validate(path.name, ({ value }) => {
+        const name = value().trim();
+        if (name && this.nameTaken(name, null)) {
+          return { kind: 'duplicate', message: `A column named "${name}" already exists.` };
+        }
+        return null;
+      });
+    });
+  }
+
+  public usageSummary(column: DatasetColumn): string {
     return ColumnUsageDisplay.summarise(this.store.columnUses(column.id));
   }
 
-  protected toggleUsage(column: DatasetColumn): void {
+  public toggleUsage(column: DatasetColumn): void {
     this.expanded.update((open) => {
       const next = new Set(open);
       if (!next.delete(column.id)) {
@@ -124,15 +132,15 @@ export class DatasetColumnsPanelComponent {
   }
 
   /** The URL fragment that takes the builder straight to a widget. */
-  protected fragmentFor(widgetId: string): string {
+  public fragmentFor(widgetId: string): string {
     return WidgetFragment.forWidget(widgetId);
   }
 
-  protected typeIcon(type: DatasetColumnType): string {
+  public typeIcon(type: DatasetColumnType): string {
     return DatasetColumnsPanelComponent.TYPE_ICONS[type];
   }
 
-  protected add(): void {
+  public add(): void {
     if (!this.addForm().valid()) {
       return;
     }
@@ -142,7 +150,7 @@ export class DatasetColumnsPanelComponent {
   }
 
   /** Commits a column rename, but restores the field if the name is blank or a duplicate. */
-  protected onRenameBlur(column: DatasetColumn, event: Event): void {
+  public onRenameBlur(column: DatasetColumn, event: Event): void {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();
     if (!name || this.nameTaken(name, column)) {
@@ -156,18 +164,12 @@ export class DatasetColumnsPanelComponent {
     this.store.renameColumn(column, name);
   }
 
-  /** Whether another column already uses this name (case-insensitive). */
-  private nameTaken(name: string, except: DatasetColumn | null): boolean {
-    const lower = name.toLowerCase();
-    return this.columns().some((c) => c !== except && c.name.toLowerCase() === lower);
-  }
-
   /**
    * Changes a column's type — after asking what that would break. A change nothing depends on goes
    * straight through; one that would leave widgets with errors (a measure that needs a number, a
    * filter operator the new type lacks) is confirmed first, and cancelling puts the dropdown back.
    */
-  protected retype(column: DatasetColumn, type: DatasetColumnType, select: Select): void {
+  public retype(column: DatasetColumn, type: DatasetColumnType, select: Select): void {
     if (type === column.type) {
       return;
     }
@@ -196,6 +198,59 @@ export class DatasetColumnsPanelComponent {
           }
         });
     });
+  }
+
+  /**
+   * Confirms before removing a column, since it drops that column's values from every row — and, if
+   * widgets in the report use it, names them, because they'd be left with errors.
+   */
+  public remove(column: DatasetColumn): void {
+    this.dialog
+      .open<boolean>(ConfirmDialogComponent, { data: this.deleteConfirmation(column) })
+      .closed.subscribe((confirmed) => {
+        if (confirmed) {
+          this.store.deleteColumn(column);
+        }
+      });
+  }
+
+  /** Opens the formula builder to add a formula column, or — given one — to edit it. */
+  public openFormulaBuilder(column: DatasetColumn | null): void {
+    const datasetId = this.store.selectedId();
+    if (datasetId === null) {
+      return;
+    }
+
+    this.dialog
+      .open<DatasetColumn | undefined, FormulaBuilderData>(FormulaBuilderDialogComponent, {
+        data: { datasetId, columns: this.columns(), column },
+        ariaLabel: 'Formula builder',
+        autoFocus: 'dialog',
+      })
+      .closed.subscribe((saved) => {
+        if (saved) {
+          this.store.applyFormulaColumnSaved(saved);
+        }
+      });
+  }
+
+  public move(index: number, offset: number): void {
+    this.store.moveColumn(index, offset);
+  }
+
+  public get columns() {
+    return this.store.columns;
+  }
+
+  /** A filtered dataset's columns are inherited from its base — no add/rename/retype/reorder/delete. */
+  public get isFiltered() {
+    return this.store.isFiltered;
+  }
+
+  /** Whether another column already uses this name (case-insensitive). */
+  private nameTaken(name: string, except: DatasetColumn | null): boolean {
+    const lower = name.toLowerCase();
+    return this.columns().some((c) => c !== except && c.name.toLowerCase() === lower);
   }
 
   private typeChangeConfirmation(
@@ -235,20 +290,6 @@ export class DatasetColumnsPanelComponent {
     );
   }
 
-  /**
-   * Confirms before removing a column, since it drops that column's values from every row — and, if
-   * widgets in the report use it, names them, because they'd be left with errors.
-   */
-  protected remove(column: DatasetColumn): void {
-    this.dialog
-      .open<boolean>(ConfirmDialogComponent, { data: this.deleteConfirmation(column) })
-      .closed.subscribe((confirmed) => {
-        if (confirmed) {
-          this.store.deleteColumn(column);
-        }
-      });
-  }
-
   private deleteConfirmation(column: DatasetColumn): ConfirmDialogData {
     const uses = this.store.columnUses(column.id);
     const removal = `Its values will be removed from every row. This can't be undone.`;
@@ -275,29 +316,5 @@ export class DatasetColumnsPanelComponent {
       confirmLabel: 'Delete',
       danger: true,
     };
-  }
-
-  /** Opens the formula builder to add a formula column, or — given one — to edit it. */
-  protected openFormulaBuilder(column: DatasetColumn | null): void {
-    const datasetId = this.store.selectedId();
-    if (datasetId === null) {
-      return;
-    }
-
-    this.dialog
-      .open<DatasetColumn | undefined, FormulaBuilderData>(FormulaBuilderDialogComponent, {
-        data: { datasetId, columns: this.columns(), column },
-        ariaLabel: 'Formula builder',
-        autoFocus: 'dialog',
-      })
-      .closed.subscribe((saved) => {
-        if (saved) {
-          this.store.applyFormulaColumnSaved(saved);
-        }
-      });
-  }
-
-  protected move(index: number, offset: number): void {
-    this.store.moveColumn(index, offset);
   }
 }

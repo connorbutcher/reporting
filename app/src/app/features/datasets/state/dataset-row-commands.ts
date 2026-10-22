@@ -19,7 +19,7 @@ export class DatasetRowCommands {
   private readonly window = inject(DatasetRowWindow);
   private readonly notify = inject(NotificationService);
 
-  addRow(): void {
+  public addRow(): void {
     const id = this.collection.selectedId();
     if (!id) {
       return;
@@ -32,7 +32,7 @@ export class DatasetRowCommands {
     });
   }
 
-  setCell(row: DatasetRow, columnId: string, value: string): void {
+  public setCell(row: DatasetRow, columnId: string, value: string): void {
     const id = this.collection.selectedId();
     if (!id) {
       return;
@@ -51,7 +51,7 @@ export class DatasetRowCommands {
     });
   }
 
-  deleteRow(row: DatasetRow): void {
+  public deleteRow(row: DatasetRow): void {
     const id = this.collection.selectedId();
     if (!id) {
       return;

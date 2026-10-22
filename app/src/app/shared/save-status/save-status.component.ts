@@ -15,19 +15,19 @@ import { SaveTone } from './save-tone';
 })
 export class SaveStatusComponent {
   /** True while a save request is in flight. */
-  readonly saving = input.required<boolean>();
+  public readonly saving = input.required<boolean>();
   /** True when the last save failed. */
-  readonly saveFailed = input.required<boolean>();
+  public readonly saveFailed = input.required<boolean>();
   /**
    * True when there are edits not yet saved. Screens that persist every edit
    * immediately (no deferred write) can leave this at its default.
    */
-  readonly dirty = input(false);
+  public readonly dirty = input(false);
 
   /** `inline` shows an icon and full label; `dot` shows a coloured dot and a short label. */
-  readonly variant = input<'inline' | 'dot'>('inline');
+  public readonly variant = input<'inline' | 'dot'>('inline');
 
-  protected readonly state = computed<{
+  public readonly state = computed<{
     tone: SaveTone;
     icon: string;
     full: string;

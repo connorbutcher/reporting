@@ -3,12 +3,6 @@ import { Popover } from 'primeng/popover';
 import { DatasetsStore } from '../datasets.store';
 import { IssueSummary } from '../../../shared/text/issue-summary';
 
-/**
- * The selected dataset's validation state, as a compact toolbar chip — the
- * datasets-screen equivalent of the report builder's issue indicator. Stays a
- * quiet green check while the dataset is valid, taking on colour only when there
- * are warnings or errors; clicking it opens a popover listing the problems.
- */
 @Component({
   selector: 'app-dataset-issues',
   imports: [Popover],
@@ -16,11 +10,7 @@ import { IssueSummary } from '../../../shared/text/issue-summary';
   styleUrl: './dataset-issues.component.scss',
 })
 export class DatasetIssuesComponent {
-  private readonly store = inject(DatasetsStore);
-
-  protected readonly issues = this.store.datasetIssues;
-
-  protected readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
+  public readonly tone = computed<'ok' | 'warning' | 'error'>(() => {
     const issues = this.issues();
     if (issues.some((i) => i.severity === 'error')) {
       return 'error';
@@ -31,10 +21,16 @@ export class DatasetIssuesComponent {
     return 'ok';
   });
 
-  protected readonly label = computed(() => {
+  public readonly label = computed(() => {
     const issues = this.issues();
     const errors = issues.filter((i) => i.severity === 'error').length;
     const warnings = issues.length - errors;
     return IssueSummary.headline(errors, warnings);
   });
+
+  private readonly store = inject(DatasetsStore);
+
+  public get issues() {
+    return this.store.datasetIssues;
+  }
 }

@@ -1,11 +1,6 @@
 import { Directive, ElementRef, effect, inject, input, signal } from '@angular/core';
 import { UrlFragmentService } from '../../core/services/url-fragment.service';
 
-/**
- * Scrolls its host into view and briefly highlights it when the URL fragment
- * names it, so a shared link (e.g. `#widget-<id>`) jumps straight to the
- * element — on the builder canvas or in the read-only viewer alike.
- */
 @Directive({
   selector: '[appScrollToFragment]',
   host: {
@@ -16,10 +11,11 @@ export class ScrollToFragmentDirective {
   /** The fragment this element answers to. */
   public readonly appScrollToFragment = input.required<string>();
 
-  private readonly fragments = inject(UrlFragmentService);
-  private readonly element = inject(ElementRef<HTMLElement>);
-
   public readonly highlighted = signal(false);
+
+  private readonly fragments = inject(UrlFragmentService);
+
+  private readonly element = inject(ElementRef<HTMLElement>);
 
   constructor() {
     effect(() => {

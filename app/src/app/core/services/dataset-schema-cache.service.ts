@@ -1,23 +1,23 @@
-import { inject, Service, signal } from '@angular/core';
+import { inject, Service, signal, Signal } from '@angular/core';
 import { DatasetApiService } from '../api/dataset-api.service';
 import { DatasetColumnConfiguration, DatasetSchema } from '../models/dataset';
 
-/**
- * Dataset schemas fetched by the report builder, cached for the rest of the
- * session so panel interactions and every widget referencing a dataset never
- * refetch it.
- */
 @Service()
 export class DatasetSchemaCacheService {
+  public readonly schemas: Signal<Record<number, DatasetSchema>>;
+
   private readonly datasetApi = inject(DatasetApiService);
 
   private readonly cache = signal<Record<number, DatasetSchema>>({});
+
   private readonly inFlight = new Set<number>();
 
-  readonly schemas = this.cache.asReadonly();
+  constructor() {
+    this.schemas = this.cache.asReadonly();
+  }
 
   /** Fetches a dataset's schema once; later calls for the same id are no-ops. */
-  ensure(datasetId: number): void {
+  public ensure(datasetId: number): void {
     if (this.cache()[datasetId] || this.inFlight.has(datasetId)) {
       return;
     }
@@ -34,7 +34,7 @@ export class DatasetSchemaCacheService {
    * Patches a cached column's configuration immediately so open panels reflect
    * the change, then reconciles with whatever the server actually stored.
    */
-  updateColumnConfiguration(
+  public updateColumnConfiguration(
     datasetId: number,
     columnId: string,
     configuration: DatasetColumnConfiguration,

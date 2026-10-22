@@ -12,19 +12,18 @@ import { SentRequest } from './sent-request';
 import { ViewerFixtures } from './viewer-fixtures';
 import { ViewerHostComponent } from './viewer-host.component';
 
-/** Drives the real store, session, router and HTTP layer against a fake server. */
 export class ViewerHarness {
   public readonly notify = { warn: vi.fn(), error: vi.fn(), success: vi.fn() };
 
   private sent: SentRequest[] = [];
-  private server: FakeServer = { saved: null, views: {} };
-  private http!: HttpTestingController;
-  private harness!: RouterTestingHarness;
-  private viewSession!: ViewFilterSession;
 
-  public get session(): ViewFilterSession {
-    return this.viewSession;
-  }
+  private server: FakeServer = { saved: null, views: {} };
+
+  private http!: HttpTestingController;
+
+  private harness!: RouterTestingHarness;
+
+  private viewSession!: ViewFilterSession;
 
   /**
    * Call inside a `describe`; it registers its own setup and teardown. Date is faked too: RxJS's
@@ -86,6 +85,10 @@ export class ViewerHarness {
 
   public url(): string {
     return TestBed.inject(Router).url;
+  }
+
+  public get session(): ViewFilterSession {
+    return this.viewSession;
   }
 
   private reset(): void {

@@ -4,24 +4,10 @@ import { DatasetCollection } from './dataset-collection';
 import { DatasetIssue } from './dataset-issue';
 import { DatasetSchemaState } from './dataset-schema-state';
 
-/**
- * Validates the datasets on the current report, the way the report builder
- * validates its widgets. A dataset is invalid if it shares its name with
- * another, has no columns or duplicate column names, or its source isn't
- * configured.
- *
- * Only the name clash can be judged across the whole list — the columns and
- * source config are loaded per selected dataset — so {@link nameConflictIds}
- * marks the sidebar and {@link selectedIssues} gives the full picture for the
- * open one. Provided on the datasets page; {@link DatasetsStore} re-exposes it.
- */
 @Injectable()
 export class DatasetValidation {
-  private readonly collection = inject(DatasetCollection);
-  private readonly schema = inject(DatasetSchemaState);
-
   /** Dataset ids whose name (trimmed, case-insensitive) collides with another dataset's. */
-  readonly nameConflictIds = computed(() => {
+  public readonly nameConflictIds = computed(() => {
     const byName = new Map<string, number[]>();
     for (const dataset of this.collection.datasets()) {
       const key = dataset.name.trim().toLowerCase();
@@ -45,7 +31,7 @@ export class DatasetValidation {
   });
 
   /** Every validation problem with the currently selected dataset, most severe first. */
-  readonly selectedIssues = computed<DatasetIssue[]>(() => {
+  public readonly selectedIssues = computed<DatasetIssue[]>(() => {
     const selected = this.collection.selected();
     if (!selected) {
       return [];
@@ -98,6 +84,11 @@ export class DatasetValidation {
 
     return issues;
   });
+
+  private readonly collection = inject(DatasetCollection);
+
+  private readonly schema = inject(DatasetSchemaState);
+
   /** The distinct names shared by more than one column (trimmed, case-insensitive). */
   private static duplicateColumnNames(columns: readonly DatasetColumn[]): string[] {
     const seen = new Map<string, { name: string; count: number }>();

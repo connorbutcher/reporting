@@ -1,4 +1,5 @@
-import { Component, computed, inject } from '@angular/core';
+import { Tab } from '../../core/models/report';
+import { Component, computed, inject, Signal } from '@angular/core';
 import { ReportComments } from './comments/report-comments';
 import { ReadonlyReportGridComponent } from './readonly-report-grid/readonly-report-grid.component';
 import { ReportViewerAsideComponent } from './report-viewer-aside/report-viewer-aside.component';
@@ -9,7 +10,6 @@ import { SharedViewLink } from './filters/shared-view-link';
 import { ViewFilterSchemas } from './filters/view-filter-schemas';
 import { ViewFilterSession } from './filters/view-filter-session';
 
-/** Read-only view of a report: lays out the header, the grid, and the filters/history aside. */
 @Component({
   selector: 'app-report-viewer',
   imports: [ReadonlyReportGridComponent, ReportViewerHeaderComponent, ReportViewerAsideComponent],
@@ -25,27 +25,49 @@ import { ViewFilterSession } from './filters/view-filter-session';
   ],
 })
 export class ReportViewerComponent {
+  public readonly loading = computed(() => this.store.loading() || this.filters.loading());
+
+  public readonly tabs: Signal<Tab[]>;
+
+  public readonly activeTab: Signal<Tab>;
+
+  public readonly activeTabId: Signal<string | null>;
+
   private readonly store = inject(ReportViewerStore);
+
   private readonly filters = inject(ViewFilterSession);
 
-  protected readonly loading = computed(() => this.store.loading() || this.filters.loading());
-  protected readonly notFound = this.store.notFound;
-  protected readonly report = this.store.report;
-  protected readonly content = this.store.content;
-  protected readonly viewFilters = this.filters.viewFilters;
-  protected readonly tabs = this.store.tabs;
-  protected readonly activeTab = this.store.activeTab;
-  protected readonly activeTabId = this.store.activeTabId;
+  constructor() {
+    this.tabs = this.store.tabs;
+    this.activeTab = this.store.activeTab;
+    this.activeTabId = this.store.activeTabId;
+  }
 
-  protected filterWidget(widgetId: string): void {
+  public filterWidget(widgetId: string): void {
     this.store.filterWidget(widgetId);
   }
 
-  protected openComments(widgetId: string): void {
+  public openComments(widgetId: string): void {
     this.store.openComments(widgetId);
   }
 
-  protected selectTab(tabId: string): void {
+  public selectTab(tabId: string): void {
     this.store.selectTab(tabId);
+  }
+
+  public get notFound() {
+    return this.store.notFound;
+  }
+
+  public get report() {
+    return this.store.report;
+  }
+
+  public get content() {
+    return this.store.content;
+  }
+
+  public get viewFilters() {
+    return this.filters.viewFilters;
   }
 }

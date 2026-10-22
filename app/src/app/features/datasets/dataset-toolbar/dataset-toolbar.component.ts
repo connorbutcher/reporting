@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Dialog } from '@angular/cdk/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -9,10 +9,6 @@ import { ConfirmDialogComponent } from '../../home/confirm-dialog/confirm-dialog
 import { ConfirmDialogData } from '../../home/confirm-dialog/confirm-dialog-data';
 import { DatasetsStore } from '../datasets.store';
 
-/**
- * The selected dataset's identity and actions — rename, save status, duplicate and delete.
- * Reads and mutates through {@link DatasetsStore}, which it never hands to the template.
- */
 @Component({
   selector: 'app-dataset-toolbar',
   imports: [
@@ -26,12 +22,15 @@ import { DatasetsStore } from '../datasets.store';
   styleUrl: './dataset-toolbar.component.scss',
 })
 export class DatasetToolbarComponent {
+  public readonly saveFailed: WritableSignal<boolean>;
+
   private readonly store = inject(DatasetsStore);
+
   private readonly dialog = inject(Dialog);
 
-  protected readonly selected = this.store.selected;
-  protected readonly saving = this.store.saving;
-  protected readonly saveFailed = this.store.saveFailed;
+  constructor() {
+    this.saveFailed = this.store.saveFailed;
+  }
 
   /**
    * Commits a rename, but restores the field when the name can't be saved — it was
@@ -39,7 +38,7 @@ export class DatasetToolbarComponent {
    * store's {@link DatasetsStore.renameDataset} enforces the same rules and raises
    * the duplicate-name notification; reverting here just keeps the field truthful.
    */
-  protected onNameBlur(event: Event): void {
+  public onNameBlur(event: Event): void {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();
     const current = this.selected();
@@ -52,12 +51,12 @@ export class DatasetToolbarComponent {
     this.store.renameDataset(name);
   }
 
-  protected cloneDataset(): void {
+  public cloneDataset(): void {
     this.store.cloneDataset();
   }
 
   /** Confirms before deleting the selected dataset, matching the app's other destructive actions. */
-  protected deleteDataset(): void {
+  public deleteDataset(): void {
     const dataset = this.selected();
     if (!dataset) {
       return;
@@ -76,5 +75,13 @@ export class DatasetToolbarComponent {
           this.store.deleteDataset();
         }
       });
+  }
+
+  public get selected() {
+    return this.store.selected;
+  }
+
+  public get saving() {
+    return this.store.saving;
   }
 }

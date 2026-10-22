@@ -8,15 +8,15 @@ import { Service } from '@angular/core';
  */
 @Service()
 export class LoggerService {
-  error(message: string, error?: unknown): void {
+  public error(message: string, error?: unknown): void {
     console.error(message, error);
   }
 
-  warn(message: string, detail?: unknown): void {
+  public warn(message: string, detail?: unknown): void {
     console.warn(message, detail);
   }
 
-  info(message: string, detail?: unknown): void {
+  public info(message: string, detail?: unknown): void {
     console.info(message, detail);
   }
 }
