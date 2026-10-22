@@ -42,25 +42,18 @@ import { ColumnTypes } from '../../../models/column-types';
 })
 export class PanelColumnSettingsComponent {
   /** Each date pattern previewed on 31 December this year, so day and month can't be confused. */
-  public static readonly DATE_FORMAT_OPTIONS: SelectOption<string>[] = (() => {
-    const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
-    return PanelColumnSettingsComponent.DATE_FORMAT_PATTERNS.map((value) => ({
-      label: formatDate(sample, value, 'en-US'),
-      value,
-    }));
-  })();
+  public static readonly DATE_FORMAT_OPTIONS: SelectOption<string>[] =
+    PanelColumnSettingsComponent.previewDateFormats([
+      'dd/MM/yyyy',
+      'MM/dd/yyyy',
+      'yyyy-MM-dd',
+      'd MMM yyyy',
+      'd MMMM yyyy',
+      'dd/MM/yyyy HH:mm',
+    ]);
 
   /** Fallback heading; the chrome shows the column's own label when there is one. */
   public static readonly title = 'Column';
-
-  private static readonly DATE_FORMAT_PATTERNS = [
-    'dd/MM/yyyy',
-    'MM/dd/yyyy',
-    'yyyy-MM-dd',
-    'd MMM yyyy',
-    'd MMMM yyyy',
-    'dd/MM/yyyy HH:mm',
-  ];
 
   public readonly dateFormats = PanelColumnSettingsComponent.DATE_FORMAT_OPTIONS;
   public readonly alignOptions = OptionCatalog.HORIZONTAL_ALIGN;
@@ -126,6 +119,11 @@ export class PanelColumnSettingsComponent {
     const view = this.navigation.view();
     return view.kind === 'columnSettings' ? view.columnId : null;
   });
+
+  private static previewDateFormats(patterns: string[]): SelectOption<string>[] {
+    const sample = new Date(new Date().getFullYear(), 11, 31, 14, 30);
+    return patterns.map((value) => ({ label: formatDate(sample, value, 'en-US'), value }));
+  }
 
   public isNumeric(column: DatasetColumn): boolean {
     return ColumnTypes.isNumeric(column.type);
