@@ -314,8 +314,10 @@ export class DataTableWidgetComponent extends DataWidgetBase {
    * fetches missing windows and reloads whole only on a sort change.
    */
   public onLazyLoad(event: TableLazyLoadEvent): void {
-    const columnId = typeof event.sortField === 'string' ? event.sortField : undefined;
-    const order = event.sortOrder ?? this.sortOrder();
+    // The table only reports a sort once a header is clicked, so its first load keeps the saved one.
+    const clicked = typeof event.sortField === 'string';
+    const columnId = clicked ? (event.sortField as string) : this.sortField();
+    const order = clicked ? (event.sortOrder ?? this.sortOrder()) : this.sortOrder();
     const sortChanged = columnId !== this.sortField() || order !== this.sortOrder();
 
     this.sortField.set(columnId);

@@ -28,7 +28,9 @@ public class ChartSortJsonConverter : JsonConverter<ChartSort>
             By = shape.By,
             ColumnId = shape.ColumnId,
             Aggregate = shape.Aggregate,
-            Descending = shape.Descending
+            Descending = shape.Descending,
+            Limit = shape.Limit,
+            ShowOther = shape.ShowOther
         };
     }
 
@@ -39,7 +41,9 @@ public class ChartSortJsonConverter : JsonConverter<ChartSort>
             By = value.By,
             ColumnId = value.ColumnId,
             Aggregate = value.Aggregate,
-            Descending = value.Descending
+            Descending = value.Descending,
+            Limit = value.Limit,
+            ShowOther = value.ShowOther
         };
         JsonSerializer.Serialize(writer, shape, options);
     }

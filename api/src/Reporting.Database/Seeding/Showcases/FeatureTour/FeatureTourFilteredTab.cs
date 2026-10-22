@@ -7,7 +7,7 @@ internal static class FeatureTourFilteredTab
 {
     public static void Add(ReportRevision revision, SeedBatch batch, FeatureTourContext context)
     {
-        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Filtered dataset", Order = 5 };
+        var tab = new Tab { RefId = Guid.NewGuid(), Name = "Filtered dataset", Order = 8 };
         revision.Tabs.Add(tab);
         tab.Widgets.Add(SeedWidgets.Title("Filtered dataset", 0, 0, 48, 2));
         tab.Widgets.Add(SeedWidgets.Paragraph(

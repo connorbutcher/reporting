@@ -44,7 +44,12 @@ const config = (over: Partial<DataTableWidgetConfig> = {}): DataTableWidgetConfi
 
 type Internals = {
   rows: () => (TableRowResult | undefined)[];
-  onLazyLoad: (event: { first?: number; last?: number }) => void;
+  onLazyLoad: (event: {
+    first?: number;
+    last?: number;
+    sortField?: string;
+    sortOrder?: number;
+  }) => void;
   exportCsv: () => Promise<string | null>;
   searchText: { set: (v: string) => void };
   cellClass: (col: unknown, cell: unknown) => string;
@@ -132,6 +137,24 @@ describe('DataTableWidgetComponent', () => {
     expect(table.rows()[2 * DataTableWidgetComponent.SCROLL_WINDOW + 10]?.id).toBe(
       `r${2 * DataTableWidgetComponent.SCROLL_WINDOW + 10}`,
     );
+  });
+
+  it('keeps the saved sort when the table reports its first page without one', async () => {
+    const table = await render({ paginator: true, sortColumnId: 'cost', sortDirection: 'desc' });
+
+    table.onLazyLoad({ first: 0, sortOrder: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(lastRequest()).toMatchObject({ sortColumnId: 'cost', sortDirection: 'desc' });
+  });
+
+  it('switches to the sort a reader clicks', async () => {
+    const table = await render({ paginator: true, sortColumnId: 'cost', sortDirection: 'desc' });
+
+    table.onLazyLoad({ first: 0, sortField: 'name', sortOrder: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(lastRequest()).toMatchObject({ sortColumnId: 'name', sortDirection: 'asc' });
   });
 
   it('pages a paginated table one page at a time', async () => {

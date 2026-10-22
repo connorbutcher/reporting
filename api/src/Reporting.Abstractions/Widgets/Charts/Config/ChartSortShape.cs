@@ -7,4 +7,6 @@ internal sealed class ChartSortShape
     public Guid? ColumnId { get; set; }
     public SortAggregate Aggregate { get; set; } = SortAggregate.Sum;
     public bool Descending { get; set; }
+    public int? Limit { get; set; }
+    public bool ShowOther { get; set; }
 }

@@ -23,6 +23,15 @@ internal static class SeedDatasets
         return column;
     }
 
+    /// <summary>A computed column. The seed writes its cells itself, with the values the formula produces.</summary>
+    public static DatasetColumn FormulaColumn(
+        Dataset dataset, string name, DatasetColumnType type, int order, string expression, string configurationJson = "{}")
+    {
+        var column = Column(dataset, name, type, order, configurationJson);
+        column.FormulaExpression = expression;
+        return column;
+    }
+
     public static void AddRow(Dataset dataset, SeedBatch batch, Dictionary<DatasetColumn, string> values)
     {
         var row = new DatasetRow { RefId = Guid.NewGuid() };

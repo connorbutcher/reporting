@@ -10,6 +10,8 @@ public static class DatabaseStartup
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ReportingDbContext>();
         db.Database.Migrate();
+        // Users first: the feature tour's seeded comments are written by the demo users.
+        DbSeeder.SeedIdentity(db);
         DbSeeder.Seed(db);
         DbSeeder.SeedBoxPlotShowcase(db);
         DbSeeder.SeedStackedBarShowcase(db);
@@ -17,6 +19,21 @@ public static class DatabaseStartup
         DbSeeder.SeedPivotShowcase(db);
         DbSeeder.SeedFeatureShowcase(db);
         DbSeeder.SeedCrossReferenceShowcase(db);
-        DbSeeder.SeedIdentity(db);
+        SeedPerformanceShowcase(scope.ServiceProvider, db);
+    }
+
+    /// <summary>On by default; set Seeding:PerformanceShowcase to false to skip the 1.1 million generated rows.</summary>
+    private static void SeedPerformanceShowcase(IServiceProvider services, ReportingDbContext db)
+    {
+        var enabled = services.GetRequiredService<IConfiguration>().GetValue("Seeding:PerformanceShowcase", true);
+        if (!enabled || !DbSeeder.NeedsPerformanceShowcase(db))
+        {
+            return;
+        }
+
+        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DatabaseStartup));
+        logger.LogInformation("Seeding the Performance at Scale report (1.1 million rows). This runs once.");
+        DbSeeder.SeedPerformanceShowcase(db, PerformanceShowcaseSizes.Full);
+        logger.LogInformation("Seeded the Performance at Scale report.");
     }
 }

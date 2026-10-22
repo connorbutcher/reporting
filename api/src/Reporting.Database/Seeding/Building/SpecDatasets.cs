@@ -28,7 +28,8 @@ internal static class SpecDatasets
         return ChartWidgetJson.SpecBand(spec.Dataset.Id, spec.RowRef, spec.Lsl.RefId, spec.Usl.RefId, axis);
     }
 
-    public static string KpiToleranceJson(SpecDataset spec)
+    /// <summary>The tolerance pointer KPIs and table columns share.</summary>
+    public static string ToleranceJson(SpecDataset spec)
     {
         return KpiWidgetJson.Tolerance(spec.Dataset.Id, spec.RowRef, spec.Lsl.RefId, spec.Usl.RefId);
     }

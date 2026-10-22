@@ -3,12 +3,13 @@ using Reporting.Abstractions;
 namespace Reporting.Database;
 
 /// <summary>
-/// Six builds per engine and line, plus a few rough R&amp;D-bench prototypes the report filter excludes.
-/// Dates end shortly before today so the KPI tab's rolling "last N days" windows always have rows.
+/// Twelve builds per engine and line, taken in turn so every week mixes engines, plus a few rough R&amp;D-bench
+/// prototypes the report filter excludes. Dates end shortly before today so the KPI tab's rolling "last N days"
+/// windows always have rows. Values come from a fixed seed, so every install gets the same numbers.
 /// </summary>
 internal sealed class EngineBuildLogDataset
 {
-    private const int PerGroup = 6;
+    private const int PerGroup = 12;
 
     private static readonly EngineProfile[] Engines =
     [
@@ -38,8 +39,9 @@ internal sealed class EngineBuildLogDataset
     private readonly DatasetColumn _hours;
     private readonly DatasetColumn _rework;
     private readonly DatasetColumn _passed;
+    private readonly EngineBuildFormulaColumns _formulas;
     private readonly Random _rng = new(20260913);
-    private readonly DateTime _start = DateTime.UtcNow.Date.AddDays(-110);
+    private readonly DateTime _start = DateTime.UtcNow.Date.AddDays(-105);
     private int _build = 1;
     private int _day;
 
@@ -59,6 +61,7 @@ internal sealed class EngineBuildLogDataset
         _hours = SeedDatasets.Column(_dataset, "Build Hours", DatasetColumnType.Double, 9, SeedFormats.Unit(1, " h"));
         _rework = SeedDatasets.Column(_dataset, "Rework Count", DatasetColumnType.Int, 10);
         _passed = SeedDatasets.Column(_dataset, "Passed", DatasetColumnType.Bool, 11, SeedFormats.Labels("Pass", "Fail"));
+        _formulas = new EngineBuildFormulaColumns(_dataset, 12);
     }
 
     public static Dataset Build(SeedBatch batch)
@@ -71,11 +74,11 @@ internal sealed class EngineBuildLogDataset
 
     private void AddLineBuilds()
     {
-        foreach (var engine in Engines)
+        for (var i = 0; i < PerGroup; i++)
         {
-            foreach (var line in Lines)
+            foreach (var engine in Engines)
             {
-                for (var i = 0; i < PerGroup; i++)
+                foreach (var line in Lines)
                 {
                     Emit(engine, line);
                 }
@@ -98,25 +101,35 @@ internal sealed class EngineBuildLogDataset
         var powerValue = engine.Power * (0.96 + _rng.NextDouble() * 0.08);
         // Torque tracks power at roughly a fixed ratio, with a little independent scatter.
         var torqueValue = powerValue * (engine.Torque / engine.Power) * (0.97 + _rng.NextDouble() * 0.06);
-        var clearValue = Math.Clamp(engine.ClearanceMean + engine.ClearanceSd * SeedRandom.NextNormal(_rng), 0.025, 0.072);
+        var clearValue = Math.Round(Math.Clamp(engine.ClearanceMean + engine.ClearanceSd * SeedRandom.NextNormal(_rng), 0.025, 0.072), 4);
         var reworkValue = bench ? _rng.Next(2, 6) : _rng.Next(0, slow ? 5 : 3);
         var inSpec = clearValue is >= 0.030 and <= 0.060;
-        SeedDatasets.AddRow(_dataset, _batch, new Dictionary<DatasetColumn, string>
+        var build = new EngineBuildValues(
+            engine.Name,
+            Math.Round(engine.Cost * (0.94 + _rng.NextDouble() * 0.12), 0),
+            Math.Round(engine.Hours * (slow ? 1.08 : 1.0) * (0.92 + _rng.NextDouble() * 0.16), 1),
+            _start.AddDays(_day),
+            reworkValue,
+            inSpec && reworkValue <= 2);
+
+        var values = new Dictionary<DatasetColumn, string>
         {
             [_buildId] = $"EB-{_build:0000}",
             [_engine] = engine.Name,
             [_line] = line,
-            [_inspector] = Inspectors[_build % Inspectors.Length],
-            [_buildDate] = SeedFormats.Iso(_start.AddDays(_day)),
+            [_inspector] = Inspectors[_rng.Next(Inspectors.Length)],
+            [_buildDate] = SeedFormats.Iso(build.Date),
             [_power] = SeedFormats.Num(Math.Round(powerValue, 1)),
             [_torque] = SeedFormats.Num(Math.Round(torqueValue, 1)),
-            [_clearance] = SeedFormats.Num(Math.Round(clearValue, 4)),
-            [_cost] = SeedFormats.Num(Math.Round(engine.Cost * (0.94 + _rng.NextDouble() * 0.12), 0)),
-            [_hours] = SeedFormats.Num(Math.Round(engine.Hours * (slow ? 1.08 : 1.0) * (0.92 + _rng.NextDouble() * 0.16), 1)),
+            [_clearance] = SeedFormats.Num(clearValue),
+            [_cost] = SeedFormats.Num(build.Cost),
+            [_hours] = SeedFormats.Num(build.Hours),
             [_rework] = SeedFormats.Int(reworkValue),
-            [_passed] = SeedFormats.Bool(inSpec && reworkValue <= 2),
-        });
+            [_passed] = SeedFormats.Bool(build.Passed),
+        };
+        _formulas.AddValues(values, build);
+        SeedDatasets.AddRow(_dataset, _batch, values);
         _build++;
-        _day += 2;
+        _day++;
     }
 }
