@@ -35,9 +35,10 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             TotalRowCount = filtered.TotalRowCount,
             MatchedRowCount = filtered.MatchedRowCount
         };
-        if (measures.Count > 0 && await ApplyBinsAsync(result, filtered.Matching, dto, measures, columnsByRef, dataset.Columns))
+        var resolvedBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds);
+        if (measures.Count > 0 && await ApplyBinsAsync(result, filtered.Matching, dto, measures, columnsByRef, dataset.Columns, resolvedBands))
         {
-            result.ToleranceBands = ChartToleranceBands.Resolved(dto.ToleranceBands, bounds);
+            result.ToleranceBands = resolvedBands;
         }
         return result;
     }
@@ -45,7 +46,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
     /// <summary>False, leaving <paramref name="result"/> empty, when no measure has a value.</summary>
     private static async Task<bool> ApplyBinsAsync(
         HistogramQueryResultDto result, IQueryable<DatasetRow> matching, HistogramQueryDto dto, List<DatasetColumn> measures,
-        Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> allColumns)
+        Dictionary<Guid, DatasetColumn> columnsByRef, IEnumerable<DatasetColumn> allColumns, List<ResolvedToleranceBandDto> bands)
     {
         var seriesColumn = dto.SeriesColumnId is { } seriesColumnRef ? columnsByRef.GetValueOrDefault(seriesColumnRef) : null;
         var seriesId = seriesColumn?.Id ?? 0;
@@ -57,7 +58,7 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
             return false;
         }
 
-        var (min, max) = Range(dto, allValues);
+        var (min, max) = Range(dto, allValues, bands);
         var edges = HistogramBinning.Edges(allValues, min, max, dto.BinMode, dto.BinCount, dto.BinWidth, fixedStart: dto.RangeMin is not null);
         var bins = HistogramBinning.Bins(edges);
         var binWidth = edges[1] - edges[0];
@@ -109,11 +110,13 @@ public class HistogramQueryService(ReportingDbContext db, ChartToleranceBands to
         return (perMeasure, truncated, scannedCount);
     }
 
-    /// <summary>A fixed range if valid, else the data extremes, so a half-typed bound can't blank the chart.</summary>
-    private static (double Min, double Max) Range(HistogramQueryDto dto, List<double> allValues)
+    /// <summary>
+    /// A fixed range if valid, else the data extremes widened to the spec limits so every limit lands on the
+    /// bin axis; a half-typed bound can't blank the chart.
+    /// </summary>
+    private static (double Min, double Max) Range(HistogramQueryDto dto, List<double> allValues, List<ResolvedToleranceBandDto> bands)
     {
-        var dataMin = allValues.Min();
-        var dataMax = allValues.Max();
+        var (dataMin, dataMax) = HistogramLimitRange.Extend(allValues.Min(), allValues.Max(), bands);
         var min = dto.RangeMin ?? dataMin;
         var max = dto.RangeMax ?? dataMax;
         if (double.IsNaN(min) || double.IsNaN(max) || min >= max)

@@ -15,7 +15,10 @@ export class XBarRAxes {
 
   public static labelledCategory(chart: XBarRChart) {
     const { config, categories } = chart;
-    const rotate = ChartScale.labelRotate(config.xAxisRotate, categories.length > 6 ? 30 : 0);
+    const rotate = ChartScale.labelRotate(
+      config.xAxisRotate,
+      ChartScale.autoCategoryRotate(categories, false),
+    );
     return {
       ...ChartScale.categoryAxis(categories, config.xAxisInterval),
       ...(rotate !== 0 ? { axisLabel: { rotate } } : {}),

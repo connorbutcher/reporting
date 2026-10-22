@@ -2,18 +2,19 @@
   <div
     class="readonly-grid"
     [style.grid-template-columns]="'repeat(' + tab().columns + ', minmax(0, 1fr))'"
-    [style.grid-template-rows]="'repeat(' + tab().rows + ', ' + rowHeight + 'px)'"
+    [style.grid-template-rows]="'repeat(' + usedRows() + ', ' + rowHeight + 'px)'"
     [style.gap.px]="gridGap"
   >
     @for (widget of tab().widgets; track widget.id) {
       <div
         class="item"
+        [class.bare]="isBare(widget)"
         [appScrollToFragment]="fragmentFor(widget)"
         [style.grid-column]="widget.x + 1 + ' / span ' + widget.w"
         [style.grid-row]="widget.y + 1 + ' / span ' + widget.h"
       >
         <!-- The header is also shown with the title hidden, so a table without a
-             title is still filterable and exportable. -->
+             title is still filterable and exportable. Untitled text floats it instead. -->
         <div class="header">
           <span class="title">{{ widget.config.showTitle ? widget.config.title : '' }}</span>
           @if (isExportable(widget)) {

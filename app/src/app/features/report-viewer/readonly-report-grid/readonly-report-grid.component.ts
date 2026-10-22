@@ -36,6 +36,9 @@ export class ReadonlyReportGridComponent {
 
   public readonly gridGap = GridLayout.GRID_GAP;
 
+  /** The published grid ends at its last widget rather than at the builder's spare rows. */
+  public readonly usedRows = computed(() => GridLayout.usedRows(this.tab().widgets));
+
   /**
    * Session overrides, keyed by dataset id (page), widget id (table) or
    * {@link ViewFilterEntryFactory.chartBindingKey}. Unset falls back to what was published. Each value
@@ -96,6 +99,14 @@ export class ReadonlyReportGridComponent {
 
   public fragmentFor(widget: Widget): string {
     return WidgetFragment.forWidget(widget.id);
+  }
+
+  /**
+   * Untitled text has only a comments button in its header, so the button floats over the text
+   * instead of a header bar taking room from a heading sized to fit its rows.
+   */
+  public isBare(widget: Widget): boolean {
+    return widget.type === 'staticText' && !(widget.config.showTitle && widget.config.title);
   }
 
   public isExportable(widget: Widget): boolean {

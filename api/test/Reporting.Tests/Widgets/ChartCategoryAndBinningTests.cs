@@ -292,6 +292,37 @@ public class ChartCategoryAndBinningTests() : SqliteDbTestBase(foreignKeys: fals
     }
 
     [Fact]
+    public async Task Histogram_bins_widen_to_spec_limits_outside_the_data_so_the_limits_can_be_drawn()
+    {
+        var (limits, limitRefs) = NewDataset(("Min", DatasetColumnType.Double), ("Max", DatasetColumnType.Double));
+        AddRow(limits, "0", "10");
+        var (dataset, refs) = NewDataset(("Width", DatasetColumnType.Double));
+        foreach (var value in new[] { 3, 4.5, 5, 7 })
+        {
+            AddRow(dataset, value.ToString(CultureInfo.InvariantCulture));
+        }
+        await Db.SaveChangesAsync();
+        var limitsRow = Db.DatasetRows.Single(r => r.DatasetId == limits.Id).RefId;
+
+        var result = await Histogram().QueryForHistogramAsync(dataset.Id, new HistogramQueryDto
+        {
+            ValueColumnIds = [refs[0]], BinMode = HistogramBinMode.Count, BinCount = 5,
+            ToleranceBands =
+            [
+                new ChartToleranceBand
+                {
+                    Id = "spec", Axis = ChartAxis.X, SourceDatasetId = limits.Id, SourceRowId = limitsRow,
+                    MinColumnId = limitRefs[0], MaxColumnId = limitRefs[1]
+                }
+            ]
+        });
+
+        Assert.Equal(0d, result!.Bins[0].Lower);
+        Assert.Equal(10d, result.Bins[^1].Upper);
+        Assert.Equal([0d, 1d, 2d, 1d, 0d], result.Series.Single().Values);
+    }
+
+    [Fact]
     public async Task Line_chart_aggregates_rows_by_month()
     {
         var (dataset, refs) = NewDataset(("Made", DatasetColumnType.DateTime), ("Qty", DatasetColumnType.Double));

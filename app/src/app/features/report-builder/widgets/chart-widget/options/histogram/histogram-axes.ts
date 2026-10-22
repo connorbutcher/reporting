@@ -11,6 +11,21 @@ export class HistogramAxes {
     return CategoryAxis.build(chart.binLabels, chart.config, name, chart.horizontal);
   }
 
+  /**
+   * A hidden value axis over the bin axis, from the first bin's left edge to the last's right.
+   * echarts snaps marks on a category axis to the nearest bar centre, so the limits, which fall
+   * anywhere across a bin, are drawn on this one instead.
+   */
+  public static position(chart: HistogramChart) {
+    return {
+      type: 'value' as const,
+      min: -0.5,
+      max: chart.bins.length - 0.5,
+      show: false,
+      ...(chart.horizontal ? { inverse: true } : {}),
+    };
+  }
+
   public static count(chart: HistogramChart) {
     const { config, countAxisConfig: axis } = chart;
     const scale = ChartScale.numericAxis(false, null, null, axis.interval, undefined, axis.scale);
@@ -33,6 +48,8 @@ export class HistogramAxes {
         chart.horizontal ? 'x' : 'y',
       ),
       splitLine: { show: config.showGridLines ?? true },
+      // Otherwise it sits at the position axis's zero, the first bar's centre.
+      axisLine: { onZero: false },
     };
   }
 

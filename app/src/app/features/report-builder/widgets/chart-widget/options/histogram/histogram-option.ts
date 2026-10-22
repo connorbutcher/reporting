@@ -12,8 +12,8 @@ import { HistogramSeriesOptions } from './histogram-series-options';
 import { HistogramTooltip } from './histogram-tooltip';
 
 /**
- * Histogram: one bar per value bin, per series. Spec bands are mapped onto the bin axis's
- * fractional category positions.
+ * Histogram: one bar per value bin, per series. Spec bands are mapped to fractional bin positions
+ * on a hidden value axis laid over the bin axis.
  */
 export class HistogramOption {
   /** Null until there's a dataset and a value column bound. */
@@ -28,7 +28,7 @@ export class HistogramOption {
       return null;
     }
 
-    const binAxis = HistogramAxes.bin(chart);
+    const binAxes = [HistogramAxes.bin(chart), HistogramAxes.position(chart)];
     const countAxis = HistogramAxes.count(chart);
     const reference = HistogramMarks.reference(chart);
     return {
@@ -38,8 +38,8 @@ export class HistogramOption {
         chart.showLegend,
         chart.series.map((s) => s.name),
       ),
-      xAxis: chart.horizontal ? countAxis : binAxis,
-      yAxis: chart.horizontal ? binAxis : countAxis,
+      xAxis: chart.horizontal ? countAxis : binAxes,
+      yAxis: chart.horizontal ? binAxes : countAxis,
       series: [
         ...HistogramSeriesOptions.all(chart),
         ...HistogramNormalCurve.series(chart),
