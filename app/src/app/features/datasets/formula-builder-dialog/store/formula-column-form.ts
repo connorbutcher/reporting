@@ -4,11 +4,10 @@ import { form, required, validate } from '@angular/forms/signals';
 import { DatasetColumnType } from '../../../../core/models/dataset';
 import { FormulaBuilderData } from './formula-builder-data';
 
-const BRACKETS = /[[\]]/;
-
 /** The column's name (validated) and its chosen type. */
 @Injectable()
 export class FormulaColumnForm {
+  private static readonly BRACKETS = /[[\]]/;
   public readonly nameForm = form(
     signal({ name: inject<FormulaBuilderData>(DIALOG_DATA).column?.name ?? '' }),
     (path) => {
@@ -31,7 +30,7 @@ export class FormulaColumnForm {
   }
 
   private nameProblem(name: string): { kind: string; message: string } | null {
-    if (BRACKETS.test(name)) {
+    if (FormulaColumnForm.BRACKETS.test(name)) {
       return {
         kind: 'brackets',
         message: "A name can't contain [ or ], so formulas couldn't refer to it.",

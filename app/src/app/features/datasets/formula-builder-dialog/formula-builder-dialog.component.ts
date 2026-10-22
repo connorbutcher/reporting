@@ -22,23 +22,6 @@ import { FormulaLoader } from './store/formula-loader';
 import { FormulaSaver } from './store/formula-saver';
 import { FormulaSelection } from './store/formula-selection';
 
-const TYPE_OPTIONS: { label: string; value: DatasetColumnType | 'auto' }[] = [
-  { label: 'Automatic', value: 'auto' },
-  { label: 'Text', value: 'string' },
-  { label: 'Whole number', value: 'int' },
-  { label: 'Decimal', value: 'double' },
-  { label: 'Yes / No', value: 'bool' },
-  { label: 'Date', value: 'dateTime' },
-];
-
-const TYPE_NAMES: Record<DatasetColumnType, string> = {
-  string: 'text',
-  int: 'a whole number',
-  double: 'a number',
-  bool: 'yes / no',
-  dateTime: 'a date',
-};
-
 /**
  * Builds a formula column: lay out columns, values, functions and bare operator symbols in a row — and inside
  * the arguments of functions and in brackets — while the formula reads back as text, problems are
@@ -82,7 +65,23 @@ const TYPE_NAMES: Record<DatasetColumnType, string> = {
   },
 })
 export class FormulaBuilderDialogComponent {
-  public readonly typeOptions = TYPE_OPTIONS;
+  private static readonly TYPE_OPTIONS: { label: string; value: DatasetColumnType | 'auto' }[] = [
+    { label: 'Automatic', value: 'auto' },
+    { label: 'Text', value: 'string' },
+    { label: 'Whole number', value: 'int' },
+    { label: 'Decimal', value: 'double' },
+    { label: 'Yes / No', value: 'bool' },
+    { label: 'Date', value: 'dateTime' },
+  ];
+
+  private static readonly TYPE_NAMES: Record<DatasetColumnType, string> = {
+    string: 'text',
+    int: 'a whole number',
+    double: 'a number',
+    bool: 'yes / no',
+    dateTime: 'a date',
+  };
+  public readonly typeOptions = FormulaBuilderDialogComponent.TYPE_OPTIONS;
 
   public readonly canUndo = computed(() => this.store.canUndo());
   public readonly canRedo = computed(() => this.store.canRedo());
@@ -107,7 +106,7 @@ export class FormulaBuilderDialogComponent {
     }
     const type = this.store.resultType();
     if (type) {
-      return `Result: ${TYPE_NAMES[type]}`;
+      return `Result: ${FormulaBuilderDialogComponent.TYPE_NAMES[type]}`;
     }
     return `Result: ${ValueKinds.LABELS[this.store.resultKind()]} — choose a type`;
   });

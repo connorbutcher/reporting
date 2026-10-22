@@ -12,15 +12,15 @@ import { FormulaDocument } from './formula-document';
 import { PreviewOutcome } from './preview-outcome';
 import { PreviewRequest } from './preview-request';
 
-const PREVIEW_ROWS = 5;
-const PREVIEW_DEBOUNCE_MS = 300;
-
 /**
  * The checks that run as the formula changes: locally for structure and types, and on the server (debounced)
  * for the authoritative verdict and a preview of the results.
  */
 @Injectable()
 export class FormulaChecking {
+  private static readonly PREVIEW_ROWS = 5;
+
+  private static readonly PREVIEW_DEBOUNCE_MS = 300;
   public readonly serialized = computed(() => {
     const scope = this.catalogue.scope();
     return FormulaSerializer.serialize(this.document.root(), (call, index) =>
@@ -100,7 +100,7 @@ export class FormulaChecking {
 
     this.previewRequests
       .pipe(
-        debounceTime(PREVIEW_DEBOUNCE_MS),
+        debounceTime(FormulaChecking.PREVIEW_DEBOUNCE_MS),
         switchMap((request) => this.fetchPreview(request)),
         takeUntilDestroyed(),
       )
@@ -118,7 +118,7 @@ export class FormulaChecking {
       .preview(this.data.datasetId, {
         expression: request.text,
         type: request.type,
-        sampleSize: PREVIEW_ROWS,
+        sampleSize: FormulaChecking.PREVIEW_ROWS,
       })
       .pipe(
         map((preview): PreviewOutcome => ({ request, preview, failed: false })),

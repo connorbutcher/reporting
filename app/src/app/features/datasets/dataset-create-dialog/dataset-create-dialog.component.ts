@@ -7,39 +7,13 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { form, required, validate } from '@angular/forms/signals';
-import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { DatasetSource, DatasetSourceKey } from '../../../core/models/dataset';
-
-export type DatasetCreateDialogData = {
-  sources: DatasetSource[];
-  /** The report's existing dataset names, so a duplicate is rejected inline. */
-  existingNames: string[];
-};
-
-export type DatasetCreateDialogResult = {
-  name: string;
-  sourceId: number;
-};
-
-/** Icon shown for each source in the picker. */
-const SOURCE_ICONS: Record<DatasetSourceKey, string> = {
-  assembly: 'pi pi-sitemap',
-  disassembly: 'pi pi-wrench',
-  specification: 'pi pi-file-edit',
-  filtered: 'pi pi-filter',
-};
-
-/** One-line explanation of what each source contributes, shown under the picker. */
-const SOURCE_HINTS: Record<DatasetSourceKey, string> = {
-  assembly: 'Build data — configured by type and the phases to include.',
-  disassembly: 'Strip-down data — configured by type and the phases to include.',
-  specification: 'Limits and reference values used for tolerance banding.',
-  filtered:
-    'A subset of another dataset — pick the base dataset and build the filter after it’s created.',
-};
+import { DatasetSourceKey } from '../../../core/models/dataset';
+import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
+import { DatasetCreateDialogResult } from './dataset-create-dialog-result';
+import { DatasetCreateDialogData } from './dataset-create-dialog-data';
+import { form, required, validate } from '@angular/forms/signals';
 
 /**
  * Collects a new dataset's name and source before it's created, mirroring the home page's
@@ -57,6 +31,22 @@ const SOURCE_HINTS: Record<DatasetSourceKey, string> = {
   styleUrl: './dataset-create-dialog.component.scss',
 })
 export class DatasetCreateDialogComponent implements AfterViewInit {
+  /** Icon shown for each source in the picker. */
+  private static readonly SOURCE_ICONS: Record<DatasetSourceKey, string> = {
+    assembly: 'pi pi-sitemap',
+    disassembly: 'pi pi-wrench',
+    specification: 'pi pi-file-edit',
+    filtered: 'pi pi-filter',
+  };
+
+  /** One-line explanation of what each source contributes, shown under the picker. */
+  private static readonly SOURCE_HINTS: Record<DatasetSourceKey, string> = {
+    assembly: 'Build data — configured by type and the phases to include.',
+    disassembly: 'Strip-down data — configured by type and the phases to include.',
+    specification: 'Limits and reference values used for tolerance banding.',
+    filtered:
+      'A subset of another dataset — pick the base dataset and build the filter after it’s created.',
+  };
   private readonly dialogRef = inject(DialogRef<DatasetCreateDialogResult | undefined>);
   protected readonly data = inject<DatasetCreateDialogData>(DIALOG_DATA);
   private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('nameInput');
@@ -98,12 +88,12 @@ export class DatasetCreateDialogComponent implements AfterViewInit {
   }
 
   protected icon(key: DatasetSourceKey): string {
-    return SOURCE_ICONS[key];
+    return DatasetCreateDialogComponent.SOURCE_ICONS[key];
   }
 
   protected hint(): string {
     const selected = this.data.sources.find((s) => s.id === this.form.sourceId().value());
-    return selected ? SOURCE_HINTS[selected.key] : '';
+    return selected ? DatasetCreateDialogComponent.SOURCE_HINTS[selected.key] : '';
   }
 
   protected selectSource(id: number): void {

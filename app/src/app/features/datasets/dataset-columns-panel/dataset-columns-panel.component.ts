@@ -17,24 +17,7 @@ import {
 import { DatasetsStore } from '../datasets.store';
 import { FormulaBuilderDialogComponent } from '../formula-builder-dialog/formula-builder-dialog.component';
 import { FormulaBuilderData } from '../formula-builder-dialog/store/formula-builder-data';
-import { describeUse, summariseUses, useDetails } from '../state/column-usage-display';
-
-const COLUMN_TYPES: { label: string; value: DatasetColumnType }[] = [
-  { label: 'Text', value: 'string' },
-  { label: 'Whole number', value: 'int' },
-  { label: 'Decimal', value: 'double' },
-  { label: 'Yes / No', value: 'bool' },
-  { label: 'Date', value: 'dateTime' },
-];
-
-/** Icon shown alongside a column to signal its data type at a glance. */
-const TYPE_ICONS: Record<DatasetColumnType, string> = {
-  string: 'pi pi-align-left',
-  int: 'pi pi-hashtag',
-  double: 'pi pi-hashtag',
-  bool: 'pi pi-check-square',
-  dateTime: 'pi pi-calendar',
-};
+import { ColumnUsageDisplay } from '../state/column-usage-display';
 
 /**
  * The selected dataset's column schema: list, reorder, rename, retype and add. A column that
@@ -55,6 +38,22 @@ const TYPE_ICONS: Record<DatasetColumnType, string> = {
   styleUrl: './dataset-columns-panel.component.scss',
 })
 export class DatasetColumnsPanelComponent {
+  private static readonly COLUMN_TYPES: { label: string; value: DatasetColumnType }[] = [
+    { label: 'Text', value: 'string' },
+    { label: 'Whole number', value: 'int' },
+    { label: 'Decimal', value: 'double' },
+    { label: 'Yes / No', value: 'bool' },
+    { label: 'Date', value: 'dateTime' },
+  ];
+
+  /** Icon shown alongside a column to signal its data type at a glance. */
+  private static readonly TYPE_ICONS: Record<DatasetColumnType, string> = {
+    string: 'pi pi-align-left',
+    int: 'pi pi-hashtag',
+    double: 'pi pi-hashtag',
+    bool: 'pi pi-check-square',
+    dateTime: 'pi pi-calendar',
+  };
   private readonly store = inject(DatasetsStore);
   private readonly dialog = inject(Dialog);
   private readonly route = inject(ActivatedRoute);
@@ -64,7 +63,7 @@ export class DatasetColumnsPanelComponent {
 
   protected readonly columns = this.store.columns;
   protected readonly loading = this.store.schemaLoading;
-  protected readonly columnTypes = COLUMN_TYPES;
+  protected readonly columnTypes = DatasetColumnsPanelComponent.COLUMN_TYPES;
   /** A filtered dataset's columns are inherited from its base — no add/rename/retype/reorder/delete. */
   protected readonly isFiltered = this.store.isFiltered;
 
@@ -97,7 +96,13 @@ export class DatasetColumnsPanelComponent {
 
   /** How each column is used in the report, by column id — empty for a column nothing uses. */
   protected readonly usageLines = computed(
-    () => new Map(this.columns().map((c) => [c.id, this.store.columnUses(c.id).map(describeUse)])),
+    () =>
+      new Map(
+        this.columns().map((c) => [
+          c.id,
+          this.store.columnUses(c.id).map(ColumnUsageDisplay.describe),
+        ]),
+      ),
   );
 
   /** The columns whose usage list is open. */
@@ -107,7 +112,7 @@ export class DatasetColumnsPanelComponent {
   protected readonly renameError = signal<string | null>(null);
 
   protected usageSummary(column: DatasetColumn): string {
-    return summariseUses(this.store.columnUses(column.id));
+    return ColumnUsageDisplay.summarise(this.store.columnUses(column.id));
   }
 
   protected toggleUsage(column: DatasetColumn): void {
@@ -126,7 +131,7 @@ export class DatasetColumnsPanelComponent {
   }
 
   protected typeIcon(type: DatasetColumnType): string {
-    return TYPE_ICONS[type];
+    return DatasetColumnsPanelComponent.TYPE_ICONS[type];
   }
 
   protected add(): void {
@@ -223,14 +228,18 @@ export class DatasetColumnsPanelComponent {
       message:
         `Changing ${change} will break ${what} in this report, which will show errors until you fix them. ` +
         `The column's values are re-read as the new type. Published versions of the report aren't affected.`,
-      details: useDetails(impact.breaks),
+      details: ColumnUsageDisplay.details(impact.breaks),
       confirmLabel: 'Change anyway',
       danger: true,
     };
   }
 
   private typeLabel(type: DatasetColumnType): string {
-    return COLUMN_TYPES.find((t) => t.value === type)?.label.toLowerCase() ?? type;
+    return (
+      DatasetColumnsPanelComponent.COLUMN_TYPES.find(
+        (t) => t.value === type,
+      )?.label.toLowerCase() ?? type
+    );
   }
 
   /**
@@ -257,7 +266,7 @@ export class DatasetColumnsPanelComponent {
         message:
           `"${column.name}" is ${this.usageSummary(column).toLowerCase()}. Deleting it will leave these with errors until you fix or remove them. ` +
           `${removal} Published versions of the report aren't affected.`,
-        details: useDetails(uses),
+        details: ColumnUsageDisplay.details(uses),
         confirmLabel: 'Delete anyway',
         danger: true,
       };

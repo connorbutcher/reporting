@@ -4,31 +4,10 @@ import {
   FormulaFunction,
   FormulaFunctionCategory,
 } from '../../../../core/models/dataset';
+import { OperatorDefinition, Operators, ValueKinds } from '../model';
+import { FunctionGroup } from './function-group';
 import { FormulaBuilderStore } from '../formula-builder.store';
-import { PalettePayload } from '../store/palette-payload';
-import { ValueKinds, Operators, OperatorDefinition } from '../model';
-
-type PaletteItem = PalettePayload;
-
-type FunctionGroup = {
-  category: FormulaFunctionCategory;
-  label: string;
-  functions: FormulaFunction[];
-};
-
-const CATEGORY_ORDER: { category: FormulaFunctionCategory; label: string }[] = [
-  { category: 'math', label: 'Math' },
-  { category: 'text', label: 'Text' },
-  { category: 'date', label: 'Date and time' },
-  { category: 'logic', label: 'Logic' },
-  { category: 'conversion', label: 'Conversion' },
-];
-
-const VALUES: { label: string; value: boolean | null }[] = [
-  { label: 'true', value: true },
-  { label: 'false', value: false },
-  { label: 'blank', value: null },
-];
+import { PaletteItem } from './palette-item';
 
 /**
  * Everything that can go into a formula: the dataset's columns, a few fixed values, the operators and the
@@ -42,9 +21,22 @@ const VALUES: { label: string; value: boolean | null }[] = [
   styleUrl: './formula-palette.component.scss',
 })
 export class FormulaPaletteComponent {
+  private static readonly CATEGORY_ORDER: { category: FormulaFunctionCategory; label: string }[] = [
+    { category: 'math', label: 'Math' },
+    { category: 'text', label: 'Text' },
+    { category: 'date', label: 'Date and time' },
+    { category: 'logic', label: 'Logic' },
+    { category: 'conversion', label: 'Conversion' },
+  ];
+
+  private static readonly VALUES: { label: string; value: boolean | null }[] = [
+    { label: 'true', value: true },
+    { label: 'false', value: false },
+    { label: 'blank', value: null },
+  ];
   public readonly search = signal('');
   public readonly badges = ValueKinds.BADGES;
-  public readonly values = VALUES;
+  public readonly values = FormulaPaletteComponent.VALUES;
   public readonly operators = Operators.ALL;
 
   /** Explains the chip under the pointer or focus. */
@@ -67,7 +59,7 @@ export class FormulaPaletteComponent {
           f.name.toLowerCase().includes(query) ||
           f.description.toLowerCase().includes(query),
       );
-    return CATEGORY_ORDER.map(({ category, label }) => ({
+    return FormulaPaletteComponent.CATEGORY_ORDER.map(({ category, label }) => ({
       category,
       label,
       functions: matching.filter((f) => f.category === category),

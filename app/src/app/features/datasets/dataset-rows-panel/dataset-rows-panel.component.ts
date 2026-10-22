@@ -5,10 +5,6 @@ import { Table, TableLazyLoadEvent, TableModule } from 'primeng/table';
 import { DatasetColumn, DatasetColumnType, DatasetRow } from '../../../core/models/dataset';
 import { DatasetsStore } from '../datasets.store';
 
-/** How many rows the grid pulls per lazy window, and each row's pixel height for the virtual scroller. */
-const ROW_WINDOW = 100;
-const ROW_HEIGHT = 37;
-
 /**
  * The selected dataset's row data, as an editable grid. Rows load from the server
  * a window at a time through a PrimeNG lazy virtual scroll table, so a dataset
@@ -21,6 +17,10 @@ const ROW_HEIGHT = 37;
   styleUrl: './dataset-rows-panel.component.scss',
 })
 export class DatasetRowsPanelComponent {
+  /** How many rows the grid pulls per lazy window, and each row's pixel height for the virtual scroller. */
+  private static readonly ROW_WINDOW = 100;
+
+  private static readonly ROW_HEIGHT = 37;
   private readonly store = inject(DatasetsStore);
   private readonly host = inject(ElementRef);
   private readonly table = viewChild(Table);
@@ -29,8 +29,8 @@ export class DatasetRowsPanelComponent {
     return (this.host.nativeElement as HTMLElement).querySelector('.p-virtualscroller');
   }
 
-  protected readonly rowHeight = ROW_HEIGHT;
-  protected readonly rowWindow = ROW_WINDOW;
+  protected readonly rowHeight = DatasetRowsPanelComponent.ROW_HEIGHT;
+  protected readonly rowWindow = DatasetRowsPanelComponent.ROW_WINDOW;
 
   protected readonly columns = this.store.columns;
   protected readonly rows = this.store.rows;
@@ -61,7 +61,7 @@ export class DatasetRowsPanelComponent {
 
   /** PrimeNG's lazy event: fires on mount and as the viewport scrolls; loads a window from there. */
   protected onLazyLoad(event: TableLazyLoadEvent): void {
-    this.store.loadRows(event.first ?? 0, ROW_WINDOW);
+    this.store.loadRows(event.first ?? 0, DatasetRowsPanelComponent.ROW_WINDOW);
   }
 
   protected addRow(): void {

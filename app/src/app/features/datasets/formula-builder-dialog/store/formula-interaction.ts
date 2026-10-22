@@ -4,12 +4,12 @@ import { DragPayload } from './drag-payload';
 import { DropPoint } from './drop-point';
 import { FormulaDocument } from './formula-document';
 
-const FLASH_DELAY_MS = 0;
-const FLASH_DURATION_MS = 1400;
-
 /** Transient display state: drag and drop, hover linking, where click-to-add goes, the hint, folded calls and the flash. */
 @Injectable()
 export class FormulaInteraction {
+  private static readonly FLASH_DELAY_MS = 0;
+
+  private static readonly FLASH_DURATION_MS = 1400;
   public readonly dragging = signal<DragPayload | null>(null);
   public readonly hovered = signal<number | null>(null);
   /** Where the drag in progress would land, for the insertion marker. */
@@ -47,9 +47,9 @@ export class FormulaInteraction {
     this.flashed.set(null);
     setTimeout(() => {
       this.flashed.set(issue.blockId);
-    }, FLASH_DELAY_MS);
+    }, FormulaInteraction.FLASH_DELAY_MS);
     setTimeout(() => {
       this.flashed.set(null);
-    }, FLASH_DURATION_MS);
+    }, FormulaInteraction.FLASH_DURATION_MS);
   }
 }

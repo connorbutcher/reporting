@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ColumnUse } from '../../../core/models/dataset';
-import { describeUse, summariseUses, useDetails } from './column-usage-display';
+import { ColumnUsageDisplay } from './column-usage-display';
 
 const widget = (over: Partial<ColumnUse> = {}): ColumnUse => ({
   kind: 'widget',
@@ -22,21 +22,21 @@ const filter: ColumnUse = {
 
 describe('describeUse', () => {
   it('names a widget by its title, with its kind and tab, and how it uses the column', () => {
-    expect(describeUse(widget())).toMatchObject({
+    expect(ColumnUsageDisplay.describe(widget())).toMatchObject({
       widgetId: 'w1',
       name: 'Sales log',
       roles: 'Table column, Filter condition ×2',
     });
-    expect(describeUse(widget()).where).toContain('Overview');
+    expect(ColumnUsageDisplay.describe(widget()).where).toContain('Overview');
   });
 
   it('falls back to the widget type when it has no title', () => {
-    expect(describeUse(widget({ widgetTitle: '  ' })).name).toMatch(/^Untitled /);
-    expect(describeUse(widget({ widgetTitle: null })).name).toMatch(/^Untitled /);
+    expect(ColumnUsageDisplay.describe(widget({ widgetTitle: '  ' })).name).toMatch(/^Untitled /);
+    expect(ColumnUsageDisplay.describe(widget({ widgetTitle: null })).name).toMatch(/^Untitled /);
   });
 
   it('describes the page-level filter, which has no widget to open', () => {
-    expect(describeUse(filter)).toEqual({
+    expect(ColumnUsageDisplay.describe(filter)).toEqual({
       widgetId: null,
       name: 'Report filter',
       where: '',
@@ -48,17 +48,21 @@ describe('describeUse', () => {
 
 describe('summariseUses', () => {
   it('counts widgets and mentions the report filter', () => {
-    expect(summariseUses([widget(), widget({ widgetId: 'w2' })])).toBe('Used in 2 widgets');
-    expect(summariseUses([widget()])).toBe('Used in 1 widget');
-    expect(summariseUses([widget(), filter])).toBe('Used in 1 widget and the report filter');
-    expect(summariseUses([filter])).toBe('Used in the report filter');
-    expect(summariseUses([])).toBe('Not used');
+    expect(ColumnUsageDisplay.summarise([widget(), widget({ widgetId: 'w2' })])).toBe(
+      'Used in 2 widgets',
+    );
+    expect(ColumnUsageDisplay.summarise([widget()])).toBe('Used in 1 widget');
+    expect(ColumnUsageDisplay.summarise([widget(), filter])).toBe(
+      'Used in 1 widget and the report filter',
+    );
+    expect(ColumnUsageDisplay.summarise([filter])).toBe('Used in the report filter');
+    expect(ColumnUsageDisplay.summarise([])).toBe('Not used');
   });
 });
 
 describe('useDetails', () => {
   it('gives one readable line per use', () => {
-    const lines = useDetails([widget(), filter]);
+    const lines = ColumnUsageDisplay.details([widget(), filter]);
 
     expect(lines).toHaveLength(2);
     expect(lines[0]).toContain('Sales log');

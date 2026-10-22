@@ -5,11 +5,9 @@ import { Dialog } from '@angular/cdk/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SkeletonModule } from 'primeng/skeleton';
-import {
-  DatasetCreateDialogComponent,
-  DatasetCreateDialogData,
-  DatasetCreateDialogResult,
-} from '../dataset-create-dialog/dataset-create-dialog.component';
+import { DatasetCreateDialogComponent } from '../dataset-create-dialog/dataset-create-dialog.component';
+import { DatasetCreateDialogData } from '../dataset-create-dialog/dataset-create-dialog-data';
+import { DatasetCreateDialogResult } from '../dataset-create-dialog/dataset-create-dialog-result';
 import { DatasetsStore } from '../datasets.store';
 
 /** The dataset list sidebar: browse, search and select a dataset, or create a new one. */

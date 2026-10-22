@@ -4,9 +4,6 @@ import { NotificationService } from '../../../core/services/notification.service
 import { DatasetRow } from '../../../core/models/dataset';
 import { DatasetCollection } from './dataset-collection';
 
-/** Rows fetched per window; also the first window loaded eagerly when a dataset is selected. */
-const WINDOW = 100;
-
 /**
  * The selected dataset's rows, loaded from the server a window at a time for the
  * editor grid's lazy virtual scroll, so a dataset with thousands of rows never
@@ -21,6 +18,8 @@ const WINDOW = 100;
  */
 @Injectable()
 export class DatasetRowWindow {
+  /** Rows fetched per window; also the first window loaded eagerly when a dataset is selected. */
+  private static readonly WINDOW = 100;
   private readonly api = inject(DatasetApiService);
   private readonly collection = inject(DatasetCollection);
   private readonly notify = inject(NotificationService);
@@ -46,7 +45,7 @@ export class DatasetRowWindow {
   // The most recently requested window, and a token so a stale response (from a
   // superseded window or a since-changed selection) is ignored.
   private lastFirst = 0;
-  private lastCount = WINDOW;
+  private lastCount = DatasetRowWindow.WINDOW;
   private requestSeq = 0;
   // A row index to scroll to once the next window has loaded (e.g. a just-added last row).
   private pendingScroll: number | null = null;
@@ -62,10 +61,10 @@ export class DatasetRowWindow {
       this._rows.set([]);
       this._total.set(0);
       this.lastFirst = 0;
-      this.lastCount = WINDOW;
+      this.lastCount = DatasetRowWindow.WINDOW;
       this.scrollTo.set(null);
       if (id !== null) {
-        this.fetch(id, 0, WINDOW);
+        this.fetch(id, 0, DatasetRowWindow.WINDOW);
       }
     });
   }
@@ -76,7 +75,7 @@ export class DatasetRowWindow {
     if (id === null) {
       return;
     }
-    const size = count || WINDOW;
+    const size = count || DatasetRowWindow.WINDOW;
     // The grid fires its first lazy-load (first = 0) the moment it mounts, which
     // repeats the window already fetched eagerly on selection. Ignore a request
     // identical to the one in flight (or just completed) so it isn't fetched twice.
@@ -136,7 +135,7 @@ export class DatasetRowWindow {
       return;
     }
     this._ready.set(false);
-    this.fetch(id, 0, WINDOW);
+    this.fetch(id, 0, DatasetRowWindow.WINDOW);
   }
 
   /** Replaces the loaded row with the same id — used for optimistic edits and server confirmations. */
@@ -157,7 +156,7 @@ export class DatasetRowWindow {
     const newTotal = this._total() + 1;
     this._ready.set(false);
     this.pendingScroll = newTotal - 1;
-    this.fetch(id, Math.max(0, newTotal - WINDOW), WINDOW);
+    this.fetch(id, Math.max(0, newTotal - DatasetRowWindow.WINDOW), DatasetRowWindow.WINDOW);
   }
 
   /**

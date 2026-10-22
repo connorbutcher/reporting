@@ -78,7 +78,7 @@ export class DatasetValidation {
         detail: 'This dataset has no columns, so nothing can be read from it.',
       });
     } else {
-      const duplicates = duplicateColumnNames(columns);
+      const duplicates = DatasetValidation.duplicateColumnNames(columns);
       if (duplicates.length) {
         issues.push({
           id: 'duplicate-columns',
@@ -91,67 +91,66 @@ export class DatasetValidation {
       }
     }
 
-    const sourceIssue = sourceConfigIssue(this.schema.sourceConfig());
+    const sourceIssue = DatasetValidation.sourceConfigIssue(this.schema.sourceConfig());
     if (sourceIssue) {
       issues.push(sourceIssue);
     }
 
     return issues;
   });
-}
-
-/** The distinct names shared by more than one column (trimmed, case-insensitive). */
-function duplicateColumnNames(columns: readonly DatasetColumn[]): string[] {
-  const seen = new Map<string, { name: string; count: number }>();
-  for (const column of columns) {
-    const key = column.name.trim().toLowerCase();
-    const entry = seen.get(key);
-    if (entry) {
-      entry.count++;
-    } else {
-      seen.set(key, { name: column.name.trim() || '(unnamed)', count: 1 });
+  /** The distinct names shared by more than one column (trimmed, case-insensitive). */
+  private static duplicateColumnNames(columns: readonly DatasetColumn[]): string[] {
+    const seen = new Map<string, { name: string; count: number }>();
+    for (const column of columns) {
+      const key = column.name.trim().toLowerCase();
+      const entry = seen.get(key);
+      if (entry) {
+        entry.count++;
+      } else {
+        seen.set(key, { name: column.name.trim() || '(unnamed)', count: 1 });
+      }
     }
-  }
-  return [...seen.values()].filter((entry) => entry.count > 1).map((entry) => entry.name);
-}
-
-/** The problem with a source's configuration, or null when it's valid (or still loading). */
-function sourceConfigIssue(config: DatasetSourceConfig | null): DatasetIssue | null {
-  if (!config) {
-    return null;
+    return [...seen.values()].filter((entry) => entry.count > 1).map((entry) => entry.name);
   }
 
-  switch (config.source) {
-    case 'assembly':
-    case 'disassembly':
-      if (config.typeId == null) {
-        return {
-          id: 'source-config',
-          severity: 'warning',
-          title: 'Source not configured',
-          detail: 'Choose the source-system type this dataset draws from.',
-        };
-      }
-      if (config.phaseIds.length === 0) {
-        return {
-          id: 'source-config',
-          severity: 'warning',
-          title: 'No phases selected',
-          detail: 'Add at least one phase for the source to pull data from.',
-        };
-      }
+  /** The problem with a source's configuration, or null when it's valid (or still loading). */
+  private static sourceConfigIssue(config: DatasetSourceConfig | null): DatasetIssue | null {
+    if (!config) {
       return null;
-    case 'specification':
-      return null;
-    case 'filtered':
-      if (config.baseDatasetId == null) {
-        return {
-          id: 'source-config',
-          severity: 'warning',
-          title: 'Source not configured',
-          detail: 'Choose the dataset this one filters.',
-        };
-      }
-      return null;
+    }
+
+    switch (config.source) {
+      case 'assembly':
+      case 'disassembly':
+        if (config.typeId == null) {
+          return {
+            id: 'source-config',
+            severity: 'warning',
+            title: 'Source not configured',
+            detail: 'Choose the source-system type this dataset draws from.',
+          };
+        }
+        if (config.phaseIds.length === 0) {
+          return {
+            id: 'source-config',
+            severity: 'warning',
+            title: 'No phases selected',
+            detail: 'Add at least one phase for the source to pull data from.',
+          };
+        }
+        return null;
+      case 'specification':
+        return null;
+      case 'filtered':
+        if (config.baseDatasetId == null) {
+          return {
+            id: 'source-config',
+            severity: 'warning',
+            title: 'Source not configured',
+            detail: 'Choose the dataset this one filters.',
+          };
+        }
+        return null;
+    }
   }
 }
