@@ -42,7 +42,12 @@ const CONTENT = {
           type: 'scatterChart',
           x: 0,
           y: 4,
-          config: { type: 'scatterChart', title: 'Solo chart', bindings: [binding('b3', 7, '')], toleranceBands: [] },
+          config: {
+            type: 'scatterChart',
+            title: 'Solo chart',
+            bindings: [binding('b3', 7, '')],
+            toleranceBands: [],
+          },
         },
         {
           id: 'multi',
@@ -61,7 +66,13 @@ const CONTENT = {
           type: 'dataTable',
           x: 0,
           y: 0,
-          config: { type: 'dataTable', datasetId: 7, title: 'Bearings table', columns: [], filter: null },
+          config: {
+            type: 'dataTable',
+            datasetId: 7,
+            title: 'Bearings table',
+            columns: [],
+            filter: null,
+          },
         },
       ],
     },
@@ -79,7 +90,9 @@ describe('ViewFiltersPanelComponent', () => {
   let filters: ReportViewFilters;
 
   beforeEach(async () => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     filters = new ReportViewFilters(CONTENT, signal(SCHEMAS), signal(null));
     fixture = TestBed.createComponent(ViewFiltersPanelComponent);
     component = fixture.componentInstance;
@@ -194,8 +207,8 @@ describe('ViewFiltersPanelComponent', () => {
   });
 
   it('groups widgets by tab, in tab order', () => {
-    expect(component.tabWidgets().map((t) => [t.tabName, t.items.map((i) => i.widget.id)])).toEqual([
-      ['Tab', ['tbl', 'multi', 'solo']],
-    ]);
+    expect(component.tabWidgets().map((t) => [t.tabName, t.items.map((i) => i.widget.id)])).toEqual(
+      [['Tab', ['tbl', 'multi', 'solo']]],
+    );
   });
 });

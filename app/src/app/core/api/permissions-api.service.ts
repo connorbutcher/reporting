@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
 import { Observable } from 'rxjs';
 import { skipHttpErrorNotification } from '../http/http-error-notification.interceptor';
-import { AccessGrant, RemoveGrant, SaveGrant, SecurableKind, SetInheritance } from '../models/permission';
+import {
+  AccessGrant,
+  RemoveGrant,
+  SaveGrant,
+  SecurableKind,
+  SetInheritance,
+} from '../models/permission';
 
 /**
  * The `/permissions` API for folders and reports — the mutations only. The reads
@@ -21,12 +27,17 @@ export class PermissionsApiService {
   }
 
   public upsertGrant(kind: SecurableKind, id: number, dto: SaveGrant): Observable<AccessGrant> {
-    return this.http.put<AccessGrant>(`${this.base(kind, id)}`, dto, { context: skipHttpErrorNotification() });
+    return this.http.put<AccessGrant>(`${this.base(kind, id)}`, dto, {
+      context: skipHttpErrorNotification(),
+    });
   }
 
   public removeGrant(kind: SecurableKind, id: number, dto: RemoveGrant): Observable<void> {
     // The grant is keyed by its subject, so the subject travels in the request body.
-    return this.http.delete<void>(`${this.base(kind, id)}`, { body: dto, context: skipHttpErrorNotification() });
+    return this.http.delete<void>(`${this.base(kind, id)}`, {
+      body: dto,
+      context: skipHttpErrorNotification(),
+    });
   }
 
   /** The permissions endpoint for a folder or report — also used by the dialog store's httpResource GET. */

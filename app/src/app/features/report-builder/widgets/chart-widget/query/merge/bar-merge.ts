@@ -49,18 +49,16 @@ export class BarMerge {
       null as FilterGroup | null,
     );
 
-    return result.series.map(
-      (s): BarSeriesResult => ({
-        label: SeriesLabels.compose(base, s.valueColumnLabel, s.label, vary),
-        bindingId: binding.id,
-        valueColumnId: s.valueColumnId,
-        drill: s.drill ?? null,
-        values: BarMerge.reindex(categories, localIndex, s.values, null),
-        rowCounts: BarMerge.reindex(categories, localIndex, s.rowCounts, null),
-        tooltipLines: BarMerge.reindex(categories, localIndex, s.tooltipLines, [] as string[]),
-        categoryDrills: [...categoryDrills],
-      }),
-    );
+    return result.series.map((s): BarSeriesResult => ({
+      label: SeriesLabels.compose(base, s.valueColumnLabel, s.label, vary),
+      bindingId: binding.id,
+      valueColumnId: s.valueColumnId,
+      drill: s.drill ?? null,
+      values: BarMerge.reindex(categories, localIndex, s.values, null),
+      rowCounts: BarMerge.reindex(categories, localIndex, s.rowCounts, null),
+      tooltipLines: BarMerge.reindex(categories, localIndex, s.tooltipLines, [] as string[]),
+      categoryDrills: [...categoryDrills],
+    }));
   }
 
   /** Re-indexes one binding's values onto the merged axis, filling `missing` for gaps. */

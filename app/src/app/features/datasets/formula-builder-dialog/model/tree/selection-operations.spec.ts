@@ -68,7 +68,14 @@ describe('working with several items', () => {
 
     const next = unwrapGroup(root, group.id);
 
-    expect(next.map((i) => i.kind)).toEqual(['operator', 'column', 'operator', 'literal', 'operator', 'column']);
+    expect(next.map((i) => i.kind)).toEqual([
+      'operator',
+      'column',
+      'operator',
+      'literal',
+      'operator',
+      'column',
+    ]);
     expect(unwrapGroup(root, root[0].id)).toBe(root); // not a group: nothing changes
   });
 

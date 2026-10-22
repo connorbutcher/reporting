@@ -46,6 +46,9 @@ function optionsFor(entries: readonly WidgetFilterEntry[]): { key: string; label
     const collides = names.indexOf(names[i]) !== names.lastIndexOf(names[i]);
     const name = collides ? `${names[i]} (series ${i + 1})` : names[i];
     const count = entry.group.count();
-    return { key: entry.key, label: count ? `${name} · ${count} condition${count > 1 ? 's' : ''}` : name };
+    return {
+      key: entry.key,
+      label: count ? `${name} · ${count} condition${count > 1 ? 's' : ''}` : name,
+    };
   });
 }

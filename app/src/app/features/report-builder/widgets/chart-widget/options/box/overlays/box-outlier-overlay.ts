@@ -16,4 +16,5 @@ export class BoxOutlierOverlay {
         chart.horizontal ? [o.value, o.categoryIndex] : [o.categoryIndex, o.value],
       ),
     };
-  }}
+  }
+}

@@ -13,7 +13,9 @@ export class SavedViewFilters {
   /** Undefined until loaded (or if that failed); null when nothing is saved. */
   public readonly encoded: Signal<string | null | undefined>;
   public readonly loading = computed(() => this.resource.isLoading());
-  public readonly settled = computed(() => this.resource.hasValue() || this.resource.error() != null);
+  public readonly settled = computed(
+    () => this.resource.hasValue() || this.resource.error() != null,
+  );
   /** When they failed to load, saving would overwrite filters the reader never saw. */
   public readonly failed = computed(() => this.resource.error() != null);
 
@@ -37,7 +39,10 @@ export class SavedViewFilters {
     this.queue
       .pipe(
         concatMap(({ reportId, encoded }) =>
-          (encoded ? this.api.saveViewFilters(reportId, encoded) : this.api.clearViewFilters(reportId)).pipe(
+          (encoded
+            ? this.api.saveViewFilters(reportId, encoded)
+            : this.api.clearViewFilters(reportId)
+          ).pipe(
             catchError((err) => {
               this.notify.apiError(err, "Couldn't save your filters. Please try again.");
               return EMPTY;

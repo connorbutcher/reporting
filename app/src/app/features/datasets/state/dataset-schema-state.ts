@@ -1,10 +1,6 @@
 import { httpResource } from '@angular/common/http';
 import { Injectable, computed, inject, linkedSignal } from '@angular/core';
-import {
-  DatasetSchema,
-  DatasetSourceConfig,
-  DatasetSourceKey,
-} from '../../../core/models/dataset';
+import { DatasetSchema, DatasetSourceConfig, DatasetSourceKey } from '../../../core/models/dataset';
 import { DatasetCollection } from './dataset-collection';
 
 /**
@@ -24,7 +20,9 @@ export class DatasetSchemaState {
 
   // The selected dataset's schema refetches automatically whenever the selection changes.
   private readonly schemaResource = httpResource<DatasetSchema>(() =>
-    this.collection.selectedId() ? `/api/datasets/${this.collection.selectedId()}/schema` : undefined,
+    this.collection.selectedId()
+      ? `/api/datasets/${this.collection.selectedId()}/schema`
+      : undefined,
   );
 
   // Seeded from the server but locally writable, so edits appear immediately and reset to the

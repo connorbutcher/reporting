@@ -1,4 +1,9 @@
-import { FilterCondition, FilterGroup, FilterNode, FilterOperator } from '../../../core/models/filter';
+import {
+  FilterCondition,
+  FilterGroup,
+  FilterNode,
+  FilterOperator,
+} from '../../../core/models/filter';
 
 /** Bounds recursion on a hostile payload; deeper than any filter a reader can build. */
 const MAX_DEPTH = 8;

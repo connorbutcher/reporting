@@ -217,11 +217,18 @@ export class DatasetApiService {
    * What changing a column to `type` would newly break in the report — advisory, so a failure is left
    * to the caller to describe rather than raised as a toast.
    */
-  columnTypeImpact(datasetId: number, columnId: string, type: DatasetColumnType): Observable<ColumnTypeImpact> {
-    return this.http.get<ColumnTypeImpact>(`/api/datasets/${datasetId}/columns/${columnId}/type-impact`, {
-      params: new HttpParams().set('type', type),
-      context: skipHttpErrorNotification(),
-    });
+  columnTypeImpact(
+    datasetId: number,
+    columnId: string,
+    type: DatasetColumnType,
+  ): Observable<ColumnTypeImpact> {
+    return this.http.get<ColumnTypeImpact>(
+      `/api/datasets/${datasetId}/columns/${columnId}/type-impact`,
+      {
+        params: new HttpParams().set('type', type),
+        context: skipHttpErrorNotification(),
+      },
+    );
   }
 
   updateColumn(
@@ -230,7 +237,10 @@ export class DatasetApiService {
     name: string,
     type: DatasetColumnType,
   ): Observable<DatasetColumn> {
-    return this.http.put<DatasetColumn>(`/api/datasets/${datasetId}/columns/${columnId}`, { name, type });
+    return this.http.put<DatasetColumn>(`/api/datasets/${datasetId}/columns/${columnId}`, {
+      name,
+      type,
+    });
   }
 
   removeColumn(datasetId: number, columnId: string): Observable<void> {
@@ -245,7 +255,11 @@ export class DatasetApiService {
     return this.http.post<DatasetRow>(`/api/datasets/${datasetId}/rows`, { values });
   }
 
-  updateRow(datasetId: number, rowId: string, values: Record<string, string>): Observable<DatasetRow> {
+  updateRow(
+    datasetId: number,
+    rowId: string,
+    values: Record<string, string>,
+  ): Observable<DatasetRow> {
     return this.http.put<DatasetRow>(`/api/datasets/${datasetId}/rows/${rowId}`, { values });
   }
 

@@ -46,12 +46,18 @@ export function collectViewFilterEntries(
 
   // A page filter exists for every dataset in use, so a reader can add one where the author set none.
   const datasetIds = new Set(widgetEntries.map((e) => e.datasetId));
-  const pageEntries = [...datasetIds].map((id) => buildPageEntry(id, content, ctx, tolerantByDataset.get(id)));
+  const pageEntries = [...datasetIds].map((id) =>
+    buildPageEntry(id, content, ctx, tolerantByDataset.get(id)),
+  );
 
   return { pageEntries, widgetEntries };
 }
 
-function widgetFilterEntries(widget: Widget, tabName: string, ctx: EntryContext): WidgetFilterEntry[] {
+function widgetFilterEntries(
+  widget: Widget,
+  tabName: string,
+  ctx: EntryContext,
+): WidgetFilterEntry[] {
   if (widget.type === 'dataTable') {
     const entry = buildTableEntry(widget, tabName, ctx);
     return entry ? [entry] : [];

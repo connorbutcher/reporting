@@ -1,4 +1,9 @@
-import { ChartToleranceBand, ChartTooltipColumn, HistogramBinMode, HistogramNormalize } from '../report';
+import {
+  ChartToleranceBand,
+  ChartTooltipColumn,
+  HistogramBinMode,
+  HistogramNormalize,
+} from '../report';
 import { FilterGroup } from '../filter';
 import { ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
 

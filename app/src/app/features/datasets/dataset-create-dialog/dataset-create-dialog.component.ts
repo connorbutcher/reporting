@@ -37,7 +37,8 @@ const SOURCE_HINTS: Record<DatasetSourceKey, string> = {
   assembly: 'Build data — configured by type and the phases to include.',
   disassembly: 'Strip-down data — configured by type and the phases to include.',
   specification: 'Limits and reference values used for tolerance banding.',
-  filtered: 'A subset of another dataset — pick the base dataset and build the filter after it’s created.',
+  filtered:
+    'A subset of another dataset — pick the base dataset and build the filter after it’s created.',
 };
 
 /**
@@ -74,14 +75,22 @@ export class DatasetCreateDialogComponent implements AfterViewInit {
       const name = value().trim();
       const taken =
         !!name &&
-        this.data.existingNames.some((existing) => existing.trim().toLowerCase() === name.toLowerCase());
-      return taken ? { kind: 'duplicate', message: `A dataset called "${name}" already exists.` } : null;
+        this.data.existingNames.some(
+          (existing) => existing.trim().toLowerCase() === name.toLowerCase(),
+        );
+      return taken
+        ? { kind: 'duplicate', message: `A dataset called "${name}" already exists.` }
+        : null;
     });
   });
 
   /** The duplicate-name message, shown as it's typed (never the plain "required"). */
   protected readonly nameError = computed(
-    () => this.form.name().errors().find((e) => e.kind === 'duplicate')?.message ?? null,
+    () =>
+      this.form
+        .name()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ?? null,
   );
 
   ngAfterViewInit(): void {

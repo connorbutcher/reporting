@@ -41,7 +41,9 @@ describe('view filter overrides codec', () => {
   });
 
   it('round-trips a nested group', () => {
-    const overrides = { w1: group('and', equals('a', '1'), group('or', equals('b', '2'), equals('c', '3'))) };
+    const overrides = {
+      w1: group('and', equals('a', '1'), group('or', equals('b', '2'), equals('c', '3'))),
+    };
     expect(roundTrip(overrides)).toEqual(overrides);
   });
 
@@ -51,7 +53,10 @@ describe('view filter overrides codec', () => {
   });
 
   it('keeps a disabled condition disabled, and an enabled one without the flag', () => {
-    const disabled = { ...(equals('a', '1') as object), enabled: false } as FilterGroup['children'][number];
+    const disabled = {
+      ...(equals('a', '1') as object),
+      enabled: false,
+    } as FilterGroup['children'][number];
     const decoded = roundTrip({ w1: group('and', disabled, equals('b', '2')) });
 
     expect(decoded?.['w1']?.children).toEqual([disabled, equals('b', '2')]);
@@ -82,8 +87,12 @@ describe('view filter overrides codec', () => {
       'a group with an unknown join': encodeRaw({ w1: { j: 'x', c: [] } }),
       'a group without children': encodeRaw({ w1: { j: 'a' } }),
       'a condition with a non-string column': encodeRaw({ w1: { j: 'a', c: [[1, 'equals', []]] } }),
-      'a condition with non-string operands': encodeRaw({ w1: { j: 'a', c: [['a', 'equals', [1]]] } }),
-      'a condition with a bad enabled flag': encodeRaw({ w1: { j: 'a', c: [['a', 'equals', [], 1]] } }),
+      'a condition with non-string operands': encodeRaw({
+        w1: { j: 'a', c: [['a', 'equals', [1]]] },
+      }),
+      'a condition with a bad enabled flag': encodeRaw({
+        w1: { j: 'a', c: [['a', 'equals', [], 1]] },
+      }),
       'an entry that is not a group': encodeRaw({ w1: 'oops' }),
     };
 

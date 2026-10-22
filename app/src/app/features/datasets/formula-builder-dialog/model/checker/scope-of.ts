@@ -1,7 +1,10 @@
 import { DatasetColumn, FormulaFunction } from '../../../../../core/models/dataset';
 import { FormulaScope } from './formula-scope';
 
-export function scopeOf(functions: readonly FormulaFunction[], columns: readonly DatasetColumn[]): FormulaScope {
+export function scopeOf(
+  functions: readonly FormulaFunction[],
+  columns: readonly DatasetColumn[],
+): FormulaScope {
   const functionsByName = new Map<string, FormulaFunction>();
   for (const fn of functions) {
     functionsByName.set(fn.name.toUpperCase(), fn);

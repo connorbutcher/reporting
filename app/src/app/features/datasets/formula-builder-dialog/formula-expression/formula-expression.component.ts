@@ -48,7 +48,9 @@ export class FormulaExpressionComponent {
   public readonly over = signal(false);
 
   /** Whether the drag in progress could land here, so every valid target can be lit while dragging. */
-  public readonly armed = computed(() => this.store.dragging() !== null && this.store.canDropAt(this.address()));
+  public readonly armed = computed(
+    () => this.store.dragging() !== null && this.store.canDropAt(this.address()),
+  );
 
   /** Whether click-to-add is currently putting things here. */
   public readonly isActive = computed(() => {
@@ -61,13 +63,19 @@ export class FormulaExpressionComponent {
   public readonly caret = computed(() => {
     const point = this.store.dropPoint();
     const mine = this.address();
-    return point && point.address.ownerId === mine.ownerId && point.address.arg === mine.arg ? point.index : -1;
+    return point && point.address.ownerId === mine.ownerId && point.address.arg === mine.arg
+      ? point.index
+      : -1;
   });
 
   /** Problems with these items themselves — not with a function argument as a whole, which its row shows. */
   public readonly ownIssues = computed(() => {
     const ids = new Set(this.items().map((item) => item.id));
-    return this.store.issues().filter((issue) => ids.has(issue.blockId) && issue.kind !== 'missing' && issue.arg === undefined);
+    return this.store
+      .issues()
+      .filter(
+        (issue) => ids.has(issue.blockId) && issue.kind !== 'missing' && issue.arg === undefined,
+      );
   });
 
   private readonly store = inject(FormulaBuilderStore);
@@ -215,7 +223,10 @@ export class FormulaExpressionComponent {
     if ((event.target as HTMLElement).closest('button, input')) {
       return;
     }
-    this.store.select(item.id, event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'single');
+    this.store.select(
+      item.id,
+      event.shiftKey ? 'range' : event.ctrlKey || event.metaKey ? 'toggle' : 'single',
+    );
   }
 
   /** A group is selected by clicking its brackets or its edge — a click inside it belongs to what is in there. */
@@ -334,12 +345,18 @@ export class FormulaExpressionComponent {
     return `${issue.kind}-${issue.blockId}-${issue.arg ?? 'x'}-${issue.message}`;
   }
 
-  private argumentLabel(parameter: FormulaParameter | null, parameterCount: number, index: number): string {
+  private argumentLabel(
+    parameter: FormulaParameter | null,
+    parameterCount: number,
+    index: number,
+  ): string {
     if (!parameter) {
       return `value ${index + 1}`;
     }
 
-    return parameter.isVariadic ? `${parameter.name} ${index - parameterCount + 2}` : parameter.name;
+    return parameter.isVariadic
+      ? `${parameter.name} ${index - parameterCount + 2}`
+      : parameter.name;
   }
 
   /**

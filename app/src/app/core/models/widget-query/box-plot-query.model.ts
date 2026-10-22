@@ -1,4 +1,10 @@
-import { ChartSort, BoxWhisker, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
+import {
+  ChartSort,
+  BoxWhisker,
+  ChartToleranceBand,
+  ChartTooltipColumn,
+  DateGrouping,
+} from '../report';
 import { FilterGroup } from '../filter';
 import { ChartCategoryDetail, ChartRowCounts, ResolvedToleranceBand } from './chart-query.model';
 

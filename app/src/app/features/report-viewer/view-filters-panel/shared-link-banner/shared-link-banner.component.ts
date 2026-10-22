@@ -21,7 +21,13 @@ const plural = (n: number, one: string, many: string): string => (n === 1 ? one 
     </p>
     <div class="actions">
       <p-button label="Save as mine" size="small" (onClick)="save.emit()" />
-      <p-button label="Back to mine" size="small" severity="secondary" outlined (onClick)="discard.emit()" />
+      <p-button
+        label="Back to mine"
+        size="small"
+        severity="secondary"
+        outlined
+        (onClick)="discard.emit()"
+      />
     </div>
   `,
   host: { role: 'status' },

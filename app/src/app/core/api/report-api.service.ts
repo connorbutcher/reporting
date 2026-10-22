@@ -48,7 +48,11 @@ export class ReportApiService {
 
   /** Records that the current user just opened a report, for their "recently viewed" list. Fire-and-forget: failures are swallowed, so it opts out of the global error toast. */
   recordView(id: number): Observable<void> {
-    return this.http.post<void>(`/api/reports/${id}/view`, {}, { context: skipHttpErrorNotification() });
+    return this.http.post<void>(
+      `/api/reports/${id}/view`,
+      {},
+      { context: skipHttpErrorNotification() },
+    );
   }
 
   /** Saves the current user's viewing filters (the viewer's encoded string), replacing any earlier. */
@@ -71,13 +75,22 @@ export class ReportApiService {
     return this.http.get<WidgetComment[]>(`/api/reports/${reportId}/widgets/${widgetId}/comments`);
   }
 
-  postWidgetComment(reportId: number, widgetId: string, comment: CreateWidgetComment): Observable<WidgetComment> {
-    return this.http.post<WidgetComment>(`/api/reports/${reportId}/widgets/${widgetId}/comments`, comment);
+  postWidgetComment(
+    reportId: number,
+    widgetId: string,
+    comment: CreateWidgetComment,
+  ): Observable<WidgetComment> {
+    return this.http.post<WidgetComment>(
+      `/api/reports/${reportId}/widgets/${widgetId}/comments`,
+      comment,
+    );
   }
 
   /** Unguarded beyond having posted it, like clearing saved filters: a user can always remove their own. */
   deleteWidgetComment(reportId: number, widgetId: string, commentId: number): Observable<void> {
-    return this.http.delete<void>(`/api/reports/${reportId}/widgets/${widgetId}/comments/${commentId}`);
+    return this.http.delete<void>(
+      `/api/reports/${reportId}/widgets/${widgetId}/comments/${commentId}`,
+    );
   }
 
   /** Every widget's comment count on this report, for the viewer's footer pills — one request, not one per widget. */
@@ -85,7 +98,11 @@ export class ReportApiService {
     return this.http.get<Record<string, number>>(`/api/reports/${reportId}/comment-counts`);
   }
 
-  create(name: string, folderId: number | null, sourceReportId?: number): Observable<ReportSummary> {
+  create(
+    name: string,
+    folderId: number | null,
+    sourceReportId?: number,
+  ): Observable<ReportSummary> {
     return this.http.post<ReportSummary>('/api/reports', { name, folderId, sourceReportId });
   }
 

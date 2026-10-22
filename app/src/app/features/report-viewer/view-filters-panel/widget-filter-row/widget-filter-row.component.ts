@@ -36,7 +36,10 @@ import { FilterRowHeaderComponent } from '../filter-row-header/filter-row-header
             />
           </div>
         }
-        <app-filter-builder [group]="entry().group" [additionalFilter]="filters().pageFilterFor(entry())" />
+        <app-filter-builder
+          [group]="entry().group"
+          [additionalFilter]="filters().pageFilterFor(entry())"
+        />
       </div>
     }
   `,

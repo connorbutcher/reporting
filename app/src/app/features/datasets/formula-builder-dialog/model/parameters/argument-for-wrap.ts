@@ -5,6 +5,8 @@ import { FormulaFunction, FormulaValueKind } from '../../../../../core/models/da
  * parameter that takes that kind, else the first one — so wrapping a yes/no test in IF fills its condition.
  */
 export function argumentForWrap(fn: FormulaFunction, kind: FormulaValueKind): number {
-  const index = fn.parameters.findIndex((p) => p.kind === 'any' || kind === 'any' || p.kind === kind);
+  const index = fn.parameters.findIndex(
+    (p) => p.kind === 'any' || kind === 'any' || p.kind === kind,
+  );
   return Math.max(index, 0);
 }

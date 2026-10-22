@@ -98,6 +98,8 @@ export class ReportViewFilters {
   }
 }
 
-function queryFilters(entries: readonly ViewFilterEntry[]): Map<string, Signal<FilterGroup | null>> {
+function queryFilters(
+  entries: readonly ViewFilterEntry[],
+): Map<string, Signal<FilterGroup | null>> {
   return new Map(entries.map((e) => [e.key, computed(() => e.group.toQueryDto())]));
 }

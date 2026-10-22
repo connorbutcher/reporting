@@ -9,7 +9,9 @@ describe('kindOfExpression', () => {
     expect(kindOfExpression([col('Ordered')], SCOPE)).toBe('date');
     expect(kindOfExpression([lit('x')], SCOPE)).toBe('text');
     expect(kindOfExpression([col('Qty'), op('>'), lit(1)], SCOPE)).toBe('bool');
-    expect(kindOfExpression([col('Qty'), op('*'), col('Price'), op('+'), lit(1)], SCOPE)).toBe('number');
+    expect(kindOfExpression([col('Qty'), op('*'), col('Price'), op('+'), lit(1)], SCOPE)).toBe(
+      'number',
+    );
     expect(kindOfExpression([col('Region'), op('&'), col('Qty')], SCOPE)).toBe('text');
     expect(kindOfExpression([groupBlock([col('Qty'), op('+'), lit(1)])], SCOPE)).toBe('number');
   });

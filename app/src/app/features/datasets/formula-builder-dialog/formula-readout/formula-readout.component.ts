@@ -26,7 +26,11 @@ export class FormulaReadoutComponent {
     if (segment.style === 'missing') {
       return true;
     }
-    return segment.blockId !== null && segment.style !== 'punctuation' && this.badBlocks().has(segment.blockId);
+    return (
+      segment.blockId !== null &&
+      segment.style !== 'punctuation' &&
+      this.badBlocks().has(segment.blockId)
+    );
   }
 
   public isLinked(segment: FormulaSegment): boolean {

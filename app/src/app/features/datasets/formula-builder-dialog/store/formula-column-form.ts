@@ -9,12 +9,15 @@ const BRACKETS = /[[\]]/;
 /** The column's name (validated) and its chosen type. */
 @Injectable()
 export class FormulaColumnForm {
-  public readonly nameForm = form(signal({ name: inject<FormulaBuilderData>(DIALOG_DATA).column?.name ?? '' }), (path) => {
-    required(path.name, { message: 'A column name is required.' });
-    validate(path.name, ({ value }) => {
-      return this.nameProblem(value().trim());
-    });
-  });
+  public readonly nameForm = form(
+    signal({ name: inject<FormulaBuilderData>(DIALOG_DATA).column?.name ?? '' }),
+    (path) => {
+      required(path.name, { message: 'A column name is required.' });
+      validate(path.name, ({ value }) => {
+        return this.nameProblem(value().trim());
+      });
+    },
+  );
 
   /** The column type chosen by the user, or 'auto' to take the type the formula produces. */
   public readonly chosenType = signal<DatasetColumnType | 'auto'>('auto');
@@ -29,10 +32,18 @@ export class FormulaColumnForm {
 
   private nameProblem(name: string): { kind: string; message: string } | null {
     if (BRACKETS.test(name)) {
-      return { kind: 'brackets', message: "A name can't contain [ or ], so formulas couldn't refer to it." };
+      return {
+        kind: 'brackets',
+        message: "A name can't contain [ or ], so formulas couldn't refer to it.",
+      };
     }
 
-    const taken = this.data.columns.some((column) => column.id !== this.data.column?.id && column.name.toLowerCase() === name.toLowerCase());
-    return taken ? { kind: 'duplicate', message: `A column named "${name}" already exists.` } : null;
+    const taken = this.data.columns.some(
+      (column) =>
+        column.id !== this.data.column?.id && column.name.toLowerCase() === name.toLowerCase(),
+    );
+    return taken
+      ? { kind: 'duplicate', message: `A column named "${name}" already exists.` }
+      : null;
   }
 }

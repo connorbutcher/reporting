@@ -9,7 +9,9 @@ export function removeItem(root: Expression, id: number): Expression {
     return root;
   }
 
-  return changeExpression(root, found.address, (expression) => expression.filter((item) => item.id !== id));
+  return changeExpression(root, found.address, (expression) =>
+    expression.filter((item) => item.id !== id),
+  );
 }
 
 /** Takes several items out, wherever they are. */

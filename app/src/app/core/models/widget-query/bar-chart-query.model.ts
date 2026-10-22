@@ -1,6 +1,17 @@
-import { Aggregate, ChartSort, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
+import {
+  Aggregate,
+  ChartSort,
+  ChartToleranceBand,
+  ChartTooltipColumn,
+  DateGrouping,
+} from '../report';
 import { FilterGroup } from '../filter';
-import { ChartCategoryDetail, ChartRowCounts, PartialChartLoad, ResolvedToleranceBand } from './chart-query.model';
+import {
+  ChartCategoryDetail,
+  ChartRowCounts,
+  PartialChartLoad,
+  ResolvedToleranceBand,
+} from './chart-query.model';
 
 export interface BarChartQueryRequest {
   filter: FilterGroup | null;

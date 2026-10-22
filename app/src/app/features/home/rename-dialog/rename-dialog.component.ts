@@ -1,4 +1,12 @@
-import { AfterViewInit, Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { form, required, validateHttp } from '@angular/forms/signals';
 import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { skipHttpErrorNotification } from '../../../core/http/http-error-notification.interceptor';
@@ -30,7 +38,10 @@ export class RenameDialogComponent implements AfterViewInit {
     validateHttp<string, { available: boolean }>(path.name, {
       when: ({ value }) => value().trim().length > 0,
       request: ({ value }) => ({
-        url: this.data.kind === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
+        url:
+          this.data.kind === 'folder'
+            ? '/api/folders/name-available'
+            : '/api/reports/name-available',
         params: {
           name: value().trim(),
           excludeId: this.data.id,

@@ -21,7 +21,8 @@ export class PointXAxis {
   private static scale(chart: PointChart) {
     const { config } = chart;
     if (chart.xIsDate) return ChartScale.dateAxis(chart.xDateConfig);
-    if (chart.xIsText) return ChartScale.categoryAxis(chart.xCategories ?? [], config.xAxisInterval);
+    if (chart.xIsText)
+      return ChartScale.categoryAxis(chart.xCategories ?? [], config.xAxisInterval);
     return ChartScale.numericAxis(
       config.xLogScale,
       config.xAxisMin,

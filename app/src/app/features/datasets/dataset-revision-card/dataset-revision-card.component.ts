@@ -20,7 +20,9 @@ export class DatasetRevisionCardComponent {
 
   readonly reportId = input.required<number>();
 
-  private readonly reportResource = httpResource<ReportSummary>(() => `/api/reports/${this.reportId()}`);
+  private readonly reportResource = httpResource<ReportSummary>(
+    () => `/api/reports/${this.reportId()}`,
+  );
   protected readonly report = computed(() =>
     this.reportResource.hasValue() ? this.reportResource.value() : null,
   );

@@ -68,7 +68,11 @@ describe('formula tree operations', () => {
 
   it('updates an item in place', () => {
     const value = lit(1);
-    const next = updateItem([col('Qty'), value], value.id, (item) => ({ ...item, value: 5 }) as FormulaItem);
+    const next = updateItem(
+      [col('Qty'), value],
+      value.id,
+      (item) => ({ ...item, value: 5 }) as FormulaItem,
+    );
     expect(next[1]).toMatchObject({ kind: 'literal', value: 5 });
   });
 

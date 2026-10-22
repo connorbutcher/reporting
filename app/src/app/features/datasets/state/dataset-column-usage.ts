@@ -25,13 +25,18 @@ export class DatasetColumnUsage {
 
   private readonly resource = httpResource<DatasetColumnUsageResponse>(() => {
     const id = this.collection.selectedId();
-    return id ? { url: `/api/datasets/${id}/column-usage`, context: skipHttpErrorNotification() } : undefined;
+    return id
+      ? { url: `/api/datasets/${id}/column-usage`, context: skipHttpErrorNotification() }
+      : undefined;
   });
 
   private readonly byColumn = computed(
     () =>
       new Map(
-        (this.resource.hasValue() ? this.resource.value().columns : []).map((c) => [c.columnId, c.uses]),
+        (this.resource.hasValue() ? this.resource.value().columns : []).map((c) => [
+          c.columnId,
+          c.uses,
+        ]),
       ),
   );
 
@@ -45,7 +50,10 @@ export class DatasetColumnUsage {
    * What changing a column's type would newly break in the report; null when no dataset is selected.
    * Asked at the moment of the change rather than held, since it depends on the type chosen.
    */
-  public typeChangeImpact(columnId: string, type: DatasetColumnType): Observable<ColumnTypeImpact> | null {
+  public typeChangeImpact(
+    columnId: string,
+    type: DatasetColumnType,
+  ): Observable<ColumnTypeImpact> | null {
     const id = this.collection.selectedId();
     return id ? this.api.columnTypeImpact(id, columnId, type) : null;
   }

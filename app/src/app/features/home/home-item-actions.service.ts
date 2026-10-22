@@ -53,7 +53,12 @@ export class HomeItemActionsService {
     return defer(
       () =>
         this.dialog.open<string | undefined>(RenameDialogComponent, {
-          data: { kind: row.kind, id: row.id, currentName: row.name, folderId } satisfies RenameDialogData,
+          data: {
+            kind: row.kind,
+            id: row.id,
+            currentName: row.name,
+            folderId,
+          } satisfies RenameDialogData,
         }).closed,
     ).pipe(
       filter((newName): newName is string => !!newName),
@@ -121,7 +126,8 @@ export class HomeItemActionsService {
       filter((confirmed): confirmed is boolean => !!confirmed),
       switchMap(() => {
         this.busy.set(true);
-        const removed = row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id);
+        const removed =
+          row.kind === 'folder' ? this.folderApi.remove(row.id) : this.reportApi.remove(row.id);
         return removed.pipe(finalize(() => this.busy.set(false)));
       }),
       map(() => undefined),

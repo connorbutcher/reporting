@@ -28,15 +28,23 @@ export class SaveStatusComponent {
   /** `inline` shows an icon and full label; `dot` shows a coloured dot and a short label. */
   readonly variant = input<'inline' | 'dot'>('inline');
 
-  protected readonly state = computed<{ tone: SaveTone; icon: string; full: string; short: string }>(
-    () => {
-      if (this.saveFailed())
-        return { tone: 'error', icon: 'pi-exclamation-circle', full: 'Save failed', short: 'save failed' };
-      if (this.saving())
-        return { tone: 'pending', icon: 'pi-spin pi-spinner', full: 'Saving…', short: 'saving…' };
-      if (this.dirty())
-        return { tone: 'pending', icon: 'pi-circle-fill', full: 'Unsaved changes', short: 'unsaved' };
-      return { tone: 'ok', icon: 'pi-check', full: 'All changes saved', short: 'saved' };
-    },
-  );
+  protected readonly state = computed<{
+    tone: SaveTone;
+    icon: string;
+    full: string;
+    short: string;
+  }>(() => {
+    if (this.saveFailed())
+      return {
+        tone: 'error',
+        icon: 'pi-exclamation-circle',
+        full: 'Save failed',
+        short: 'save failed',
+      };
+    if (this.saving())
+      return { tone: 'pending', icon: 'pi-spin pi-spinner', full: 'Saving…', short: 'saving…' };
+    if (this.dirty())
+      return { tone: 'pending', icon: 'pi-circle-fill', full: 'Unsaved changes', short: 'unsaved' };
+    return { tone: 'ok', icon: 'pi-check', full: 'All changes saved', short: 'saved' };
+  });
 }

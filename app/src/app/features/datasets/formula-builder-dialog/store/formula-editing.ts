@@ -40,7 +40,10 @@ export class FormulaEditing {
       case 'column':
         return columnBlock(payload.name);
       case 'function':
-        return functionBlock(this.catalogue.scope().functions.get(payload.name.toUpperCase()), payload.name);
+        return functionBlock(
+          this.catalogue.scope().functions.get(payload.name.toUpperCase()),
+          payload.name,
+        );
       case 'operator':
         return operatorItem(payload.op);
       case 'literal':
@@ -102,7 +105,9 @@ export class FormulaEditing {
       return;
     }
 
-    this.document.commit(insertItem(this.document.root(), address, expression.length, itemFromText(text)));
+    this.document.commit(
+      insertItem(this.document.root(), address, expression.length, itemFromText(text)),
+    );
     this.interaction.active.set(address);
   }
 
@@ -118,7 +123,9 @@ export class FormulaEditing {
       return;
     }
 
-    this.document.commit(updateItem(this.document.root(), id, (item) => ({ ...item, value }) as FormulaItem));
+    this.document.commit(
+      updateItem(this.document.root(), id, (item) => ({ ...item, value }) as FormulaItem),
+    );
   }
 
   public remove(id: number): void {
@@ -150,7 +157,8 @@ export class FormulaEditing {
     }
 
     // Moving within one expression: the removal shifts everything after it up by one.
-    const sameExpression = found.address.ownerId === address.ownerId && found.address.arg === address.arg;
+    const sameExpression =
+      found.address.ownerId === address.ownerId && found.address.arg === address.arg;
     const at = sameExpression && found.index < index ? index - 1 : index;
     this.document.commit(insertItem(removeItem(this.document.root(), id), address, at, found.item));
     this.interaction.active.set(address);
@@ -158,6 +166,8 @@ export class FormulaEditing {
 
   /** After adding a function or brackets, work goes on inside them; otherwise it stays where it was. */
   private focusAfterAdding(item: FormulaItem, address: ExpressionAddress): void {
-    this.interaction.active.set(item.kind === 'function' || item.kind === 'group' ? { ownerId: item.id, arg: 0 } : address);
+    this.interaction.active.set(
+      item.kind === 'function' || item.kind === 'group' ? { ownerId: item.id, arg: 0 } : address,
+    );
   }
 }

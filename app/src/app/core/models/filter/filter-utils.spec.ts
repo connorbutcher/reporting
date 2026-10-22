@@ -2,14 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { FilterCondition, FilterGroup, FilterNode } from './filter.model';
 import { combineFilters, countConditions, filterKey, pruneFilter } from './filter-utils';
 
-const c = (columnId: string, values: string[] = ['1'], extra: Partial<FilterCondition> = {}): FilterCondition => ({
+const c = (
+  columnId: string,
+  values: string[] = ['1'],
+  extra: Partial<FilterCondition> = {},
+): FilterCondition => ({
   kind: 'condition',
   columnId,
   operator: 'equals',
   values,
   ...extra,
 });
-const g = (join: 'and' | 'or', ...children: FilterNode[]): FilterGroup => ({ kind: 'group', join, children });
+const g = (join: 'and' | 'or', ...children: FilterNode[]): FilterGroup => ({
+  kind: 'group',
+  join,
+  children,
+});
 
 describe('pruneFilter', () => {
   it('returns null for nothing and keeps a condition as is', () => {

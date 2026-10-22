@@ -7,7 +7,11 @@ import { TypedValue } from './typed-value';
  * For a function that returns whatever its `any` arguments are (IF, COALESCE): their shared kind, or `any`
  * if they differ. Arguments that are a bare NULL say nothing about the kind.
  */
-export function commonKind(call: FunctionBlock, fn: FormulaFunction, kinds: readonly (TypedValue | null)[]): FormulaValueKind {
+export function commonKind(
+  call: FunctionBlock,
+  fn: FormulaFunction,
+  kinds: readonly (TypedValue | null)[],
+): FormulaValueKind {
   let common: FormulaValueKind | null = null;
 
   for (let index = 0; index < kinds.length; index++) {
@@ -21,7 +25,11 @@ export function commonKind(call: FunctionBlock, fn: FormulaFunction, kinds: read
     }
 
     const expression = call.args[index];
-    if (expression.length === 1 && expression[0].kind === 'literal' && expression[0].value === null) {
+    if (
+      expression.length === 1 &&
+      expression[0].kind === 'literal' &&
+      expression[0].value === null
+    ) {
       continue;
     }
 

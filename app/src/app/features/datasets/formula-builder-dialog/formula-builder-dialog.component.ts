@@ -126,7 +126,9 @@ export class FormulaBuilderDialogComponent {
     if (this.store.previewing()) {
       return { tone: 'busy', text: 'Checking…' };
     }
-    return this.store.isValid() ? { tone: 'ok', text: 'Valid' } : { tone: 'idle', text: 'Not checked' };
+    return this.store.isValid()
+      ? { tone: 'ok', text: 'Valid' }
+      : { tone: 'idle', text: 'Not checked' };
   });
 
   private readonly store = inject(FormulaBuilderStore);
@@ -169,7 +171,10 @@ export class FormulaBuilderDialogComponent {
     }
 
     const key = event.key.toLowerCase();
-    const handled = event.ctrlKey || event.metaKey ? this.onModifiedKey(key, event.shiftKey) : this.onSelectionKey(key, event);
+    const handled =
+      event.ctrlKey || event.metaKey
+        ? this.onModifiedKey(key, event.shiftKey)
+        : this.onSelectionKey(key, event);
     if (handled) {
       event.preventDefault();
     }

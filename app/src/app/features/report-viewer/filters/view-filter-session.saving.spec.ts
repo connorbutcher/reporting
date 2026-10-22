@@ -36,7 +36,11 @@ describe('ViewFilterSession: saving and sharing', () => {
       const before = writes().length;
       await edit('saved');
 
-      expect(writes().slice(before).map((w) => w.method)).toEqual(['PUT']);
+      expect(
+        writes()
+          .slice(before)
+          .map((w) => w.method),
+      ).toEqual(['PUT']);
     });
 
     it('applies filters from an outside change to the URL without saving them', async () => {
@@ -63,7 +67,10 @@ describe('ViewFilterSession: saving and sharing', () => {
     });
 
     it('does not take a shared link out of the URL', async () => {
-      await open('/reports/3?view=abc', { publishedBlankFilter: true, views: { abc: encode('link') } });
+      await open('/reports/3?view=abc', {
+        publishedBlankFilter: true,
+        views: { abc: encode('link') },
+      });
       await settleEdits();
 
       expect(h.url()).toContain('view=abc');

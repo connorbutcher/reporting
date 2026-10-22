@@ -38,7 +38,9 @@ export class FormulaLoader {
       this.document.load(parseFormula(existing.formula, this.catalogue.scope().functions));
       this.interaction.active.set(ROOT);
     } catch (error) {
-      this.loadError.set(error instanceof FormulaParseError ? error.message : 'The formula could not be read.');
+      this.loadError.set(
+        error instanceof FormulaParseError ? error.message : 'The formula could not be read.',
+      );
       return;
     }
 

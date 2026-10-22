@@ -16,7 +16,13 @@ import { ViewFilterSession } from '../view-filter-session';
 
 @Component({
   template: '',
-  providers: [ReportViewerStore, ViewFilterSchemas, SavedViewFilters, SharedViewLink, ViewFilterSession],
+  providers: [
+    ReportViewerStore,
+    ViewFilterSchemas,
+    SavedViewFilters,
+    SharedViewLink,
+    ViewFilterSession,
+  ],
 })
 class HostComponent {
   public readonly session = inject(ViewFilterSession);
@@ -63,7 +69,10 @@ const SCHEMA = {
   columns: [{ id: 'job', name: 'Job', type: 'string', order: 0, configuration: {} }],
 };
 const OPERATORS = [
-  { type: 'string', operators: [{ value: 'equals', label: 'is', operandCount: 1, operandKind: 'text' }] },
+  {
+    type: 'string',
+    operators: [{ value: 'equals', label: 'is', operandCount: 1, operandKind: 'text' }],
+  },
 ];
 
 interface Sent {
@@ -152,7 +161,9 @@ export function useViewerHarness(): ViewerHarness {
     if (url.endsWith('/api/reports/3')) return REPORT;
     if (url.endsWith('/api/reports/3/versions')) return [];
     if (url.endsWith('/api/reports/3/versions/1')) {
-      return server.publishedBlankFilter ? { ...CONTENT, filters: [{ datasetId: 7, filter: group('') }] } : CONTENT;
+      return server.publishedBlankFilter
+        ? { ...CONTENT, filters: [{ datasetId: 7, filter: group('') }] }
+        : CONTENT;
     }
     if (url.endsWith('/api/reports/3/view-filters')) return { filters: server.saved };
     if (url.endsWith('/api/datasets/7/schema')) return SCHEMA;
@@ -203,7 +214,9 @@ export function useViewerHarness(): ViewerHarness {
       await harness.navigateByUrl(url);
     },
     async edit(value) {
-      session.viewFilters()!.widgetEntries[0].group.replaceWith(value === null ? null : group(value));
+      session
+        .viewFilters()!
+        .widgetEntries[0].group.replaceWith(value === null ? null : group(value));
       await settleEdits();
     },
     settleEdits,

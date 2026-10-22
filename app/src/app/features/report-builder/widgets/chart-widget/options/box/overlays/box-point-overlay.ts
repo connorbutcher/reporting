@@ -27,4 +27,5 @@ export class BoxPointOverlay {
   private static jitter(seed: number): number {
     const x = Math.sin(seed * 12.9898) * 43758.5453;
     return (x - Math.floor(x) - 0.5) * 0.34;
-  }}
+  }
+}

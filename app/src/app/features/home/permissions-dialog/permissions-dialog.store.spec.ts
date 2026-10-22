@@ -31,7 +31,8 @@ async function storeWith(users: UserSummary[]): Promise<PermissionsDialogStore> 
   const http = TestBed.inject(HttpTestingController);
 
   const answer = (url: string): unknown => {
-    if (url.endsWith('/api/reports/1/permissions')) return { inheritsPermissions: true, explicit: [], effective: [] };
+    if (url.endsWith('/api/reports/1/permissions'))
+      return { inheritsPermissions: true, explicit: [], effective: [] };
     if (url.endsWith('/api/users')) return users;
     if (url.endsWith('/api/user-groups')) return [{ id: 'g1', name: 'QA', memberCount: 2 }];
     return null;
@@ -51,8 +52,17 @@ async function storeWith(users: UserSummary[]): Promise<PermissionsDialogStore> 
 
 describe('PermissionsDialogStore subject options', () => {
   it('offers ordinary people, groups and Everyone — but never a global admin', async () => {
-    const store = await storeWith([user('u1', 'Alice'), user('u2', 'Root', true), user('u3', 'Bob')]);
+    const store = await storeWith([
+      user('u1', 'Alice'),
+      user('u2', 'Root', true),
+      user('u3', 'Bob'),
+    ]);
 
-    expect(store.subjectOptions().map((o) => o.label)).toEqual(['Everyone', 'Alice', 'Bob', 'QA (group)']);
+    expect(store.subjectOptions().map((o) => o.label)).toEqual([
+      'Everyone',
+      'Alice',
+      'Bob',
+      'QA (group)',
+    ]);
   });
 });

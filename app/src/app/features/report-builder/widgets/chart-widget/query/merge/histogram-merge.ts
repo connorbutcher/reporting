@@ -1,4 +1,7 @@
-import { HistogramQueryResult, HistogramSeriesResult } from '../../../../../../core/models/widget-query';
+import {
+  HistogramQueryResult,
+  HistogramSeriesResult,
+} from '../../../../../../core/models/widget-query';
 import { HistogramPart } from '../histogram-part';
 import { RowCounts } from './row-counts';
 import { SeriesLabels } from './series-labels';
@@ -37,12 +40,10 @@ export class HistogramMerge {
       measure: new Set(result.series.map((s) => s.valueColumnId ?? '')).size > 1,
       split: result.series.some((s) => s.label !== ''),
     };
-    return result.series.map(
-      (s): HistogramSeriesResult => ({
-        ...s,
-        label: SeriesLabels.compose(base, s.valueColumnLabel, s.label, vary),
-        bindingId: binding.id,
-      }),
-    );
+    return result.series.map((s): HistogramSeriesResult => ({
+      ...s,
+      label: SeriesLabels.compose(base, s.valueColumnLabel, s.label, vary),
+      bindingId: binding.id,
+    }));
   }
 }

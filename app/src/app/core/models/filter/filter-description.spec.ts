@@ -14,14 +14,23 @@ const catalogue = {
   int: [{ value: 'between', label: 'is between', operandCount: 2, operandKind: 'number' }],
 } as unknown as OperatorCatalogue;
 
-const cond = (columnId: string, operator: FilterCondition['operator'], values: string[], enabled?: boolean): FilterCondition => ({
+const cond = (
+  columnId: string,
+  operator: FilterCondition['operator'],
+  values: string[],
+  enabled?: boolean,
+): FilterCondition => ({
   kind: 'condition',
   columnId,
   operator,
   values,
   enabled,
 });
-const group = (join: 'and' | 'or', ...children: FilterGroup['children']): FilterGroup => ({ kind: 'group', join, children });
+const group = (join: 'and' | 'or', ...children: FilterGroup['children']): FilterGroup => ({
+  kind: 'group',
+  join,
+  children,
+});
 
 describe('describeFilter', () => {
   it('is empty when there is no filter', () => {
@@ -29,15 +38,27 @@ describe('describeFilter', () => {
   });
 
   it('reads each condition of an AND tree as its own line, using the catalogue’s wording', () => {
-    const filter = group('and', cond('region', 'equals', ['North']), cond('qty', 'between', ['1', '5']));
+    const filter = group(
+      'and',
+      cond('region', 'equals', ['North']),
+      cond('qty', 'between', ['1', '5']),
+    );
 
-    expect(describeFilter(filter, columns, catalogue)).toEqual(['Region is North', 'Quantity is between 1 – 5']);
+    expect(describeFilter(filter, columns, catalogue)).toEqual([
+      'Region is North',
+      'Quantity is between 1 – 5',
+    ]);
   });
 
   it('keeps an OR group together as one clause', () => {
-    const filter = group('and', group('or', cond('region', 'equals', ['North']), cond('region', 'equals', ['South'])));
+    const filter = group(
+      'and',
+      group('or', cond('region', 'equals', ['North']), cond('region', 'equals', ['South'])),
+    );
 
-    expect(describeFilter(filter, columns, catalogue)).toEqual(['(Region is North or Region is South)']);
+    expect(describeFilter(filter, columns, catalogue)).toEqual([
+      '(Region is North or Region is South)',
+    ]);
   });
 
   it('spells the operator out when the catalogue has not loaded', () => {

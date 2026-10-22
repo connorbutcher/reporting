@@ -19,7 +19,10 @@ export function childExpressions(item: FormulaItem): readonly Expression[] {
 /** The item with the expression at `arg` swapped for `expression`. */
 export function withChild(item: FormulaItem, arg: number, expression: Expression): FormulaItem {
   if (item.kind === 'function') {
-    return { ...item, args: item.args.map((existing, index) => (index === arg ? expression : existing)) };
+    return {
+      ...item,
+      args: item.args.map((existing, index) => (index === arg ? expression : existing)),
+    };
   }
 
   if (item.kind === 'group') {

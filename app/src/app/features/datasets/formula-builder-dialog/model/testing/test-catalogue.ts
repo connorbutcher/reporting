@@ -1,11 +1,24 @@
-import { DatasetColumn, FormulaFunction, FormulaParameter, FormulaValueKind } from '../../../../../core/models/dataset';
+import {
+  DatasetColumn,
+  FormulaFunction,
+  FormulaParameter,
+  FormulaValueKind,
+} from '../../../../../core/models/dataset';
 import { scopeOf } from '../checker/scope-of';
 
-function param(name: string, kind: FormulaValueKind, extra: Partial<FormulaParameter> = {}): FormulaParameter {
+function param(
+  name: string,
+  kind: FormulaValueKind,
+  extra: Partial<FormulaParameter> = {},
+): FormulaParameter {
   return { name, kind, isOptional: false, isVariadic: false, ...extra };
 }
 
-function fn(name: string, returnKind: FormulaValueKind, ...parameters: FormulaParameter[]): FormulaFunction {
+function fn(
+  name: string,
+  returnKind: FormulaValueKind,
+  ...parameters: FormulaParameter[]
+): FormulaFunction {
   return { name, category: 'math', description: '', example: '', returnKind, parameters };
 }
 

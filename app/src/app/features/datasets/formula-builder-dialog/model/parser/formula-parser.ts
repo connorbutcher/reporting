@@ -1,5 +1,12 @@
 import { FormulaFunction } from '../../../../../core/models/dataset';
-import { emptyArguments, functionBlock, columnBlock, groupBlock, literalBlock, operatorItem } from '../factory/item-factory';
+import {
+  emptyArguments,
+  functionBlock,
+  columnBlock,
+  groupBlock,
+  literalBlock,
+  operatorItem,
+} from '../factory/item-factory';
 import { Expression } from '../items/expression';
 import { FormulaItem } from '../items/formula-item';
 import { FormulaParseError } from './formula-parse-error';
@@ -35,7 +42,11 @@ export class FormulaParser {
   }
 
   private isName(word: string): boolean {
-    return this.current.kind === 'name' && this.current.text.toUpperCase() === word && this.tokens[this.index + 1].kind !== 'open';
+    return (
+      this.current.kind === 'name' &&
+      this.current.text.toUpperCase() === word &&
+      this.tokens[this.index + 1].kind !== 'open'
+    );
   }
 
   private isOperator(...ops: string[]): boolean {
@@ -202,7 +213,9 @@ export class FormulaParser {
       return literalBlock(null);
     }
 
-    throw new FormulaParseError(`'${token.text}' isn't a value or function call. Column names go in [square brackets].`);
+    throw new FormulaParseError(
+      `'${token.text}' isn't a value or function call. Column names go in [square brackets].`,
+    );
   }
 
   private callArguments(): Expression[] {

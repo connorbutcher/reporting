@@ -18,12 +18,22 @@ export function replaceItems(
 }
 
 /** Puts `items` into the expression at `address`, before the item at `index` (or at the end). */
-export function insertItems(root: Expression, address: ExpressionAddress, index: number, items: readonly FormulaItem[]): Expression {
+export function insertItems(
+  root: Expression,
+  address: ExpressionAddress,
+  index: number,
+  items: readonly FormulaItem[],
+): Expression {
   return replaceItems(root, address, Math.max(0, index), 0, items);
 }
 
 /** Puts `item` into the expression at `address`, before the item currently at `index` (or at the end). */
-export function insertItem(root: Expression, address: ExpressionAddress, index: number, item: FormulaItem): Expression {
+export function insertItem(
+  root: Expression,
+  address: ExpressionAddress,
+  index: number,
+  item: FormulaItem,
+): Expression {
   return changeExpression(root, address, (expression) => {
     const at = Math.min(Math.max(index, 0), expression.length);
     return [...expression.slice(0, at), item, ...expression.slice(at)];

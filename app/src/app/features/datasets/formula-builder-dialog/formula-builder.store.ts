@@ -1,7 +1,13 @@
 import { DIALOG_DATA } from '@angular/cdk/dialog';
 import { Injectable, Signal, WritableSignal, inject } from '@angular/core';
 import { FieldTree } from '@angular/forms/signals';
-import { DatasetColumn, DatasetColumnType, FormulaFunction, FormulaPreview, FormulaValueKind } from '../../../core/models/dataset';
+import {
+  DatasetColumn,
+  DatasetColumnType,
+  FormulaFunction,
+  FormulaPreview,
+  FormulaValueKind,
+} from '../../../core/models/dataset';
 import {
   Expression,
   ExpressionAddress,

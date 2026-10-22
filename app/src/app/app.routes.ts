@@ -14,44 +14,57 @@ export const routes: Routes = [
         path: 'users',
         canMatch: [fullAdminGuard],
         loadComponent: () =>
-          import('./features/admin/users-list/users-list.component').then((m) => m.UsersListComponent),
+          import('./features/admin/users-list/users-list.component').then(
+            (m) => m.UsersListComponent,
+          ),
       },
       {
         path: 'users/new',
         canMatch: [fullAdminGuard],
         loadComponent: () =>
-          import('./features/admin/user-detail/user-detail.component').then((m) => m.UserDetailComponent),
+          import('./features/admin/user-detail/user-detail.component').then(
+            (m) => m.UserDetailComponent,
+          ),
       },
       {
         path: 'users/:id',
         canMatch: [fullAdminGuard],
         loadComponent: () =>
-          import('./features/admin/user-detail/user-detail.component').then((m) => m.UserDetailComponent),
+          import('./features/admin/user-detail/user-detail.component').then(
+            (m) => m.UserDetailComponent,
+          ),
       },
       {
         path: 'groups',
         canMatch: [groupManagerGuard],
         loadComponent: () =>
-          import('./features/admin/groups-list/groups-list.component').then((m) => m.GroupsListComponent),
+          import('./features/admin/groups-list/groups-list.component').then(
+            (m) => m.GroupsListComponent,
+          ),
       },
       {
         path: 'groups/new',
         canMatch: [groupManagerGuard],
         loadComponent: () =>
-          import('./features/admin/group-detail/group-detail.component').then((m) => m.GroupDetailComponent),
+          import('./features/admin/group-detail/group-detail.component').then(
+            (m) => m.GroupDetailComponent,
+          ),
       },
       {
         path: 'groups/:id',
         canMatch: [groupManagerGuard],
         loadComponent: () =>
-          import('./features/admin/group-detail/group-detail.component').then((m) => m.GroupDetailComponent),
+          import('./features/admin/group-detail/group-detail.component').then(
+            (m) => m.GroupDetailComponent,
+          ),
       },
     ],
   },
   {
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./features/home/home-page.component').then((m) => m.HomePageComponent),
+    loadComponent: () =>
+      import('./features/home/home-page.component').then((m) => m.HomePageComponent),
   },
   {
     path: 'reports/:reportId/edit',
@@ -72,12 +85,16 @@ export const routes: Routes = [
   {
     path: 'reports/:reportId/versions/:versionNumber',
     loadComponent: () =>
-      import('./features/report-viewer/report-viewer.component').then((m) => m.ReportViewerComponent),
+      import('./features/report-viewer/report-viewer.component').then(
+        (m) => m.ReportViewerComponent,
+      ),
   },
   {
     path: 'reports/:reportId',
     loadComponent: () =>
-      import('./features/report-viewer/report-viewer.component').then((m) => m.ReportViewerComponent),
+      import('./features/report-viewer/report-viewer.component').then(
+        (m) => m.ReportViewerComponent,
+      ),
   },
   { path: '**', redirectTo: '' },
 ];

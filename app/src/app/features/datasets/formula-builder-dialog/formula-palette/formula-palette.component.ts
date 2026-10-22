@@ -61,7 +61,12 @@ export class FormulaPaletteComponent {
     const query = this.query();
     const matching = this.store
       .functions()
-      .filter((f) => !query || f.name.toLowerCase().includes(query) || f.description.toLowerCase().includes(query));
+      .filter(
+        (f) =>
+          !query ||
+          f.name.toLowerCase().includes(query) ||
+          f.description.toLowerCase().includes(query),
+      );
     return CATEGORY_ORDER.map(({ category, label }) => ({
       category,
       label,
@@ -73,13 +78,18 @@ export class FormulaPaletteComponent {
 
   public readonly shownOperators = computed(() => {
     const query = this.query();
-    return this.operators.filter((o) => !query || o.symbol.includes(query) || o.description.toLowerCase().includes(query));
+    return this.operators.filter(
+      (o) => !query || o.symbol.includes(query) || o.description.toLowerCase().includes(query),
+    );
   });
 
   public readonly catalogueState = computed(() => this.store.catalogueState());
 
   public readonly nothingFound = computed(
-    () => this.columns().length === 0 && this.groups().length === 0 && this.shownOperators().length === 0,
+    () =>
+      this.columns().length === 0 &&
+      this.groups().length === 0 &&
+      this.shownOperators().length === 0,
   );
 
   private readonly store = inject(FormulaBuilderStore);
@@ -114,26 +124,41 @@ export class FormulaPaletteComponent {
   }
 
   public explainColumn(column: DatasetColumn): void {
-    this.help.set({ title: `[${column.name}]`, text: `A column that holds ${KIND_LABELS[columnTypeKind(column.type)]}.` });
+    this.help.set({
+      title: `[${column.name}]`,
+      text: `A column that holds ${KIND_LABELS[columnTypeKind(column.type)]}.`,
+    });
   }
 
   public explainFunction(fn: FormulaFunction): void {
     const signature = fn.parameters
       .map((p) => (p.isVariadic ? `${p.name}, …` : p.isOptional ? `[${p.name}]` : p.name))
       .join(', ');
-    this.help.set({ title: `${fn.name}(${signature})`, text: `${fn.description} Example: ${fn.example}` });
+    this.help.set({
+      title: `${fn.name}(${signature})`,
+      text: `${fn.description} Example: ${fn.example}`,
+    });
   }
 
   public explainOperator(operator: OperatorDefinition): void {
-    this.help.set({ title: operator.symbol, text: `${operator.description} Place it between the values it applies to.` });
+    this.help.set({
+      title: operator.symbol,
+      text: `${operator.description} Place it between the values it applies to.`,
+    });
   }
 
   public explainGroup(): void {
-    this.help.set({ title: '( )', text: 'Brackets: what is inside is worked out first, and counts as one value. Add values and operators inside.' });
+    this.help.set({
+      title: '( )',
+      text: 'Brackets: what is inside is worked out first, and counts as one value. Add values and operators inside.',
+    });
   }
 
   public explainValue(label: string): void {
-    this.help.set({ title: label, text: 'A fixed value. To use a number or text, type it into the row where it should go.' });
+    this.help.set({
+      title: label,
+      text: 'A fixed value. To use a number or text, type it into the row where it should go.',
+    });
   }
 
   public clearHelp(): void {

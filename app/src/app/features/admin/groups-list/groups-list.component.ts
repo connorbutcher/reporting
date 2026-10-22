@@ -16,9 +16,7 @@ import { CurrentUserService } from '../../../core/services/current-user.service'
   styleUrl: './groups-list.component.scss',
 })
 export class GroupsListComponent {
-  public readonly groups = computed(() =>
-    this.resource.hasValue() ? this.resource.value() : [],
-  );
+  public readonly groups = computed(() => (this.resource.hasValue() ? this.resource.value() : []));
   public readonly loading = computed(() => this.resource.isLoading());
   public readonly failed = computed(() => this.resource.error() != null);
   /** A global admin or a create-groups permission holder can create groups; a plain delegated
@@ -30,7 +28,9 @@ export class GroupsListComponent {
     const total = this.groups().length;
     const noun = total === 1 ? 'group' : 'groups';
     const filtered = this.filteredCount();
-    return filtered === null || filtered === total ? `${total} ${noun}` : `${filtered} of ${total} ${noun}`;
+    return filtered === null || filtered === total
+      ? `${total} ${noun}`
+      : `${filtered} of ${total} ${noun}`;
   });
 
   private readonly router = inject(Router);

@@ -75,7 +75,8 @@ export class CreateDialogComponent implements AfterViewInit {
     validateHttp<string, { available: boolean }>(path.name, {
       when: ({ value }) => value().trim().length > 0,
       request: ({ value }) => ({
-        url: this.kind() === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
+        url:
+          this.kind() === 'folder' ? '/api/folders/name-available' : '/api/reports/name-available',
         params: {
           name: value().trim(),
           ...(this.data.folderId == null

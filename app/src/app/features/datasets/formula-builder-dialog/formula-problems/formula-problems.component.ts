@@ -21,7 +21,11 @@ export class FormulaProblemsComponent {
   public readonly hasFormula = computed(() => this.store.root().length > 0);
   public readonly complete = computed(() => this.store.serialized().complete);
   public readonly needsType = computed(
-    () => this.store.root().length > 0 && this.store.chosenType() === 'auto' && this.store.resultType() === null && this.issues().length === 0,
+    () =>
+      this.store.root().length > 0 &&
+      this.store.chosenType() === 'auto' &&
+      this.store.resultType() === null &&
+      this.issues().length === 0,
   );
 
   private readonly store = inject(FormulaBuilderStore);

@@ -8,7 +8,11 @@ import { SavedViewFilters } from './saved-view-filters';
 import { SharedLinkState } from './shared-link-state';
 import { SharedViewLink } from './shared-view-link';
 import { ReportViewFilters } from './report-view-filters';
-import { ViewFilterOverrides, decodeViewFilterOverrides, encodeViewFilterOverrides } from './view-filter-overrides';
+import {
+  ViewFilterOverrides,
+  decodeViewFilterOverrides,
+  encodeViewFilterOverrides,
+} from './view-filter-overrides';
 import { ViewFilterSchemas } from './view-filter-schemas';
 
 /** Long enough that typing a value isn't one save per key. */
@@ -77,7 +81,9 @@ export class ViewFilterSession {
     const encoded = this.encodedFilters();
     if (encoded === undefined) return;
     if (this.saved.failed()) {
-      this.notify.error("Couldn't save these filters because your saved filters didn't load. Reload and try again.");
+      this.notify.error(
+        "Couldn't save these filters because your saved filters didn't load. Reload and try again.",
+      );
       return;
     }
     this.commit(encoded);
@@ -119,7 +125,12 @@ export class ViewFilterSession {
 
         this.builtFor = content;
         const start = this.startingState();
-        const filters = new ReportViewFilters(content, this.schemas.schemas, this.schemas.catalogue, start.overrides);
+        const filters = new ReportViewFilters(
+          content,
+          this.schemas.schemas,
+          this.schemas.catalogue,
+          start.overrides,
+        );
         this.viewFilters.set(filters);
         this.settle(filters, start);
         this.store.openFilterKey.set(null);

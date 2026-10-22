@@ -16,9 +16,7 @@ import { AdminUser } from '../../../core/models/admin';
   styleUrl: './users-list.component.scss',
 })
 export class UsersListComponent {
-  public readonly users = computed(() =>
-    this.resource.hasValue() ? this.resource.value() : [],
-  );
+  public readonly users = computed(() => (this.resource.hasValue() ? this.resource.value() : []));
   public readonly loading = computed(() => this.resource.isLoading());
   public readonly failed = computed(() => this.resource.error() != null);
   /** Subtitle text — "N people", or "M of N people" once the table's own global filter (see
@@ -27,7 +25,9 @@ export class UsersListComponent {
     const total = this.users().length;
     const noun = total === 1 ? 'person' : 'people';
     const filtered = this.filteredCount();
-    return filtered === null || filtered === total ? `${total} ${noun}` : `${filtered} of ${total} ${noun}`;
+    return filtered === null || filtered === total
+      ? `${total} ${noun}`
+      : `${filtered} of ${total} ${noun}`;
   });
 
   private readonly router = inject(Router);

@@ -108,7 +108,8 @@ export class FormulaWriter {
 
   private emitOperator(operator: OperatorItem, prefix: boolean): void {
     const start = this.offset;
-    const text = operator.op === 'NOT' ? 'NOT ' : prefix && operator.op === '-' ? '-' : ` ${operator.op} `;
+    const text =
+      operator.op === 'NOT' ? 'NOT ' : prefix && operator.op === '-' ? '-' : ` ${operator.op} `;
     this.push(text, 'operator', operator.id);
     this.span(operator.id, start);
   }
@@ -133,8 +134,14 @@ export class FormulaWriter {
     }
   }
 
-  private emitUnary(operator: OperatorItem, argument: RpnNode, parent: ParentContext | null, depth: number): void {
-    const precedence = operator.op === 'NOT' ? (operatorDefinition('NOT')?.precedence ?? 3) : NEGATION_PRECEDENCE;
+  private emitUnary(
+    operator: OperatorItem,
+    argument: RpnNode,
+    parent: ParentContext | null,
+    depth: number,
+  ): void {
+    const precedence =
+      operator.op === 'NOT' ? (operatorDefinition('NOT')?.precedence ?? 3) : NEGATION_PRECEDENCE;
     const wrap = parent !== null && precedence < parent.precedence;
 
     if (wrap) {
@@ -142,14 +149,24 @@ export class FormulaWriter {
     }
 
     this.emitOperator(operator, true);
-    this.emitNode(argument, { precedence, associativity: 'right', side: 'right', operator: operator.op }, depth);
+    this.emitNode(
+      argument,
+      { precedence, associativity: 'right', side: 'right', operator: operator.op },
+      depth,
+    );
 
     if (wrap) {
       this.push(')', 'punctuation', operator.id);
     }
   }
 
-  private emitBinary(operator: OperatorItem, left: RpnNode, right: RpnNode, parent: ParentContext | null, depth: number): void {
+  private emitBinary(
+    operator: OperatorItem,
+    left: RpnNode,
+    right: RpnNode,
+    parent: ParentContext | null,
+    depth: number,
+  ): void {
     const definition = operatorDefinition(operator.op);
     const precedence = definition?.precedence ?? 0;
     const associativity = definition?.associativity ?? 'left';
@@ -161,7 +178,11 @@ export class FormulaWriter {
 
     this.emitNode(left, { precedence, associativity, side: 'left', operator: operator.op }, depth);
     this.emitOperator(operator, false);
-    this.emitNode(right, { precedence, associativity, side: 'right', operator: operator.op }, depth);
+    this.emitNode(
+      right,
+      { precedence, associativity, side: 'right', operator: operator.op },
+      depth,
+    );
 
     if (wrap) {
       this.push(')', 'punctuation', operator.id);
@@ -171,7 +192,11 @@ export class FormulaWriter {
   /** A negative number written as the left of `^` needs brackets, or it would read as a negation of the whole power. */
   private emitOperandIn(item: OperandItem, parent: ParentContext | null, depth: number): void {
     const negativeBase =
-      item.kind === 'literal' && typeof item.value === 'number' && item.value < 0 && parent?.operator === '^' && parent.side === 'left';
+      item.kind === 'literal' &&
+      typeof item.value === 'number' &&
+      item.value < 0 &&
+      parent?.operator === '^' &&
+      parent.side === 'left';
 
     if (negativeBase) {
       this.push('(', 'punctuation', item.id);
@@ -274,5 +299,7 @@ export class FormulaWriter {
 
 /** An argument that is more than a plain value, so the call is laid out one argument per line. */
 function isNestedArgument(arg: Expression): boolean {
-  return arg.length > 1 || (arg.length === 1 && (arg[0].kind === 'function' || arg[0].kind === 'group'));
+  return (
+    arg.length > 1 || (arg.length === 1 && (arg[0].kind === 'function' || arg[0].kind === 'group'))
+  );
 }

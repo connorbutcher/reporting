@@ -34,7 +34,10 @@ export class RpnBuilder {
 
   private addOperand(item: OperandItem): void {
     if (!this.expectOperand) {
-      this.issues.push({ blockId: item.id, message: 'Put an operator between this and the value before it.' });
+      this.issues.push({
+        blockId: item.id,
+        message: 'Put an operator between this and the value before it.',
+      });
     }
 
     this.output.push({ type: 'operand', item });
@@ -55,7 +58,10 @@ export class RpnBuilder {
       this.issues.push({ blockId: item.id, message: `${symbol} needs a value on its left.` });
       this.output.push({ type: 'missing', operatorId: item.id });
     } else if (definition?.prefixOnly) {
-      this.issues.push({ blockId: item.id, message: `${symbol} goes in front of a value, after AND, OR or an operator.` });
+      this.issues.push({
+        blockId: item.id,
+        message: `${symbol} goes in front of a value, after AND, OR or an operator.`,
+      });
       this.stack.push({ item, unary: true, precedence: definition.precedence });
       this.expectOperand = true;
       return;
@@ -72,10 +78,16 @@ export class RpnBuilder {
     while (this.stack.length > 0) {
       const top = this.stack[this.stack.length - 1];
       if (top.precedence === precedence && associativity === 'none' && !top.unary) {
-        this.issues.push({ blockId: item.id, message: `${symbol} can't follow another comparison directly; combine them with AND or OR.` });
+        this.issues.push({
+          blockId: item.id,
+          message: `${symbol} can't follow another comparison directly; combine them with AND or OR.`,
+        });
       }
 
-      if (top.precedence > precedence || (top.precedence === precedence && associativity !== 'right')) {
+      if (
+        top.precedence > precedence ||
+        (top.precedence === precedence && associativity !== 'right')
+      ) {
         this.popOperator();
       } else {
         break;

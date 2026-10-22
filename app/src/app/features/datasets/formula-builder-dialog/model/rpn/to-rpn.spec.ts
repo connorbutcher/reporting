@@ -18,7 +18,9 @@ describe('toRpn (shunting-yard)', () => {
   });
 
   it('treats brackets as a single value, however low their contents bind', () => {
-    expect(rpnText([groupBlock([col('Qty'), op('+'), lit(1)]), op('*'), col('Price')])).toBe('group Price *');
+    expect(rpnText([groupBlock([col('Qty'), op('+'), lit(1)]), op('*'), col('Price')])).toBe(
+      'group Price *',
+    );
   });
 
   it('reads a - with nothing before it as a negation, binding looser than ^ and tighter than *', () => {
@@ -29,11 +31,15 @@ describe('toRpn (shunting-yard)', () => {
   });
 
   it('lets NOT take everything up to the next AND or OR, so comparisons are inside it', () => {
-    expect(rpnText([op('NOT'), col('Qty'), op('='), lit(1), op('AND'), col('Shipped')])).toBe('Qty 1 = NOTu Shipped AND');
+    expect(rpnText([op('NOT'), col('Qty'), op('='), lit(1), op('AND'), col('Shipped')])).toBe(
+      'Qty 1 = NOTu Shipped AND',
+    );
   });
 
   it('puts OR loosest, then AND, then comparisons', () => {
-    expect(rpnText([col('Shipped'), op('OR'), col('Shipped'), op('AND'), col('Qty'), op('>'), lit(1)])).toBe('Shipped Shipped Qty 1 > AND OR');
+    expect(
+      rpnText([col('Shipped'), op('OR'), col('Shipped'), op('AND'), col('Qty'), op('>'), lit(1)]),
+    ).toBe('Shipped Shipped Qty 1 > AND OR');
   });
 
   it('reports an operator with no value beside it, and stands in a missing value so the result is still well formed', () => {
@@ -48,7 +54,9 @@ describe('toRpn (shunting-yard)', () => {
 
   it('reports two values with no operator between them, and two operators in a row', () => {
     const b = col('Price');
-    expect(toRpn([col('Qty'), b]).issues).toEqual([{ blockId: b.id, message: 'Put an operator between this and the value before it.' }]);
+    expect(toRpn([col('Qty'), b]).issues).toEqual([
+      { blockId: b.id, message: 'Put an operator between this and the value before it.' },
+    ]);
     expect(toRpn([col('Qty'), op('+'), op('*'), col('Price')]).issues).toHaveLength(1);
   });
 

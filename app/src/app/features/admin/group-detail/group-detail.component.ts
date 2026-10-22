@@ -45,11 +45,15 @@ export class GroupDetailComponent {
    * every group by that status, so they're neither members nor managers (they're managed in the
    * Users section).
    */
-  public readonly assignableUsers = computed(() => this.userOptions().filter((u) => !u.isGlobalAdmin));
+  public readonly assignableUsers = computed(() =>
+    this.userOptions().filter((u) => !u.isGlobalAdmin),
+  );
 
   public readonly filteredUsers = computed(() => {
     const query = this.memberFilter().trim().toLowerCase();
-    const options = [...this.assignableUsers()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+    const options = [...this.assignableUsers()].sort((a, b) =>
+      a.displayName.localeCompare(b.displayName),
+    );
     return query
       ? options.filter(
           (u) =>
@@ -70,7 +74,9 @@ export class GroupDetailComponent {
 
   /** A non-admin creator is auto-added as the new group's manager — see the server-side rule in
    * `UserGroupAdminService.CreateAsync`. A global admin's access is already implied, so it's skipped. */
-  public readonly willAutoManage = computed(() => this.isNew() && !this.currentUser.isGlobalAdmin());
+  public readonly willAutoManage = computed(
+    () => this.isNew() && !this.currentUser.isGlobalAdmin(),
+  );
 
   public readonly form = form(signal({ name: '' }), (path) => {
     required(path.name, { message: 'A group name is required.' });
@@ -89,21 +95,27 @@ export class GroupDetailComponent {
       when: ({ value }) => value().trim().length > 0,
       request: ({ value }) => ({
         url: '/api/admin/user-groups/name-available',
-        params: { name: value().trim(), ...(this.refId ? { excludeId: this.refId } : {}) } as Record<
-          string,
-          string
-        >,
+        params: {
+          name: value().trim(),
+          ...(this.refId ? { excludeId: this.refId } : {}),
+        } as Record<string, string>,
         context: skipHttpErrorNotification(),
       }),
       debounce: 400,
       onSuccess: (result, { value }) =>
-        result.available ? [] : [{ kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }],
+        result.available
+          ? []
+          : [{ kind: 'duplicate', message: `A group called "${value().trim()}" already exists.` }],
       onError: () => [],
     });
   });
 
   public readonly nameError = computed(
-    () => this.form.name().errors().find((e) => e.kind === 'duplicate')?.message ?? null,
+    () =>
+      this.form
+        .name()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ?? null,
   );
 
   private readonly route = inject(ActivatedRoute);
@@ -229,7 +241,9 @@ export class GroupDetailComponent {
         this.loading.set(false);
       },
       error: (err: { status?: number }) => {
-        this.loadError.set(err?.status === 404 ? 'That group no longer exists.' : 'Could not load the group.');
+        this.loadError.set(
+          err?.status === 404 ? 'That group no longer exists.' : 'Could not load the group.',
+        );
         this.loading.set(false);
       },
     });

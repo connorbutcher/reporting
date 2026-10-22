@@ -24,7 +24,11 @@ export function groupBlock(body: Expression = []): GroupBlock {
 }
 
 /** A function block with an empty argument per parameter (two for a repeating one, so it reads as a list). */
-export function functionBlock(fn: FormulaFunction | undefined, name: string, args?: Expression[]): FunctionBlock {
+export function functionBlock(
+  fn: FormulaFunction | undefined,
+  name: string,
+  args?: Expression[],
+): FunctionBlock {
   return { kind: 'function', id: newItemId(), name, args: args ?? emptyArguments(fn) };
 }
 

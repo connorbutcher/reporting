@@ -13,13 +13,17 @@ describe('serializeFormula', () => {
   });
 
   it('keeps the brackets the user put in', () => {
-    expect(write([groupBlock([col('Qty'), op('+'), lit(1)]), op('*'), col('Price')])).toBe('([Qty] + 1) * [Price]');
+    expect(write([groupBlock([col('Qty'), op('+'), lit(1)]), op('*'), col('Price')])).toBe(
+      '([Qty] + 1) * [Price]',
+    );
   });
 
   it('writes negations and NOT the way the server reads them', () => {
     expect(write([op('-'), col('Qty')])).toBe('-[Qty]');
     expect(write([lit(2), op('-'), op('-'), lit(3)])).toBe('2 - -3');
-    expect(write([op('NOT'), col('Shipped'), op('AND'), col('Shipped')])).toBe('NOT [Shipped] AND [Shipped]');
+    expect(write([op('NOT'), col('Shipped'), op('AND'), col('Shipped')])).toBe(
+      'NOT [Shipped] AND [Shipped]',
+    );
     expect(write([op('-'), lit(2), op('^'), lit(2)])).toBe('-2 ^ 2');
   });
 
@@ -30,7 +34,16 @@ describe('serializeFormula', () => {
   it('lays a function out one argument per line once an argument is more than a plain value', () => {
     expect(roundTrip('ROUND([Qty], 2)')).toBe('ROUND([Qty], 2)');
     expect(roundTrip('IF(ISBLANK([Qty]), 0, ROUND([Qty] * [Price], 1))')).toBe(
-      ['IF(', '  ISBLANK([Qty]),', '  0,', '  ROUND(', '    [Qty] * [Price],', '    1', '  )', ')'].join('\n'),
+      [
+        'IF(',
+        '  ISBLANK([Qty]),',
+        '  0,',
+        '  ROUND(',
+        '    [Qty] * [Price],',
+        '    1',
+        '  )',
+        ')',
+      ].join('\n'),
     );
   });
 
@@ -47,7 +60,10 @@ describe('serializeFormula', () => {
     expect(optional.text).toBe('ROUND([Qty])');
     expect(optional.complete).toBe(true);
 
-    const required = serializeFormula([round], (_, i) => ({ name: i === 0 ? 'number' : 'digits', optional: false }));
+    const required = serializeFormula([round], (_, i) => ({
+      name: i === 0 ? 'number' : 'digits',
+      optional: false,
+    }));
     expect(required.text).toBe('ROUND([Qty], ‹digits missing›)');
     expect(required.complete).toBe(false);
   });
@@ -56,11 +72,14 @@ describe('serializeFormula', () => {
     expect(serializeFormula([groupBlock([])], describeAnyValue).text).toBe('(‹value missing›)');
   });
 
-  it('records each item\'s span, so an error position finds the item that caused it', () => {
+  it("records each item's span, so an error position finds the item that caused it", () => {
     const qty = col('Qty');
     const times = op('*');
     const price = col('Price');
-    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [[qty, times, price], [lit(2)]]);
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [
+      [qty, times, price],
+      [lit(2)],
+    ]);
     const { text: written, spans } = serializeFormula([round], describeAnyValue);
 
     const at = (needle: string): number => written.indexOf(needle);

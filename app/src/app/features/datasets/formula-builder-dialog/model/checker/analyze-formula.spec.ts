@@ -15,7 +15,12 @@ describe('analyzeFormula', () => {
     const issues = checkFormula([round], SCOPE);
 
     expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ kind: 'missing', blockId: round.id, ownerId: round.id, arg: 0 });
+    expect(issues[0]).toMatchObject({
+      kind: 'missing',
+      blockId: round.id,
+      ownerId: round.id,
+      arg: 0,
+    });
     expect(issues[0].message).toContain('number');
   });
 
@@ -43,7 +48,9 @@ describe('analyzeFormula', () => {
     expect(issues.map((i) => i.kind)).toEqual(['type']);
     expect(issues[0].blockId).toBe(group.id);
     // Without the brackets & binds looser than *, so this is Region & ("x" * 2): the multiplication is the wrong part.
-    expect(checkFormula([col('Region'), op('&'), lit('x'), op('*'), lit(2)], SCOPE).map((i) => i.kind)).toEqual(['type']);
+    expect(
+      checkFormula([col('Region'), op('&'), lit('x'), op('*'), lit(2)], SCOPE).map((i) => i.kind),
+    ).toEqual(['type']);
   });
 
   it('lets a comparison take any kind on both sides, but not two different kinds', () => {
@@ -54,20 +61,28 @@ describe('analyzeFormula', () => {
 
   it('needs true/false around AND and OR, and after NOT', () => {
     expect(checkFormula([col('Shipped'), op('AND'), col('Shipped')], SCOPE)).toEqual([]);
-    expect(checkFormula([col('Qty'), op('AND'), col('Shipped')], SCOPE).map((i) => i.kind)).toEqual(['type']);
+    expect(checkFormula([col('Qty'), op('AND'), col('Shipped')], SCOPE).map((i) => i.kind)).toEqual(
+      ['type'],
+    );
     expect(checkFormula([op('NOT'), col('Qty')], SCOPE).map((i) => i.kind)).toEqual(['type']);
   });
 
   it('carries the sequence problems found by the conversion, on the item they are about', () => {
     const plus = op('+');
     const issues = checkFormula([col('Qty'), plus], SCOPE);
-    expect(issues).toEqual([{ kind: 'structure', blockId: plus.id, message: '+ needs a value after it.' }]);
+    expect(issues).toEqual([
+      { kind: 'structure', blockId: plus.id, message: '+ needs a value after it.' },
+    ]);
   });
 
   it('checks inside brackets and function arguments, and rejects empty brackets', () => {
     const group = groupBlock([]);
-    expect(checkFormula([group], SCOPE).map((i) => i.message)).toEqual(['These brackets are empty.']);
-    expect(checkFormula([groupBlock([col('Region'), op('*'), lit(2)])], SCOPE).map((i) => i.kind)).toEqual(['type']);
+    expect(checkFormula([group], SCOPE).map((i) => i.message)).toEqual([
+      'These brackets are empty.',
+    ]);
+    expect(
+      checkFormula([groupBlock([col('Region'), op('*'), lit(2)])], SCOPE).map((i) => i.kind),
+    ).toEqual(['type']);
   });
 
   it('reports an unknown column and an unknown function', () => {

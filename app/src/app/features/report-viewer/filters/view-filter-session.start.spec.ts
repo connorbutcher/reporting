@@ -61,7 +61,11 @@ describe('ViewFilterSession: where the filters start, and the banner', () => {
     });
 
     it('counts filters naming a widget this version does not have as unmatched', async () => {
-      const view = encodeViewFilterOverrides({ w1: group('link'), ghost: group('x'), '404': null })!;
+      const view = encodeViewFilterOverrides({
+        w1: group('link'),
+        ghost: group('x'),
+        '404': null,
+      })!;
       await open('/reports/3?view=abc', { views: { abc: view } });
 
       expect(h.session.sharedLink()).toEqual({ total: 3, unmatched: 2, missingColumns: 0 });

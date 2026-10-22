@@ -98,12 +98,19 @@ export class FormulaSaver {
       return 'Fill in the empty slots before saving.';
     }
 
-    return this.checking.previewing() ? 'Still checking the formula — try again in a moment.' : null;
+    return this.checking.previewing()
+      ? 'Still checking the formula — try again in a moment.'
+      : null;
   }
 
   /** The server explains a rejected formula in its response text; show that here, beside the formula. */
   private reportFailure(err: unknown): void {
-    if (err instanceof HttpErrorResponse && err.status === 400 && typeof err.error === 'string' && err.error) {
+    if (
+      err instanceof HttpErrorResponse &&
+      err.status === 400 &&
+      typeof err.error === 'string' &&
+      err.error
+    ) {
       this.saveError.set(err.error);
     } else {
       this.notify.apiError(err, "Couldn't save the formula column. Please try again.");

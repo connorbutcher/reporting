@@ -58,7 +58,10 @@ export class DatasetSourceCommands {
       },
       error: (err) => {
         this.schema.sourceConfig.set(previous);
-        this.notify.apiError(err, "Couldn't save the source configuration — the change was reverted.");
+        this.notify.apiError(
+          err,
+          "Couldn't save the source configuration — the change was reverted.",
+        );
       },
     });
   }

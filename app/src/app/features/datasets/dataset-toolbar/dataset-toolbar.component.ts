@@ -17,7 +17,13 @@ import { DatasetsStore } from '../datasets.store';
  */
 @Component({
   selector: 'app-dataset-toolbar',
-  imports: [FormsModule, ButtonModule, InputTextModule, SaveStatusComponent, DatasetIssuesComponent],
+  imports: [
+    FormsModule,
+    ButtonModule,
+    InputTextModule,
+    SaveStatusComponent,
+    DatasetIssuesComponent,
+  ],
   templateUrl: './dataset-toolbar.component.html',
   styleUrl: './dataset-toolbar.component.scss',
 })

@@ -7,7 +7,12 @@ import { TypedValue } from './typed-value';
 const ORDERING_OPERATORS = new Set(['<', '<=', '>', '>=']);
 
 /** Checks the operands of an operator against what it takes, and gives the kind it produces. */
-export function applyOperator(operator: OperatorItem, operands: readonly TypedValue[], issues: FormulaIssue[], first: number): TypedValue {
+export function applyOperator(
+  operator: OperatorItem,
+  operands: readonly TypedValue[],
+  issues: FormulaIssue[],
+  first: number,
+): TypedValue {
   const definition = operatorDefinition(operator.op);
   if (!definition) {
     return { kind: 'any', first };
@@ -34,8 +39,15 @@ export function applyOperator(operator: OperatorItem, operands: readonly TypedVa
         blockId: right.first,
         message: `Can't compare ${KIND_LABELS[left.kind]} with ${KIND_LABELS[right.kind]}.`,
       });
-    } else if (ORDERING_OPERATORS.has(operator.op) && (left.kind === 'bool' || right.kind === 'bool')) {
-      issues.push({ kind: 'type', blockId: right.first, message: `${symbol} can't order true/false values.` });
+    } else if (
+      ORDERING_OPERATORS.has(operator.op) &&
+      (left.kind === 'bool' || right.kind === 'bool')
+    ) {
+      issues.push({
+        kind: 'type',
+        blockId: right.first,
+        message: `${symbol} can't order true/false values.`,
+      });
     }
   }
 

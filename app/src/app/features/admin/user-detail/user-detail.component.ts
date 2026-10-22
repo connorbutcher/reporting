@@ -58,13 +58,18 @@ export class UserDetailComponent {
     validate(path.email, ({ value }) => {
       if (!this.isNew()) return null;
       const taken = this.existingEmails().includes(value().trim().toLowerCase());
-      return taken ? { kind: 'duplicate', message: 'A user with that email already exists.' } : null;
+      return taken
+        ? { kind: 'duplicate', message: 'A user with that email already exists.' }
+        : null;
     });
   });
 
   public readonly emailError = computed(
     () =>
-      this.form.email().errors().find((e) => e.kind === 'duplicate')?.message ??
+      this.form
+        .email()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ??
       (this.form.email().dirty() && this.form.email().invalid()
         ? (this.form.email().errors()[0]?.message ?? null)
         : null),
@@ -104,9 +109,7 @@ export class UserDetailComponent {
       canCreateGroups: this.isGlobalAdmin() ? true : this.canCreateGroups(),
       groupIds: this.groupIds(),
     };
-    const request = this.isNew()
-      ? this.api.createUser(dto)
-      : this.api.updateUser(this.refId!, dto);
+    const request = this.isNew() ? this.api.createUser(dto) : this.api.updateUser(this.refId!, dto);
 
     request.subscribe({
       next: () => {
@@ -163,7 +166,9 @@ export class UserDetailComponent {
         this.loading.set(false);
       },
       error: (err: { status?: number }) => {
-        this.loadError.set(err?.status === 404 ? 'That user no longer exists.' : 'Could not load the user.');
+        this.loadError.set(
+          err?.status === 404 ? 'That user no longer exists.' : 'Could not load the user.',
+        );
         this.loading.set(false);
       },
     });

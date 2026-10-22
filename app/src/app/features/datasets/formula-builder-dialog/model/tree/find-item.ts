@@ -5,7 +5,11 @@ import { ROOT } from '../items/root-address';
 import { childExpressions } from './child-expressions';
 import { ItemLocation } from './item-location';
 
-export function findItem(root: Expression, id: number, address: ExpressionAddress = ROOT): ItemLocation | null {
+export function findItem(
+  root: Expression,
+  id: number,
+  address: ExpressionAddress = ROOT,
+): ItemLocation | null {
   for (let index = 0; index < root.length; index++) {
     const item = root[index];
     if (item.id === id) {

@@ -16,7 +16,12 @@ interface TabWidgets {
 /** The viewer's filter panel: the page filters, then each widget's, grouped by tab. */
 @Component({
   selector: 'app-view-filters-panel',
-  imports: [ButtonModule, PageFilterRowComponent, WidgetFilterRowComponent, SharedLinkBannerComponent],
+  imports: [
+    ButtonModule,
+    PageFilterRowComponent,
+    WidgetFilterRowComponent,
+    SharedLinkBannerComponent,
+  ],
   templateUrl: './view-filters-panel.component.html',
   styleUrl: './view-filters-panel.component.scss',
 })

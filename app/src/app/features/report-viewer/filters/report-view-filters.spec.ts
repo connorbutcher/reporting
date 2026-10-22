@@ -141,13 +141,14 @@ describe('ReportViewFilters overrides', () => {
         w1: group(condition('status', 'Open'), condition('site', 'North')),
       });
     });
-
   });
 
   describe('ready', () => {
     const column = (id: string) => ({ id, name: id, type: 'string', order: 0, configuration: {} });
     const dataset = (id: number) => ({ id, name: `Dataset ${id}`, columns: [column('status')] });
-    const catalogue = { string: [{ value: 'equals', label: 'is', operandCount: 1, operandKind: 'text' }] };
+    const catalogue = {
+      string: [{ value: 'equals', label: 'is', operandCount: 1, operandKind: 'text' }],
+    };
     const readyWith = (schemas: object, loaded: boolean) =>
       new ReportViewFilters(
         content(),
@@ -227,18 +228,37 @@ describe('ReportViewFilters overrides', () => {
       const mixed = {
         ...base,
         tabs: [
-          { ...base.tabs[0], widgets: [table, chart('c1', 'Cost vs Time', [binding('b1', 7, 'Cost'), binding('b2', 8)])] },
-          { ...base.tabs[0], id: 't2', name: 'Second', order: 1, widgets: [chart('c2', 'Solo', [binding('b3', 7)])] },
+          {
+            ...base.tabs[0],
+            widgets: [
+              table,
+              chart('c1', 'Cost vs Time', [binding('b1', 7, 'Cost'), binding('b2', 8)]),
+            ],
+          },
+          {
+            ...base.tabs[0],
+            id: 't2',
+            name: 'Second',
+            order: 1,
+            widgets: [chart('c2', 'Solo', [binding('b3', 7)])],
+          },
         ],
       } as unknown as ReportRevisionContent;
-      return new ReportViewFilters(mixed, signal(schemas as Record<number, DatasetSchema>), signal(null));
+      return new ReportViewFilters(
+        mixed,
+        signal(schemas as Record<number, DatasetSchema>),
+        signal(null),
+      );
     }
 
     it('lists a multi-dataset chart once, not once per dataset', () => {
       const items = buildMixed().widgetItems;
 
       expect(items.map((i) => i.widget.id)).toEqual(['w1', 'c1', 'c2']);
-      expect(items.find((i) => i.widget.id === 'c1')!.entries.map((e) => e.key)).toEqual(['c1::b1', 'c1::b2']);
+      expect(items.find((i) => i.widget.id === 'c1')!.entries.map((e) => e.key)).toEqual([
+        'c1::b1',
+        'c1::b2',
+      ]);
     });
 
     it('keeps a single-dataset widget as one item with one entry', () => {
@@ -278,9 +298,17 @@ describe('ReportViewFilters overrides', () => {
       const base = content();
       const twin = {
         ...base,
-        tabs: [{ ...base.tabs[0], widgets: [chart('c1', 'Twins', [binding('b1', 7), binding('b2', 7)])] }],
+        tabs: [
+          {
+            ...base.tabs[0],
+            widgets: [chart('c1', 'Twins', [binding('b1', 7), binding('b2', 7)])],
+          },
+        ],
       } as unknown as ReportRevisionContent;
-      const schemas = { 7: { id: 7, name: 'Bearings', columns: [] } } as unknown as Record<number, DatasetSchema>;
+      const schemas = { 7: { id: 7, name: 'Bearings', columns: [] } } as unknown as Record<
+        number,
+        DatasetSchema
+      >;
       const filters = new ReportViewFilters(twin, signal(schemas), signal(null));
 
       expect(filters.widgetItems[0].options().map((o) => o.label)).toEqual([

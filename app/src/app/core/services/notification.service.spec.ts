@@ -11,7 +11,10 @@ describe('NotificationService', () => {
   beforeEach(() => {
     add = vi.fn();
     TestBed.configureTestingModule({
-      providers: [NotificationService, { provide: MessageService, useValue: { add, clear: vi.fn() } }],
+      providers: [
+        NotificationService,
+        { provide: MessageService, useValue: { add, clear: vi.fn() } },
+      ],
     });
     service = TestBed.inject(NotificationService);
   });
@@ -47,8 +50,8 @@ describe('NotificationService', () => {
   });
 
   it('collapses an identical error already on screen into one toast', () => {
-    service.error('This couldn\'t be found.', 'Not found');
-    service.error('This couldn\'t be found.', 'Not found');
+    service.error("This couldn't be found.", 'Not found');
+    service.error("This couldn't be found.", 'Not found');
     expect(add).toHaveBeenCalledTimes(1);
   });
 });

@@ -69,7 +69,11 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   private analyzeColumn(id: number, name: string): TypedValue {
     const column = this.scope.columns.get(name.toLowerCase());
     if (!column) {
-      this.issues.push({ kind: 'unknown', blockId: id, message: `There's no column named [${name}].` });
+      this.issues.push({
+        kind: 'unknown',
+        blockId: id,
+        message: `There's no column named [${name}].`,
+      });
     }
 
     return { kind: column ? columnTypeKind(column.type) : 'any', first: id };
@@ -86,7 +90,11 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
   private analyzeCall(call: FunctionBlock): FormulaValueKind {
     const fn = this.scope.functions.get(call.name.toUpperCase());
     if (!fn) {
-      this.issues.push({ kind: 'unknown', blockId: call.id, message: `There's no function named ${call.name}.` });
+      this.issues.push({
+        kind: 'unknown',
+        blockId: call.id,
+        message: `There's no function named ${call.name}.`,
+      });
     }
 
     const argumentKinds: (TypedValue | null)[] = [];
@@ -101,7 +109,11 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
     return fn.returnKind === 'any' ? commonKind(call, fn, argumentKinds) : fn.returnKind;
   }
 
-  private analyzeArgument(call: FunctionBlock, index: number, params: readonly FormulaParameter[]): TypedValue | null {
+  private analyzeArgument(
+    call: FunctionBlock,
+    index: number,
+    params: readonly FormulaParameter[],
+  ): TypedValue | null {
     const expression = call.args[index];
     const param = params.length > 0 ? parameterFor(params, index) : null;
 
@@ -120,7 +132,13 @@ export class ExpressionAnalyzer implements RpnFolder<TypedValue> {
     }
 
     const typed = this.analyze(expression);
-    if (param && typed && param.kind !== 'any' && typed.kind !== 'any' && typed.kind !== param.kind) {
+    if (
+      param &&
+      typed &&
+      param.kind !== 'any' &&
+      typed.kind !== 'any' &&
+      typed.kind !== param.kind
+    ) {
       this.issues.push({
         kind: 'type',
         blockId: typed.first,

@@ -29,7 +29,10 @@ function commentParts(body: string, mentions: readonly WidgetCommentAuthor[]): C
   if (mentions.length === 0) return [{ text: body, isMention: false }];
   const tags = new Set(mentions.map((m) => `@${m.displayName}`));
   const pattern = new RegExp(`(${[...tags].map(escapeRegExp).join('|')})`, 'g');
-  return body.split(pattern).filter((s) => s.length > 0).map((s) => ({ text: s, isMention: tags.has(s) }));
+  return body
+    .split(pattern)
+    .filter((s) => s.length > 0)
+    .map((s) => ({ text: s, isMention: tags.has(s) }));
 }
 
 /**
@@ -78,7 +81,12 @@ export class CommentsPanelComponent {
         parts: commentParts(c.body, c.mentions),
         anchor:
           c.anchorX != null && c.anchorY != null
-            ? { x: c.anchorX, y: c.anchorY, yAxisIndex: c.anchorYAxisIndex, label: this.anchorLabel(c.anchorX, c.anchorY) }
+            ? {
+                x: c.anchorX,
+                y: c.anchorY,
+                yAxisIndex: c.anchorYAxisIndex,
+                label: this.anchorLabel(c.anchorX, c.anchorY),
+              }
             : null,
         isHighlighted:
           highlighted != null &&
@@ -87,14 +95,18 @@ export class CommentsPanelComponent {
           highlighted.y === c.anchorY,
       }));
     });
-    this.canPost = computed(() => this.composerText().trim().length > 0 && !this.comments.posting());
+    this.canPost = computed(
+      () => this.composerText().trim().length > 0 && !this.comments.posting(),
+    );
     this.mentionCandidates = computed(() => {
       const query = this.mentionQuery();
       if (query == null) return [];
       const already = new Set(this.mentionedUsers().map((u) => u.id));
       return this.comments
         .directory()
-        .filter((u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()))
+        .filter(
+          (u) => !already.has(u.id) && u.displayName.toLowerCase().includes(query.toLowerCase()),
+        )
         .slice(0, 6);
     });
   }
@@ -110,7 +122,9 @@ export class CommentsPanelComponent {
     this.composerText.set(next);
     this.mentionQuery.set(null);
     this.mentionedUsers.update((list) =>
-      list.some((u) => u.id === user.id) ? list : [...list, { id: user.id, displayName: user.displayName }],
+      list.some((u) => u.id === user.id)
+        ? list
+        : [...list, { id: user.id, displayName: user.displayName }],
     );
 
     // Clicking a dropdown item moves focus to its button, so the textarea needs it back — and its

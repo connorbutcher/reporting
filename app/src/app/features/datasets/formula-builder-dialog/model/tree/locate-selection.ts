@@ -21,7 +21,12 @@ export function locateSelection(root: Expression, ids: readonly number[]): Selec
   }
 
   const { address } = found[0];
-  if (found.some((location) => location.address.ownerId !== address.ownerId || location.address.arg !== address.arg)) {
+  if (
+    found.some(
+      (location) =>
+        location.address.ownerId !== address.ownerId || location.address.arg !== address.arg,
+    )
+  ) {
     return null;
   }
 

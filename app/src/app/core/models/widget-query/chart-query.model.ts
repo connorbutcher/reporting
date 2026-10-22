@@ -1,4 +1,11 @@
-import { Aggregate, ChartAxis, ChartSort, ChartToleranceBand, ChartTooltipColumn, DateGrouping } from '../report';
+import {
+  Aggregate,
+  ChartAxis,
+  ChartSort,
+  ChartToleranceBand,
+  ChartTooltipColumn,
+  DateGrouping,
+} from '../report';
 import { FilterGroup } from '../filter';
 
 export interface ChartQueryRequest {

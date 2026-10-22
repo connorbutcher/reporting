@@ -42,7 +42,9 @@ export function buildTableEntry(
 
   const schema = ctx.schemaFor(datasetId);
   const placed = new Set(widget.config.columns.map((c) => c.columnId));
-  const banded = widget.config.columns.filter((c) => hasFixedLimits(c.tolerance)).map((c) => c.columnId);
+  const banded = widget.config.columns
+    .filter((c) => hasFixedLimits(c.tolerance))
+    .map((c) => c.columnId);
   ctx.addTolerant(datasetId, banded);
 
   return createViewFilterEntry({
@@ -53,12 +55,20 @@ export function buildTableEntry(
       columns: computed(() => (schema()?.columns ?? []).filter((c) => placed.has(c.id))),
       tolerantColumns: signal(new Set(banded)),
     }),
-    widget: describeWidget(widget, tabName, computed(() => schema()?.name ?? 'Dataset')),
+    widget: describeWidget(
+      widget,
+      tabName,
+      computed(() => schema()?.name ?? 'Dataset'),
+    ),
   });
 }
 
 /** A chart overlays one or more datasets; each bound one filters its own rows, so gets its own entry. */
-export function buildChartEntries(widget: ChartWidget, tabName: string, ctx: EntryContext): WidgetFilterEntry[] {
+export function buildChartEntries(
+  widget: ChartWidget,
+  tabName: string,
+  ctx: EntryContext,
+): WidgetFilterEntry[] {
   return readChartBindings(widget.config)
     .filter((binding) => binding.datasetId)
     .map((binding) => {

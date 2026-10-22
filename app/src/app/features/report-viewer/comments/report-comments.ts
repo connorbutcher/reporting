@@ -2,7 +2,11 @@ import { httpResource } from '@angular/common/http';
 import { Injectable, Signal, computed, inject, linkedSignal, signal } from '@angular/core';
 import { ReportApiService } from '../../../core/api/report-api.service';
 import { DirectoryUser } from '../../../core/models/admin';
-import { PendingCommentAnchor, WidgetComment, WidgetCommentAuthor } from '../../../core/models/widget-comment.model';
+import {
+  PendingCommentAnchor,
+  WidgetComment,
+  WidgetCommentAuthor,
+} from '../../../core/models/widget-comment.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ReportViewerStore } from '../report-viewer.store';
 
@@ -52,7 +56,9 @@ export class ReportComments {
   private readonly threadResource = httpResource<WidgetComment[]>(() => {
     const reportId = this.reportId();
     const widgetId = this.widgetId();
-    return reportId && widgetId ? `/api/reports/${reportId}/widgets/${widgetId}/comments` : undefined;
+    return reportId && widgetId
+      ? `/api/reports/${reportId}/widgets/${widgetId}/comments`
+      : undefined;
   });
   private readonly thread = linkedSignal<WidgetComment[]>(() =>
     this.threadResource.hasValue() ? this.threadResource.value() : [],
@@ -66,7 +72,9 @@ export class ReportComments {
     this.countsResource.hasValue() ? this.countsResource.value() : {},
   );
 
-  private readonly directoryResource = httpResource<DirectoryUser[]>(() => '/api/users', { defaultValue: [] });
+  private readonly directoryResource = httpResource<DirectoryUser[]>(() => '/api/users', {
+    defaultValue: [],
+  });
 
   constructor() {
     // Deferred to the constructor, which runs after every field above is initialized: each reads
@@ -136,7 +144,10 @@ export class ReportComments {
         next: (comment) => {
           this.posting.set(false);
           this.thread.update((current) => [comment, ...current]);
-          this.counts.update((current) => ({ ...current, [widgetId]: (current[widgetId] ?? 0) + 1 }));
+          this.counts.update((current) => ({
+            ...current,
+            [widgetId]: (current[widgetId] ?? 0) + 1,
+          }));
           this.pendingAnchor.set(null);
         },
         error: (err) => {
@@ -153,7 +164,10 @@ export class ReportComments {
 
     // Removed from the list right away — deleting your own comment never fails in a way worth waiting on.
     this.thread.update((current) => current.filter((c) => c.id !== commentId));
-    this.counts.update((current) => ({ ...current, [widgetId]: Math.max(0, (current[widgetId] ?? 1) - 1) }));
+    this.counts.update((current) => ({
+      ...current,
+      [widgetId]: Math.max(0, (current[widgetId] ?? 1) - 1),
+    }));
     this.api.deleteWidgetComment(reportId, widgetId, commentId).subscribe({
       error: (err) => this.notify.apiError(err, "Couldn't delete that comment. Please try again."),
     });

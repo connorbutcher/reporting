@@ -91,7 +91,9 @@ export class DatasetRowWindow {
         // Keep the other loaded windows when the total is unchanged; otherwise
         // start a fresh sparse array of the new length.
         const next =
-          this._rows().length === total ? [...this._rows()] : new Array<DatasetRow | undefined>(total);
+          this._rows().length === total
+            ? [...this._rows()]
+            : new Array<DatasetRow | undefined>(total);
         rows.forEach((row, i) => (next[first + i] = row));
         this._total.set(total);
         this._rows.set(next);

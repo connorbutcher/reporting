@@ -15,7 +15,14 @@ import { ViewFilterSession } from './filters/view-filter-session';
   imports: [ReadonlyReportGridComponent, ReportViewerHeaderComponent, ReportViewerAsideComponent],
   templateUrl: './report-viewer.component.html',
   styleUrl: './report-viewer.component.scss',
-  providers: [ReportViewerStore, ViewFilterSchemas, SavedViewFilters, SharedViewLink, ViewFilterSession, ReportComments],
+  providers: [
+    ReportViewerStore,
+    ViewFilterSchemas,
+    SavedViewFilters,
+    SharedViewLink,
+    ViewFilterSession,
+    ReportComments,
+  ],
 })
 export class ReportViewerComponent {
   private readonly store = inject(ReportViewerStore);

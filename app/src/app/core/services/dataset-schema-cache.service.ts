@@ -39,12 +39,18 @@ export class DatasetSchemaCacheService {
   ): void {
     this.patchColumn(datasetId, columnId, configuration);
 
-    this.datasetApi.updateColumnConfiguration(datasetId, columnId, configuration).subscribe((column) => {
-      this.patchColumn(datasetId, columnId, column.configuration);
-    });
+    this.datasetApi
+      .updateColumnConfiguration(datasetId, columnId, configuration)
+      .subscribe((column) => {
+        this.patchColumn(datasetId, columnId, column.configuration);
+      });
   }
 
-  private patchColumn(datasetId: number, columnId: string, configuration: DatasetColumnConfiguration): void {
+  private patchColumn(
+    datasetId: number,
+    columnId: string,
+    configuration: DatasetColumnConfiguration,
+  ): void {
     this.cache.update((all) => {
       const schema = all[datasetId];
       if (!schema) return all;

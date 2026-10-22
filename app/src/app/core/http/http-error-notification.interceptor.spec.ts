@@ -29,7 +29,12 @@ describe('httpErrorNotificationInterceptor', () => {
   afterEach(() => httpMock.verify());
 
   /** Fires <method> <url>, responds with <status>, and swallows the (expected) error. */
-  function request(method: 'GET' | 'POST', url: string, status: number, opts?: { skip?: boolean }): void {
+  function request(
+    method: 'GET' | 'POST',
+    url: string,
+    status: number,
+    opts?: { skip?: boolean },
+  ): void {
     const observable =
       method === 'GET'
         ? http.get(url, opts?.skip ? { context: skipHttpErrorNotification() } : {})

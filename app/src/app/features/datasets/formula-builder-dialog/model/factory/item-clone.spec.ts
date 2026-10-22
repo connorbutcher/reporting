@@ -27,7 +27,10 @@ function idsOf(item: FormulaItem): number[] {
 describe('cloneItem', () => {
   it('copies deeply with fresh ids, so a paste is independent of what it was copied from', () => {
     const qty = col('Qty');
-    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [[qty, op('*'), lit(2)], []]);
+    const round = functionBlock(SCOPE.functions.get('ROUND'), 'ROUND', [
+      [qty, op('*'), lit(2)],
+      [],
+    ]);
     const group = groupBlock([round]);
 
     const copy = cloneItem(group);

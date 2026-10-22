@@ -8,7 +8,11 @@ import { childExpressions, withChild } from './child-expressions';
  * a new root that shares whatever it didn't touch, so the root can be held in a signal and every earlier
  * state kept for undo.
  */
-export function changeExpression(root: Expression, address: ExpressionAddress, change: (expression: Expression) => Expression): Expression {
+export function changeExpression(
+  root: Expression,
+  address: ExpressionAddress,
+  change: (expression: Expression) => Expression,
+): Expression {
   if (address.ownerId === null) {
     return change(root);
   }
@@ -16,7 +20,11 @@ export function changeExpression(root: Expression, address: ExpressionAddress, c
   return rewrite(root, address, change);
 }
 
-function rewrite(expression: Expression, address: ExpressionAddress, change: (expression: Expression) => Expression): Expression {
+function rewrite(
+  expression: Expression,
+  address: ExpressionAddress,
+  change: (expression: Expression) => Expression,
+): Expression {
   let next: FormulaItem[] | null = null;
 
   for (let index = 0; index < expression.length; index++) {
@@ -33,7 +41,11 @@ function rewrite(expression: Expression, address: ExpressionAddress, change: (ex
   return next ?? expression;
 }
 
-function rewriteItem(item: FormulaItem, address: ExpressionAddress, change: (expression: Expression) => Expression): FormulaItem {
+function rewriteItem(
+  item: FormulaItem,
+  address: ExpressionAddress,
+  change: (expression: Expression) => Expression,
+): FormulaItem {
   const children = childExpressions(item);
 
   if (item.id === address.ownerId) {

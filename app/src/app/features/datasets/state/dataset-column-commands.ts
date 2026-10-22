@@ -37,7 +37,9 @@ export class DatasetColumnCommands {
    */
   applyFormulaColumnSaved(column: DatasetColumn): void {
     this.schema.columns.update((columns) =>
-      columns.some((c) => c.id === column.id) ? columns.map((c) => (c.id === column.id ? column : c)) : [...columns, column],
+      columns.some((c) => c.id === column.id)
+        ? columns.map((c) => (c.id === column.id ? column : c))
+        : [...columns, column],
     );
     this.refreshComputed();
   }
@@ -70,7 +72,8 @@ export class DatasetColumnCommands {
         this.schema.columns.update((columns) => [...columns, column]);
         this.refreshComputed();
       },
-      error: (err) => this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, `Couldn't add the column "${trimmed}". Please try again.`),
     });
   }
 
@@ -105,7 +108,10 @@ export class DatasetColumnCommands {
         this.refreshComputed();
       },
       error: (err) =>
-        this.notify.apiError(err, this.serverMessage(err) ?? "Couldn't change the column type. Please try again."),
+        this.notify.apiError(
+          err,
+          this.serverMessage(err) ?? "Couldn't change the column type. Please try again.",
+        ),
     });
   }
 
@@ -126,7 +132,10 @@ export class DatasetColumnCommands {
         this.rows.stripColumn(column.id);
       },
       error: (err) =>
-        this.notify.apiError(err, this.serverMessage(err) ?? `Couldn't delete "${column.name}". Please try again.`),
+        this.notify.apiError(
+          err,
+          this.serverMessage(err) ?? `Couldn't delete "${column.name}". Please try again.`,
+        ),
     });
   }
 

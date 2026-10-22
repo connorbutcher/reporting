@@ -24,7 +24,9 @@ export class DatasetExport {
   /** True while the whole dataset is being fetched and packaged, for the button's spinner. */
   readonly exporting = this._exporting.asReadonly();
   /** Nothing to export until the dataset has at least one column and is selected. */
-  readonly canExport = computed(() => this.schema.columns().length > 0 && this.collection.selectedId() != null);
+  readonly canExport = computed(
+    () => this.schema.columns().length > 0 && this.collection.selectedId() != null,
+  );
 
   exportCsv(): void {
     const id = this.collection.selectedId();
@@ -35,7 +37,9 @@ export class DatasetExport {
     this.api.getData(id).subscribe({
       next: (data) => {
         const header = columns.map((c) => this.csvCell(c.name));
-        const body = data.rows.map((row) => columns.map((c) => this.csvCell(row.values[c.id] ?? '')));
+        const body = data.rows.map((row) =>
+          columns.map((c) => this.csvCell(row.values[c.id] ?? '')),
+        );
         const csv = [header, ...body].map((cells) => cells.join(',')).join('\r\n');
         this.download(csv, this.fileName());
         this._exporting.set(false);

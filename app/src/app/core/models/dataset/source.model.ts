@@ -43,10 +43,7 @@ export interface FilteredSourceConfig {
 }
 
 export type DatasetSourceConfig =
-  | AssemblySourceConfig
-  | DisassemblySourceConfig
-  | SpecificationSourceConfig
-  | FilteredSourceConfig;
+  AssemblySourceConfig | DisassemblySourceConfig | SpecificationSourceConfig | FilteredSourceConfig;
 
 export interface DatasetSummary {
   /** The dataset's primary key. Datasets belong to a report revision and are referenced by this id. */

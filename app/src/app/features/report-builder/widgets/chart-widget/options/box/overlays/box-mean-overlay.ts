@@ -19,4 +19,5 @@ export class BoxMeanOverlay {
       itemStyle: { color: s.color, borderColor: '#fff', borderWidth: 1 },
       data: means,
     };
-  }}
+  }
+}

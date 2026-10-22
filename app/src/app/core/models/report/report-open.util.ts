@@ -36,7 +36,12 @@ export function hasPublishedVersion(report: Pick<OpenableReport, 'latestVersionN
 export function reportOpenOptions(report: OpenableReport): ReportOpenOption[] {
   const options: ReportOpenOption[] = [];
   if (hasPublishedVersion(report)) {
-    options.push({ kind: 'view', label: 'Open published', icon: 'pi pi-eye', route: ['/reports', report.id] });
+    options.push({
+      kind: 'view',
+      label: 'Open published',
+      icon: 'pi pi-eye',
+      route: ['/reports', report.id],
+    });
   }
   if (canEditReport(report)) {
     options.push({

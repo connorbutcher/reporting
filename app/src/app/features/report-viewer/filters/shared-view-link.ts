@@ -25,7 +25,9 @@ export class SharedViewLink {
 
   /** Undefined until the snapshot for the current id arrives; null when it doesn't exist. */
   public readonly filters = computed(() =>
-    this.resource.hasValue() && this.resource.value().id === this.id() ? this.resource.value().filters : undefined,
+    this.resource.hasValue() && this.resource.value().id === this.id()
+      ? this.resource.value().filters
+      : undefined,
   );
   public readonly loading = computed(() => this.resource.isLoading());
   /** Nothing to wait for when the URL names nothing. */
@@ -47,7 +49,9 @@ export class SharedViewLink {
   private readonly resource = httpResource<ReportSharedView>(() => {
     const reportId = this.store.reportId();
     const id = this.id();
-    return reportId && id ? `/api/reports/${reportId}/shared-views/${encodeURIComponent(id)}` : undefined;
+    return reportId && id
+      ? `/api/reports/${reportId}/shared-views/${encodeURIComponent(id)}`
+      : undefined;
   });
 
   /** The id the filters on screen reflect. A different one in the URL came from outside (back/forward). */

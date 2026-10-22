@@ -8,7 +8,9 @@ describe('parseFormula', () => {
   it('reads text into the sequence the user would have laid out, and writes it back the same', () => {
     expect(roundTrip('[Qty] * [Price] + 1')).toBe('[Qty] * [Price] + 1');
     expect(roundTrip('ROUND(  [Qty]  ,2 )')).toBe('ROUND([Qty], 2)');
-    expect(roundTrip('[Shipped] AND NOT [Shipped] OR [Shipped]')).toBe('[Shipped] AND NOT [Shipped] OR [Shipped]');
+    expect(roundTrip('[Shipped] AND NOT [Shipped] OR [Shipped]')).toBe(
+      '[Shipped] AND NOT [Shipped] OR [Shipped]',
+    );
     expect(roundTrip('2 ^ 3 ^ 2')).toBe('2 ^ 3 ^ 2');
   });
 
@@ -19,12 +21,11 @@ describe('parseFormula', () => {
   });
 
   it('reads AND, OR and NOT as operators, and a call like AND(a, b) as a function', () => {
-    expect(parseFormula('[Shipped] AND NOT [Shipped]', SCOPE.functions).map((i) => (i.kind === 'operator' ? i.op : i.kind))).toEqual([
-      'column',
-      'AND',
-      'NOT',
-      'column',
-    ]);
+    expect(
+      parseFormula('[Shipped] AND NOT [Shipped]', SCOPE.functions).map((i) =>
+        i.kind === 'operator' ? i.op : i.kind,
+      ),
+    ).toEqual(['column', 'AND', 'NOT', 'column']);
     expect(parseFormula('AND([Shipped], [Shipped])', SCOPE.functions)[0].kind).toBe('function');
   });
 
@@ -35,7 +36,10 @@ describe('parseFormula', () => {
   it('keeps a leading minus as an operator in the sequence', () => {
     expect(roundTrip('-5')).toBe('-5');
     expect(roundTrip('-[Qty] * 2')).toBe('-[Qty] * 2');
-    expect(parseFormula('-[Qty]', SCOPE.functions).map((i) => i.kind)).toEqual(['operator', 'column']);
+    expect(parseFormula('-[Qty]', SCOPE.functions).map((i) => i.kind)).toEqual([
+      'operator',
+      'column',
+    ]);
   });
 
   it('pads a call to the arguments its function needs, so saved gaps show up as gaps', () => {

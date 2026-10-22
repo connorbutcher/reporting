@@ -48,10 +48,7 @@ export interface TextColumnConfig {
  * shape matches the column's {@link DatasetColumnType}.
  */
 export type DatasetColumnConfiguration =
-  | NumericColumnConfig
-  | DateColumnConfig
-  | BoolColumnConfig
-  | TextColumnConfig;
+  NumericColumnConfig | DateColumnConfig | BoolColumnConfig | TextColumnConfig;
 
 export interface DatasetColumn {
   id: string;

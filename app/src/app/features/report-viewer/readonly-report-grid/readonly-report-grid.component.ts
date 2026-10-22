@@ -118,7 +118,8 @@ export class ReadonlyReportGridComponent {
   protected conditionCount(widget: Widget): number {
     if (isChartWidget(widget)) {
       return readChartBindings(widget.config).reduce(
-        (n, b) => (b.datasetId ? n + countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter)) : n),
+        (n, b) =>
+          b.datasetId ? n + countConditions(this.bindingOwnFilter(widget.id, b.id, b.filter)) : n,
         0,
       );
     }

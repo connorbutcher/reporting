@@ -96,7 +96,9 @@ export class FormulaSelection {
     }
 
     const group = groupBlock(range.items);
-    this.document.commit(replaceItems(this.document.root(), range.address, range.start, range.items.length, [group]));
+    this.document.commit(
+      replaceItems(this.document.root(), range.address, range.start, range.items.length, [group]),
+    );
     this.selectOnly(group);
     this.interaction.active.set(range.address);
   }
@@ -112,11 +114,15 @@ export class FormulaSelection {
     const args = emptyArguments(fn);
     args[argumentForWrap(fn, this.kind())] = range.items;
     const wrapper = functionBlock(fn, fn.name, args);
-    this.document.commit(replaceItems(this.document.root(), range.address, range.start, range.items.length, [wrapper]));
+    this.document.commit(
+      replaceItems(this.document.root(), range.address, range.start, range.items.length, [wrapper]),
+    );
     this.selectOnly(wrapper);
 
     // Carry on in the first argument that still needs something.
-    const next = args.findIndex((arg, index) => arg.length === 0 && !slotIsOptional(fn.parameters, index));
+    const next = args.findIndex(
+      (arg, index) => arg.length === 0 && !slotIsOptional(fn.parameters, index),
+    );
     this.interaction.active.set(next >= 0 ? { ownerId: wrapper.id, arg: next } : range.address);
   }
 

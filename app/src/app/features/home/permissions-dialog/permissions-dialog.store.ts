@@ -12,7 +12,10 @@ import {
   UserGroupSummary,
   UserSummary,
 } from '../../../core/models/permission';
-import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import {
+  ConfirmDialogComponent,
+  ConfirmDialogData,
+} from '../confirm-dialog/confirm-dialog.component';
 import type { PermissionsDialogData } from './permissions-dialog.component';
 
 export interface SubjectOption {
@@ -23,7 +26,8 @@ export interface SubjectOption {
 }
 
 /** One row of the effective-access list: either a group label or a grant, in display order. */
-export type EffectiveRow = { kind: 'header'; label: string } | { kind: 'grant'; grant: AccessGrant };
+export type EffectiveRow =
+  { kind: 'header'; label: string } | { kind: 'grant'; grant: AccessGrant };
 
 const LEVEL_LABEL: Record<AccessLevel, string> = {
   none: 'No access',
@@ -233,9 +237,13 @@ export class PermissionsDialogStore {
    * Setting Everyone to Editor or Manager hands broad rights to anyone who can open this folder or
    * report, so it's confirmed first; every other grant proceeds straight away.
    */
-  private confirmBroadAccess(subjectType: GrantSubjectType, level: AccessLevel): Observable<boolean> {
+  private confirmBroadAccess(
+    subjectType: GrantSubjectType,
+    level: AccessLevel,
+  ): Observable<boolean> {
     if (subjectType !== 'everyone' || (level !== 'editor' && level !== 'manager')) return of(true);
-    const capability = level === 'manager' ? 'manage its sharing and edit its content' : 'edit its content';
+    const capability =
+      level === 'manager' ? 'manage its sharing and edit its content' : 'edit its content';
     return this.dialog
       .open<boolean>(ConfirmDialogComponent, {
         data: {

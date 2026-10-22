@@ -4,7 +4,10 @@ import { FormulaParser } from './formula-parser';
 import { FormulaTokenizer } from './formula-tokenizer';
 
 /** Reads formula text into the builder's expression; throws `FormulaParseError` when it can't. */
-export function parseFormula(source: string, functions: ReadonlyMap<string, FormulaFunction>): Expression {
+export function parseFormula(
+  source: string,
+  functions: ReadonlyMap<string, FormulaFunction>,
+): Expression {
   if (!source.trim()) {
     return [];
   }

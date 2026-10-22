@@ -88,7 +88,11 @@ export class DatasetColumnsPanelComponent {
 
   /** The duplicate-name message for the add row, shown as it's typed (never the plain "required"). */
   protected readonly addNameError = computed(
-    () => this.addForm.name().errors().find((e) => e.kind === 'duplicate')?.message ?? null,
+    () =>
+      this.addForm
+        .name()
+        .errors()
+        .find((e) => e.kind === 'duplicate')?.message ?? null,
   );
 
   /** How each column is used in the report, by column id — empty for a column nothing uses. */
@@ -170,7 +174,9 @@ export class DatasetColumnsPanelComponent {
       }
 
       this.dialog
-        .open<boolean>(ConfirmDialogComponent, { data: this.typeChangeConfirmation(column, type, impact) })
+        .open<boolean>(ConfirmDialogComponent, {
+          data: this.typeChangeConfirmation(column, type, impact),
+        })
         .closed.subscribe((confirmed) => {
           if (confirmed) this.store.retypeColumn(column, type);
           else select.writeValue(column.type);

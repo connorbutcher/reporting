@@ -20,7 +20,10 @@ describe('ViewFilterSession: stale and failing filters', () => {
     });
 
     it('leaves the rest of the filter applying', async () => {
-      const both: FilterGroup = { ...group('kept'), children: [...group('kept').children, ...groupOn('gone', 'x').children] };
+      const both: FilterGroup = {
+        ...group('kept'),
+        children: [...group('kept').children, ...groupOn('gone', 'x').children],
+      };
       await open('/reports/3?view=abc', { views: { abc: encodeOn(both) } });
 
       expect(queried()).toEqual(group('kept'));

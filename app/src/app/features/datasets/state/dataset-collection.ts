@@ -170,7 +170,8 @@ export class DatasetCollection {
         this.datasetsResource.reload();
         this.notify.success(`Dataset renamed to "${trimmed}".`);
       },
-      error: (err) => this.notify.apiError(err, `Couldn't rename the dataset to "${trimmed}". Please try again.`),
+      error: (err) =>
+        this.notify.apiError(err, `Couldn't rename the dataset to "${trimmed}". Please try again.`),
     });
   }
 
@@ -188,14 +189,17 @@ export class DatasetCollection {
     const dataset = this.selected();
     if (!dataset) return;
     // A plain "(copy)" would clash on a second clone, so land on a free name.
-    this.autosave.track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`))).subscribe({
-      next: (created) => {
-        this.openDataset(created.id);
-        this.datasetsResource.reload();
-        this.notify.success(`Duplicated "${dataset.name}".`);
-      },
-      error: (err) => this.notify.apiError(err, `Couldn't duplicate "${dataset.name}". Please try again.`),
-    });
+    this.autosave
+      .track(this.api.clone(dataset.id, this.uniqueName(`${dataset.name} (copy)`)))
+      .subscribe({
+        next: (created) => {
+          this.openDataset(created.id);
+          this.datasetsResource.reload();
+          this.notify.success(`Duplicated "${dataset.name}".`);
+        },
+        error: (err) =>
+          this.notify.apiError(err, `Couldn't duplicate "${dataset.name}". Please try again.`),
+      });
   }
 
   deleteDataset(): void {

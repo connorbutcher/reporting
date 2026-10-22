@@ -13,5 +13,7 @@ export function toBase64Url(text: string): string {
 export function fromBase64Url(text: string): string {
   const base64 = text.replaceAll('-', '+').replaceAll('_', '/');
   const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
-  return new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+  return new TextDecoder('utf-8', { fatal: true }).decode(
+    Uint8Array.from(binary, (c) => c.charCodeAt(0)),
+  );
 }
