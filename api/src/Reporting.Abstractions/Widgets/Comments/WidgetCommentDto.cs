@@ -10,6 +10,6 @@ public class WidgetCommentDto
     public double? AnchorY { get; set; }
     public int? AnchorYAxisIndex { get; set; }
     public List<WidgetCommentAuthorDto> Mentions { get; set; } = new();
-    /// <summary>Whether the current user wrote it — the client's own delete affordance, rather than guessing from the author id.</summary>
+    /// <summary>Written by the current user.</summary>
     public bool IsOwn { get; set; }
 }

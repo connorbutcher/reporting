@@ -2,15 +2,15 @@ namespace Reporting.Abstractions;
 
 public class BoxPlotSeriesDto
 {
-    /// <summary>Resolved series key, "(blank)" already applied. Empty when there's no series column.</summary>
+    /// <summary>The split value, "(blank)" applied. Empty without a series column.</summary>
     public string Label { get; set; } = string.Empty;
 
-    /// <summary>One entry per category in <see cref="BoxPlotQueryResultDto.Categories"/> order; null where this series has no rows in that category.</summary>
+    /// <summary>Aligned with the categories; null where the series has no rows.</summary>
     public List<BoxDto?> Boxes { get; set; } = new();
 
-    /// <summary>Values past the whiskers (Tukey only), each carrying its category index. Empty for min/max whiskers.</summary>
+    /// <summary>Empty for min/max whiskers.</summary>
     public List<BoxOutlierDto> Outliers { get; set; } = new();
 
-    /// <summary>Conditions selecting this series' rows (its split value), for drill-through; null with no split.</summary>
+    /// <summary>Selects this series' rows for drill-through; null with no split.</summary>
     public FilterGroupDto? Drill { get; set; }
 }

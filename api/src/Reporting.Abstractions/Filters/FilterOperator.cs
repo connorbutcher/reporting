@@ -30,7 +30,7 @@ public enum FilterOperator
     InLastDays,
     InNextDays,
 
-    // Numeric, against the column's tolerance banding: no operand, bounds resolved at query time.
+    // Numeric, against the column's tolerance banding resolved at query time.
     InTolerance,
     NeedsConcession,
     OutOfTolerance

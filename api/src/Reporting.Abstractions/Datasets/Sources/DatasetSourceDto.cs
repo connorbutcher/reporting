@@ -1,6 +1,5 @@
 namespace Reporting.Abstractions;
 
-/// <summary>A selectable dataset source system, for the source pickers.</summary>
 public class DatasetSourceDto
 {
     public int Id { get; set; }

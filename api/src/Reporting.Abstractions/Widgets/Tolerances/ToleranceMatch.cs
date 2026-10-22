@@ -1,16 +1,11 @@
 namespace Reporting.Abstractions;
 
-/// <summary>
-/// Picks a data row's limits row by value: the row of the limits dataset whose
-/// <see cref="SourceColumnId"/> equals the data row's <see cref="ColumnId"/>. Text is compared
-/// ignoring case and surrounding spaces, numbers by value. A row with no match, or an empty value,
-/// simply isn't highlighted; if several limits rows share a value the first one wins.
-/// </summary>
+/// <summary>Text matches ignoring case and spaces, numbers by value. Unmatched rows aren't highlighted; first match wins.</summary>
 public class ToleranceMatch
 {
-    /// <summary>The column of the table's own dataset whose value identifies the row's spec.</summary>
+    /// <summary>In the table's own dataset.</summary>
     public Guid ColumnId { get; set; }
 
-    /// <summary>The column of the limits dataset holding the same identifier.</summary>
+    /// <summary>In the limits dataset.</summary>
     public Guid SourceColumnId { get; set; }
 }

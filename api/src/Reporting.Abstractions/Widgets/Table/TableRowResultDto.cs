@@ -4,6 +4,6 @@ public class TableRowResultDto
 {
     public Guid Id { get; set; }
 
-    /// <summary>Keyed by column id, one entry per column in the request's Columns list.</summary>
+    /// <summary>One entry per requested column.</summary>
     public Dictionary<Guid, TableCellDto> Cells { get; set; } = new();
 }

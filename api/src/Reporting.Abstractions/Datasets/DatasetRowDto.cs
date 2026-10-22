@@ -4,6 +4,6 @@ public class DatasetRowDto
 {
     public Guid Id { get; set; }
 
-    // Keyed by DatasetColumn.Id; every value is stored and returned as a string.
+    /// <summary>Keyed by column id; values are always strings.</summary>
     public Dictionary<Guid, string> Values { get; set; } = new();
 }

@@ -1,24 +1,14 @@
 namespace Reporting.Abstractions;
 
-/// <summary>
-/// An application-wide capability, granted to a subject independently of the folder/report ACL.
-/// Unlike <see cref="AccessLevel"/> these aren't a ladder — each is a discrete permission — and
-/// they attach to the app as a whole, not to a securable. Global admins implicitly hold them all.
-/// </summary>
+/// <summary>An app-wide capability, independent of the folder/report ACL. Not a ladder.</summary>
 public enum AppPermission
 {
-    /// <summary>The former <c>User.IsGlobalAdmin</c> column, now a grant like any other: bypasses the
-    /// folder/report ACL entirely (resolves to Manager on everything — see
-    /// <see cref="Reporting.DAL.Permissions.AccessResolver"/>) and implicitly holds every other app
-    /// permission (see <see cref="Reporting.DAL.Permissions.AppPermissionService"/>).</summary>
+    /// <summary>Manager on every securable, and implies every other app permission.</summary>
     GlobalAdmin,
 
-    /// <summary>Access to the Users section of the admin area: view/create/edit users. Group
-    /// management is separate — driven by whether the user manages any group, not by this.</summary>
+    /// <summary>The admin Users section. Group management is driven by managing a group instead.</summary>
     ManageUsers,
 
-    /// <summary>Lets the holder create new groups (in the Groups section of the admin area) even
-    /// though they don't otherwise manage every group. The creator is automatically made that
-    /// group's manager, unless they're a global admin — whose access is already implied.</summary>
+    /// <summary>The creator becomes the new group's manager, unless they're a global admin.</summary>
     CreateGroups
 }

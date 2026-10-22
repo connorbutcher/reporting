@@ -2,7 +2,7 @@ namespace Reporting.Abstractions;
 
 public class StaticTextWidgetConfig : WidgetConfig
 {
-    /// <summary>Plain text; line breaks are preserved, never rendered as HTML.</summary>
+    /// <summary>Plain text, never rendered as HTML.</summary>
     public string Content { get; set; } = string.Empty;
 
     public int FontSize { get; set; } = 16;

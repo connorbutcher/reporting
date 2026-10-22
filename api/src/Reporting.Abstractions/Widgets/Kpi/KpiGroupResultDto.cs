@@ -1,6 +1,6 @@
 namespace Reporting.Abstractions;
 
-/// <summary>One tile of a grouped KPI — the reduced value for one distinct value of the group-by column.</summary>
+/// <summary>One tile of a grouped KPI.</summary>
 public class KpiGroupResultDto
 {
     public string Label { get; set; } = string.Empty;

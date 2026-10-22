@@ -26,11 +26,11 @@ public class KpiQueryDto
     public double? WarningThreshold { get; set; }
     public double? CriticalThreshold { get; set; }
 
-    /// <summary>A trailing-history series for a sparkline, bucketed into <see cref="PeriodDays"/>-wide windows.</summary>
+    /// <summary>Bucketed into <see cref="PeriodDays"/>-wide windows.</summary>
     public bool ShowSparkline { get; set; }
     public int SparklinePeriods { get; set; } = 8;
 
-    /// <summary>Null (the default) reduces the dataset to one value; set, it reduces once per distinct value of this column.</summary>
+    /// <summary>When set, reduces once per distinct value of this column.</summary>
     public Guid? GroupByColumnId { get; set; }
     public int MaxGroups { get; set; } = 8;
 }

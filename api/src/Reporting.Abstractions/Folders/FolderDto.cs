@@ -7,6 +7,6 @@ public class FolderDto
     public int? ParentFolderId { get; set; }
     public DateTime ModifiedAt { get; set; }
 
-    /// <summary>Whether this folder has any child folders — only populated by the children/lazy-tree endpoint.</summary>
+    /// <summary>Only populated by the children endpoint.</summary>
     public bool HasChildren { get; set; }
 }

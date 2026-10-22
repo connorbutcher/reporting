@@ -7,12 +7,11 @@ public class ChartQueryResultDto : ChartResultCountsDto
     public List<ChartSeriesDto> Series { get; set; } = new();
     public List<ResolvedToleranceBandDto> ToleranceBands { get; set; } = new();
 
-    /// <summary>Total rows that matched before the point cap; equals the plotted count when not truncated.</summary>
+    /// <summary>Before the point cap.</summary>
     public int TotalPoints { get; set; }
 
-    /// <summary>True when more points matched than were returned, so the client can say the plot is a subset.</summary>
     public bool Truncated { get; set; }
 
-    /// <summary>True when a truncated chart was thinned evenly across its X range rather than cut off.</summary>
+    /// <summary>Thinned evenly across X rather than cut off.</summary>
     public bool Sampled { get; set; }
 }

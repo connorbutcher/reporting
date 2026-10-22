@@ -15,9 +15,7 @@ public enum WidgetType
     PivotTable,
     Kpi,
 
-    // The default camelCase JSON naming policy would lower only the first letter, giving
-    // "xBarRChart" — mismatched with the widget config's own "xbarRChart" discriminator
-    // (JsonDerivedType in WidgetConfig.cs) and the frontend's widget type literal.
+    // camelCase would give "xBarRChart", which doesn't match the config discriminator or the client.
     [JsonStringEnumMemberName("xbarRChart")]
     XBarRChart
 }

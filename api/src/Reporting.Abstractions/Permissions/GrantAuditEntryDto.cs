@@ -1,6 +1,6 @@
 namespace Reporting.Abstractions;
 
-/// <summary>One audit-trail entry: who changed what, when. Subject/level fields are null for inheritance changes.</summary>
+/// <summary>Subject and level fields are null for inheritance changes.</summary>
 public class GrantAuditEntryDto
 {
     public DateTime At { get; set; }

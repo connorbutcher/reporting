@@ -1,6 +1,5 @@
 namespace Reporting.Abstractions;
 
-/// <summary>A group row for the admin list.</summary>
 public class AdminGroupDto
 {
     public Guid Id { get; set; }

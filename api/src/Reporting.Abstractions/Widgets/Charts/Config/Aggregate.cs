@@ -1,6 +1,6 @@
 namespace Reporting.Abstractions;
 
-/// <summary>How a bar chart reduces the many rows in one category down to a single bar height.</summary>
+/// <summary>How the rows in one category reduce to a single value.</summary>
 public enum Aggregate
 {
     Sum,
