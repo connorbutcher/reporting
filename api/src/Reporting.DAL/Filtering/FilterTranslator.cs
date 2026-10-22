@@ -5,9 +5,6 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Filtering;
 
-/// <summary>Why a filter couldn't be translated: a 400, not a silent mismatch.</summary>
-public sealed class FilterException(string message) : Exception(message);
-
 /// <summary>
 /// Turns a filter tree into a predicate over <see cref="DatasetRow"/>. Each condition is a plain lambda
 /// over the row's cells, which EF translates to an indexed EXISTS, so the only expression work here is

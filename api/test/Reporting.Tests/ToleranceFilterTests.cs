@@ -2,7 +2,6 @@ using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
 using Reporting.DAL.Widgets;
 using Reporting.Database;
-using Xunit;
 
 namespace Reporting.Tests;
 

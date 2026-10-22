@@ -5,7 +5,6 @@ using Reporting.DAL.Identity;
 using Reporting.DAL.Permissions;
 using Reporting.DAL.Repositories;
 using Reporting.Database;
-using Xunit;
 
 namespace Reporting.Tests;
 

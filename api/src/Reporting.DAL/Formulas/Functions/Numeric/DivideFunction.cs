@@ -1,6 +1,4 @@
-﻿using static Reporting.DAL.Formulas.Functions.FormulaArgs;
-
-namespace Reporting.DAL.Formulas.Functions.Numeric;
+﻿namespace Reporting.DAL.Formulas.Functions.Numeric;
 
 /// <summary>Divides, giving the fallback (default blank) when the divisor is zero or blank.</summary>
 public sealed class DivideFunction : IFormulaFunctionImplementation

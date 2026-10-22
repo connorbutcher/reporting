@@ -1,6 +1,4 @@
-﻿using static Reporting.DAL.Formulas.Functions.FormulaArgs;
-
-namespace Reporting.DAL.Formulas.Functions.Logic;
+﻿namespace Reporting.DAL.Formulas.Functions.Logic;
 
 /// <summary>Reverses a condition; a blank stays blank.</summary>
 public sealed class NotFunction : IFormulaFunctionImplementation

@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Reporting.DAL.Formulas.Evaluation;
-using static Reporting.DAL.Formulas.Functions.FormulaArgs;
 
 namespace Reporting.DAL.Formulas.Functions.Strings;
 

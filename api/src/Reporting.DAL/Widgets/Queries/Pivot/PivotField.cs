@@ -4,9 +4,6 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Widgets;
 
-/// <summary>A row or column field's reading of one cell: what it shows, how it sorts, and the period it falls in when grouped.</summary>
-public readonly record struct PivotFieldValue(string Display, object? SortKey, DateTime? PeriodStart, DateTime? PeriodEnd);
-
 /// <summary>
 /// A row or column field of the pivot: the column it reads and, for a date column, the period it
 /// groups by. Grouped, every date in the same period reads as one value keyed by the period's start.

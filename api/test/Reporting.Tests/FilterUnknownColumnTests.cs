@@ -1,7 +1,6 @@
 using Reporting.Abstractions;
 using Reporting.DAL.Filtering;
 using Reporting.Database;
-using Xunit;
 
 namespace Reporting.Tests;
 

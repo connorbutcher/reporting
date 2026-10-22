@@ -1,6 +1,5 @@
 using Reporting.Abstractions;
 using Reporting.DAL.Permissions;
-using Xunit;
 
 namespace Reporting.Tests;
 

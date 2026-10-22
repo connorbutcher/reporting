@@ -5,30 +5,6 @@ using Reporting.Database;
 
 namespace Reporting.DAL.Permissions;
 
-/// <summary>How an authorization check came out, before it's turned into an HTTP status.</summary>
-public enum AccessOutcome
-{
-    /// <summary>The caller may proceed.</summary>
-    Allowed,
-
-    /// <summary>The target doesn't exist, or is hidden from the caller — surfaces as 404 so nothing private leaks.</summary>
-    NotFound,
-
-    /// <summary>The caller can see the target but lacks the level the action needs — surfaces as 403.</summary>
-    Forbidden,
-
-    /// <summary>A mutation was aimed at a published version's immutable data — surfaces as 400.</summary>
-    ReadOnly
-}
-
-/// <summary>An authorization decision: the outcome plus the caller's resolved level on the target.</summary>
-public sealed record ResourceAuthorization(AccessOutcome Outcome, AccessLevel Level)
-{
-    public bool Allowed => Outcome == AccessOutcome.Allowed;
-
-    public static ResourceAuthorization NotFound { get; } = new(AccessOutcome.NotFound, AccessLevel.None);
-}
-
 /// <summary>
 /// The single place every report/folder/dataset access decision is made. Wraps the pure level
 /// resolution of <see cref="PermissionService"/> with the policy layer around it — the required-level

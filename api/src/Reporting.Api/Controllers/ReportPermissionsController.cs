@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Reporting.Abstractions;
 using Reporting.Api.Authorization;
 using Reporting.DAL.Permissions;
-using Reporting.DAL.Repositories;
 
 namespace Reporting.Api.Controllers;
 
